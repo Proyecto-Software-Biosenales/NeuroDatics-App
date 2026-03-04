@@ -1,7 +1,7 @@
 # NeuroDatics-App
 
 
-# Structure
+## Structure
 
 ```
 src/
