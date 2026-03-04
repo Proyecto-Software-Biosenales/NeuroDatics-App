@@ -1,1 +1,1 @@
-# Neurodatics-App
+# NeuroDatics-App
