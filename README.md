@@ -3,6 +3,7 @@
 
 # Structure
 
+```
 src/
 ├── app/                    # App-level setup (router, store, providers)
 │   ├── App.tsx
@@ -31,3 +32,4 @@ src/
 │
 ├── assets/                 # Static files
 └── styles/ 
+```
