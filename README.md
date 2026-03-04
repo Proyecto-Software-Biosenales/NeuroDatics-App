@@ -1,5 +1,31 @@
 # NeuroDatics-App
 
+## Description
+
+Plataforma profesional para el análisis de bioseñales en neuromarketing. 
+
+## Fast start
+
+```bash
+# Instalar dependencias
+npm install
+
+# Ejecutar en desarrollo
+npm run dev
+
+# Build de producción
+npm run build
+```
+
+Abrir en navegador: `http://localhost:5173`
+
+## Stack 
+
+- **React 19** + **Vite 8**
+- **TypeScript 5.9** 
+- **TailwindCSS v4** 
+- **React Router DOM v7**
+- **Fuente:** Poppins
 
 ## Structure
 
