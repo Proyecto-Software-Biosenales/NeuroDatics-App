@@ -1,0 +1,2 @@
+# statuses.py placeholder
+STATUSES = {}

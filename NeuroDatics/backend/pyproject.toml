@@ -1,0 +1,4 @@
+# pyproject.toml placeholder
+[tool.poetry]
+name = "neurodatics-backend"
+version = "0.1.0"
