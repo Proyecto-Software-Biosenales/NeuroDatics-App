@@ -1,6 +1,8 @@
 # Backend placeholder
 
 # Structure
+
+```
 backend/
   README.md
   pyproject.toml
@@ -165,3 +167,4 @@ backend/
           validations.py
           feature_extraction.py
           report_builder.py
+```
