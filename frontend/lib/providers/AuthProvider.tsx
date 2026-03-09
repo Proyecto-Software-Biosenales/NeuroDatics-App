@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { supabase } from '../../shared/utils/supabase'
-import type { AuthContextType } from '../../shared/types/auth'
+import { supabase } from '@/lib/shared/utils/supabase'
+import type { AuthContextType } from '@/lib/shared/types/auth'
 
 const AuthContext = createContext<AuthContextType | null>(null)
 

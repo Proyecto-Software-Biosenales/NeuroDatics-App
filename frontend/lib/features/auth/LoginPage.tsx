@@ -1,5 +1,4 @@
-import { useAuth } from '../../app/providers/AuthProvider'
-import logoSvg from '../../assets/NeuroDatics-logo.svg'
+import { useAuth } from '@/lib/providers/AuthProvider'
 
 export function LoginPage() {
   const { signInWithGoogle, loading } = useAuth()
@@ -8,7 +7,7 @@ export function LoginPage() {
     <div className="flex items-center justify-center min-h-[calc(100vh-80px)] bg-gray-50">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 w-full max-w-sm flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-3">
-          <img src={logoSvg} alt="NeuroDatics Logo" className="h-14 w-auto" />
+          <img src='assets/NeuroDatics-logo.svg' alt="NeuroDatics Logo" className="h-14 w-auto" />
           <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">NeuroDatics</h1>
           <p className="text-sm text-gray-500 text-center">Inicia sesión para continuar</p>
         </div>

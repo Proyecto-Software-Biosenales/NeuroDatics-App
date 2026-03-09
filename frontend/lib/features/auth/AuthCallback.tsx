@@ -1,16 +1,16 @@
+import { useAuth } from '@/lib/providers/AuthProvider'
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../app/providers/AuthProvider'
+import { useRouter } from 'next/navigation'
 
 export function AuthCallback() {
   const { user, loading } = useAuth()
-  const navigate = useNavigate()
+  const router = useRouter()
 
   useEffect(() => {
     if (!loading) {
-      navigate(user ? '/dashboard' : '/login', { replace: true })
+      router.push(user ? '/dashboard' : '/login')
     }
-  }, [user, loading, navigate])
+  }, [user, loading, router])
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
