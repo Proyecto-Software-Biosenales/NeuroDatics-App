@@ -7,7 +7,7 @@ export const NavBar = () => {
   const pathname = usePathname()
 
   const navItems = [
-    { path: '/dashboard', label: 'Inicio' },
+    { path: '/', label: 'Inicio' },
     { path: '/proyectos', label: 'Proyectos' },
     { path: '/reportes', label: 'Reportes' },
   ]
