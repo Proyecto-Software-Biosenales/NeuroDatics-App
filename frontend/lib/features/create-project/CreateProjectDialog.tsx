@@ -114,7 +114,7 @@ export const CreateProjectDialog = ({
                 type="button"
                 variant="outline"
                 onClick={prevStep}
-                className="gap-2"
+                className="gap-2 p-4"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Anterior
@@ -127,6 +127,7 @@ export const CreateProjectDialog = ({
               type="button"
               variant="outline"
               onClick={() => setIsOpen(false)}
+              className="p-4"
             >
               Cancelar
             </Button>
@@ -136,7 +137,7 @@ export const CreateProjectDialog = ({
                 type="button"
                 onClick={nextStep}
                 disabled={!canGoNext()}
-                className="gap-2"
+                className="gap-2 p-4"
               >
                 Siguiente
                 <ChevronRight className="w-4 h-4" />
@@ -145,7 +146,7 @@ export const CreateProjectDialog = ({
               <Button
                 type="button"
                 onClick={saveProject}
-                className="gap-2"
+                className="gap-2 p-4"
               >
                 <Check className="w-4 h-4" />
                 Guardar proyecto

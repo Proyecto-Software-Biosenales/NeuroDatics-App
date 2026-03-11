@@ -28,7 +28,7 @@ export const HeroSection = () => {
         electroencefalografo, sensor galvánico y eye tracking.
       </p>
 
-      <Button className="bg-black text-white px-8 py-3 hover:bg-gray-700 transition-colors duration-200 text-sm font-medium">
+      <Button className="bg-black text-white px-8 py-5 hover:bg-gray-700 transition-colors duration-200 text-sm font-medium">
         Ver demo
       </Button>
 
