@@ -2,12 +2,12 @@
 
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ProjectsEmptyContainer } from "@/lib/shared/organisms/ProjectsEmptyContainer"
-import { ProjectsGrid } from "@/lib/shared/organisms/ProjectsGrid"
+import { ProjectsEmptyContainer } from "@/features/projects/components/ProjectsEmptyContainer"
+import { ProjectsGrid } from "@/features/projects/components/ProjectsGrid"
 import {
   CreateProjectDialog,
   useProjectsStorage,
-} from "@/lib/features/create-project"
+} from "@/features/projects/create-project"
 
 export default function ProyectosPage() {
   const { projects, addProject, removeProject } = useProjectsStorage()

@@ -4,7 +4,7 @@ import {
   HowItWorksSection,
   CTASection,
   Footer,
-} from "@/lib/shared/home"
+} from "@/features/home"
 
 export default function HomePage() {
   return (
