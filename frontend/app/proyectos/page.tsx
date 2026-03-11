@@ -2,8 +2,8 @@
 
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ProjectsEmptyContainer } from "@/lib/widgets/shared/ui/organisms/ProjectsEmptyContainer"
-import { ProjectsGrid } from "@/lib/widgets/shared/ui/organisms/ProjectsGrid"
+import { ProjectsEmptyContainer } from "@/lib/shared/organisms/ProjectsEmptyContainer"
+import { ProjectsGrid } from "@/lib/shared/organisms/ProjectsGrid"
 import {
   CreateProjectDialog,
   useProjectsStorage,
