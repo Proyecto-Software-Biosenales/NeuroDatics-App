@@ -2,15 +2,18 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { User } from 'lucide-react'
 
 export const NavBar = () => {
   const pathname = usePathname()
 
   const navItems = [
-    { path: '/dashboard', label: 'Inicio' },
+    { path: '/', label: 'Inicio' },
     { path: '/proyectos', label: 'Proyectos' },
+    { path: '/dashboard', label: 'Dashboard' },
     { path: '/reportes', label: 'Reportes' },
   ]
+  const isLoginPage = pathname === "/login"
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
@@ -44,6 +47,16 @@ export const NavBar = () => {
               ))}
             </nav>
           </div>
+          <Link
+            href="/login"
+            className={`p-2 rounded-lg transition-all duration-200 ${
+              isLoginPage
+                ? 'text-gray-900 bg-gray-100'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            <User className="h-6 w-6" />
+          </Link>
         </div>
       </div>
     </header>
