@@ -20,7 +20,7 @@ export const ProjectsEmptyContainer = ({
             description="Comienza creando tu primer proyecto experimental para analizar datos de EEG, GSR y Eye Tracking"
             icon="folder-open"
             action={
-              <Button className="bg-black text-white px-8 py-6 rounded-lg hover:bg-gray-700 transition-colors duration-200 text-base font-medium">
+              <Button className="bg-black text-white px-8 py-5 rounded-lg hover:bg-gray-700 transition-colors duration-200 text-base font-medium">
                 Crear nuevo proyecto
               </Button>
             }

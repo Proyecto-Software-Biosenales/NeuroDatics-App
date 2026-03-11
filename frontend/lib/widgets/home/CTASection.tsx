@@ -16,7 +16,7 @@ export const CTASection = () => {
 
         <Button
           asChild
-          className="bg-black text-white px-8 py-3 rounded-lg hover:bg-gray-700 transition-colors duration-200 text-sm font-medium"
+          className="bg-black text-white px-8 py-5 rounded-lg hover:bg-gray-700 transition-colors duration-200 text-sm font-medium"
         >
           <Link href="/proyectos">Ir a proyectos</Link>
         </Button>
