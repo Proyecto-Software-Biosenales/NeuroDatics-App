@@ -1,18 +1,7 @@
-'use client'
-
-import { Geist, Geist_Mono, Inter } from "next/font/google"
-
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
-import { NavBar } from "@/lib/shared/components/NavBar";
-
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
-
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-})
+import { cn } from "@/lib/utils"
+import { NavBar } from "@/lib/shared/components/NavBar"
 
 export default function RootLayout({
   children,
@@ -20,18 +9,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
-    >
+    <html lang="es" suppressHydrationWarning className={cn("antialiased")}>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
-
-        <div>
+        <ThemeProvider>
           <NavBar />
-
-        </div>
+          <main>{children}</main>
+        </ThemeProvider>
       </body>
     </html>
   )
