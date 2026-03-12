@@ -54,7 +54,7 @@ export const NavBar = () => {
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center gap-3 group">
               <img
-                src="assets/NeuroDatics-logo.svg"
+                src="/assets/NeuroDatics-logo.svg"
                 alt="NeuroDatics Logo"
                 className="h-12 w-auto transition-transform group-hover:scale-105"
               />

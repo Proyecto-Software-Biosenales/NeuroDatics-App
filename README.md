@@ -4,17 +4,7 @@ Plataforma para el análisis de bioseñales aplicada a neuromarketing.
 
 ## Quick start
 
-- Frontend (Next.js + TypeScript):
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-- Backend (Python): see [backend/README.md](backend/README.md) for setup and run instructions.
-
-## Project structure
+-- Backend (Python): see [backend/README.md](backend/README.md) for setup and run instructions.
 
 ## Project structure
 
@@ -224,7 +214,8 @@ NeuroDatics-App
 	│  │  ├─ RegisterPage.tsx
 	│  │  ├─ auth.ts
 	│  │  └─ components
-	│  │     ├─ LoginForm.tsx
+	│  │     ├─ AuthGuard.tsx
++  │  │     ├─ LoginForm.tsx
 	│  │     └─ RegisterForm.tsx
 	│  ├─ home
 	│  │  ├─ components
@@ -244,16 +235,16 @@ NeuroDatics-App
 	│     │  ├─ ProjectsGrid.tsx
 	│     │  ├─ SelectedProjectInfo.tsx
 	│     │  └─ SensorBadge.tsx
-	  	├─ create-project
-	  	│  ├─ CreateProjectDialog.tsx
-	  	│  ├─ CreateProjectStep1.tsx
-	  	│  ├─ CreateProjectStep2.tsx
-	  	│  ├─ CreateProjectStep3.tsx
-	  	│  ├─ CreateProjectStep4.tsx
-	  	│  ├─ index.ts
-	  	│  ├─ types.ts
-	  	│  ├─ useCreateProjectWizard.ts
-	  	│  └─ useProjectsStorage.ts
+		├─ create-project
+		│  ├─ CreateProjectDialog.tsx
+		│  ├─ CreateProjectStep1.tsx
+		│  ├─ CreateProjectStep2.tsx
+		│  ├─ CreateProjectStep3.tsx
+		│  ├─ CreateProjectStep4.tsx
+		│  ├─ index.ts
+		│  ├─ types.ts
+		│  ├─ useCreateProjectWizard.ts
+		│  └─ useProjectsStorage.ts
 	│     ├─ hooks
 	│     │  └─ hooks.md
 	│     ├─ select-project
@@ -298,9 +289,13 @@ NeuroDatics-App
 	│     └─ react.svg
 	├─ tsconfig.json
 ```
-
-
-
-
+	├─ postcss.config.mjs
+	├─ public
+	│  ├─ .gitkeep
+	│  └─ assets
+	│     ├─ NeuroDatics-logo.svg
+	│     └─ react.svg
+	├─ tsconfig.json
+```
 
 
