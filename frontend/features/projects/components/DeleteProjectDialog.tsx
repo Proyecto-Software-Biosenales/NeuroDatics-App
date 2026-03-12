@@ -58,7 +58,7 @@ export const DeleteProjectDialog = ({
           <AlertDialogDescription>
             Esta acción no se puede deshacer. Se eliminará el proyecto{" "}
             <span className="font-semibold text-foreground">
-              "{projectName}"
+              &quot;{projectName}&quot;
             </span>
             .
           </AlertDialogDescription>

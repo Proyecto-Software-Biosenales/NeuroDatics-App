@@ -1,18 +1,31 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import { useAuth } from '@/lib/providers/AuthProvider'
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 
 export function AuthCallback() {
-  const { user, loading } = useAuth()
+  const { currentUser, loading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const errorHandledRef = useRef(false)
 
   useEffect(() => {
-    if (!loading) {
-      router.push(user ? '/dashboard' : '/login')
+    const error = searchParams.get('error')
+    if (error && !errorHandledRef.current) {
+      errorHandledRef.current = true
+      const errorDescription = searchParams.get('error_description')
+      const message = errorDescription ? decodeURIComponent(errorDescription) : 'No se pudo completar la autenticacion con Google.'
+      toast.error(message)
+      router.replace('/login')
+      return
     }
-  }, [user, loading, router])
+
+    if (!loading) {
+      router.replace(currentUser ? '/dashboard' : '/login')
+    }
+  }, [currentUser, loading, router, searchParams])
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">

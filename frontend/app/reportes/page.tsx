@@ -11,6 +11,7 @@ import { useReportType } from "@/features/reports/select-report-type/useReportTy
 import { useReportContent } from "@/features/reports/select-report-content/useReportContent"
 import { useExportOptions } from "@/features/reports/export-report-options/useExportOptions"
 import { useSelectedSensors } from "@/features/reports/select-sensors/useSelectedSensors"
+import { AuthGuard } from "@/features/auth/components/AuthGuard"
 import type { Project } from "@/features/projects/types"
 
 const mockProjects: Project[] = [
@@ -65,75 +66,77 @@ export default function ReportesPage() {
     (reportType !== "by-sensor" || selectedSensors.length > 0)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-8 py-10">
-        <div className="mb-10">
-          <h1 className="text-3xl font-semibold text-gray-900 mb-3 tracking-tight">
-            Reportes
-          </h1>
-          <p className="text-lg text-gray-600 leading-relaxed">
-            Genera y descarga reportes en PDF de tus proyectos, incluyendo
-            gráficas, estadísticas y análisis de sensores.
-          </p>
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-6xl mx-auto px-8 py-10">
+          <div className="mb-10">
+            <h1 className="text-3xl font-semibold text-gray-900 mb-3 tracking-tight">
+              Reportes
+            </h1>
+            <p className="text-lg text-gray-600 leading-relaxed">
+              Genera y descarga reportes en PDF de tus proyectos, incluyendo
+              gráficas, estadísticas y análisis de sensores.
+            </p>
+          </div>
+
+          <div className="mb-8">
+            <ProjectSelectionCard
+              projects={mockProjects}
+              selectedProject={selectedProject}
+              onProjectChange={selectProject}
+            />
+          </div>
+
+          {hasSelection && (
+            <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+              <ReportConfigurationCard
+                reportType={reportType}
+                onReportTypeChange={handleReportTypeChange}
+                availableSensors={selectedProject?.sensors || []}
+                selectedSensors={selectedSensors}
+                onSensorToggle={toggleSensor}
+              />
+            </div>
+          )}
+
+          {hasReportType && (
+            <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+              <ReportContentCard
+                enabled={hasReportType}
+                content={content}
+                onToggleContent={toggleContent}
+              />
+
+              {hasContent && (
+                <div className="pl-14 pr-8">
+                  <ReportPreview selectedCount={selectedCount} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {hasReportType && (
+            <div
+              className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300"
+              style={{ animationDelay: "100ms" }}
+            >
+              <ExportOptionsCard
+                enabled={hasReportType}
+                options={options}
+                onToggleOption={toggleOption}
+                onDownload={handleDownload}
+                canDownload={canDownload}
+              />
+            </div>
+          )}
+
+          {!hasSelection && (
+            <div className="transition-all duration-300">
+              <ReportsEmptyContainer />
+            </div>
+          )}
         </div>
-
-        <div className="mb-8">
-          <ProjectSelectionCard
-            projects={mockProjects}
-            selectedProject={selectedProject}
-            onProjectChange={selectProject}
-          />
-        </div>
-
-        {hasSelection && (
-          <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
-            <ReportConfigurationCard
-              reportType={reportType}
-              onReportTypeChange={handleReportTypeChange}
-              availableSensors={selectedProject?.sensors || []}
-              selectedSensors={selectedSensors}
-              onSensorToggle={toggleSensor}
-            />
-          </div>
-        )}
-
-        {hasReportType && (
-          <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
-            <ReportContentCard
-              enabled={hasReportType}
-              content={content}
-              onToggleContent={toggleContent}
-            />
-
-            {hasContent && (
-              <div className="pl-14 pr-8">
-                <ReportPreview selectedCount={selectedCount} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {hasReportType && (
-          <div
-            className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300"
-            style={{ animationDelay: "100ms" }}
-          >
-            <ExportOptionsCard
-              enabled={hasReportType}
-              options={options}
-              onToggleOption={toggleOption}
-              onDownload={handleDownload}
-              canDownload={canDownload}
-            />
-          </div>
-        )}
-
-        {!hasSelection && (
-          <div className="transition-all duration-300">
-            <ReportsEmptyContainer />
-          </div>
-        )}
       </div>
-    </div>
+    </AuthGuard>
   )
 }
