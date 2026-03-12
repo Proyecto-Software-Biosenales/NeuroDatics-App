@@ -28,6 +28,20 @@ export function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isBusy = loading || isSubmitting
 
+  const resolveLoginError = (error: unknown): string => {
+    const fallbackMessage = 'No se pudo iniciar sesion.'
+    if (!(error instanceof Error)) {
+      return fallbackMessage
+    }
+
+    const rawMessage = error.message.toLowerCase()
+    if (rawMessage.includes('invalid login credentials') || rawMessage.includes('invalid_credentials')) {
+      return 'Credenciales invalidas. Verifica tu correo y contrasena.'
+    }
+
+    return error.message || fallbackMessage
+  }
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsSubmitting(true)
@@ -38,8 +52,7 @@ export function LoginForm() {
       router.push('/dashboard')
       router.refresh()
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión.'
-      toast.error(message)
+      toast.error(resolveLoginError(error))
     } finally {
       setIsSubmitting(false)
     }
@@ -86,12 +99,7 @@ export function LoginForm() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="password">Contraseña</Label>
-              <Link href="/forgot-password" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </div>
+            <Label htmlFor="password">Contraseña</Label>
             <div className="relative">
               <Input
                 id="password"

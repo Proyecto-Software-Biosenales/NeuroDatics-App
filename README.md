@@ -16,6 +16,8 @@ npm run dev
 
 ## Project structure
 
+## Project structure
+
 ```
 NeuroDatics-App
 ├─ README.md
@@ -171,116 +173,134 @@ NeuroDatics-App
 │     └─ unit
 │        └─ .gitkeep
 └─ frontend
-   ├─ .gitignore
-   ├─ .prettierignore
-   ├─ .prettierrc
-   ├─ README.md
-   ├─ app
-   │  ├─ dashboard
-   │  │  └─ page.tsx
-   │  ├─ favicon.ico
-   │  ├─ globals.css
-   │  ├─ layout.tsx
-   │  ├─ login
-   │  │  └─ page.tsx
-   │  ├─ page.tsx
-   │  ├─ proyectos
-   │  │  └─ page.tsx
-   │  └─ reportes
-   │     └─ page.tsx 
-   ├─ components
-   │  ├─ layout
-   │  │  └─ NavBar.tsx
-   │  ├─ theme-provider.tsx
-   │  └─ ui
-   │     ├─ Card.tsx
-   │     ├─ Icon.tsx
-   │     ├─ SelectOption.tsx
-   │     ├─ SelectTrigger.tsx
-   │     ├─ alert-dialog.tsx
-   │     ├─ button.tsx
-   │     ├─ dialog.tsx
-   │     ├─ input.tsx
-   │     ├─ item.tsx
-   │     ├─ label.tsx
-   │     ├─ progress.tsx
-   │     ├─ separator.tsx
-   │     └─ sonner.tsx
-   ├─ eslint.config.mjs
-   ├─ features
-   │  ├─ auth
-   │  │  ├─ AuthCallback.tsx
-   │  │  ├─ LoginPage.tsx
-   │  │  └─ auth.ts
-   │  ├─ home
-   │  │  ├─ components
-   │  │  │  ├─ CTASection.tsx
-   │  │  │  ├─ FeaturesSection.tsx
-   │  │  │  ├─ Footer.tsx
-   │  │  │  ├─ HeroSection.tsx
-   │  │  │  └─ HowItWorksSection.tsx
-   │  │  └─ index.ts
-   │  └─ projects
-   │     ├─ components
-   │     │  ├─ DeleteProjectDialog.tsx
-   │     │  ├─ EmptyState.tsx
-   │     │  ├─ ProjectSelect.tsx
-   │     │  ├─ ProjectSelectionCard.tsx
-   │     │  ├─ ProjectsEmptyContainer.tsx
-   │     │  ├─ ProjectsGrid.tsx
-   │     │  ├─ SelectedProjectInfo.tsx
-   │     │  └─ SensorBadge.tsx
-   │     ├─ create-project
-   │     │  ├─ CreateProjectDialog.tsx
-   │     │  ├─ CreateProjectStep1.tsx
-   │     │  ├─ CreateProjectStep2.tsx
-   │     │  ├─ CreateProjectStep3.tsx
-   │     │  ├─ CreateProjectStep4.tsx
-   │     │  ├─ index.ts
-   │     │  ├─ types.ts
-   │     │  ├─ useCreateProjectWizard.ts
-   │     │  └─ useProjectsStorage.ts
-   │     ├─ hooks
-   │     │  └─ hooks.md
-   │     ├─ select-project
-   │     │  └─ useSelectedProject.ts
-   │     └─ types.ts
-   ├─ features
-   │  └─ reports
-   │     ├─ components
-   │     │  ├─ ExportOptionsCard.tsx
-   │     │  ├─ ReportConfigurationCard.tsx
-   │     │  ├─ ReportContentCard.tsx
-   │     │  ├─ ReportPreview.tsx
-   │     │  └─ ReportsEmptyContainer.tsx
-   │     ├─ export-report-options
-   │     │  └─ useExportOptions.ts
-   │     ├─ hooks
-   │     │  └─ hooks.md
-   │     ├─ select-report-content
-   │     │  └─ useReportContent.ts
-   │     ├─ select-report-type
-   │     │  └─ useReportType.ts
-   │     ├─ select-sensors
-   │     │  └─ useSelectedSensors.ts
-   │     └─ types.ts
-   ├─ hooks
-   │  └─ .gitkeep
-   ├─ lib
-   │  ├─ .gitkeep
-   │  ├─ providers
-   │  │  └─ AuthProvider.tsx
-   │  └─ utils
-   │     ├─ supabase.ts
-   │     └─ utils.ts
-   ├─ next.config.mjs
-   ├─ package-lock.json
-   ├─ package.json
-   ├─ postcss.config.mjs
-   ├─ public
-   │  ├─ .gitkeep
-   │  └─ assets
-   │     ├─ NeuroDatics-logo.svg
-   │     └─ react.svg
-   ├─ tsconfig.json
+	├─ .gitignore
+	├─ .prettierignore
+	├─ .prettierrc
+	├─ README.md
+	├─ app
+	│  ├─ dashboard
+	│  │  └─ page.tsx
+	│  ├─ favicon.ico
+	│  ├─ globals.css
+	│  ├─ layout.tsx
+	│  ├─ auth
+	│  │  └─ callback
+	│  │     └─ page.tsx
+	│  ├─ login
+	│  │  └─ page.tsx
+	│  ├─ register
+	│  │  └─ page.tsx
+	│  ├─ page.tsx
+	│  ├─ proyectos
+	│  │  └─ page.tsx
+	│  └─ reportes
+	│     └─ page.tsx
+	├─ components.json
+	├─ components
+	│  ├─ .gitkeep
+	│  ├─ layout
+	│  │  └─ NavBar.tsx
+	│  ├─ theme-provider.tsx
+	│  └─ ui
+	│     ├─ Card.tsx
+	│     ├─ Icon.tsx
+	│     ├─ SelectOption.tsx
+	│     ├─ SelectTrigger.tsx
+	│     ├─ alert-dialog.tsx
+	│     ├─ button.tsx
+	│     ├─ dialog.tsx
+	│     ├─ input.tsx
+	│     ├─ item.tsx
+	│     ├─ label.tsx
+	│     ├─ progress.tsx
+	│     ├─ separator.tsx
+	│     ├─ sonner.tsx
+	│     └─ checkbox.tsx
+	├─ eslint.config.mjs
+	├─ features
+	│  ├─ auth
+	│  │  ├─ AuthCallback.tsx
+	│  │  ├─ LoginPage.tsx
+	│  │  ├─ RegisterPage.tsx
+	│  │  ├─ auth.ts
+	│  │  └─ components
+	│  │     ├─ LoginForm.tsx
+	│  │     └─ RegisterForm.tsx
+	│  ├─ home
+	│  │  ├─ components
+	│  │  │  ├─ CTASection.tsx
+	│  │  │  ├─ FeaturesSection.tsx
+	│  │  │  ├─ Footer.tsx
+	│  │  │  ├─ HeroSection.tsx
+	│  │  │  └─ HowItWorksSection.tsx
+	│  │  └─ index.ts
+	│  └─ projects
+	│     ├─ components
+	│     │  ├─ DeleteProjectDialog.tsx
+	│     │  ├─ EmptyState.tsx
+	│     │  ├─ ProjectSelect.tsx
+	│     │  ├─ ProjectSelectionCard.tsx
+	│     │  ├─ ProjectsEmptyContainer.tsx
+	│     │  ├─ ProjectsGrid.tsx
+	│     │  ├─ SelectedProjectInfo.tsx
+	│     │  └─ SensorBadge.tsx
+	  	├─ create-project
+	  	│  ├─ CreateProjectDialog.tsx
+	  	│  ├─ CreateProjectStep1.tsx
+	  	│  ├─ CreateProjectStep2.tsx
+	  	│  ├─ CreateProjectStep3.tsx
+	  	│  ├─ CreateProjectStep4.tsx
+	  	│  ├─ index.ts
+	  	│  ├─ types.ts
+	  	│  ├─ useCreateProjectWizard.ts
+	  	│  └─ useProjectsStorage.ts
+	│     ├─ hooks
+	│     │  └─ hooks.md
+	│     ├─ select-project
+	│     │  └─ useSelectedProject.ts
+	│     └─ types.ts
+	├─ features
+	│  └─ reports
+	│     ├─ components
+	│     │  ├─ ExportOptionsCard.tsx
+	│     │  ├─ ReportConfigurationCard.tsx
+	│     │  ├─ ReportContentCard.tsx
+	│     │  ├─ ReportPreview.tsx
+	│     │  └─ ReportsEmptyContainer.tsx
+	│     ├─ export-report-options
+	│     │  └─ useExportOptions.ts
+	│     ├─ hooks
+	│     │  └─ hooks.md
+	│     ├─ select-report-content
+	│     │  └─ useReportContent.ts
+	│     ├─ select-report-type
+	│     │  └─ useReportType.ts
+	│     ├─ select-sensors
+	│     │  └─ useSelectedSensors.ts
+	│     └─ types.ts
+	├─ hooks
+	│  └─ .gitkeep
+	├─ lib
+	│  ├─ .gitkeep
+	│  ├─ providers
+	│  │  └─ AuthProvider.tsx
+	│  └─ utils
+	│     ├─ supabase.ts
+	│     └─ utils.ts
+	├─ next.config.mjs
+	├─ package-lock.json
+	├─ package.json
+	├─ postcss.config.mjs
+	├─ public
+	│  ├─ .gitkeep
+	│  └─ assets
+	│     ├─ NeuroDatics-logo.svg
+	│     └─ react.svg
+	├─ tsconfig.json
 ```
+
+
+
+
+
+
