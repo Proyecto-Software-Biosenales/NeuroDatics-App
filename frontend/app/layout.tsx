@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 import { NavBar } from "@/components/layout/NavBar"
 import { Toaster } from "@/components/ui/sonner"
+import { AuthProvider } from '@/lib/providers/AuthProvider'
 
 export default function RootLayout({
   children,
@@ -12,12 +13,15 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning className={cn("antialiased")}>
       <body>
-        <ThemeProvider>
-          <NavBar />
-          <main>{children}</main>
+        <ThemeProvider forcedTheme="light">
+          <AuthProvider>
+            <NavBar />
+            <main>{children}</main>
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>
     </html>
   )
 }
+
