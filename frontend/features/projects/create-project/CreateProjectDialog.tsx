@@ -43,12 +43,16 @@ export const CreateProjectDialog = ({
     prevStep,
     reset,
     saveProject,
+    isSaving,
+    saveError,
+    setExperimentZip,
   } = useCreateProjectWizard(onProjectCreated)
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)
     if (!open) reset()
   }
+  
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -85,6 +89,7 @@ export const CreateProjectDialog = ({
               folderPath={formData.folderPath}
               onProjectNameChange={updateProjectName}
               onFolderPathChange={updateFolderPath}
+              onZipSelected={setExperimentZip}
             />
           )}
 
@@ -103,7 +108,16 @@ export const CreateProjectDialog = ({
           )}
 
           {currentStep === 4 && (
-            <CreateProjectStep4 stimuli={formData.stimuli} />
+            <CreateProjectStep4 scenaries={formData.scenaries} />
+          )}
+
+          {/* Mostrar error de guardado */}
+          {saveError && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">
+                <strong>Error:</strong> {saveError}
+              </p>
+            </div>
           )}
         </div>
 
@@ -114,6 +128,7 @@ export const CreateProjectDialog = ({
                 type="button"
                 variant="outline"
                 onClick={prevStep}
+                disabled={isSaving}
                 className="gap-2 p-4"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -127,6 +142,7 @@ export const CreateProjectDialog = ({
               type="button"
               variant="outline"
               onClick={() => setIsOpen(false)}
+              disabled={isSaving}
               className="p-4"
             >
               Cancelar
@@ -136,7 +152,7 @@ export const CreateProjectDialog = ({
               <Button
                 type="button"
                 onClick={nextStep}
-                disabled={!canGoNext()}
+                disabled={!canGoNext() || isSaving}
                 className="gap-2 p-4"
               >
                 Siguiente
@@ -147,9 +163,10 @@ export const CreateProjectDialog = ({
                 type="button"
                 onClick={saveProject}
                 className="gap-2 p-4"
+                disabled={isSaving}
               >
                 <Check className="w-4 h-4" />
-                Guardar proyecto
+                {isSaving ? "Guardando..." : "Guardar proyecto"}
               </Button>
             )}
           </div>

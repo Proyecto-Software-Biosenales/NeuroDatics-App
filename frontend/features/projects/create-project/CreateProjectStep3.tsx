@@ -23,6 +23,12 @@ export const CreateProjectStep3 = ({
     participants[0]?.id || ""
   )
 
+  const sexOptions = [
+    { label: "Masculino", value: "male" },
+    { label: "Femenino", value: "female" },
+    { label: "Otro", value: "other" },
+  ] as const
+
   return (
     <div className="space-y-6">
       <div>
@@ -67,20 +73,20 @@ export const CreateProjectStep3 = ({
                       Sexo
                     </Label>
                     <div className="flex gap-2">
-                      {["Masculino", "Femenino", "Otro"].map((option) => (
+                      {sexOptions.map((option) => (
                         <button
-                          key={option}
+                          key={option.value}
                           type="button"
                           onClick={() =>
-                            onUpdateParticipant(participant.id, "sex", option)
+                            onUpdateParticipant(participant.id, "sex", option.value)
                           }
                           className={`flex-1 px-4 py-2 rounded-lg border transition-all duration-200 text-sm font-medium ${
-                            participant.sex === option
+                            participant.sex === option.value
                               ? "border-black bg-black text-white"
                               : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
                           }`}
                         >
-                          {option}
+                          {option.label}
                         </button>
                       ))}
                     </div>

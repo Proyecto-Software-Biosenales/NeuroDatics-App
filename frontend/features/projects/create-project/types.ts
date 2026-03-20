@@ -4,11 +4,11 @@ export type { SensorType }
 
 export interface ParticipantData {
   id: string
-  sex: string | null
+  sex: "male" | "female" | "other" | null
   age: string
 }
 
-export interface Stimulus {
+export interface scenaries {
   id: string
   name: string
   aois: AOI[]
@@ -25,8 +25,9 @@ export interface AOI {
 
 export interface ProjectFormData {
   projectName: string
+  experimentZip: File | null  // No opcional, pero puede ser null
   folderPath: string
   sensors: SensorType[]
   participants: ParticipantData[]
-  stimuli: Stimulus[]
+  scenaries: scenaries[]
 }
