@@ -11,7 +11,7 @@ import {
 } from "@/features/projects/create-project"
 
 export default function ProyectosPage() {
-  const { projects, addProject, removeProject } = useProjectsStorage()
+  const { projects, addProject, removeProject, loading, error } = useProjectsStorage()
   const hasProjects = projects.length > 0
 
   return (
@@ -29,25 +29,50 @@ export default function ProyectosPage() {
               </p>
             </div>
 
-            {hasProjects && (
-              <CreateProjectDialog
-                onProjectCreated={addProject}
-                trigger={
-                  <Button className="bg-black text-white px-6 py-5 rounded-lg hover:bg-gray-700 transition-colors duration-200 text-sm font-medium gap-2">
-                    <Plus className="w-5 h-5" />
-                    Crear nuevo proyecto
-                  </Button>
-                }
-              />
-            )}
+            <CreateProjectDialog
+              onProjectCreated={addProject}
+              trigger={
+                <Button className="bg-black text-white px-6 py-5 rounded-lg hover:bg-gray-700 transition-colors duration-200 text-sm font-medium gap-2">
+                  <Plus className="w-5 h-5" />
+                  Crear nuevo proyecto
+                </Button>
+              }
+            />
           </div>
 
-          {hasProjects ? (
-            <ProjectsGrid projects={projects} onDelete={removeProject} />
-          ) : (
-            <div className="transition-all duration-300">
-              <ProjectsEmptyContainer onProjectCreated={addProject} />
+          {/* Loading state */}
+          {loading && (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-200 mb-4">
+                  <div className="w-8 h-8 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+                </div>
+                <p className="text-gray-600">Cargando proyectos...</p>
+              </div>
             </div>
+          )}
+
+          {/* Error state */}
+          {error && !loading && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-6 mb-6">
+              <p className="text-red-800 font-medium">{error}</p>
+              <p className="text-red-700 text-sm mt-2">
+                Si el problema persiste, intenta recargar la página.
+              </p>
+            </div>
+          )}
+
+          {/* Projects grid or empty state */}
+          {!loading && (
+            <>
+              {hasProjects ? (
+                <ProjectsGrid projects={projects} onDelete={removeProject} />
+              ) : (
+                <div className="transition-all duration-300">
+                  <ProjectsEmptyContainer onProjectCreated={addProject} />
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

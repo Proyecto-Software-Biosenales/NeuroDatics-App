@@ -1,6 +1,4 @@
-import type { Session } from '@supabase/supabase-js'
-
-export type AuthSource = 'supabase' | 'local-dev-admin'
+export type AuthSource = 'google-oauth' | 'local-dev-admin'
 
 export interface AppUser {
   id: string
@@ -14,15 +12,21 @@ export interface LocalDevAdminSession {
   issuedAt: string
 }
 
+export interface AuthSession {
+  accessToken: string
+  refreshToken: string
+  tokenType: string
+  expiresAt: string | null
+}
+
 export interface SignUpResult {
   requiresEmailConfirmation: boolean
 }
 
 export interface AuthContextType {
   currentUser: AppUser | null
-  session: Session | null
+  session: AuthSession | null
   loading: boolean
-  signInWithGoogle: () => Promise<void>
   signInWithPassword: (email: string, password: string) => Promise<void>
   signUpWithPassword: (fullName: string, email: string, password: string) => Promise<SignUpResult>
   signOut: () => Promise<void>

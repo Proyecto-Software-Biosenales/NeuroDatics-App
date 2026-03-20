@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { ChevronDown, ChevronRight, X } from "lucide-react"
-import type { Stimulus } from "./types"
+import type { scenaries } from "./types"
 
 interface CreateProjectStep4Props {
-  stimuli: Stimulus[]
+  scenaries: scenaries[]
 }
 
 const mockAOIs = [
@@ -41,9 +41,9 @@ const mockAOIs = [
   },
 ]
 
-export const CreateProjectStep4 = ({ stimuli }: CreateProjectStep4Props) => {
-  const [openStimulus, setOpenStimulus] = useState<string>(
-    stimuli[0]?.id || ""
+export const CreateProjectStep4 = ({ scenaries }: CreateProjectStep4Props) => {
+  const [openscenaries, setOpenscenaries] = useState<string>(
+    scenaries[0]?.id || ""
   )
 
   return (
@@ -58,23 +58,23 @@ export const CreateProjectStep4 = ({ stimuli }: CreateProjectStep4Props) => {
       </div>
 
       <div className="space-y-3">
-        {stimuli.map((stimulus) => {
-          const isOpen = openStimulus === stimulus.id
+        {scenaries.map((scenaries) => {
+          const isOpen = openscenaries === scenaries.id
 
           return (
             <div
-              key={stimulus.id}
+              key={scenaries.id}
               className="border border-gray-200 rounded-xl bg-white overflow-hidden"
             >
               <button
                 type="button"
                 onClick={() =>
-                  setOpenStimulus(isOpen ? "" : stimulus.id)
+                  setOpenscenaries(isOpen ? "" : scenaries.id)
                 }
                 className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
               >
                 <span className="font-medium text-gray-900">
-                  {stimulus.name}
+                  {scenaries.name}
                 </span>
                 {isOpen ? (
                   <ChevronDown className="w-5 h-5 text-gray-500" />

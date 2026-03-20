@@ -1,21 +1,62 @@
-# Next.js template
+# NeuroDatics Frontend
 
-This is a Next.js template with shadcn/ui.
+Frontend de NeuroDatics construido con Next.js App Router, TypeScript y Tailwind CSS.
 
-## Adding components
+## Requisitos
 
-To add components to your app, run the following command:
+- Node.js 20+
+- npm 10+
+- Backend disponible en http://localhost:8000
+
+## Variables De Entorno
+
+Crear archivo frontend/.env.local con:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=
+
+# Opcional (modo admin local para desarrollo)
+NEXT_PUBLIC_DEV_ADMIN_EMAIL=
+NEXT_PUBLIC_DEV_ADMIN_PASSWORD=
+NEXT_PUBLIC_DEV_ADMIN_DISPLAY_NAME=Administrador NeuroDatics
+```
+
+## Ejecutar En Desarrollo
 
 ```bash
-npx shadcn@latest add button
+cd frontend
+npm install
+npm run dev
 ```
 
-This will place the ui components in the `components` directory.
+## Scripts Disponibles
 
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button";
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+npm run typecheck
+npm run format
 ```
+
+## Autenticacion
+
+- Login principal: Google OAuth.
+- Callback de autorizacion: /authorize.
+- El frontend guarda accessToken y refreshToken en localStorage.
+- El wrapper de API renueva automaticamente access tokens expirados con POST /api/auth/refresh.
+
+## Estructura Principal
+
+- app: rutas App Router (login, dashboard, proyectos, reportes, authorize).
+- features: logica por dominio (auth, projects, reports, home).
+- components/ui: componentes reutilizables.
+- lib/api: wrapper HTTP central.
+- lib/providers: contexto de autenticacion y helpers OAuth.
+
+## Integracion Con Backend
+
+- Base URL configurada por NEXT_PUBLIC_API_BASE_URL.
+- Endpoints principales consumidos desde features/projects/api/projectsApi.ts.

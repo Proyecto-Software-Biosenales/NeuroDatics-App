@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/providers/AuthProvider'
+import { redirectToGoogleAuth } from '@/lib/providers/customAuthProvider'
 
 export function LoginForm() {
   const fieldClassName =
@@ -21,7 +22,7 @@ export function LoginForm() {
     'h-12 w-full rounded-2xl border border-gray-200 bg-white text-base font-semibold text-gray-900 shadow-sm hover:bg-gray-50'
 
   const router = useRouter()
-  const { loading, signInWithGoogle, signInWithPassword } = useAuth()
+  const { loading, signInWithPassword } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -62,7 +63,7 @@ export function LoginForm() {
     setIsSubmitting(true)
 
     try {
-      await signInWithGoogle()
+      redirectToGoogleAuth()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión con Google.'
       toast.error(message)

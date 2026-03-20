@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/providers/AuthProvider'
+import { redirectToGoogleAuth } from '@/lib/providers/customAuthProvider'
 
 export function RegisterForm() {
   const fieldClassName =
@@ -22,7 +23,7 @@ export function RegisterForm() {
     'h-12 w-full rounded-2xl border border-gray-200 bg-white text-base font-semibold text-gray-900 shadow-sm hover:bg-gray-50'
 
   const router = useRouter()
-  const { loading, signInWithGoogle, signUpWithPassword } = useAuth()
+  const { loading, signUpWithPassword } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [fullName, setFullName] = useState('')
@@ -75,7 +76,7 @@ export function RegisterForm() {
     setIsSubmitting(true)
 
     try {
-      await signInWithGoogle()
+      redirectToGoogleAuth()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo continuar con Google.'
       toast.error(message)
