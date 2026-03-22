@@ -1,18 +1,37 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProjectsEmptyContainer } from "@/features/projects/components/ProjectsEmptyContainer"
 import { ProjectsGrid } from "@/features/projects/components/ProjectsGrid"
 import { AuthGuard } from "@/features/auth/components/AuthGuard"
+import type { ProjectStatus } from "@/features/projects/types"
 import {
   CreateProjectDialog,
   useProjectsStorage,
 } from "@/features/projects/create-project"
 
+type ProjectFilter = "all" | ProjectStatus
+
 export default function ProyectosPage() {
   const { projects, addProject, updateProject, removeProject, loading, error } = useProjectsStorage()
+  const [statusFilter, setStatusFilter] = useState<ProjectFilter>("all")
   const hasProjects = projects.length > 0
+
+  const filteredProjects = useMemo(() => {
+    if (statusFilter === "all") return projects
+    return projects.filter((project) => (project.status || "draft") === statusFilter)
+  }, [projects, statusFilter])
+
+  const hasFilteredProjects = filteredProjects.length > 0
+
+  const filterButtons: Array<{ value: ProjectFilter; label: string }> = [
+    { value: "all", label: "Todos" },
+    { value: "active", label: "Activos" },
+    { value: "archived", label: "Archivados" },
+    { value: "draft", label: "Borradores" },
+  ]
 
   return (
     <AuthGuard>
@@ -66,7 +85,32 @@ export default function ProyectosPage() {
           {!loading && (
             <>
               {hasProjects ? (
-                <ProjectsGrid projects={projects} onDelete={removeProject} onEdit={updateProject} />
+                <>
+                  <div className="mb-6 flex flex-wrap items-center gap-2">
+                    {filterButtons.map((filter) => {
+                      const isActive = statusFilter === filter.value
+                      return (
+                        <Button
+                          key={filter.value}
+                          type="button"
+                          variant={isActive ? "default" : "outline"}
+                          onClick={() => setStatusFilter(filter.value)}
+                          className={isActive ? "bg-black text-white hover:bg-gray-800" : ""}
+                        >
+                          {filter.label}
+                        </Button>
+                      )
+                    })}
+                  </div>
+
+                  {hasFilteredProjects ? (
+                    <ProjectsGrid projects={filteredProjects} onDelete={removeProject} onEdit={updateProject} />
+                  ) : (
+                    <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-600">
+                      No hay proyectos en este estado.
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="transition-all duration-300">
                   <ProjectsEmptyContainer onProjectCreated={addProject} />

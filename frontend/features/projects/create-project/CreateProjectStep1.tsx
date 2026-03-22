@@ -3,8 +3,10 @@
 import { useRef, useState } from "react"
 import { Upload, AlertCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 interface CreateProjectStep1Props {
   projectName: string
@@ -118,9 +120,11 @@ export const CreateProjectStep1 = ({
           <Label htmlFor="descripcion-proyecto" className="text-base">
             Descripción
           </Label>
-          <Input
+          <Textarea
+            className="h-20 max-h-20 w-full max-w-full resize-none overflow-y-auto overflow-x-hidden break-all [overflow-wrap:anywhere] [field-sizing:fixed]"
             id="descripcion-proyecto"
             name="descripcion-proyecto"
+            wrap="hard"
             placeholder="Describe brevemente el objetivo del proyecto"
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
@@ -146,17 +150,16 @@ export const CreateProjectStep1 = ({
 
         <div className="space-y-2">
           <Label htmlFor="carpeta-experimento" className="text-base">
-            Carpeta del experimento (ZIP){zipRequired ? "" : " (opcional)"}
+            Carpeta del experimento (ZIP){zipRequired || isEditMode ? "" : " (opcional)"}
           </Label>
 
           {isEditMode && (
-            <div className="mb-4 flex items-center gap-3 bg-gray-100 border border-gray-400 rounded-lg p-3 hover:bg-gray-200 transition-colors">
-              <input
-                type="checkbox"
+            <div className="mb-4 flex items-center gap-3 bg-gray-100 border border-gray-300 rounded-lg p-3 hover:bg-gray-200 transition-colors">
+              <Checkbox
                 id="actualizar-zip"
                 checked={shouldUpdateZip}
-                onChange={(e) => onShouldUpdateZipChange?.(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                onCheckedChange={(checked) => onShouldUpdateZipChange?.(checked === true)}
+                className="cursor-pointer border-gray-400"
               />
               <Label htmlFor="actualizar-zip" className="text-sm cursor-pointer">
                 Actualizar archivo ZIP

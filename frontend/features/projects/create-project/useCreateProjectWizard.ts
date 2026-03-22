@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ProjectFormData, SensorType, ParticipantData } from "./types";
 import type { Project } from "@/features/projects/types";
 import { ProjectsApi } from "@/features/projects/api/projectsApi";
+import { toast } from "sonner";
 
 
 const initialParticipants: ParticipantData[] = [
@@ -130,6 +131,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
 
     setIsSaving(true);
     setSaveError(null);
+    const loadingToastId = toast.loading("Guardando proyecto...");
     let createdProjectId: string | null = null;
 
     try {
@@ -185,11 +187,17 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       };
 
       onProjectCreated?.(newProject);
+      toast.success(`Proyecto "${created.name}" creado correctamente.`, {
+        id: loadingToastId,
+      });
       setIsOpen(false);
       reset();
     } catch (e: any) {
       console.error("Error saving project:", e);
       setSaveError(e?.message ?? "Error guardando proyecto");
+      toast.error("No se pudo guardar el proyecto.", {
+        id: loadingToastId,
+      });
     } finally {
       setIsSaving(false);
     }

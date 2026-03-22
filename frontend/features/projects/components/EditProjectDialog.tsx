@@ -205,6 +205,7 @@ export const EditProjectDialog = ({
 
     setIsSaving(true)
     setSaveError(null)
+    const loadingToastId = toast.loading("Guardando cambios del proyecto...")
 
     try {
       const updatedMetadata = await ProjectsApi.update(projectId, {
@@ -270,12 +271,17 @@ export const EditProjectDialog = ({
         participants: formData.participants.length,
       })
 
-      toast.success(`Proyecto "${formData.projectName}" editado correctamente.`)
+      toast.success(`Proyecto "${formData.projectName}" editado correctamente.`, {
+        id: loadingToastId,
+      })
       setIsOpen(false)
       setCurrentStep(1)
     } catch (error) {
       console.error(error)
       setSaveError("No se pudo guardar la edición del proyecto.")
+      toast.error("No se pudo guardar la edición del proyecto.", {
+        id: loadingToastId,
+      })
     } finally {
       setIsSaving(false)
     }
