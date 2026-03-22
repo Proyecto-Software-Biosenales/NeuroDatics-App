@@ -5,6 +5,7 @@ from sqlalchemy import select, delete, func
 from sqlalchemy.orm import selectinload
 from ..domain.repository import ProjectRepository
 from ..domain.entities import Project, ProjectFile, ProjectSensor
+from ...scenaries.domain.entities import Scenaries
 
 
 class SQLProjectRepository(ProjectRepository):
@@ -28,7 +29,7 @@ class SQLProjectRepository(ProjectRepository):
                 selectinload(Project.files),
                 selectinload(Project.sensors),
                 selectinload(Project.participants),
-                selectinload(Project.scenaries)
+                selectinload(Project.scenaries).selectinload(Scenaries.aois)
             )
             .where(Project.id == project_id, Project.owner_id == owner_id)
         )
@@ -86,6 +87,16 @@ class SQLProjectRepository(ProjectRepository):
         await self.session.commit()
         await self.session.refresh(project_file)
         return project_file
+    
+    async def delete_file_by_kind(self, project_id: UUID, kind: str) -> bool:
+        """Delete file by kind (e.g., 'experiment_zip')"""
+        result = await self.session.execute(
+            delete(ProjectFile).where(
+                (ProjectFile.project_id == project_id) & (ProjectFile.kind == kind)
+            )
+        )
+        await self.session.commit()
+        return result.rowcount > 0
     
     async def update_sensors(self, project_id: UUID, sensors: List[str]) -> List[ProjectSensor]:
         """Update project sensors"""

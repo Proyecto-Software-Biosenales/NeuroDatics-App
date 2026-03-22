@@ -2,14 +2,16 @@ import { Folder } from "lucide-react"
 import { Card } from "../../../components/ui/Card"
 import { SensorBadge } from "../../../features/projects/components/SensorBadge"
 import { DeleteProjectDialog } from "../../../features/projects/components/DeleteProjectDialog"
+import { EditProjectDialog } from "../../../features/projects/components/EditProjectDialog"
 import type { Project } from "@/features/projects/types"
 
 interface ProjectsGridProps {
   projects: Project[]
   onDelete: (id: string) => Promise<void> | void
+  onEdit: (project: Project) => void
 }
 
-export const ProjectsGrid = ({ projects, onDelete }: ProjectsGridProps) => {
+export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) => {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {projects.map((project) => (
@@ -21,6 +23,11 @@ export const ProjectsGrid = ({ projects, onDelete }: ProjectsGridProps) => {
             projectId={project.id}
             projectName={project.name}
             onDelete={onDelete}
+          />
+          <EditProjectDialog
+            projectId={project.id}
+            projectName={project.name}
+            onProjectUpdated={onEdit}
           />
 
           <div className="mb-4 flex items-start gap-4">

@@ -4,9 +4,41 @@ export type ApiProject = {
   id: string;
   name: string;
   description?: string | null;
-  status?: string;
+  status?: "draft" | "active" | "archived" | string;
   created_at?: string;
   updated_at?: string;
+  sensors?: Array<{ id: string; sensor_type: string }>;
+  participants_count?: number;
+};
+
+export type ApiProjectParticipant = {
+  id: string;
+  participant_code: string;
+  age?: number | null;
+  sex?: "male" | "female" | "other" | string | null;
+};
+
+export type ApiProjectAoi = {
+  id: string;
+  name: string;
+  color?: string;
+  shape_type?: string;
+  shape?: Record<string, unknown>;
+};
+
+export type ApiProjectScenary = {
+  id: string;
+  name: string;
+  type?: string;
+  file_id?: string | null;
+  width?: number | null;
+  height?: number | null;
+  aois?: ApiProjectAoi[];
+};
+
+export type ApiProjectDetail = ApiProject & {
+  participants?: ApiProjectParticipant[];
+  scenaries?: ApiProjectScenary[];
 };
 
 export const ProjectsApi = {
@@ -19,7 +51,7 @@ export const ProjectsApi = {
     }),
 
   get: (projectId: string) =>
-    apiFetch<ApiProject>(`/api/projects/${projectId}`),
+    apiFetch<ApiProjectDetail>(`/api/projects/${projectId}`),
 
   update: (projectId: string, payload: Partial<{ name: string; description: string; status: string }>) =>
     apiFetch<ApiProject>(`/api/projects/${projectId}`, {
@@ -41,6 +73,11 @@ export const ProjectsApi = {
       body: form,
     });
   },
+
+  deleteZip: (projectId: string) =>
+    apiFetch<{ message: string }>(`/api/projects/${projectId}/files/experiment-zip`, {
+      method: "DELETE",
+    }),
 
   setSensors: (projectId: string, sensors: string[]) =>
     apiFetch<void>(`/api/projects/${projectId}/sensors`, {

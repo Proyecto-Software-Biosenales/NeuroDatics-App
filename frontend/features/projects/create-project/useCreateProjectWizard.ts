@@ -36,6 +36,8 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
   // 👇 agrega aquí experimentZip si ya lo estás capturando desde Step1
   const [formData, setFormData] = useState<ProjectFormData>({
     projectName: "",
+    description: "",
+    status: "draft",
     folderPath: "",
     sensors: [],
     participants: initialParticipants,
@@ -44,6 +46,8 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
   });
 
   const updateProjectName = (name: string) => setFormData(prev => ({ ...prev, projectName: name }));
+  const updateDescription = (description: string) => setFormData(prev => ({ ...prev, description }));
+  const updateStatus = (status: "draft" | "active" | "archived") => setFormData(prev => ({ ...prev, status }));
   const updateFolderPath = (path: string) => setFormData(prev => ({ ...prev, folderPath: path }));
   const setExperimentZip = (file: File | null) => {
     setFormData((prev) => ({
@@ -107,6 +111,8 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     setSaveError(null);
     setFormData({
       projectName: "",
+      description: "",
+      status: "draft",
       folderPath: "",
       sensors: [],
       participants: initialParticipants,
@@ -128,7 +134,10 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
 
     try {
       // 1) Crear proyecto real
-      const created = await ProjectsApi.create({ name: formData.projectName });
+      const created = await ProjectsApi.create({
+        name: formData.projectName,
+        description: formData.description.trim() || undefined,
+      });
       createdProjectId = created.id;
 
       // 2) Subir zip a Drive (si existe)
@@ -168,6 +177,8 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       const newProject: Project = {
         id: createdProjectId,
         name: created.name,
+        description: created.description ?? formData.description,
+        status: (created.status?.toLowerCase() as Project["status"]) || formData.status,
         createdAt: formatDate(created.created_at),
         sensors: formData.sensors,
         participants: formData.participants.length,
@@ -190,6 +201,8 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     isOpen,
     setIsOpen,
     updateProjectName,
+    updateDescription,
+    updateStatus,
     updateFolderPath,
     toggleSensor,
     updateParticipant,

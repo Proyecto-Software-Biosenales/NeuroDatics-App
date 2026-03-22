@@ -8,18 +8,34 @@ import { Label } from "@/components/ui/label"
 
 interface CreateProjectStep1Props {
   projectName: string
+  description: string
+  status: "draft" | "active" | "archived"
   folderPath: string
   onProjectNameChange: (name: string) => void
+  onDescriptionChange: (description: string) => void
+  onStatusChange: (status: "draft" | "active" | "archived") => void
   onFolderPathChange: (path: string) => void
   onZipSelected: (file: File | null) => void
+  zipRequired?: boolean
+  isEditMode?: boolean
+  shouldUpdateZip?: boolean
+  onShouldUpdateZipChange?: (shouldUpdate: boolean) => void
 }
 
 export const CreateProjectStep1 = ({
   projectName,
+  description,
+  status,
   folderPath,
   onProjectNameChange,
+  onDescriptionChange,
+  onStatusChange,
   onFolderPathChange,
   onZipSelected,
+  zipRequired = true,
+  isEditMode = false,
+  shouldUpdateZip = false,
+  onShouldUpdateZipChange,
 }: CreateProjectStep1Props) => {
   const fileRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -99,9 +115,54 @@ export const CreateProjectStep1 = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="carpeta-experimento" className="text-base">
-            Carpeta del experimento (ZIP)
+          <Label htmlFor="descripcion-proyecto" className="text-base">
+            Descripción
           </Label>
+          <Input
+            id="descripcion-proyecto"
+            name="descripcion-proyecto"
+            placeholder="Describe brevemente el objetivo del proyecto"
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="estado-proyecto" className="text-base">
+            Estado
+          </Label>
+          <select
+            id="estado-proyecto"
+            name="estado-proyecto"
+            value={status}
+            onChange={(e) => onStatusChange(e.target.value as "draft" | "active" | "archived")}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+          >
+            <option value="draft">Borrador</option>
+            <option value="active">Activo</option>
+            <option value="archived">Archivado</option>
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="carpeta-experimento" className="text-base">
+            Carpeta del experimento (ZIP){zipRequired ? "" : " (opcional)"}
+          </Label>
+
+          {isEditMode && (
+            <div className="mb-4 flex items-center gap-3 bg-gray-100 border border-gray-400 rounded-lg p-3 hover:bg-gray-200 transition-colors">
+              <input
+                type="checkbox"
+                id="actualizar-zip"
+                checked={shouldUpdateZip}
+                onChange={(e) => onShouldUpdateZipChange?.(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+              />
+              <Label htmlFor="actualizar-zip" className="text-sm cursor-pointer">
+                Actualizar archivo ZIP
+              </Label>
+            </div>
+          )}
 
           {/* input oculto */}
           <input
@@ -113,14 +174,22 @@ export const CreateProjectStep1 = ({
           />
 
           <div
-            onClick={pickFile}
+            onClick={isEditMode && !shouldUpdateZip ? undefined : pickFile}
             onDragOver={(e) => {
+              if (isEditMode && !shouldUpdateZip) return
               e.preventDefault()
               setIsDragOver(true)
             }}
             onDragLeave={() => setIsDragOver(false)}
-            onDrop={onDrop}
-            className={`border-2 border-dashed rounded-xl bg-gradient-to-br from-gray-50 to-white transition-all duration-300 cursor-pointer ${
+            onDrop={(e) => {
+              if (isEditMode && !shouldUpdateZip) return
+              onDrop(e)
+            }}
+            className={`border-2 border-dashed rounded-xl bg-gradient-to-br from-gray-50 to-white transition-all duration-300 ${
+              isEditMode && !shouldUpdateZip
+                ? "cursor-not-allowed opacity-50 border-gray-200 bg-gray-100"
+                : "cursor-pointer"
+            } ${
               isDragOver
                 ? "border-gray-700 bg-gray-50"
                 : fileError
@@ -144,7 +213,12 @@ export const CreateProjectStep1 = ({
                 Sube un archivo .zip con imágenes, vídeos y CSV del experimento.
               </p>
 
-              <Button variant="outline" type="button" onClick={pickFile}>
+              <Button 
+                variant="outline" 
+                type="button" 
+                onClick={pickFile}
+                disabled={isEditMode && !shouldUpdateZip}
+              >
                 Seleccionar ZIP
               </Button>
 

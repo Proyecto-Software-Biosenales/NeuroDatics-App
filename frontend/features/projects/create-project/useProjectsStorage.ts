@@ -6,6 +6,13 @@ import { ProjectsApi } from "@/features/projects/api/projectsApi"
 
 const STORAGE_KEY = "neurodatics_projects"
 
+const normalizeStatus = (status: unknown): "draft" | "active" | "archived" => {
+  if (typeof status !== "string") return "draft"
+  const normalized = status.toLowerCase()
+  if (normalized === "active" || normalized === "archived") return normalized
+  return "draft"
+}
+
 export const useProjectsStorage = () => {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,6 +33,7 @@ export const useProjectsStorage = () => {
           id: bp.id,
           name: bp.name,
           description: bp.description,
+          status: normalizeStatus(bp.status),
           createdAt: bp.created_at ? new Date(bp.created_at).toLocaleDateString('es-ES') : "",
           sensors: bp.sensors && bp.sensors.length > 0 
             ? bp.sensors.map((s: any) => s.sensor_type || s)
@@ -83,5 +91,15 @@ export const useProjectsStorage = () => {
     }
   }
 
-  return { projects, addProject, removeProject, loading, error }
+  const updateProject = (updatedProject: Project) => {
+    setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)))
+    try {
+      const updated = projects.map((p) => (p.id === updatedProject.id ? updatedProject : p))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  return { projects, addProject, updateProject, removeProject, loading, error }
 }
