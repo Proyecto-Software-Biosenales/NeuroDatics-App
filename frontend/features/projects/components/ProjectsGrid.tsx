@@ -35,7 +35,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
               <Folder className="h-6 w-6 text-gray-600" />
             </div>
 
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 pr-24">
               <h3 className="mb-1 truncate text-lg font-semibold text-gray-900">
                 {project.name}
               </h3>
