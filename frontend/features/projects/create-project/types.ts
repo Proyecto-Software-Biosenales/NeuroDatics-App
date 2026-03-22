@@ -1,6 +1,8 @@
 import type { SensorType } from "@/features/projects/types"
+import type { ProjectStatus } from "@/features/projects/types"
 
 export type { SensorType }
+export type { ProjectStatus }
 
 export interface ParticipantData {
   id: string
@@ -25,6 +27,8 @@ export interface AOI {
 
 export interface ProjectFormData {
   projectName: string
+  description: string
+  status: ProjectStatus
   experimentZip: File | null  // No opcional, pero puede ser null
   folderPath: string
   sensors: SensorType[]

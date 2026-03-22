@@ -119,7 +119,28 @@ async def get_project(
                 "sex": p.sex.value if p.sex else None
             }
             for p in project.participants
-        ]
+        ],
+        scenaries=[
+            {
+                "id": s.id,
+                "name": s.name,
+                "type": s.type,
+                "file_id": s.file_id,
+                "width": s.width,
+                "height": s.height,
+                "aois": [
+                    {
+                        "id": a.id,
+                        "name": a.name,
+                        "color": a.color,
+                        "shape_type": a.shape_type,
+                        "shape": a.shape,
+                    }
+                    for a in s.aois
+                ],
+            }
+            for s in project.scenaries
+        ],
     )
 
 
@@ -150,6 +171,8 @@ async def update_project(
         project.name = request.name
     if request.description is not None:
         project.description = request.description
+    if request.status is not None:
+        project.status = request.status
     
     updated_project = await repository.update(project)
     
@@ -240,6 +263,34 @@ async def upload_experiment_zip(
         size_bytes=saved_file.size_bytes,
         created_at=saved_file.created_at
     )
+
+
+@router.delete("/{project_id}/files/experiment-zip")
+async def delete_experiment_zip(
+    project_id: UUID,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete experiment zip file"""
+    repository = SQLProjectRepository(db)
+    project = await repository.get_by_id(project_id, UUID(current_user))
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+    
+    # Delete from database
+    deleted = await repository.delete_file_by_kind(project_id, "experiment_zip")
+    
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Experiment zip file not found"
+        )
+    
+    return {"message": "Experiment zip file deleted successfully"}
 
 
 @router.put("/{project_id}/sensors", response_model=List[dict])

@@ -27,6 +27,7 @@ class CreateProjectRequest(BaseModel):
 class UpdateProjectRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    status: Optional[ProjectStatus] = None
 
     @field_validator("name")
     @classmethod
@@ -95,6 +96,7 @@ class ProjectDetailResponse(BaseModel):
     files: List[ProjectFileResponse] = []
     sensors: List[ProjectSensorResponse] = []
     participants: List[ParticipantResponse] = []
+    scenaries: List[dict] = []
     
     class Config:
         from_attributes = True

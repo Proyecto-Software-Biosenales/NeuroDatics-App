@@ -35,6 +35,8 @@ export const CreateProjectDialog = ({
     isOpen,
     setIsOpen,
     updateProjectName,
+    updateDescription,
+    updateStatus,
     updateFolderPath,
     toggleSensor,
     updateParticipant,
@@ -86,10 +88,15 @@ export const CreateProjectDialog = ({
           {currentStep === 1 && (
             <CreateProjectStep1
               projectName={formData.projectName}
+              description={formData.description}
+              status={formData.status}
               folderPath={formData.folderPath}
               onProjectNameChange={updateProjectName}
+              onDescriptionChange={updateDescription}
+              onStatusChange={updateStatus}
               onFolderPathChange={updateFolderPath}
               onZipSelected={setExperimentZip}
+              zipRequired
             />
           )}
 

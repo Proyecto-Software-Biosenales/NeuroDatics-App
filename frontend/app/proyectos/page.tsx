@@ -11,7 +11,7 @@ import {
 } from "@/features/projects/create-project"
 
 export default function ProyectosPage() {
-  const { projects, addProject, removeProject, loading, error } = useProjectsStorage()
+  const { projects, addProject, updateProject, removeProject, loading, error } = useProjectsStorage()
   const hasProjects = projects.length > 0
 
   return (
@@ -66,7 +66,7 @@ export default function ProyectosPage() {
           {!loading && (
             <>
               {hasProjects ? (
-                <ProjectsGrid projects={projects} onDelete={removeProject} />
+                <ProjectsGrid projects={projects} onDelete={removeProject} onEdit={updateProject} />
               ) : (
                 <div className="transition-all duration-300">
                   <ProjectsEmptyContainer onProjectCreated={addProject} />
