@@ -48,6 +48,16 @@ class UploadExperimentZipUseCase:
         previous_root_folder_id = project.drive_root_folder_id
 
         try:
+            # Validate the ZIP structure FIRST, before any uploads or project updates.
+            # This ensures that if the structure is invalid, nothing gets uploaded to Drive
+            # and the project state is not modified.
+            manifest_entries, manifest_counts = ZipValidationService.validate_and_analyze(
+                filename=filename,
+                mime_type=mime_type,
+                file_content=file_content,
+            )
+
+            # Structure validation passed, now update project status and proceed with ingestion
             await self.repository.update_project_ingestion(
                 project_id=project_id,
                 updates={
@@ -57,12 +67,6 @@ class UploadExperimentZipUseCase:
                 },
             )
             await self.repository.commit()
-
-            manifest_entries, manifest_counts = ZipValidationService.validate_and_analyze(
-                filename=filename,
-                mime_type=mime_type,
-                file_content=file_content,
-            )
 
             # Always ingest into a fresh root folder when uploading a new ZIP.
             # This allows us to safely replace previous Drive content for edits.
@@ -305,6 +309,13 @@ class UploadExperimentZipUseCase:
                 except Exception:
                     logger.warning("Could not delete drive object during compensation: %s", drive_id)
 
+            # If the error was a ZIP structure validation error, it was caught before any
+            # project updates or Drive uploads, so we just re-raise it as-is.
+            if isinstance(exc, ZipValidationService.ValidationError):
+                raise
+
+            # For other errors that occur after project updates (e.g., during Drive operations),
+            # mark the project as FAILED so the user can retry or see what went wrong.
             failure_updates = {
                 "ingestion_status": "FAILED",
                 "ingestion_error": str(exc),
@@ -315,7 +326,7 @@ class UploadExperimentZipUseCase:
                 await self.repository.commit()
             except Exception:
                 await self.repository.rollback()
-                logger.exception("Could not persist ingestion failure status")
+                logger.exception("Could not update project ingestion status to FAILED")
 
             raise
 

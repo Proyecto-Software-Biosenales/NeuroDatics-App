@@ -290,10 +290,10 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
           // Rollback: eliminar proyecto creado
           try {
             await ProjectsApi.delete(createdProjectId);
-          } catch (rollbackError) {
-            console.error("Error during rollback:", rollbackError);
+          } catch {
+            // Ignore rollback errors to avoid noisy console output in UI flow.
           }
-          throw new Error(`Error subiendo archivo: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+          throw new Error(error instanceof Error ? error.message : "Error desconocido al subir el archivo ZIP.");
         }
       }
 
@@ -304,8 +304,8 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       setZipUploadEtaSeconds(null);
       setZipDriveProcessingSeconds(null);
     
-      // 3) Sensores, Participantes, y Finalizacion en paralelo
-      updateProgress("Finalizando configuración del proyecto...");
+      // 3) Sensores y participantes primero
+      updateProgress("Guardando sensores y participantes...");
       const updates: Promise<void>[] = [];
 
       if (formData.sensors.length > 0) {
@@ -317,9 +317,11 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
         updates.push(ProjectsApi.setParticipants(createdProjectId, normalizedParticipants));
       }
 
-      updates.push(ProjectsApi.finalize(createdProjectId));
-
       await Promise.all(updates);
+
+      // 4) Finalizar proyecto al final para evitar carreras con updates en paralelo
+      updateProgress("Finalizando configuración del proyecto...");
+      await ProjectsApi.finalize(createdProjectId);
 
       // 7) Actualiza UI (grid)
       const newProject: Project = {
@@ -340,11 +342,24 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       setIsOpen(false);
       reset();
     } catch (e: any) {
-      console.error("Error saving project:", e);
+      
+      // For validation/structure errors, show the error message directly
+      // For other errors, show context of where it failed
+      const rawErrorMessage = e?.message ?? "Error guardando proyecto";
+      const errorMessage = rawErrorMessage
+        .replace(/^API\s*\d+\s*:\s*/i, "")
+        .replace(/^Error subiendo archivo:\s*/i, "");
+      const isValidationError = errorMessage.includes("CSV") || 
+                                errorMessage.includes("Images") || 
+                                errorMessage.includes("Videos") ||
+                                errorMessage.includes("ZIP");
+      
       setSaveError(
-        saveProgressMessage
-          ? `Error guardando proyecto. Paso fallido: ${saveProgressMessage}`
-          : (e?.message ?? "Error guardando proyecto")
+        isValidationError 
+          ? errorMessage
+          : (saveProgressMessage
+              ? `Error guardando proyecto. Paso fallido: ${saveProgressMessage}`
+              : errorMessage)
       );
       toast.error("No se pudo guardar el proyecto.");
     } finally {

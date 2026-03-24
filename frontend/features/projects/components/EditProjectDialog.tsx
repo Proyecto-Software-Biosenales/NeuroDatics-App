@@ -89,6 +89,29 @@ const toNumber = (value: unknown, fallback = 0): number => {
   return fallback
 }
 
+const toFriendlyErrorMessage = (error: unknown): string => {
+  const raw = error instanceof Error ? error.message : ""
+  if (!raw) return "No se pudo guardar la edición del proyecto."
+
+  // Handle payloads like: API 400: {"detail":"..."}
+  const jsonMatch = raw.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0])
+      if (typeof parsed?.detail === "string" && parsed.detail.trim()) {
+        return parsed.detail
+      }
+    } catch {
+      // Fall through to prefix cleanup below.
+    }
+  }
+
+  return raw
+    .replace(/^API\s*\d+\s*:\s*/i, "")
+    .replace(/^Error subiendo archivo:\s*/i, "")
+    .trim()
+}
+
 const parseScenaries = (project: ApiProjectDetail): scenaries[] => {
   const source = project.scenaries || []
   return source.map((s) => ({
@@ -192,7 +215,6 @@ export const EditProjectDialog = ({
       setFormData(newFormData)
       originalFormDataRef.current = JSON.parse(JSON.stringify(newFormData))
     } catch (error) {
-      console.error(error)
       setSaveError("No se pudo cargar la información del proyecto para editar.")
     } finally {
       setIsLoading(false)
@@ -419,12 +441,8 @@ export const EditProjectDialog = ({
       setIsOpen(false)
       setCurrentStep(1)
     } catch (error) {
-      console.error(error)
-      setSaveError(
-        saveProgressMessage
-          ? `No se pudo guardar la edición del proyecto. Paso fallido: ${saveProgressMessage}`
-          : "No se pudo guardar la edición del proyecto."
-      )
+      const friendlyMessage = toFriendlyErrorMessage(error)
+      setSaveError(friendlyMessage)
       toast.error("No se pudo guardar la edición del proyecto.")
     } finally {
       setIsSaving(false)
@@ -440,23 +458,32 @@ export const EditProjectDialog = ({
     }
   }
 
+  const resetDialogState = () => {
+    setCurrentStep(1)
+    setSaveError(null)
+    setIsSaveCompleted(false)
+    setSaveProgressMessage(null)
+    setZipUploadPercent(null)
+    setZipUploadBytes(null)
+    setZipUploadSpeedMbps(null)
+    setZipUploadEtaSeconds(null)
+    setZipDriveProcessingSeconds(null)
+    uploadStartedAtRef.current = null
+    processingEstimateSecondsRef.current = 0
+  }
+
+  const handleCancel = () => {
+    resetDialogState()
+    setIsOpen(false)
+  }
+
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open)
         if (!open) {
-          setCurrentStep(1)
-          setSaveError(null)
-          setIsSaveCompleted(false)
-          setSaveProgressMessage(null)
-          setZipUploadPercent(null)
-          setZipUploadBytes(null)
-          setZipUploadSpeedMbps(null)
-          setZipUploadEtaSeconds(null)
-          setZipDriveProcessingSeconds(null)
-          uploadStartedAtRef.current = null
-          processingEstimateSecondsRef.current = 0
+          resetDialogState()
         }
       }}
     >
@@ -586,7 +613,7 @@ export const EditProjectDialog = ({
                 type="button"
                 variant="outline"
                 onClick={() => setCurrentStep((prev) => prev - 1)}
-                disabled={isSaving || isLoading}
+                disabled={isSaving || isLoading || !!saveError}
                 className="gap-2 p-4"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -596,7 +623,7 @@ export const EditProjectDialog = ({
           </div>
 
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSaving} className="p-4">
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={isSaving} className="p-4">
               Cancelar
             </Button>
 
@@ -611,7 +638,12 @@ export const EditProjectDialog = ({
                 <ChevronRight className="w-4 h-4" />
               </Button>
             ) : (
-              <Button type="button" onClick={saveProjectChanges} className="gap-2 p-4" disabled={isSaving || isLoading}>
+              <Button
+                type="button"
+                onClick={saveProjectChanges}
+                className="gap-2 p-4"
+                disabled={isSaving || isLoading || !!saveError}
+              >
                 <Check className="w-4 h-4" />
                 {isSaving ? "Guardando..." : "Guardar cambios"}
               </Button>
