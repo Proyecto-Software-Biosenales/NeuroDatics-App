@@ -40,8 +40,11 @@ async def update_scenaries(
             name=s.name,
             type=s.type,
             file_id=s.file_id,
+            source_entry_path=s.source_entry_path,
             width=s.width,
             height=s.height,
+            fps=s.fps,
+            duration_ms=s.duration_ms,
             aois=[]
         )
         for s in scenaries

@@ -2,19 +2,21 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
+import logging
 
 from ....api.deps import get_db, get_current_user
 from ..infrastructure.repository_impl import SQLProjectRepository
 from ..application.use_cases.create_project import CreateProjectUseCase
 from ..application.use_cases.list_projects import ListProjectsUseCase
 from ..application.use_cases.delete_project import DeleteProjectUseCase
-from ..domain.entities import ProjectFile, ProjectStatus
+from ..application.use_cases.upload_experiment_zip import UploadExperimentZipUseCase
+from ..domain.entities import ProjectStatus
 from .schemas import (
     CreateProjectRequest, UpdateProjectRequest, UpdateSensorsRequest,
-    ProjectResponse, ProjectDetailResponse, ProjectFileResponse
+    ProjectResponse, ProjectDetailResponse, ProjectFileResponse, UploadedProjectZipSummaryResponse
 )
-from ....infra.storage.gdrive_client import gdrive_client
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
@@ -126,8 +128,11 @@ async def get_project(
                 "name": s.name,
                 "type": s.type,
                 "file_id": s.file_id,
+                "source_entry_path": s.source_entry_path,
                 "width": s.width,
                 "height": s.height,
+                "fps": s.fps,
+                "duration_ms": s.duration_ms,
                 "aois": [
                     {
                         "id": a.id,
@@ -214,54 +219,58 @@ async def delete_project(
     return {"message": "Project deleted successfully"}
 
 
-@router.post("/{project_id}/files/experiment-zip", response_model=ProjectFileResponse)
+@router.post("/{project_id}/files/experiment-zip", response_model=UploadedProjectZipSummaryResponse)
 async def upload_experiment_zip(
     project_id: UUID,
     file: UploadFile = File(...),
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Upload experiment zip file"""
-    repository = SQLProjectRepository(db)
-    project = await repository.get_by_id(project_id, UUID(current_user))
+    """Upload experiment ZIP and execute full project ingestion flow."""
     
-    if not project:
+    file_content = await file.read()
+    owner_id = UUID(current_user)
+    mime_type = file.content_type or "application/zip"
+    filename = file.filename or "experiment.zip"
+    logger.info("Processing ZIP upload for project %s, file: %s", project_id, filename)
+    
+    # Execute upload use case
+    repository = SQLProjectRepository(db)
+    use_case = UploadExperimentZipUseCase(repository, db=db)
+
+    try:
+        summary = await use_case.execute(
+            project_id=project_id,
+            owner_id=owner_id,
+            file_content=file_content,
+            filename=filename,
+            mime_type=mime_type
+        )
+    except ValueError as e:
+        logger.error(f"Project access denied: {e}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found"
+            detail="Project not found or access denied"
         )
-    
-    # Read file content
-    file_content = await file.read()
-    
-    # Upload to Google Drive
-    drive_result = gdrive_client.upload_file(
-        file_content=file_content,
-        filename=file.filename,
-        mime_type=file.content_type or "application/zip"
-    )
-    
-    # Save file metadata
-    project_file = ProjectFile(
-        project_id=project_id,
-        kind="experiment_zip",
-        storage_provider="gdrive",
-        external_id=drive_result["drive_file_id"],
-        filename=drive_result["filename"],
-        mime_type=drive_result["mime_type"],
-        size_bytes=drive_result["size_bytes"],
-        checksum_sha256=drive_result["checksum_sha256"]
-    )
-    
-    saved_file = await repository.add_file(project_file)
-    
-    return ProjectFileResponse(
-        id=saved_file.id,
-        kind=saved_file.kind,
-        filename=saved_file.filename,
-        mime_type=saved_file.mime_type,
-        size_bytes=saved_file.size_bytes,
-        created_at=saved_file.created_at
+    except Exception as e:
+        logger.exception("ZIP upload failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload ZIP file: {str(e)}"
+        )
+
+    return UploadedProjectZipSummaryResponse(
+        project_id=summary["project_id"],
+        ingestion_status=summary["ingestion_status"],
+        drive_root_folder_id=summary.get("drive_root_folder_id"),
+        drive_root_folder_name=summary.get("drive_root_folder_name"),
+        drive_root_folder_url=summary.get("drive_root_folder_url"),
+        zip_saved=summary["zip_saved"],
+        zip_file=summary.get("zip_file"),
+        counts=summary["counts"],
+        files=summary["files"],
+        csv_processing=summary["csv_processing"],
+        manifest=summary["manifest"],
     )
 
 
@@ -338,11 +347,12 @@ async def finalize_project(
             detail="Project name is required"
         )
     
-    has_experiment_zip = any(f.kind == "experiment_zip" for f in project.files)
-    if not has_experiment_zip:
+    has_active_files = any(f.deleted_at is None for f in project.files)
+    has_ready_ingestion = (project.ingestion_status or "").upper() == "READY"
+    if not has_active_files and not has_ready_ingestion:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Experiment zip file is required"
+            detail="Debes cargar y procesar un ZIP del experimento antes de finalizar"
         )
     
     if not project.sensors:

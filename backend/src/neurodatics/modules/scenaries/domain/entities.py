@@ -14,8 +14,11 @@ class Scenaries(BaseModel):
     name = Column(String(255), nullable=False)
     type = Column(String(50), nullable=False)  # 'image', 'video', etc.
     file_id = Column(UUID(as_uuid=True), ForeignKey("project_files.id"), nullable=True)
+    source_entry_path = Column(String(1024), nullable=True)
     width = Column(Integer)
     height = Column(Integer)
+    fps = Column(Integer, nullable=True)
+    duration_ms = Column(Integer, nullable=True)
     
     # Relationships
     project = relationship("Project", back_populates="scenaries")

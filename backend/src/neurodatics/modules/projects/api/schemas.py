@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 from enum import Enum
@@ -56,6 +56,46 @@ class ProjectFileResponse(BaseModel):
         from_attributes = True
 
 
+class UploadedProjectZipResponse(BaseModel):
+    id: UUID
+    kind: str
+    filename: str
+    source_entry_path: Optional[str] = None
+    external_id: str
+    drive_web_view_link: Optional[str] = None
+    mime_type: Optional[str] = None
+
+
+class UploadedProjectCountsResponse(BaseModel):
+    folders_created: int
+    files_uploaded: int
+    images: int
+    videos: int
+    csv: int
+    other: int
+    scenaries_created: int
+
+
+class UploadedProjectCsvProcessingResponse(BaseModel):
+    detected: int
+    processed: int
+    failed: int
+
+
+class UploadedProjectZipSummaryResponse(BaseModel):
+    project_id: UUID
+    ingestion_status: str
+    drive_root_folder_id: Optional[str] = None
+    drive_root_folder_name: Optional[str] = None
+    drive_root_folder_url: Optional[str] = None
+    zip_saved: bool
+    zip_file: Optional[UploadedProjectZipResponse] = None
+    counts: UploadedProjectCountsResponse
+    files: List[UploadedProjectZipResponse]
+    csv_processing: UploadedProjectCsvProcessingResponse
+    manifest: Dict[str, int]
+
+
 class ProjectSensorResponse(BaseModel):
     id: UUID
     sensor_type: str
@@ -100,5 +140,7 @@ class ProjectDetailResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
 def ProjectSchema():
     return {}

@@ -1,18 +1,20 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Upload, AlertCircle, X } from "lucide-react"
+import { Upload, AlertCircle, X, CheckCircle, FileArchive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import type { UploadedProjectZip } from "@/features/projects/types"
 
 interface CreateProjectStep1Props {
   projectName: string
   description: string
   status: "draft" | "active" | "archived"
   folderPath: string
+  uploadedZip?: UploadedProjectZip | null
   onProjectNameChange: (name: string) => void
   onDescriptionChange: (description: string) => void
   onStatusChange: (status: "draft" | "active" | "archived") => void
@@ -29,6 +31,7 @@ export const CreateProjectStep1 = ({
   description,
   status,
   folderPath,
+  uploadedZip,
   onProjectNameChange,
   onDescriptionChange,
   onStatusChange,
@@ -99,6 +102,10 @@ export const CreateProjectStep1 = ({
       fileRef.current.value = ""
     }
   }
+
+  const ingestionStatus = uploadedZip?.ingestion_status ?? null
+  const ingestionReady = ingestionStatus === "READY"
+  const ingestionFailed = ingestionStatus === "FAILED"
 
   return (
     <div className="space-y-6">
@@ -240,6 +247,104 @@ export const CreateProjectStep1 = ({
                   >
                     <X size={14} />
                   </Button>
+                </div>
+              )}
+
+              {/* mostrar resultado del ZIP upload procesado */}
+              {uploadedZip && (
+                <div className={`mt-6 rounded-lg p-4 space-y-3 border ${
+                  ingestionFailed ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle
+                      size={18}
+                      className={`flex-shrink-0 mt-0.5 ${ingestionFailed ? "text-red-600" : "text-green-600"}`}
+                    />
+                    <div>
+                      <h4 className={`font-medium ${ingestionFailed ? "text-red-900" : "text-green-900"}`}>
+                        {ingestionFailed ? "Ingesta con errores" : "ZIP procesado"}
+                      </h4>
+                      <p className={`text-xs mt-1 ${ingestionFailed ? "text-red-700" : "text-green-700"}`}>
+                        {uploadedZip.zip_file?.filename ?? folderPath}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    {typeof uploadedZip.manifest?.total_detected === "number" && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Detectados:</span>
+                        <span className="font-medium text-gray-900">{uploadedZip.manifest.total_detected}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subidos:</span>
+                      <span className="font-medium text-gray-900">{uploadedZip.counts.files_uploaded}</span>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Imágenes:</span>
+                      <span className="font-medium text-gray-900">{uploadedZip.counts.images}</span>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Videos:</span>
+                      <span className="font-medium text-gray-900">{uploadedZip.counts.videos}</span>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">CSV:</span>
+                      <span className="font-medium text-gray-900">{uploadedZip.counts.csv}</span>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">CSV procesados:</span>
+                      <span className={`font-medium ${uploadedZip.csv_processing.failed > 0 ? "text-amber-700" : "text-gray-900"}`}>
+                        {uploadedZip.csv_processing.processed}/{uploadedZip.csv_processing.detected}
+                      </span>
+                    </div>
+
+                    {uploadedZip.drive_root_folder_name && (
+                      <div className="flex justify-between col-span-2">
+                        <span className="text-gray-600">Carpeta raíz:</span>
+                        <span className="font-medium text-gray-900">{uploadedZip.drive_root_folder_name}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between col-span-2">
+                      <span className="text-gray-600">Estado:</span>
+                      <span
+                        className={`font-medium ${
+                          ingestionReady
+                            ? "text-green-700"
+                            : ingestionFailed
+                            ? "text-red-700"
+                            : "text-amber-700"
+                        }`}
+                      >
+                        {ingestionStatus || "PROCESSING"}
+                      </span>
+                    </div>
+
+                    {uploadedZip.drive_root_folder_id && (
+                      <div className="flex justify-between col-span-2">
+                        <span className="text-gray-600">Drive root:</span>
+                        <span className="font-medium text-gray-900">{uploadedZip.drive_root_folder_id}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {uploadedZip.drive_root_folder_url && (
+                    <a
+                      href={uploadedZip.drive_root_folder_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-700 hover:text-blue-800 underline"
+                    >
+                      Abrir carpeta raíz en Google Drive
+                    </a>
+                  )}
                 </div>
               )}
 
