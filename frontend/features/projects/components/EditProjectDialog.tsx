@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Pencil, ChevronLeft, ChevronRight, Check, CheckCircle2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Check, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -57,6 +57,8 @@ interface EditProjectDialogProps {
   projectId: string
   projectName: string
   onProjectUpdated: (project: Project) => void
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const defaultParticipants: ParticipantData[] = [
@@ -89,6 +91,23 @@ const toNumber = (value: unknown, fallback = 0): number => {
   return fallback
 }
 
+const extractProjectNameAndId = (fullName: string): { name: string; id: string } => {
+  const lastDashIndex = fullName.lastIndexOf("-")
+  if (lastDashIndex === -1) {
+    return { name: fullName, id: "" }
+  }
+
+  const name = fullName.substring(0, lastDashIndex)
+  const id = fullName.substring(lastDashIndex + 1)
+
+  // Only treat it as an ID if it contains uppercase hex characters or looks like a UUID
+  if (/^[a-fA-F0-9\-]{8,}$/.test(id)) {
+    return { name, id }
+  }
+
+  return { name: fullName, id: "" }
+}
+
 const toFriendlyErrorMessage = (error: unknown): string => {
   const raw = error instanceof Error ? error.message : ""
   if (!raw) return "No se pudo guardar la edición del proyecto."
@@ -110,6 +129,10 @@ const toFriendlyErrorMessage = (error: unknown): string => {
     .replace(/^API\s*\d+\s*:\s*/i, "")
     .replace(/^Error subiendo archivo:\s*/i, "")
     .trim()
+}
+
+const isGoogleSessionExpiredError = (message: string): boolean => {
+  return /google drive|oauth|invalid_grant|refresh token|token has expired|no se pudo configurar google drive/i.test(message)
 }
 
 const parseScenaries = (project: ApiProjectDetail): scenaries[] => {
@@ -149,8 +172,18 @@ export const EditProjectDialog = ({
   projectId,
   projectName,
   onProjectUpdated,
+  isOpen: controlledIsOpen,
+  onOpenChange: controlledOnOpenChange,
 }: EditProjectDialogProps) => {
-  const [isOpen, setIsOpen] = useState(false)
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  const isOpen = controlledIsOpen ?? internalIsOpen
+  const setIsOpen = (value: boolean) => {
+    if (controlledOnOpenChange) {
+      controlledOnOpenChange(value)
+    } else {
+      setInternalIsOpen(value)
+    }
+  }
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -166,6 +199,8 @@ export const EditProjectDialog = ({
   const processingEstimateSecondsRef = useRef<number>(0)
   const [shouldUpdateZip, setShouldUpdateZip] = useState(false)
   const originalFormDataRef = useRef<ProjectFormData | null>(null)
+  const originalCreatedAtRef = useRef<string>("")
+  const projectNameIdSuffixRef = useRef<string>("")
 
   const formatBytesToMB = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   const formatEta = (seconds: number) => {
@@ -194,6 +229,10 @@ export const EditProjectDialog = ({
     try {
       const detail = await ProjectsApi.get(projectId)
 
+      // Extract name and ID suffix
+      const { name: extractedName, id: idSuffix } = extractProjectNameAndId(detail.name || "")
+      projectNameIdSuffixRef.current = idSuffix
+
       const participants: ParticipantData[] = (detail.participants || []).map((p) => ({
         id: p.participant_code,
         age: p.age != null ? String(p.age) : "",
@@ -201,7 +240,7 @@ export const EditProjectDialog = ({
       }))
 
       const newFormData = {
-        projectName: detail.name || "",
+        projectName: extractedName,
         description: detail.description || "",
         status: toProjectStatus(detail.status),
         experimentZip: null,
@@ -214,7 +253,11 @@ export const EditProjectDialog = ({
 
       setFormData(newFormData)
       originalFormDataRef.current = JSON.parse(JSON.stringify(newFormData))
+      originalCreatedAtRef.current = detail.created_at
+        ? new Date(detail.created_at).toLocaleDateString("es-ES")
+        : ""
     } catch (error) {
+      console.error("[EditProjectDialog] loadProject failed", { projectId, error })
       setSaveError("No se pudo cargar la información del proyecto para editar.")
     } finally {
       setIsLoading(false)
@@ -306,6 +349,24 @@ export const EditProjectDialog = ({
     })
   }
 
+  const metadataChanged = (): boolean => {
+    if (!originalFormDataRef.current) return true
+    const orig = originalFormDataRef.current
+    return (
+      orig.projectName.trim() !== formData.projectName.trim() ||
+      (orig.description || "").trim() !== (formData.description || "").trim() ||
+      orig.status !== formData.status
+    )
+  }
+
+  const hasAnyChanges = (): boolean => {
+    const shouldUpdateMetadata = metadataChanged()
+    const shouldUpdateSensors = sensorsChanged()
+    const shouldUpdateParticipants = participantsChanged()
+    const shouldUploadZip = Boolean(formData.experimentZip)
+    return shouldUpdateMetadata || shouldUpdateSensors || shouldUpdateParticipants || shouldUploadZip
+  }
+
   const saveProjectChanges = async () => {
     if (!hasValidParticipants()) {
       setSaveError("Completa sexo y edad de todos los participantes antes de guardar.")
@@ -321,24 +382,57 @@ export const EditProjectDialog = ({
     }
 
     try {
-      updateProgress("Actualizando datos generales del proyecto...")
-      const updatedMetadata = await ProjectsApi.update(projectId, {
-        name: formData.projectName,
-        description: formData.description.trim() || "",
-        status: formData.status,
-      })
+      const shouldUpdateMetadata = metadataChanged()
+      const shouldUpdateSensors = sensorsChanged()
+      const shouldUpdateParticipants = participantsChanged()
+      const shouldUploadZip = Boolean(formData.experimentZip)
 
-      if (formData.experimentZip) {
+      if (!hasAnyChanges()) {
+        toast.success("No hay cambios por guardar.")
+        setIsOpen(false)
+        setCurrentStep(1)
+        return
+      }
+
+      let updatedMetadata: {
+        name: string
+        description?: string | null
+        status?: string
+        created_at?: string
+        updated_at?: string
+      } = {
+        name: formData.projectName,
+        description: formData.description,
+        status: formData.status,
+      }
+
+      if (shouldUpdateMetadata) {
+        updateProgress("Actualizando datos generales del proyecto...")
+        
+        // Combine the edited name with the original ID suffix
+        const nameToSend = projectNameIdSuffixRef.current
+          ? `${formData.projectName}-${projectNameIdSuffixRef.current}`
+          : formData.projectName
+        
+        updatedMetadata = await ProjectsApi.update(projectId, {
+          name: nameToSend,
+          description: formData.description.trim() || "",
+          status: formData.status,
+        })
+      }
+
+      const zipToUpload = formData.experimentZip
+      if (shouldUploadZip && zipToUpload) {
         // Backend replaces previous Drive content (old ZIP + assets) with the new upload.
         setZipUploadPercent(0)
-        setZipUploadBytes({ loaded: 0, total: formData.experimentZip.size })
+        setZipUploadBytes({ loaded: 0, total: zipToUpload.size })
         setZipUploadSpeedMbps(null)
         setZipUploadEtaSeconds(null)
         setZipDriveProcessingSeconds(null)
-        processingEstimateSecondsRef.current = estimateProcessingSeconds(formData.experimentZip.size)
+        processingEstimateSecondsRef.current = estimateProcessingSeconds(zipToUpload.size)
         uploadStartedAtRef.current = Date.now()
         updateProgress("Subiendo nuevo ZIP... 0%")
-        await ProjectsApi.uploadZipWithProgress(projectId, formData.experimentZip, (progress) => {
+        await ProjectsApi.uploadZipWithProgress(projectId, zipToUpload, (progress) => {
           if (progress.phase === "uploading") {
             const now = Date.now()
             const startedAt = uploadStartedAtRef.current ?? now
@@ -388,7 +482,7 @@ export const EditProjectDialog = ({
         })
         setZipUploadPercent(100)
         setZipUploadBytes((prev) => {
-          const total = prev?.total ?? formData.experimentZip?.size ?? 0
+          const total = prev?.total ?? zipToUpload.size
           return { loaded: total, total }
         })
         setZipUploadEtaSeconds(0)
@@ -403,9 +497,6 @@ export const EditProjectDialog = ({
       setZipDriveProcessingSeconds(null)
 
       // Only update sensors and/or participants if they actually changed.
-      const shouldUpdateSensors = sensorsChanged()
-      const shouldUpdateParticipants = participantsChanged()
-
       if (shouldUpdateSensors || shouldUpdateParticipants) {
         updateProgress("Actualizando datos adicionales del proyecto...")
         const updates: Promise<void>[] = []
@@ -420,7 +511,12 @@ export const EditProjectDialog = ({
         await Promise.all(updates)
       }
 
-      updateProgress("Finalizando actualización del proyecto...")
+      const shouldFinalize = shouldUploadZip
+      if (shouldFinalize) {
+        // Finalize only when a new ZIP was uploaded.
+        updateProgress("Finalizando actualización del proyecto...")
+        await ProjectsApi.finalize(projectId)
+      }
 
       onProjectUpdated({
         id: projectId,
@@ -429,7 +525,22 @@ export const EditProjectDialog = ({
         status: toProjectStatus(updatedMetadata.status),
         createdAt: updatedMetadata.created_at
           ? new Date(updatedMetadata.created_at).toLocaleDateString("es-ES")
-          : "",
+          : originalCreatedAtRef.current,
+        updatedAt: updatedMetadata.updated_at
+          ? new Date(updatedMetadata.updated_at).toLocaleString("es-ES", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : new Date().toLocaleString("es-ES", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
         sensors: formData.sensors,
         participants: formData.participants.length,
       })
@@ -442,7 +553,18 @@ export const EditProjectDialog = ({
       setCurrentStep(1)
     } catch (error) {
       const friendlyMessage = toFriendlyErrorMessage(error)
-      setSaveError(friendlyMessage)
+      const showSessionHint = isGoogleSessionExpiredError(friendlyMessage)
+      const nextMessage = showSessionHint
+        ? `${friendlyMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
+        : friendlyMessage
+
+      console.error("[EditProjectDialog] saveProjectChanges failed", {
+        projectId,
+        step: saveProgressMessage,
+        error,
+        friendlyMessage,
+      })
+      setSaveError(nextMessage)
       toast.error("No se pudo guardar la edición del proyecto.")
     } finally {
       setIsSaving(false)
@@ -459,6 +581,8 @@ export const EditProjectDialog = ({
   }
 
   const resetDialogState = () => {
+    setIsLoading(false)
+    setIsSaving(false)
     setCurrentStep(1)
     setSaveError(null)
     setIsSaveCompleted(false)
@@ -473,6 +597,13 @@ export const EditProjectDialog = ({
   }
 
   const handleCancel = () => {
+    console.warn("[EditProjectDialog] cancel", {
+      projectId,
+      currentStep,
+      isSaving,
+      saveError,
+      saveProgressMessage,
+    })
     resetDialogState()
     setIsOpen(false)
   }
@@ -487,19 +618,6 @@ export const EditProjectDialog = ({
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={(e) => e.stopPropagation()}
-          className="absolute top-4 right-14 h-8 w-8 opacity-0 transition-all duration-200 group-hover:opacity-100 text-muted-foreground hover:bg-primary/10 hover:text-primary"
-          aria-label={`Editar proyecto ${projectName}`}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-
       <DialogContent onClick={(e) => e.stopPropagation()} className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-8">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold">Editar proyecto</DialogTitle>
@@ -642,7 +760,7 @@ export const EditProjectDialog = ({
                 type="button"
                 onClick={saveProjectChanges}
                 className="gap-2 p-4"
-                disabled={isSaving || isLoading || !!saveError}
+                disabled={isSaving || isLoading || !!saveError || !hasAnyChanges()}
               >
                 <Check className="w-4 h-4" />
                 {isSaving ? "Guardando..." : "Guardar cambios"}

@@ -1,6 +1,5 @@
 "use client"
 import { useState } from "react"
-import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,14 +20,26 @@ interface DeleteProjectDialogProps {
   projectId: string
   projectName: string
   onDelete: (id: string) => Promise<DeleteProjectResult | void> | DeleteProjectResult | void
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export const DeleteProjectDialog = ({
   projectId,
   projectName,
   onDelete,
+  isOpen: controlledIsOpen,
+  onOpenChange: controlledOnOpenChange,
 }: DeleteProjectDialogProps) => {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = controlledIsOpen ?? internalOpen
+  const setIsOpen = (value: boolean) => {
+    if (controlledOnOpenChange) {
+      controlledOnOpenChange(value)
+    } else {
+      setInternalOpen(value)
+    }
+  }
   const [step, setStep] = useState<1 | 2>(1)
   const [confirmationText, setConfirmationText] = useState("")
 
@@ -38,7 +49,7 @@ export const DeleteProjectDialog = ({
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
+    setIsOpen(nextOpen)
     if (!nextOpen) {
       resetDialogState()
     }
@@ -73,7 +84,7 @@ export const DeleteProjectDialog = ({
       } else {
         toast.success(`Proyecto "${projectName}" eliminado correctamente.`)
       }
-      setOpen(false)
+      setIsOpen(false)
       resetDialogState()
     } catch (error) {
       console.error(error)
@@ -83,20 +94,7 @@ export const DeleteProjectDialog = ({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={(e) => e.stopPropagation()}
-          className="absolute top-4 right-4 h-8 w-8 opacity-0 transition-all duration-200 group-hover:opacity-100 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          aria-label={`Eliminar proyecto ${projectName}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </AlertDialogTrigger>
-
+    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
       <AlertDialogContent onClick={(e) => e.stopPropagation()}>
         <AlertDialogHeader>
           <AlertDialogTitle>

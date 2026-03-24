@@ -208,6 +208,33 @@ class GoogleDriveClient:
             logger.warning("Failed deleting Drive object %s: %s", file_id, exc)
             return False
 
+    def rename_file(self, file_id: str, new_name: str) -> Optional[Dict[str, Any]]:
+        """Rename a file/folder in Google Drive and return updated metadata."""
+        service = self._require_service()
+
+        try:
+            updated = service.files().update(
+                fileId=file_id,
+                body={"name": new_name},
+                fields="id,name,webViewLink,parents",
+            ).execute(num_retries=max(0, int(settings.gdrive_request_retries)))
+
+            return {
+                "drive_file_id": updated["id"],
+                "name": updated.get("name", new_name),
+                "drive_web_view_link": updated.get("webViewLink"),
+                "parents": updated.get("parents", []),
+            }
+        except HttpError as exc:
+            if getattr(exc, "resp", None) is not None and exc.resp.status == 404:
+                logger.warning("Drive object not found for rename: %s", file_id)
+                return None
+            logger.warning("Failed renaming Drive object %s: %s", file_id, exc)
+            return None
+        except Exception as exc:
+            logger.warning("Failed renaming Drive object %s: %s", file_id, exc)
+            return None
+
 
 # Global instance
 gdrive_client = GoogleDriveClient()

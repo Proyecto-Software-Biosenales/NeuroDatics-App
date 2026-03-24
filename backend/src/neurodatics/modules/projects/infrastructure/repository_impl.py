@@ -37,6 +37,25 @@ class SQLProjectRepository(ProjectRepository):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_basic_by_id(self, project_id: UUID, owner_id: UUID) -> Optional[Project]:
+        """Fetch project without eager-loading heavy relationships (fast path for metadata updates)."""
+        stmt = select(Project).where(Project.id == project_id, Project.owner_id == owner_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_summary_by_id(self, project_id: UUID, owner_id: UUID) -> Optional[Project]:
+        """Fetch project with only lightweight relationships needed by ProjectResponse."""
+        stmt = (
+            select(Project)
+            .options(
+                selectinload(Project.sensors),
+                selectinload(Project.participants),
+            )
+            .where(Project.id == project_id, Project.owner_id == owner_id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_by_owner(self, owner_id: UUID) -> List[Project]:
         stmt = (
             select(Project)

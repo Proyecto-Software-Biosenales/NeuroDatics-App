@@ -7,6 +7,7 @@ export interface Project {
   description?: string
   status?: ProjectStatus
   createdAt: string
+  updatedAt?: string
   sensors: SensorType[]
   participants?: number
 }
