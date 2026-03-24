@@ -7,8 +7,11 @@ class scenariesRequest(BaseModel):
     name: str
     type: str
     file_id: Optional[UUID] = None
+    source_entry_path: Optional[str] = None
     width: Optional[int] = None
     height: Optional[int] = None
+    fps: Optional[int] = None
+    duration_ms: Optional[int] = None
 
 
 class UpdatescenariesRequest(BaseModel):
@@ -43,8 +46,11 @@ class scenariesResponse(BaseModel):
     name: str
     type: str
     file_id: Optional[UUID]
+    source_entry_path: Optional[str]
     width: Optional[int]
     height: Optional[int]
+    fps: Optional[int]
+    duration_ms: Optional[int]
     aois: List[AOIResponse] = []
     
     class Config:

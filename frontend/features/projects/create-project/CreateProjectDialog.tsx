@@ -91,6 +91,7 @@ export const CreateProjectDialog = ({
               description={formData.description}
               status={formData.status}
               folderPath={formData.folderPath}
+              uploadedZip={formData.uploadedZip}
               onProjectNameChange={updateProjectName}
               onDescriptionChange={updateDescription}
               onStatusChange={updateStatus}

@@ -1,4 +1,4 @@
-import type { SensorType } from "@/features/projects/types"
+import type { SensorType, UploadedProjectZip } from "@/features/projects/types"
 import type { ProjectStatus } from "@/features/projects/types"
 
 export type { SensorType }
@@ -31,6 +31,7 @@ export interface ProjectFormData {
   status: ProjectStatus
   experimentZip: File | null  // No opcional, pero puede ser null
   folderPath: string
+  uploadedZip: UploadedProjectZip | null  // Result from backend after upload
   sensors: SensorType[]
   participants: ParticipantData[]
   scenaries: scenaries[]

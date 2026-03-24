@@ -12,9 +12,12 @@ class Settings(BaseSettings):
     # Google OAuth
     google_oauth_client_id: Optional[str] = None
     google_oauth_client_secret: Optional[str] = None
+    google_oauth_authorize_url: str = "https://accounts.google.com/o/oauth2/v2/auth"
     google_oauth_token_url: str = "https://oauth2.googleapis.com/token"
     google_oauth_userinfo_url: str = "https://openidconnect.googleapis.com/v1/userinfo"
     google_oauth_redirect_uri: Optional[str] = None
+    google_drive_oauth_redirect_uri: Optional[str] = None
+    google_drive_oauth_state_ttl_seconds: int = 600
 
     # Auth JWT
     auth_jwt_secret: str = "change-me-in-production"
@@ -28,6 +31,10 @@ class Settings(BaseSettings):
     google_application_credentials: Optional[str] = None
     gdrive_service_account_json: Optional[str] = None
     gdrive_folder_id: Optional[str] = None
+    gdrive_http_timeout_seconds: int = 300
+    gdrive_request_retries: int = 5
+    project_zip_max_size_mb: int = 500
+    ingestion_save_original_zip: bool = True
     
     # App
     app_name: str = "NeuroDatics API"

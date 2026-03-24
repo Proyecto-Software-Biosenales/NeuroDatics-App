@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api/apiFetch";
+import type { UploadedProjectZip } from "../types";
 
 export type ApiProject = {
   id: string;
@@ -68,7 +69,7 @@ export const ProjectsApi = {
   uploadZip: (projectId: string, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return apiFetch<{ drive_file_id: string }>(`/api/projects/${projectId}/files/experiment-zip`, {
+    return apiFetch<UploadedProjectZip>(`/api/projects/${projectId}/files/experiment-zip`, {
       method: "POST",
       body: form,
     });

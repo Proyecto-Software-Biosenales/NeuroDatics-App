@@ -40,6 +40,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     description: "",
     status: "draft",
     folderPath: "",
+    uploadedZip: null,
     sensors: [],
     participants: initialParticipants,
     scenaries: initialscenaries,
@@ -115,6 +116,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       description: "",
       status: "draft",
       folderPath: "",
+      uploadedZip: null,
       sensors: [],
       participants: initialParticipants,
       scenaries: initialscenaries,
@@ -145,7 +147,25 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       // 2) Subir zip a Drive (si existe)
       if (formData.experimentZip) {
         try {
-          await ProjectsApi.uploadZip(createdProjectId, formData.experimentZip);
+          const uploadedZipResult = await ProjectsApi.uploadZip(createdProjectId, formData.experimentZip);
+          
+          // Almacenar resultado del upload en formData
+          setFormData(prev => ({
+            ...prev,
+            uploadedZip: uploadedZipResult
+          }));
+
+          if (uploadedZipResult.ingestion_status === "FAILED") {
+            throw new Error("La ingesta del ZIP fallo en backend. Verifica estructura y contenido.");
+          }
+
+          if (uploadedZipResult.csv_processing.failed > 0) {
+            console.warn("Algunos CSV no pudieron procesarse durante la ingesta", uploadedZipResult.csv_processing);
+          }
+
+          console.log(
+            `ZIP ingested successfully: files=${uploadedZipResult.counts.files_uploaded}, images=${uploadedZipResult.counts.images}, videos=${uploadedZipResult.counts.videos}, csv=${uploadedZipResult.counts.csv}`
+          );
         } catch (error) {
           // Rollback: eliminar proyecto creado
           try {
@@ -168,8 +188,8 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
         await ProjectsApi.setParticipants(createdProjectId, normalizedParticipants);
       }
 
-      // 5) (Opcional) stimuli/aois cuando lo conectes
-      // await ProjectsApi.setStimuli(createdProjectId, ...)
+      // 5) (Opcional) scenaries/aois cuando lo conectes
+      // await ProjectsApi.setScenaries(createdProjectId, ...)
       // await ProjectsApi.setAois(createdProjectId, ...)
       
       // 6) Finalizar proyecto
