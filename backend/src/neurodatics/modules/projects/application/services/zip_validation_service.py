@@ -28,6 +28,8 @@ KIND_BY_EXTENSION = {
     ".pdf": "report_pdf",
 }
 
+SCENARY_ALLOWED_FOLDERS = {"images", "videos"}
+
 
 @dataclass
 class ZipManifestEntry:
@@ -98,6 +100,12 @@ class ZipValidationService:
         return normalized
 
     @classmethod
+    def _is_inside_scenary_folder(cls, entry_path: PurePosixPath) -> bool:
+        """True when file is inside an Images or Videos directory (case-insensitive)."""
+        parent_parts = [part.lower() for part in entry_path.parent.parts]
+        return any(part in SCENARY_ALLOWED_FOLDERS for part in parent_parts)
+
+    @classmethod
     def is_useful_entry(cls, entry_path: str) -> bool:
         normalized = cls.normalize_entry_path(entry_path)
         if not normalized:
@@ -127,6 +135,10 @@ class ZipValidationService:
             path = PurePosixPath(source_entry_path)
             extension = path.suffix.lower()
             kind = cls.infer_kind(extension)
+
+            # Only files under Images/Videos folders can be classified as scenario assets.
+            if kind in {"scenario_image", "scenario_video"} and not cls._is_inside_scenary_folder(path):
+                kind = "other_asset"
 
             if kind == "scenario_image":
                 counts["images"] += 1
