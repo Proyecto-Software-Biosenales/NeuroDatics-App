@@ -49,7 +49,6 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
 
   const updateProjectName = (name: string) => setFormData(prev => ({ ...prev, projectName: name }));
   const updateDescription = (description: string) => setFormData(prev => ({ ...prev, description }));
-  const updateStatus = (status: "draft" | "active" | "archived") => setFormData(prev => ({ ...prev, status }));
   const updateFolderPath = (path: string) => setFormData(prev => ({ ...prev, folderPath: path }));
   const setExperimentZip = (file: File | null) => {
     setFormData((prev) => ({
@@ -230,7 +229,6 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     setIsOpen,
     updateProjectName,
     updateDescription,
-    updateStatus,
     updateFolderPath,
     toggleSensor,
     updateParticipant,

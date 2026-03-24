@@ -13,7 +13,8 @@ from ..application.use_cases.upload_experiment_zip import UploadExperimentZipUse
 from ..domain.entities import ProjectStatus
 from .schemas import (
     CreateProjectRequest, UpdateProjectRequest, UpdateSensorsRequest,
-    ProjectResponse, ProjectDetailResponse, ProjectFileResponse, UploadedProjectZipSummaryResponse
+    ProjectResponse, ProjectDetailResponse, ProjectFileResponse, UploadedProjectZipSummaryResponse,
+    DeleteProjectResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -192,7 +193,7 @@ async def update_project(
     )
 
 
-@router.delete("/{project_id}")
+@router.delete("/{project_id}", response_model=DeleteProjectResponse)
 async def delete_project(
     project_id: UUID,
     current_user: str = Depends(get_current_user),
@@ -200,23 +201,27 @@ async def delete_project(
 ):
     """Delete project"""
     repository = SQLProjectRepository(db)
-    use_case = DeleteProjectUseCase(repository)
+    use_case = DeleteProjectUseCase(repository, db=db)
     
     try:
-        success = await use_case.execute(project_id, UUID(current_user))
+        result = await use_case.execute(project_id, UUID(current_user))
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo eliminar el proyecto en base de datos"
         ) from exc
     
-    if not success:
+    if not result.get("deleted"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
-    return {"message": "Project deleted successfully"}
+
+    return DeleteProjectResponse(
+        message="Project deleted successfully",
+        drive_folder_found=bool(result.get("drive_folder_found")),
+        drive_folder_deleted=bool(result.get("drive_folder_deleted")),
+    )
 
 
 @router.post("/{project_id}/files/experiment-zip", response_model=UploadedProjectZipSummaryResponse)

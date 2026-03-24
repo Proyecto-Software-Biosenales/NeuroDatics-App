@@ -12,12 +12,10 @@ import type { UploadedProjectZip } from "@/features/projects/types"
 interface CreateProjectStep1Props {
   projectName: string
   description: string
-  status: "draft" | "active" | "archived"
   folderPath: string
   uploadedZip?: UploadedProjectZip | null
   onProjectNameChange: (name: string) => void
   onDescriptionChange: (description: string) => void
-  onStatusChange: (status: "draft" | "active" | "archived") => void
   onFolderPathChange: (path: string) => void
   onZipSelected: (file: File | null) => void
   zipRequired?: boolean
@@ -29,12 +27,10 @@ interface CreateProjectStep1Props {
 export const CreateProjectStep1 = ({
   projectName,
   description,
-  status,
   folderPath,
   uploadedZip,
   onProjectNameChange,
   onDescriptionChange,
-  onStatusChange,
   onFolderPathChange,
   onZipSelected,
   zipRequired = true,
@@ -136,23 +132,6 @@ export const CreateProjectStep1 = ({
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
           />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="estado-proyecto" className="text-base">
-            Estado
-          </Label>
-          <select
-            id="estado-proyecto"
-            name="estado-proyecto"
-            value={status}
-            onChange={(e) => onStatusChange(e.target.value as "draft" | "active" | "archived")}
-            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-          >
-            <option value="draft">Borrador</option>
-            <option value="active">Activo</option>
-            <option value="archived">Archivado</option>
-          </select>
         </div>
 
         <div className="space-y-2">
