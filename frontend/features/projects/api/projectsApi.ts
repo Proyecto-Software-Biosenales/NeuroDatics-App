@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/apiFetch";
+import { apiFetch, apiUploadFormWithProgress, type UploadProgress } from "@/lib/api/apiFetch";
 import type { UploadedProjectZip } from "../types";
 
 export type ApiProject = {
@@ -37,7 +37,17 @@ export type ApiProjectScenary = {
   aois?: ApiProjectAoi[];
 };
 
+export type ApiProjectFile = {
+  id: string;
+  kind: string;
+  filename: string;
+  mime_type?: string | null;
+  size_bytes?: number | null;
+  created_at?: string;
+};
+
 export type ApiProjectDetail = ApiProject & {
+  files?: ApiProjectFile[];
   participants?: ApiProjectParticipant[];
   scenaries?: ApiProjectScenary[];
 };
@@ -75,10 +85,24 @@ export const ProjectsApi = {
   uploadZip: (projectId: string, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return apiFetch<UploadedProjectZip>(`/api/projects/${projectId}/files/experiment-zip`, {
-      method: "POST",
-      body: form,
-    });
+    return apiUploadFormWithProgress<UploadedProjectZip>(
+      `/api/projects/${projectId}/files/experiment-zip`,
+      form,
+    );
+  },
+
+  uploadZipWithProgress: (
+    projectId: string,
+    file: File,
+    onProgress?: (progress: UploadProgress) => void,
+  ) => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiUploadFormWithProgress<UploadedProjectZip>(
+      `/api/projects/${projectId}/files/experiment-zip`,
+      form,
+      onProgress,
+    );
   },
 
   deleteZip: (projectId: string) =>

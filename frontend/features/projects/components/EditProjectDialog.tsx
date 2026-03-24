@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Pencil, ChevronLeft, ChevronRight, Check } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Pencil, ChevronLeft, ChevronRight, Check, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,6 +21,37 @@ import { CreateProjectStep4 } from "@/features/projects/create-project/CreatePro
 import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi"
 import type { Project, ProjectStatus, SensorType } from "@/features/projects/types"
 import type { ParticipantData, ProjectFormData, scenaries } from "@/features/projects/create-project/types"
+
+const ZIP_PROCESSING_AVG_KEY = "neurodatics_zip_processing_avg_seconds"
+
+const getStoredProcessingAverageSeconds = (): number | null => {
+  try {
+    const raw = window.localStorage.getItem(ZIP_PROCESSING_AVG_KEY)
+    if (!raw) return null
+    const parsed = Number(raw)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+const persistProcessingAverageSeconds = (nextSeconds: number) => {
+  try {
+    const prev = getStoredProcessingAverageSeconds()
+    const blended = prev ? Math.round(prev * 0.7 + nextSeconds * 0.3) : Math.round(nextSeconds)
+    window.localStorage.setItem(ZIP_PROCESSING_AVG_KEY, String(Math.max(1, blended)))
+  } catch {
+    // Ignore persistence errors.
+  }
+}
+
+const estimateProcessingSeconds = (totalBytes: number): number => {
+  const mb = totalBytes / (1024 * 1024)
+  const heuristic = Math.max(20, Math.round(mb * 0.9))
+  const storedAvg = getStoredProcessingAverageSeconds()
+  if (!storedAvg) return heuristic
+  return Math.max(10, Math.round(storedAvg * 0.7 + heuristic * 0.3))
+}
 
 interface EditProjectDialogProps {
   projectId: string
@@ -77,6 +108,20 @@ const parseScenaries = (project: ApiProjectDetail): scenaries[] => {
   }))
 }
 
+const getCurrentZipFilename = (project: ApiProjectDetail): string => {
+  const files = project.files || []
+  const zipFiles = files.filter((file) => file.kind === "experiment_zip")
+  if (zipFiles.length === 0) return ""
+
+  const latestZip = zipFiles.sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+    return dateB - dateA
+  })[0]
+
+  return latestZip?.filename || ""
+}
+
 export const EditProjectDialog = ({
   projectId,
   projectName,
@@ -86,8 +131,27 @@ export const EditProjectDialog = ({
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSaveCompleted, setIsSaveCompleted] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveProgressMessage, setSaveProgressMessage] = useState<string | null>(null)
+  const [zipUploadPercent, setZipUploadPercent] = useState<number | null>(null)
+  const [zipUploadBytes, setZipUploadBytes] = useState<{ loaded: number; total: number } | null>(null)
+  const [zipUploadSpeedMbps, setZipUploadSpeedMbps] = useState<number | null>(null)
+  const [zipUploadEtaSeconds, setZipUploadEtaSeconds] = useState<number | null>(null)
+  const [zipDriveProcessingSeconds, setZipDriveProcessingSeconds] = useState<number | null>(null)
+  const uploadStartedAtRef = useRef<number | null>(null)
+  const processingEstimateSecondsRef = useRef<number>(0)
   const [shouldUpdateZip, setShouldUpdateZip] = useState(false)
+  const originalFormDataRef = useRef<ProjectFormData | null>(null)
+
+  const formatBytesToMB = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  const formatEta = (seconds: number) => {
+    const safeSeconds = Math.max(0, Math.round(seconds))
+    const minutes = Math.floor(safeSeconds / 60)
+    const secs = safeSeconds % 60
+    return `${minutes}:${String(secs).padStart(2, "0")}`
+  }
+  const isDriveProcessing = zipDriveProcessingSeconds !== null
 
   const [formData, setFormData] = useState<ProjectFormData>({
     projectName: "",
@@ -113,17 +177,20 @@ export const EditProjectDialog = ({
         sex: toParticipantSex(p.sex),
       }))
 
-      setFormData({
+      const newFormData = {
         projectName: detail.name || "",
         description: detail.description || "",
         status: toProjectStatus(detail.status),
         experimentZip: null,
-        folderPath: "",
+        folderPath: getCurrentZipFilename(detail),
         uploadedZip: null,
         sensors: ((detail.sensors || []).map((s) => s.sensor_type) as SensorType[]) || [],
         participants: participants.length > 0 ? participants : defaultParticipants,
         scenaries: parseScenaries(detail),
-      })
+      }
+
+      setFormData(newFormData)
+      originalFormDataRef.current = JSON.parse(JSON.stringify(newFormData))
     } catch (error) {
       console.error(error)
       setSaveError("No se pudo cargar la información del proyecto para editar.")
@@ -140,7 +207,6 @@ export const EditProjectDialog = ({
 
   const updateProjectName = (name: string) => setFormData((prev) => ({ ...prev, projectName: name }))
   const updateDescription = (description: string) => setFormData((prev) => ({ ...prev, description }))
-  const updateStatus = (status: ProjectStatus) => setFormData((prev) => ({ ...prev, status }))
   const updateFolderPath = (path: string) => setFormData((prev) => ({ ...prev, folderPath: path }))
   const setExperimentZip = (file: File | null) => {
     setFormData((prev) => ({
@@ -199,6 +265,25 @@ export const EditProjectDialog = ({
       sex: p.sex,
     }))
 
+  const sensorsChanged = (): boolean => {
+    if (!originalFormDataRef.current) return true
+    const orig = originalFormDataRef.current.sensors
+    const current = formData.sensors
+    if (orig.length !== current.length) return true
+    return !orig.every((s) => current.includes(s))
+  }
+
+  const participantsChanged = (): boolean => {
+    if (!originalFormDataRef.current) return true
+    const orig = originalFormDataRef.current.participants
+    const current = formData.participants
+    if (orig.length !== current.length) return true
+    return !orig.every((op, i) => {
+      const cp = current[i]
+      return op.id === cp.id && op.age === cp.age && op.sex === cp.sex
+    })
+  }
+
   const saveProjectChanges = async () => {
     if (!hasValidParticipants()) {
       setSaveError("Completa sexo y edad de todos los participantes antes de guardar.")
@@ -206,10 +291,15 @@ export const EditProjectDialog = ({
     }
 
     setIsSaving(true)
+    setIsSaveCompleted(false)
     setSaveError(null)
-    const loadingToastId = toast.loading("Guardando cambios del proyecto...")
+
+    const updateProgress = (message: string) => {
+      setSaveProgressMessage(message)
+    }
 
     try {
+      updateProgress("Actualizando datos generales del proyecto...")
       const updatedMetadata = await ProjectsApi.update(projectId, {
         name: formData.projectName,
         description: formData.description.trim() || "",
@@ -217,49 +307,98 @@ export const EditProjectDialog = ({
       })
 
       if (formData.experimentZip) {
-        // Delete old ZIP file if it exists, then upload new one
-        try {
-          await ProjectsApi.deleteZip(projectId)
-        } catch (error) {
-          // Ignore if file doesn't exist
-        }
-        await ProjectsApi.uploadZip(projectId, formData.experimentZip)
+        // Backend replaces previous Drive content (old ZIP + assets) with the new upload.
+        setZipUploadPercent(0)
+        setZipUploadBytes({ loaded: 0, total: formData.experimentZip.size })
+        setZipUploadSpeedMbps(null)
+        setZipUploadEtaSeconds(null)
+        setZipDriveProcessingSeconds(null)
+        processingEstimateSecondsRef.current = estimateProcessingSeconds(formData.experimentZip.size)
+        uploadStartedAtRef.current = Date.now()
+        updateProgress("Subiendo nuevo ZIP... 0%")
+        await ProjectsApi.uploadZipWithProgress(projectId, formData.experimentZip, (progress) => {
+          if (progress.phase === "uploading") {
+            const now = Date.now()
+            const startedAt = uploadStartedAtRef.current ?? now
+            const elapsedSeconds = Math.max(0.001, (now - startedAt) / 1000)
+            const bytesPerSecond = progress.loaded / elapsedSeconds
+            const speedMbps = bytesPerSecond / (1024 * 1024)
+            const remainingBytes = Math.max(0, progress.total - progress.loaded)
+            const etaSeconds = bytesPerSecond > 0 ? remainingBytes / bytesPerSecond : 0
+            const pipelinePercent = Math.min(89, Math.round(progress.percent * 0.89))
+            const pipelineEtaSeconds = Math.max(0, Math.round(etaSeconds + processingEstimateSecondsRef.current))
+
+            setZipUploadPercent(pipelinePercent)
+            setZipUploadBytes({ loaded: progress.loaded, total: progress.total })
+            setZipUploadSpeedMbps(Number.isFinite(speedMbps) ? speedMbps : null)
+            setZipUploadEtaSeconds(Number.isFinite(pipelineEtaSeconds) ? pipelineEtaSeconds : null)
+            setZipDriveProcessingSeconds(null)
+            updateProgress(`Subiendo nuevo ZIP... ${pipelinePercent}%`)
+            return
+          }
+
+          if (progress.phase === "processing") {
+            const elapsed = progress.processingElapsedSeconds ?? 0
+            const processingRemaining = Math.max(0, processingEstimateSecondsRef.current - elapsed)
+            const processingProgress = processingEstimateSecondsRef.current > 0
+              ? Math.min(10, Math.round((elapsed / processingEstimateSecondsRef.current) * 10))
+              : 0
+            const pipelinePercent = Math.min(99, 89 + processingProgress)
+            const exceededEstimate = elapsed > processingEstimateSecondsRef.current + 5;
+
+            setZipUploadPercent(pipelinePercent);
+            setZipUploadSpeedMbps(null);
+            setZipUploadEtaSeconds(exceededEstimate ? null : Math.round(processingRemaining));
+            setZipDriveProcessingSeconds(elapsed)
+            updateProgress(`Sincronizando archivos en Google Drive... ${pipelinePercent}%`)
+            return
+          }
+
+          if (progress.phase === "completed") {
+            setZipUploadPercent(100)
+            setZipUploadSpeedMbps(null)
+            setZipUploadEtaSeconds(0)
+            setZipDriveProcessingSeconds(progress.processingElapsedSeconds ?? 0)
+            if ((progress.processingElapsedSeconds ?? 0) > 0) {
+              persistProcessingAverageSeconds(progress.processingElapsedSeconds ?? 0)
+            }
+          }
+        })
+        setZipUploadPercent(100)
+        setZipUploadBytes((prev) => {
+          const total = prev?.total ?? formData.experimentZip?.size ?? 0
+          return { loaded: total, total }
+        })
+        setZipUploadEtaSeconds(0)
+        updateProgress("ZIP y sincronizacion en Google Drive completados.")
       }
 
-      await ProjectsApi.setSensors(projectId, formData.sensors as string[])
-      await ProjectsApi.setParticipants(projectId, normalizeParticipants())
+      // Clear upload-specific indicators before moving to non-upload stages.
+      setZipUploadPercent(null)
+      setZipUploadBytes(null)
+      setZipUploadSpeedMbps(null)
+      setZipUploadEtaSeconds(null)
+      setZipDriveProcessingSeconds(null)
 
-      if (formData.scenaries.length > 0) {
-        await ProjectsApi.setScenaries(
-          projectId,
-          formData.scenaries.map((s) => ({
-            name: s.name,
-            type: "image",
-            file_id: null,
-            width: null,
-            height: null,
-          }))
-        )
+      // Only update sensors and/or participants if they actually changed.
+      const shouldUpdateSensors = sensorsChanged()
+      const shouldUpdateParticipants = participantsChanged()
 
-        const aoisPayload = formData.scenaries.flatMap((s) =>
-          (s.aois || []).map((a) => ({
-            scenaries_name: s.name,
-            name: a.name,
-            color: "#3b82f6",
-            shape_type: "rect",
-            shape: {
-              x: a.x,
-              y: a.y,
-              width: a.width,
-              height: a.height,
-            },
-          }))
-        )
+      if (shouldUpdateSensors || shouldUpdateParticipants) {
+        updateProgress("Actualizando datos adicionales del proyecto...")
+        const updates: Promise<void>[] = []
 
-        if (aoisPayload.length > 0) {
-          await ProjectsApi.setAois(projectId, aoisPayload)
+        if (shouldUpdateSensors) {
+          updates.push(ProjectsApi.setSensors(projectId, formData.sensors as string[]))
         }
+        if (shouldUpdateParticipants) {
+          updates.push(ProjectsApi.setParticipants(projectId, normalizeParticipants()))
+        }
+
+        await Promise.all(updates)
       }
+
+      updateProgress("Finalizando actualización del proyecto...")
 
       onProjectUpdated({
         id: projectId,
@@ -273,19 +412,31 @@ export const EditProjectDialog = ({
         participants: formData.participants.length,
       })
 
-      toast.success(`Proyecto "${formData.projectName}" editado correctamente.`, {
-        id: loadingToastId,
-      })
+      setIsSaveCompleted(true)
+      setSaveProgressMessage("Proceso completado. Cerrando...")
+      toast.success(`Proyecto "${formData.projectName}" editado correctamente.`)
+      await new Promise((resolve) => setTimeout(resolve, 900))
       setIsOpen(false)
       setCurrentStep(1)
     } catch (error) {
       console.error(error)
-      setSaveError("No se pudo guardar la edición del proyecto.")
-      toast.error("No se pudo guardar la edición del proyecto.", {
-        id: loadingToastId,
-      })
+      setSaveError(
+        saveProgressMessage
+          ? `No se pudo guardar la edición del proyecto. Paso fallido: ${saveProgressMessage}`
+          : "No se pudo guardar la edición del proyecto."
+      )
+      toast.error("No se pudo guardar la edición del proyecto.")
     } finally {
       setIsSaving(false)
+      setIsSaveCompleted(false)
+      setSaveProgressMessage(null)
+      setZipUploadPercent(null)
+      setZipUploadBytes(null)
+      setZipUploadSpeedMbps(null)
+      setZipUploadEtaSeconds(null)
+      setZipDriveProcessingSeconds(null)
+      uploadStartedAtRef.current = null
+      processingEstimateSecondsRef.current = 0
     }
   }
 
@@ -297,6 +448,15 @@ export const EditProjectDialog = ({
         if (!open) {
           setCurrentStep(1)
           setSaveError(null)
+          setIsSaveCompleted(false)
+          setSaveProgressMessage(null)
+          setZipUploadPercent(null)
+          setZipUploadBytes(null)
+          setZipUploadSpeedMbps(null)
+          setZipUploadEtaSeconds(null)
+          setZipDriveProcessingSeconds(null)
+          uploadStartedAtRef.current = null
+          processingEstimateSecondsRef.current = 0
         }
       }}
     >
@@ -336,11 +496,9 @@ export const EditProjectDialog = ({
               <CreateProjectStep1
                 projectName={formData.projectName}
                 description={formData.description}
-                status={formData.status}
                 folderPath={formData.folderPath}
                 onProjectNameChange={updateProjectName}
                 onDescriptionChange={updateDescription}
-                onStatusChange={updateStatus}
                 onFolderPathChange={updateFolderPath}
                 onZipSelected={setExperimentZip}
                 zipRequired={false}
@@ -365,6 +523,57 @@ export const EditProjectDialog = ({
                 <p className="text-sm text-red-600">
                   <strong>Error:</strong> {saveError}
                 </p>
+              </div>
+            )}
+
+            {isSaving && (
+              <div
+                className={`mt-4 p-4 border rounded-lg ${
+                  isDriveProcessing ? "bg-gray-100 border-gray-300" : "bg-gray-50 border-gray-200"
+                }`}
+              >
+                <div className="flex items-center gap-3 text-sm text-gray-800">
+                  {isSaveCompleted ? (
+                    <CheckCircle2 className="h-4 w-4 text-gray-700" />
+                  ) : (
+                    <div className="h-4 w-4 border-2 border-gray-400 border-t-black rounded-full animate-spin" />
+                  )}
+                  <span>{saveProgressMessage || "Guardando cambios del proyecto..."}</span>
+                </div>
+                {zipUploadPercent !== null && (
+                  <div className="mt-3">
+                    <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-150 ${
+                          isDriveProcessing ? "bg-gray-700 animate-pulse" : "bg-black"
+                        }`}
+                        style={{ width: `${zipUploadPercent}%` }}
+                      />
+                    </div>
+                      <p className="mt-1 text-xs text-gray-700">
+                        Progreso total del proceso: {zipUploadPercent}%
+                        {zipUploadBytes && zipUploadBytes.total > 0 && (
+                          <span>
+                            {" "}
+                            ({formatBytesToMB(zipUploadBytes.loaded)} / {formatBytesToMB(zipUploadBytes.total)})
+                          </span>
+                        )}
+                      </p>
+                    <p className="mt-1 text-xs text-gray-700">
+                        Velocidad: {zipUploadSpeedMbps !== null ? `${zipUploadSpeedMbps.toFixed(2)} MB/s` : "calculando..."}
+                        {zipUploadEtaSeconds !== null ? (
+                        <span>{" "}| Restante estimado: {formatEta(zipUploadEtaSeconds)}</span>
+                        ) : isDriveProcessing ? (
+                        <span>{" "}| Tiempo variable, procesando...</span>
+                        ) : null}
+                      </p>
+                      {zipDriveProcessingSeconds !== null && (
+                      <p className="mt-1 text-xs text-gray-700">
+                          Procesando en Google Drive: {formatEta(zipDriveProcessingSeconds)} transcurridos
+                        </p>
+                      )}
+                  </div>
+                )}
               </div>
             )}
           </div>

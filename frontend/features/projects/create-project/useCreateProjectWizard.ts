@@ -1,10 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ProjectFormData, SensorType, ParticipantData } from "./types";
 import type { Project } from "@/features/projects/types";
 import { ProjectsApi } from "@/features/projects/api/projectsApi";
 import { toast } from "sonner";
+
+const ZIP_PROCESSING_AVG_KEY = "neurodatics_zip_processing_avg_seconds";
+
+const getStoredProcessingAverageSeconds = (): number | null => {
+  try {
+    const raw = window.localStorage.getItem(ZIP_PROCESSING_AVG_KEY);
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const persistProcessingAverageSeconds = (nextSeconds: number) => {
+  try {
+    const prev = getStoredProcessingAverageSeconds();
+    const blended = prev ? Math.round(prev * 0.7 + nextSeconds * 0.3) : Math.round(nextSeconds);
+    window.localStorage.setItem(ZIP_PROCESSING_AVG_KEY, String(Math.max(1, blended)));
+  } catch {
+    // Ignore persistence errors.
+  }
+};
+
+const estimateProcessingSeconds = (totalBytes: number): number => {
+  const mb = totalBytes / (1024 * 1024);
+  const heuristic = Math.max(30, Math.round(mb * 1.2));
+  const storedAvg = getStoredProcessingAverageSeconds();
+  if (!storedAvg) return heuristic;
+  const blended = Math.round(storedAvg * 0.6 + heuristic * 0.4);
+  return Math.max(30, blended);
+};
 
 
 const initialParticipants: ParticipantData[] = [
@@ -33,6 +65,15 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaveCompleted, setIsSaveCompleted] = useState(false);
+  const [saveProgressMessage, setSaveProgressMessage] = useState<string | null>(null);
+  const [zipUploadPercent, setZipUploadPercent] = useState<number | null>(null);
+  const [zipUploadBytes, setZipUploadBytes] = useState<{ loaded: number; total: number } | null>(null);
+  const [zipUploadSpeedMbps, setZipUploadSpeedMbps] = useState<number | null>(null);
+  const [zipUploadEtaSeconds, setZipUploadEtaSeconds] = useState<number | null>(null);
+  const [zipDriveProcessingSeconds, setZipDriveProcessingSeconds] = useState<number | null>(null);
+  const uploadStartedAtRef = useRef<number | null>(null);
+  const processingEstimateSecondsRef = useRef<number>(0);
 
   // 👇 agrega aquí experimentZip si ya lo estás capturando desde Step1
   const [formData, setFormData] = useState<ProjectFormData>({
@@ -110,6 +151,15 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
   const reset = () => {
     setCurrentStep(1);
     setSaveError(null);
+    setIsSaveCompleted(false);
+    setSaveProgressMessage(null);
+    setZipUploadPercent(null);
+    setZipUploadBytes(null);
+    setZipUploadSpeedMbps(null);
+    setZipUploadEtaSeconds(null);
+    setZipDriveProcessingSeconds(null);
+    uploadStartedAtRef.current = null;
+    processingEstimateSecondsRef.current = 0;
     setFormData({
       projectName: "",
       description: "",
@@ -132,11 +182,16 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
 
     setIsSaving(true);
     setSaveError(null);
-    const loadingToastId = toast.loading("Guardando proyecto...");
+    setIsSaveCompleted(false);
     let createdProjectId: string | null = null;
+
+    const updateProgress = (message: string) => {
+      setSaveProgressMessage(message);
+    };
 
     try {
       // 1) Crear proyecto real
+      updateProgress("Creando proyecto...");
       const created = await ProjectsApi.create({
         name: formData.projectName,
         description: formData.description.trim() || undefined,
@@ -146,7 +201,73 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       // 2) Subir zip a Drive (si existe)
       if (formData.experimentZip) {
         try {
-          const uploadedZipResult = await ProjectsApi.uploadZip(createdProjectId, formData.experimentZip);
+          setZipUploadPercent(0);
+          setZipUploadBytes({ loaded: 0, total: formData.experimentZip.size });
+          setZipUploadSpeedMbps(null);
+          setZipUploadEtaSeconds(null);
+          setZipDriveProcessingSeconds(null);
+          processingEstimateSecondsRef.current = estimateProcessingSeconds(formData.experimentZip.size);
+          uploadStartedAtRef.current = Date.now();
+          updateProgress("Subiendo ZIP... 0%");
+          const uploadedZipResult = await ProjectsApi.uploadZipWithProgress(
+            createdProjectId,
+            formData.experimentZip,
+            (progress) => {
+              if (progress.phase === "uploading") {
+                const now = Date.now();
+                const startedAt = uploadStartedAtRef.current ?? now;
+                const elapsedSeconds = Math.max(0.001, (now - startedAt) / 1000);
+                const bytesPerSecond = progress.loaded / elapsedSeconds;
+                const speedMbps = bytesPerSecond / (1024 * 1024);
+                const remainingBytes = Math.max(0, progress.total - progress.loaded);
+                const etaSeconds = bytesPerSecond > 0 ? remainingBytes / bytesPerSecond : 0;
+                const pipelinePercent = Math.min(89, Math.round(progress.percent * 0.89));
+                const pipelineEtaSeconds = Math.max(0, Math.round(etaSeconds + processingEstimateSecondsRef.current));
+
+                setZipUploadPercent(pipelinePercent);
+                setZipUploadBytes({ loaded: progress.loaded, total: progress.total });
+                setZipUploadSpeedMbps(Number.isFinite(speedMbps) ? speedMbps : null);
+                setZipUploadEtaSeconds(Number.isFinite(pipelineEtaSeconds) ? pipelineEtaSeconds : null);
+                setZipDriveProcessingSeconds(null);
+                updateProgress(`Subiendo ZIP... ${pipelinePercent}%`);
+                return;
+              }
+
+              if (progress.phase === "processing") {
+                const elapsed = progress.processingElapsedSeconds ?? 0;
+                const processingRemaining = Math.max(0, processingEstimateSecondsRef.current - elapsed);
+                const processingProgress = processingEstimateSecondsRef.current > 0
+                  ? Math.min(10, Math.round((elapsed / processingEstimateSecondsRef.current) * 10))
+                  : 0;
+                const pipelinePercent = Math.min(99, 89 + processingProgress);
+                const exceededEstimate = elapsed > processingEstimateSecondsRef.current + 5;
+
+                setZipUploadPercent(pipelinePercent);
+                setZipUploadSpeedMbps(null);
+                setZipUploadEtaSeconds(exceededEstimate ? null : Math.round(processingRemaining));
+                setZipDriveProcessingSeconds(elapsed);
+                updateProgress(`Sincronizando archivos en Google Drive... ${pipelinePercent}%`);
+                return;
+              }
+
+              if (progress.phase === "completed") {
+                setZipUploadPercent(100);
+                setZipUploadSpeedMbps(null);
+                setZipUploadEtaSeconds(0);
+                setZipDriveProcessingSeconds(progress.processingElapsedSeconds ?? 0);
+                if ((progress.processingElapsedSeconds ?? 0) > 0) {
+                  persistProcessingAverageSeconds(progress.processingElapsedSeconds ?? 0);
+                }
+              }
+            },
+          );
+          setZipUploadPercent(100);
+          setZipUploadBytes((prev) => {
+            const total = prev?.total ?? formData.experimentZip?.size ?? 0;
+            return { loaded: total, total };
+          });
+          setZipUploadEtaSeconds(0);
+          updateProgress("ZIP y sincronizacion en Google Drive completados.");
           
           // Almacenar resultado del upload en formData
           setFormData(prev => ({
@@ -175,24 +296,30 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
           throw new Error(`Error subiendo archivo: ${error instanceof Error ? error.message : 'Error desconocido'}`);
         }
       }
+
+      // Clear upload-specific indicators before moving to non-upload stages.
+      setZipUploadPercent(null);
+      setZipUploadBytes(null);
+      setZipUploadSpeedMbps(null);
+      setZipUploadEtaSeconds(null);
+      setZipDriveProcessingSeconds(null);
     
-      // 3) Sensores
+      // 3) Sensores, Participantes, y Finalizacion en paralelo
+      updateProgress("Finalizando configuración del proyecto...");
+      const updates: Promise<void>[] = [];
+
       if (formData.sensors.length > 0) {
-        await ProjectsApi.setSensors(createdProjectId, formData.sensors as string[]);
+        updates.push(ProjectsApi.setSensors(createdProjectId, formData.sensors as string[]));
       }
 
-      // 4) Participantes (sin PII) - normalizar datos
       if (formData.participants.length > 0) {
         const normalizedParticipants = normalizeParticipants(formData.participants);
-        await ProjectsApi.setParticipants(createdProjectId, normalizedParticipants);
+        updates.push(ProjectsApi.setParticipants(createdProjectId, normalizedParticipants));
       }
 
-      // 5) (Opcional) scenaries/aois cuando lo conectes
-      // await ProjectsApi.setScenaries(createdProjectId, ...)
-      // await ProjectsApi.setAois(createdProjectId, ...)
-      
-      // 6) Finalizar proyecto
-      await ProjectsApi.finalize(createdProjectId);
+      updates.push(ProjectsApi.finalize(createdProjectId));
+
+      await Promise.all(updates);
 
       // 7) Actualiza UI (grid)
       const newProject: Project = {
@@ -206,19 +333,31 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       };
 
       onProjectCreated?.(newProject);
-      toast.success(`Proyecto "${created.name}" creado correctamente.`, {
-        id: loadingToastId,
-      });
+      setIsSaveCompleted(true);
+      setSaveProgressMessage("Proceso completado. Cerrando...");
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      toast.success(`Proyecto "${created.name}" creado correctamente.`);
       setIsOpen(false);
       reset();
     } catch (e: any) {
       console.error("Error saving project:", e);
-      setSaveError(e?.message ?? "Error guardando proyecto");
-      toast.error("No se pudo guardar el proyecto.", {
-        id: loadingToastId,
-      });
+      setSaveError(
+        saveProgressMessage
+          ? `Error guardando proyecto. Paso fallido: ${saveProgressMessage}`
+          : (e?.message ?? "Error guardando proyecto")
+      );
+      toast.error("No se pudo guardar el proyecto.");
     } finally {
       setIsSaving(false);
+      setIsSaveCompleted(false);
+      setSaveProgressMessage(null);
+      setZipUploadPercent(null);
+      setZipUploadBytes(null);
+      setZipUploadSpeedMbps(null);
+      setZipUploadEtaSeconds(null);
+      setZipDriveProcessingSeconds(null);
+      uploadStartedAtRef.current = null;
+      processingEstimateSecondsRef.current = 0;
     }
   };
 
@@ -239,6 +378,13 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     saveProject,
     isSaving,
     saveError,
+    isSaveCompleted,
+    saveProgressMessage,
+    zipUploadPercent,
+    zipUploadBytes,
+    zipUploadSpeedMbps,
+    zipUploadEtaSeconds,
+    zipDriveProcessingSeconds,
     setExperimentZip,
   };
 };

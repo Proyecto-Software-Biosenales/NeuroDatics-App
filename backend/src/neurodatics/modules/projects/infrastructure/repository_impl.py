@@ -78,6 +78,16 @@ class SQLProjectRepository(ProjectRepository):
         await self.session.refresh(project_file)
         return project_file
 
+    async def purge_files_by_kind(self, project_id: UUID, kind: str) -> int:
+        result = await self.session.execute(
+            delete(ProjectFile).where(
+                ProjectFile.project_id == project_id,
+                ProjectFile.kind == kind,
+            )
+        )
+        await self.session.flush()
+        return result.rowcount or 0
+
     async def add_files(self, files: List[ProjectFile]) -> List[ProjectFile]:
         self.session.add_all(files)
         await self.session.flush()
