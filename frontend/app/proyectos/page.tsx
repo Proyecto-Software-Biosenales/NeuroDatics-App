@@ -1,8 +1,8 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CreateProjectButton } from "@/features/projects/components/CreateProjectButton"
 import { ProjectsEmptyContainer } from "@/features/projects/components/ProjectsEmptyContainer"
 import { ProjectsGrid } from "@/features/projects/components/ProjectsGrid"
 import { AuthGuard } from "@/features/auth/components/AuthGuard"
@@ -48,15 +48,7 @@ export default function ProyectosPage() {
               </p>
             </div>
 
-            <CreateProjectDialog
-              onProjectCreated={addProject}
-              trigger={
-                <Button className="bg-black text-white px-6 py-5 rounded-lg hover:bg-gray-700 transition-colors duration-200 text-sm font-medium gap-2">
-                  <Plus className="w-5 h-5" />
-                  Crear nuevo proyecto
-                </Button>
-              }
-            />
+              <CreateProjectDialog onProjectCreated={addProject} trigger={<CreateProjectButton compact />} />
           </div>
 
           {/* Loading state */}

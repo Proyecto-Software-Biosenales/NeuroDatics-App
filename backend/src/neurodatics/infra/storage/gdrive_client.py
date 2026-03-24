@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 import google_auth_httplib2
 import httplib2
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from ...config.settings import settings
 
@@ -197,7 +198,14 @@ class GoogleDriveClient:
                 num_retries=max(0, int(settings.gdrive_request_retries))
             )
             return True
-        except Exception:
+        except HttpError as exc:
+            if getattr(exc, "resp", None) is not None and exc.resp.status == 404:
+                logger.info("Drive object already deleted or missing: %s", file_id)
+                return True
+            logger.warning("Failed deleting Drive object %s: %s", file_id, exc)
+            return False
+        except Exception as exc:
+            logger.warning("Failed deleting Drive object %s: %s", file_id, exc)
             return False
 
 

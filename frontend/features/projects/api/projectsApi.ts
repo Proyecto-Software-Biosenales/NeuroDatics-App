@@ -42,6 +42,12 @@ export type ApiProjectDetail = ApiProject & {
   scenaries?: ApiProjectScenary[];
 };
 
+export type DeleteProjectResult = {
+  message: string;
+  drive_folder_found: boolean;
+  drive_folder_deleted: boolean;
+};
+
 export const ProjectsApi = {
   list: () => apiFetch<ApiProject[]>("/api/projects/"),
 
@@ -61,10 +67,10 @@ export const ProjectsApi = {
     }),
 
   remove: (projectId: string) =>
-    apiFetch<void>(`/api/projects/${projectId}`, { method: "DELETE" }),
+    apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" }),
 
   delete: (projectId: string) =>
-    apiFetch<void>(`/api/projects/${projectId}`, { method: "DELETE" }),
+    apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" }),
 
   uploadZip: (projectId: string, file: File) => {
     const form = new FormData();

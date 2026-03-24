@@ -79,7 +79,7 @@ export const useProjectsStorage = () => {
 
   const removeProject = async (id: string) => {
     // Call backend to delete from database first
-    await ProjectsApi.remove(id)
+    const deleteResult = await ProjectsApi.remove(id)
     // Then update local state
     setProjects((prev) => prev.filter((p) => p.id !== id))
     // Sync to localStorage
@@ -89,6 +89,8 @@ export const useProjectsStorage = () => {
     } catch {
       // ignore storage errors
     }
+
+    return deleteResult
   }
 
   const updateProject = (updatedProject: Project) => {

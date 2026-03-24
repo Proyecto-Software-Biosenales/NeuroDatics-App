@@ -3,11 +3,12 @@ import { Card } from "../../../components/ui/Card"
 import { SensorBadge } from "../../../features/projects/components/SensorBadge"
 import { DeleteProjectDialog } from "../../../features/projects/components/DeleteProjectDialog"
 import { EditProjectDialog } from "../../../features/projects/components/EditProjectDialog"
+import type { DeleteProjectResult } from "@/features/projects/api/projectsApi"
 import type { Project } from "@/features/projects/types"
 
 interface ProjectsGridProps {
   projects: Project[]
-  onDelete: (id: string) => Promise<void> | void
+  onDelete: (id: string) => Promise<DeleteProjectResult | void> | DeleteProjectResult | void
   onEdit: (project: Project) => void
 }
 
