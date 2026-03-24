@@ -57,8 +57,13 @@ export const DeleteProjectDialog = ({
       return
     }
 
+    const loadingToastId = toast.loading(`Eliminando proyecto "${projectName}"...`)
+
     try {
       const result = await onDelete(projectId)
+      
+      toast.dismiss(loadingToastId)
+      
       if (result?.drive_folder_found) {
         if (result.drive_folder_deleted) {
           toast.success(`Proyecto "${projectName}" y carpeta de Drive eliminados correctamente.`)
@@ -72,6 +77,7 @@ export const DeleteProjectDialog = ({
       resetDialogState()
     } catch (error) {
       console.error(error)
+      toast.dismiss(loadingToastId)
       toast.error(`No se pudo eliminar el proyecto "${projectName}".`)
     }
   }

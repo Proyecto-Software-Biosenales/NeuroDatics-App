@@ -45,6 +45,7 @@ class UploadExperimentZipUseCase:
             await configure_gdrive_client_with_oauth(self.db, silent=True)
 
         uploaded_drive_ids: List[str] = []
+        previous_root_folder_id = project.drive_root_folder_id
 
         try:
             await self.repository.update_project_ingestion(
@@ -63,10 +64,15 @@ class UploadExperimentZipUseCase:
                 file_content=file_content,
             )
 
-            root_folder_info = self._ensure_drive_root_folder(project)
+            # Always ingest into a fresh root folder when uploading a new ZIP.
+            # This allows us to safely replace previous Drive content for edits.
+            root_folder_info = self._create_new_drive_root_folder(project)
             root_folder_id = root_folder_info.get("drive_file_id")
             root_folder_name = root_folder_info.get("name") or project.name
             root_folder_url = root_folder_info.get("drive_web_view_link")
+
+            if root_folder_id:
+                uploaded_drive_ids.append(root_folder_id)
 
             folder_cache: Dict[str, str] = {"": root_folder_id}
 
@@ -84,8 +90,7 @@ class UploadExperimentZipUseCase:
                 "scenaries_created": 0,
             }
 
-            if not project.drive_root_folder_id and root_folder_id:
-                uploaded_drive_ids.append(root_folder_id)
+            if root_folder_id:
                 counts["folders_created"] += 1
 
             source_zip_file_id: Optional[UUID] = None
@@ -241,9 +246,19 @@ class UploadExperimentZipUseCase:
                         scenaries_to_insert.append(maybe_scenary)
 
             await self.repository.soft_delete_active_files(project_id)
+            # DB has a unique constraint for one experiment ZIP per project.
+            # Remove any historical experiment_zip rows before inserting the new one.
+            await self.repository.purge_files_by_kind(project_id, "experiment_zip")
             await self.repository.clear_project_scenaries(project_id)
             await self.repository.add_files(files_to_insert)
             await self.repository.add_scenaries(scenaries_to_insert)
+
+            # If this upload replaces a previous ingestion, remove old Drive root first.
+            # If deletion fails, abort to avoid reporting success with stale remote content.
+            if previous_root_folder_id and previous_root_folder_id != root_folder_id:
+                deleted = gdrive_client.delete_file(previous_root_folder_id)
+                if not deleted:
+                    raise RuntimeError("Failed to delete previous Drive root folder")
 
             counts["scenaries_created"] = len(scenaries_to_insert)
 
@@ -304,15 +319,8 @@ class UploadExperimentZipUseCase:
 
             raise
 
-    def _ensure_drive_root_folder(self, project: Any) -> Dict[str, Any]:
-        if project.drive_root_folder_id:
-            return {
-                "drive_file_id": project.drive_root_folder_id,
-                "name": project.drive_root_folder_name or project.name,
-                "drive_web_view_link": project.drive_root_folder_url,
-            }
-
-        folder_name = f"{project.name}-{str(project.id)[:8]}"
+    def _create_new_drive_root_folder(self, project: Any) -> Dict[str, Any]:
+        folder_name = f"{project.name}-{str(project.id)[:8]}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
         return gdrive_client.create_folder(name=folder_name, parent_id=None)
 
     def _ensure_folder_path(

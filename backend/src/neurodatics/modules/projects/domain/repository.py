@@ -38,6 +38,10 @@ class ProjectRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def purge_files_by_kind(self, project_id: UUID, kind: str) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
     async def delete_file_by_kind(self, project_id: UUID, kind: str) -> bool:
         raise NotImplementedError
 

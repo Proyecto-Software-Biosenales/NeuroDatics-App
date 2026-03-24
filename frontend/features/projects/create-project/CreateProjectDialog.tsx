@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronLeft, ChevronRight, Check } from "lucide-react"
+import { ChevronLeft, ChevronRight, Check, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -46,8 +46,24 @@ export const CreateProjectDialog = ({
     saveProject,
     isSaving,
     saveError,
+    isSaveCompleted,
+    saveProgressMessage,
+    zipUploadPercent,
+    zipUploadBytes,
+    zipUploadSpeedMbps,
+    zipUploadEtaSeconds,
+    zipDriveProcessingSeconds,
     setExperimentZip,
   } = useCreateProjectWizard(onProjectCreated)
+
+  const formatBytesToMB = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  const formatEta = (seconds: number) => {
+    const safeSeconds = Math.max(0, Math.round(seconds))
+    const minutes = Math.floor(safeSeconds / 60)
+    const secs = safeSeconds % 60
+    return `${minutes}:${String(secs).padStart(2, "0")}`
+  }
+  const isDriveProcessing = zipDriveProcessingSeconds !== null
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open)
@@ -122,6 +138,57 @@ export const CreateProjectDialog = ({
               <p className="text-sm text-red-600">
                 <strong>Error:</strong> {saveError}
               </p>
+            </div>
+          )}
+
+          {isSaving && (
+            <div
+              className={`mt-4 p-4 border rounded-lg ${
+                isDriveProcessing ? "bg-gray-100 border-gray-300" : "bg-gray-50 border-gray-200"
+              }`}
+            >
+              <div className="flex items-center gap-3 text-sm text-gray-800">
+                {isSaveCompleted ? (
+                  <CheckCircle2 className="h-4 w-4 text-gray-700" />
+                ) : (
+                  <div className="h-4 w-4 border-2 border-gray-400 border-t-black rounded-full animate-spin" />
+                )}
+                <span>{saveProgressMessage || "Guardando proyecto..."}</span>
+              </div>
+              {zipUploadPercent !== null && (
+                <div className="mt-3">
+                  <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-150 ${
+                        isDriveProcessing ? "bg-gray-700 animate-pulse" : "bg-black"
+                      }`}
+                      style={{ width: `${zipUploadPercent}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-700">
+                    Progreso total del proceso: {zipUploadPercent}%
+                      {zipUploadBytes && zipUploadBytes.total > 0 && (
+                        <span>
+                          {" "}
+                          ({formatBytesToMB(zipUploadBytes.loaded)} / {formatBytesToMB(zipUploadBytes.total)})
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-700">
+                      Velocidad: {zipUploadSpeedMbps !== null ? `${zipUploadSpeedMbps.toFixed(2)} MB/s` : "calculando..."}
+                      {zipUploadEtaSeconds !== null ? (
+                        <span>{" "}| Restante estimado: {formatEta(zipUploadEtaSeconds)}</span>
+                      ) : isDriveProcessing ? (
+                        <span>{" "}| Tiempo variable, procesando...</span>
+                      ) : null}
+                    </p>
+                    {zipDriveProcessingSeconds !== null && (
+                      <p className="mt-1 text-xs text-gray-700">
+                        Procesando en Google Drive: {formatEta(zipDriveProcessingSeconds)} transcurridos
+                      </p>
+                    )}
+                </div>
+              )}
             </div>
           )}
         </div>
