@@ -69,6 +69,11 @@ export const CreateProjectDialog = ({
     setIsOpen(open)
     if (!open) reset()
   }
+
+  const handleCancel = () => {
+    reset()
+    setIsOpen(false)
+  }
   
 
   return (
@@ -141,7 +146,7 @@ export const CreateProjectDialog = ({
             </div>
           )}
 
-          {isSaving && (
+          {isSaving && !saveError && (
             <div
               className={`mt-4 p-4 border rounded-lg ${
                 isDriveProcessing ? "bg-gray-100 border-gray-300" : "bg-gray-50 border-gray-200"
@@ -200,7 +205,7 @@ export const CreateProjectDialog = ({
                 type="button"
                 variant="outline"
                 onClick={prevStep}
-                disabled={isSaving}
+                disabled={isSaving || !!saveError}
                 className="gap-2 p-4"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -213,8 +218,8 @@ export const CreateProjectDialog = ({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsOpen(false)}
-              disabled={isSaving}
+              onClick={handleCancel}
+              disabled={isSaving && !saveError}
               className="p-4"
             >
               Cancelar
@@ -224,7 +229,7 @@ export const CreateProjectDialog = ({
               <Button
                 type="button"
                 onClick={nextStep}
-                disabled={!canGoNext() || isSaving}
+                disabled={!canGoNext() || isSaving || !!saveError}
                 className="gap-2 p-4"
               >
                 Siguiente
@@ -235,7 +240,7 @@ export const CreateProjectDialog = ({
                 type="button"
                 onClick={saveProject}
                 className="gap-2 p-4"
-                disabled={isSaving}
+                disabled={isSaving || !!saveError}
               >
                 <Check className="w-4 h-4" />
                 {isSaving ? "Guardando..." : "Guardar proyecto"}

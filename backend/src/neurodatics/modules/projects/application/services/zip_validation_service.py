@@ -115,6 +115,26 @@ class ZipValidationService:
         return True
 
     @classmethod
+    def validate_structure(cls, entries: List[ZipManifestEntry], counts: Dict[str, int]) -> None:
+        """
+        Validate that the ZIP has the required structure:
+        1. At least one .csv file
+        2. At least one Images and/or Videos folder (i.e., at least one image or video)
+        """
+        # Check for .csv file
+        if counts["csv"] == 0:
+            raise cls.ValidationError(
+                "El ZIP debe contener obligatoriamente un archivo .csv"
+            )
+
+        # Check for Images and/or Videos folders
+        has_images_or_videos = counts["images"] > 0 or counts["videos"] > 0
+        if not has_images_or_videos:
+            raise cls.ValidationError(
+                "El ZIP debe contener obligatoriamente archivos en carpetas 'Images' y/o 'Videos'"
+            )
+
+    @classmethod
     def build_manifest(cls, zip_file: zipfile.ZipFile) -> Tuple[List[ZipManifestEntry], Dict[str, int]]:
         entries: List[ZipManifestEntry] = []
         counts: Dict[str, int] = {
@@ -175,6 +195,8 @@ class ZipValidationService:
         cls.validate_upload(filename=filename, mime_type=mime_type or "", file_content=file_content)
         zip_file = cls.validate_zip_integrity(file_content)
         try:
-            return cls.build_manifest(zip_file)
+            entries, counts = cls.build_manifest(zip_file)
+            cls.validate_structure(entries, counts)
+            return entries, counts
         finally:
             zip_file.close()

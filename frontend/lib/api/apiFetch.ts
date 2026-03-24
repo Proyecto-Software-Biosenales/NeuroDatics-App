@@ -148,12 +148,34 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
 
     // Other 401 error
     const text = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${text || res.statusText}`);
+    // Try to parse JSON error detail
+    let errorMessage = `Error ${res.status}`;
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.detail) {
+        errorMessage = parsed.detail;
+      }
+    } catch {
+      // If JSON parsing fails, use the raw text or status text
+      errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
+    }
+    throw new Error(errorMessage);
   }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${text || res.statusText}`);
+    // Try to parse JSON error detail
+    let errorMessage = `Error ${res.status}`;
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.detail) {
+        errorMessage = parsed.detail;
+      }
+    } catch {
+      // If JSON parsing fails, use the raw text or status text
+      errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
+    }
+    throw new Error(errorMessage);
   }
   return res.json() as Promise<T>;
 }
@@ -293,7 +315,18 @@ export async function apiUploadFormWithProgress<T>(
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${text || res.statusText}`);
+    let errorMessage = `Error ${res.status}`;
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed?.detail === "string" && parsed.detail.trim()) {
+        errorMessage = parsed.detail;
+      } else {
+        errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
+      }
+    } catch {
+      errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
+    }
+    throw new Error(errorMessage);
   }
 
   return res.json() as Promise<T>;

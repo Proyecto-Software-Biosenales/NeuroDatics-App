@@ -258,10 +258,21 @@ async def upload_experiment_zip(
             detail="Project not found or access denied"
         )
     except Exception as e:
+        from ..application.services.zip_validation_service import ZipValidationService
+        
         logger.exception("ZIP upload failed")
+        
+        # Return user-friendly error messages for validation errors
+        if isinstance(e, ZipValidationService.ValidationError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        
+        # Generic error message for other exceptions
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload ZIP file: {str(e)}"
+            detail="Error procesando el archivo ZIP. Verifica que sea válido e intenta nuevamente."
         )
 
     return UploadedProjectZipSummaryResponse(
@@ -363,7 +374,7 @@ async def finalize_project(
     if not project.sensors:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one sensor is required"
+            detail="At least one .cvs file is required"
         )
     
     # Update status to active
