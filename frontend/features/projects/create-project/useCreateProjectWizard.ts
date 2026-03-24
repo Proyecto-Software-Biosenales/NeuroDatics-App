@@ -59,6 +59,35 @@ const formatDate = (iso?: string): string => {
   return `${day}/${month}/${year}`;
 };
 
+const formatDateTime = (iso?: string): string => {
+  const d = iso ? new Date(iso) : new Date();
+  return d.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const hasRealUpdate = (updatedIso?: string, createdIso?: string): boolean => {
+  if (!updatedIso) return false;
+  if (!createdIso) return true;
+
+  const updatedMs = new Date(updatedIso).getTime();
+  const createdMs = new Date(createdIso).getTime();
+
+  if (!Number.isFinite(updatedMs) || !Number.isFinite(createdMs)) {
+    return updatedIso !== createdIso;
+  }
+
+  return Math.abs(updatedMs - createdMs) > 1000;
+};
+
+const isGoogleSessionExpiredError = (message: string): boolean => {
+  return /google drive|oauth|invalid_grant|refresh token|token has expired|no se pudo configurar google drive/i.test(message);
+};
+
 export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => void) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
@@ -291,8 +320,12 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
           try {
             await ProjectsApi.delete(createdProjectId);
           } catch {
-            // Ignore rollback errors to avoid noisy console output in UI flow.
+            console.error("[CreateProjectWizard] rollback delete failed", { createdProjectId });
           }
+          console.error("[CreateProjectWizard] ZIP upload failed", {
+            createdProjectId,
+            error,
+          });
           throw new Error(error instanceof Error ? error.message : "Error desconocido al subir el archivo ZIP.");
         }
       }
@@ -328,8 +361,11 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
         id: createdProjectId,
         name: created.name,
         description: created.description ?? formData.description,
-        status: (created.status?.toLowerCase() as Project["status"]) || formData.status,
+        status: "active",
         createdAt: formatDate(created.created_at),
+        updatedAt: hasRealUpdate(created.updated_at, created.created_at)
+          ? formatDateTime(created.updated_at)
+          : undefined,
         sensors: formData.sensors,
         participants: formData.participants.length,
       };
@@ -349,14 +385,22 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
         .replace(/^Error subiendo archivo:\s*/i, "");
+      const showSessionHint = isGoogleSessionExpiredError(errorMessage);
       const isValidationError = errorMessage.includes("CSV") || 
                                 errorMessage.includes("Images") || 
                                 errorMessage.includes("Videos") ||
                                 errorMessage.includes("ZIP");
+      console.error("[CreateProjectWizard] saveProject failed", {
+        step: saveProgressMessage,
+        error: e,
+        normalizedError: errorMessage,
+      });
       
       setSaveError(
-        isValidationError 
-          ? errorMessage
+        showSessionHint
+          ? `${errorMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
+          : isValidationError 
+            ? errorMessage
           : (saveProgressMessage
               ? `Error guardando proyecto. Paso fallido: ${saveProgressMessage}`
               : errorMessage)

@@ -13,6 +13,36 @@ const normalizeStatus = (status: unknown): "draft" | "active" | "archived" => {
   return "draft"
 }
 
+const formatDate = (iso?: string): string => {
+  if (!iso) return ""
+  return new Date(iso).toLocaleDateString("es-ES")
+}
+
+const formatDateTime = (iso?: string): string => {
+  if (!iso) return ""
+  return new Date(iso).toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+const hasRealUpdate = (updatedIso?: string, createdIso?: string): boolean => {
+  if (!updatedIso) return false
+  if (!createdIso) return true
+
+  const updatedMs = new Date(updatedIso).getTime()
+  const createdMs = new Date(createdIso).getTime()
+
+  if (!Number.isFinite(updatedMs) || !Number.isFinite(createdMs)) {
+    return updatedIso !== createdIso
+  }
+
+  return Math.abs(updatedMs - createdMs) > 1000
+}
+
 export const useProjectsStorage = () => {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,7 +64,10 @@ export const useProjectsStorage = () => {
           name: bp.name,
           description: bp.description,
           status: normalizeStatus(bp.status),
-          createdAt: bp.created_at ? new Date(bp.created_at).toLocaleDateString('es-ES') : "",
+          createdAt: formatDate(bp.created_at),
+          updatedAt: hasRealUpdate(bp.updated_at, bp.created_at)
+            ? formatDateTime(bp.updated_at)
+            : undefined,
           sensors: bp.sensors && bp.sensors.length > 0 
             ? bp.sensors.map((s: any) => s.sensor_type || s)
             : [],

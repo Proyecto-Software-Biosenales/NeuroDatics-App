@@ -21,7 +21,7 @@ async def update_participants(
     """Update project participants - simplified without PII"""
     # Verify project ownership
     project_repo = SQLProjectRepository(db)
-    project = await project_repo.get_by_id(project_id, UUID(current_user))
+    project = await project_repo.get_basic_by_id(project_id, UUID(current_user))
     
     if not project:
         raise HTTPException(

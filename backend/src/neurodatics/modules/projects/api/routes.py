@@ -5,6 +5,8 @@ from uuid import UUID
 import logging
 
 from ....api.deps import get_db, get_current_user
+from ....infra.storage.gdrive_client import gdrive_client
+from ...integrations.google_drive.infrastructure.configure_client import configure_gdrive_client_with_oauth
 from ..infrastructure.repository_impl import SQLProjectRepository
 from ..application.use_cases.create_project import CreateProjectUseCase
 from ..application.use_cases.list_projects import ListProjectsUseCase
@@ -159,7 +161,7 @@ async def update_project(
 ):
     """Update project"""
     repository = SQLProjectRepository(db)
-    project = await repository.get_by_id(project_id, UUID(current_user))
+    project = await repository.get_basic_by_id(project_id, UUID(current_user))
     
     if not project:
         raise HTTPException(
@@ -174,14 +176,41 @@ async def update_project(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Ya existe un proyecto con ese nombre"
             )
+
+        # Keep Google Drive root folder name aligned with project name when possible.
+        if project.drive_root_folder_id:
+            configured = await configure_gdrive_client_with_oauth(db, silent=True)
+            if not configured:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="No se pudo configurar Google Drive para sincronizar el nombre de la carpeta"
+                )
+
+            renamed = gdrive_client.rename_file(project.drive_root_folder_id, request.name)
+            if not renamed or not renamed.get("name"):
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="No se pudo renombrar la carpeta del proyecto en Google Drive"
+                )
+
+            project.drive_root_folder_name = renamed["name"]
+
         project.name = request.name
     if request.description is not None:
         project.description = request.description
     if request.status is not None:
         project.status = request.status
     
-    updated_project = await repository.update(project)
-    
+    await repository.update(project)
+
+    # Re-load only lightweight relationships needed by ProjectResponse.
+    updated_project = await repository.get_summary_by_id(project_id, UUID(current_user))
+    if not updated_project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found after update"
+        )
+
     return ProjectResponse(
         id=updated_project.id,
         name=updated_project.name,
@@ -327,7 +356,7 @@ async def update_sensors(
 ):
     """Update project sensors"""
     repository = SQLProjectRepository(db)
-    project = await repository.get_by_id(project_id, UUID(current_user))
+    project = await repository.get_basic_by_id(project_id, UUID(current_user))
     
     if not project:
         raise HTTPException(
@@ -374,7 +403,7 @@ async def finalize_project(
     if not project.sensors:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one .cvs file is required"
+            detail="At least one csv file is required"
         )
     
     # Update status to active

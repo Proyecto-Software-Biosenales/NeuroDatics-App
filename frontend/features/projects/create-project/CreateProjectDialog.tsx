@@ -66,11 +66,25 @@ export const CreateProjectDialog = ({
   const isDriveProcessing = zipDriveProcessingSeconds !== null
 
   const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      console.warn("[CreateProjectDialog] closed", {
+        currentStep,
+        isSaving,
+        saveError,
+        saveProgressMessage,
+      })
+    }
     setIsOpen(open)
     if (!open) reset()
   }
 
   const handleCancel = () => {
+    console.warn("[CreateProjectDialog] cancel", {
+      currentStep,
+      isSaving,
+      saveError,
+      saveProgressMessage,
+    })
     reset()
     setIsOpen(false)
   }
