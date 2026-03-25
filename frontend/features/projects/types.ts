@@ -1,5 +1,5 @@
 export type SensorType = "EEG" | "GSR" | "EyeTracker"
-export type ProjectStatus = "active" | "archived"
+export type ProjectStatus = "draft" | "active" | "archived"
 
 export interface Project {
   id: string

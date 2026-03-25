@@ -6,6 +6,7 @@ from enum import Enum
 
 
 class ProjectStatus(str, Enum):
+    DRAFT = "draft"
     ACTIVE = "active"
     ARCHIVED = "archived"
 
@@ -13,6 +14,7 @@ class ProjectStatus(str, Enum):
 class CreateProjectRequest(BaseModel):
     name: str
     description: Optional[str] = None
+    status: Optional[ProjectStatus] = ProjectStatus.DRAFT
 
     @field_validator("name")
     @classmethod
@@ -47,8 +49,11 @@ class ProjectFileResponse(BaseModel):
     id: UUID
     kind: str
     filename: str
+    external_id: Optional[str] = None
     mime_type: Optional[str]
     size_bytes: Optional[int]
+    drive_web_view_link: Optional[str] = None
+    drive_download_link: Optional[str] = None
     created_at: datetime
     
     class Config:

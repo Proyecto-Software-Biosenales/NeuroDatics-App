@@ -1,9 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from sqlalchemy import select
+from typing import List, Optional, Tuple
 from uuid import UUID
 from datetime import datetime, timezone
+from collections import OrderedDict
+import asyncio
+import hashlib
 import logging
+import time
+
+import anyio
 
 from ....api.deps import get_db, get_current_user
 from ....infra.storage.gdrive_client import gdrive_client
@@ -14,7 +22,7 @@ from ..application.use_cases.list_projects import ListProjectsUseCase
 from ..application.use_cases.delete_project import DeleteProjectUseCase
 from ..application.use_cases.upload_experiment_zip import UploadExperimentZipUseCase, UploadCanceledError
 from ..application.services.drive_upload_progress_registry import drive_upload_progress_registry
-from ..domain.entities import ProjectStatus
+from ..domain.entities import Project, ProjectFile, ProjectStatus
 from .schemas import (
     CreateProjectRequest, UpdateProjectRequest, UpdateSensorsRequest,
     ProjectResponse, ProjectDetailResponse, ProjectFileResponse, UploadedProjectZipSummaryResponse,
@@ -23,6 +31,184 @@ from .schemas import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+_IMAGE_CACHE_TTL_SECONDS = 300
+_IMAGE_CACHE_MAX_ITEMS = 256
+_IMAGE_CACHE_MAX_BYTES = 64 * 1024 * 1024
+_image_cache_lock = asyncio.Lock()
+_image_cache_total_bytes = 0
+_image_cache_store: "OrderedDict[str, Tuple[float, bytes, str, str]]" = OrderedDict()
+_image_cache_download_locks: dict[str, asyncio.Lock] = {}
+
+
+def _build_image_etag(cache_key: str) -> str:
+    return f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+
+
+async def _get_cached_image(cache_key: str) -> Optional[Tuple[bytes, str, str]]:
+    global _image_cache_total_bytes
+
+    now = time.time()
+    async with _image_cache_lock:
+        cached = _image_cache_store.get(cache_key)
+        if not cached:
+            return None
+
+        expires_at, content, mime_type, etag = cached
+        if expires_at <= now:
+            _image_cache_total_bytes -= len(content)
+            _image_cache_store.pop(cache_key, None)
+            return None
+
+        _image_cache_store.move_to_end(cache_key)
+        return content, mime_type, etag
+
+
+async def _set_cached_image(cache_key: str, content: bytes, mime_type: str, etag: str) -> None:
+    global _image_cache_total_bytes
+
+    if len(content) > (_IMAGE_CACHE_MAX_BYTES // 2):
+        return
+
+    expires_at = time.time() + _IMAGE_CACHE_TTL_SECONDS
+
+    async with _image_cache_lock:
+        previous = _image_cache_store.pop(cache_key, None)
+        if previous:
+            _image_cache_total_bytes -= len(previous[1])
+
+        _image_cache_store[cache_key] = (expires_at, content, mime_type, etag)
+        _image_cache_total_bytes += len(content)
+
+        while _image_cache_store and (
+            len(_image_cache_store) > _IMAGE_CACHE_MAX_ITEMS
+            or _image_cache_total_bytes > _IMAGE_CACHE_MAX_BYTES
+        ):
+            _, evicted = _image_cache_store.popitem(last=False)
+            _image_cache_total_bytes -= len(evicted[1])
+
+
+async def _get_image_download_lock(cache_key: str) -> asyncio.Lock:
+    async with _image_cache_lock:
+        lock = _image_cache_download_locks.get(cache_key)
+        if lock is None:
+            lock = asyncio.Lock()
+            _image_cache_download_locks[cache_key] = lock
+        return lock
+
+
+async def _cleanup_image_download_lock(cache_key: str, lock: asyncio.Lock) -> None:
+    async with _image_cache_lock:
+        existing = _image_cache_download_locks.get(cache_key)
+        if existing is lock and not lock.locked():
+            _image_cache_download_locks.pop(cache_key, None)
+
+
+@router.get("/{project_id}/files/{file_id}/image")
+async def get_project_file_image(
+    project_id: UUID,
+    file_id: UUID,
+    request: Request,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Serve an image file from Google Drive through an authenticated backend proxy."""
+    stmt = (
+        select(ProjectFile)
+        .join(Project, ProjectFile.project_id == Project.id)
+        .where(
+            Project.id == project_id,
+            Project.owner_id == UUID(current_user),
+            ProjectFile.id == file_id,
+            ProjectFile.deleted_at.is_(None),
+        )
+    )
+    result = await db.execute(stmt)
+    project_file = result.scalar_one_or_none()
+
+    if not project_file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+
+    if not project_file.mime_type or not project_file.mime_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Requested file is not an image"
+        )
+
+    if not project_file.external_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File storage reference not found"
+        )
+
+    updated_at_part = int(project_file.updated_at.timestamp()) if project_file.updated_at else 0
+    cache_key = f"{project_file.id}:{project_file.external_id}:{updated_at_part}"
+    etag = _build_image_etag(cache_key)
+
+    response_headers = {
+        "Cache-Control": "private, max-age=300, stale-while-revalidate=60",
+        "ETag": etag,
+    }
+
+    cached_image = await _get_cached_image(cache_key)
+    if cached_image:
+        cached_content, cached_mime_type, cached_etag = cached_image
+        if request.headers.get("if-none-match") == cached_etag:
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+
+        return Response(
+            content=cached_content,
+            media_type=cached_mime_type,
+            headers={**response_headers, "X-Image-Cache": "HIT"},
+        )
+
+    download_lock = await _get_image_download_lock(cache_key)
+    try:
+        async with download_lock:
+            cached_after_lock = await _get_cached_image(cache_key)
+            if cached_after_lock:
+                cached_content, cached_mime_type, cached_etag = cached_after_lock
+                if request.headers.get("if-none-match") == cached_etag:
+                    return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+
+                return Response(
+                    content=cached_content,
+                    media_type=cached_mime_type,
+                    headers={**response_headers, "X-Image-Cache": "HIT"},
+                )
+
+            configured = await configure_gdrive_client_with_oauth(db, silent=True)
+            if not configured:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="No se pudo configurar Google Drive para servir la imagen"
+                )
+
+            try:
+                # Drive client is synchronous; offload to worker thread to avoid blocking event loop.
+                content = await anyio.to_thread.run_sync(gdrive_client.download_file_content, project_file.external_id)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="No se pudo descargar la imagen desde Google Drive"
+                ) from exc
+
+            await _set_cached_image(cache_key, content, project_file.mime_type, etag)
+    finally:
+        await _cleanup_image_download_lock(cache_key, download_lock)
+
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+
+    return Response(
+        content=content,
+        media_type=project_file.mime_type,
+        headers={**response_headers, "X-Image-Cache": "MISS"},
+    )
 
 
 @router.post("/", response_model=ProjectResponse)
@@ -45,7 +231,8 @@ async def create_project(
     project = await use_case.execute(
         owner_id=UUID(current_user),
         name=request.name,
-        description=request.description
+        description=request.description,
+        status=request.status or ProjectStatus.DRAFT,
     )
     
     return ProjectResponse(
@@ -111,9 +298,12 @@ async def get_project(
                 id=f.id,
                 kind=f.kind,
                 filename=f.filename,
+                external_id=f.external_id,
                 mime_type=f.mime_type,
                 size_bytes=f.size_bytes,
-                created_at=f.created_at
+                created_at=f.created_at,
+                drive_web_view_link=f.drive_web_view_link,
+                drive_download_link=f.drive_download_link,
             )
             for f in project.files
         ],

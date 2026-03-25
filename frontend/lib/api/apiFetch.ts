@@ -4,6 +4,30 @@ const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 const API_REQUEST_TIMEOUT_MS = 5 * 60_000;
 const AUTH_REFRESH_TIMEOUT_MS = 15_000;
 const ZIP_UPLOAD_TIMEOUT_MS = 30 * 60_000;
+const BLOB_CACHE_TTL_MS = 5 * 60_000;
+const BLOB_CACHE_MAX_ITEMS = 128;
+
+type BlobCacheEntry = {
+  blob: Blob;
+  expiresAt: number;
+};
+
+const blobCache = new Map<string, BlobCacheEntry>();
+const inflightBlobRequests = new Map<string, Promise<Blob>>();
+
+function pruneBlobCache(now: number) {
+  for (const [key, entry] of blobCache.entries()) {
+    if (entry.expiresAt <= now) {
+      blobCache.delete(key);
+    }
+  }
+
+  while (blobCache.size > BLOB_CACHE_MAX_ITEMS) {
+    const oldestKey = blobCache.keys().next().value;
+    if (!oldestKey) break;
+    blobCache.delete(oldestKey);
+  }
+}
 
 async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
@@ -369,4 +393,81 @@ export async function apiUploadFormWithProgress<T>(
   }
 
   return res.json() as Promise<T>;
+}
+
+export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Promise<Blob> {
+  const { timeoutMs = API_REQUEST_TIMEOUT_MS, ...requestInit } = init;
+
+  if (isAccessTokenExpired()) {
+    const refreshed = await refreshAccessToken();
+    if (!refreshed) {
+      clearStoredAuthSession();
+      window.location.href = "/login";
+      throw new Error("Sesión expirada. Por favor, inicia sesión nuevamente.");
+    }
+  }
+
+  let token = getAccessToken();
+  const cacheKey = `${token ?? "anon"}:${path}`;
+  const now = Date.now();
+  pruneBlobCache(now);
+
+  const cached = blobCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.blob;
+  }
+
+  const inflight = inflightBlobRequests.get(cacheKey);
+  if (inflight) {
+    return inflight;
+  }
+
+  const headers: Record<string, string> = { ...(requestInit.headers as any) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const cacheMode = requestInit.cache ?? "default";
+
+  const blobPromise = (async (): Promise<Blob> => {
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(`${BASE}${path}`, { ...requestInit, headers, cache: cacheMode }, timeoutMs);
+    } catch (error) {
+      const reason = error instanceof DOMException && error.name === "AbortError"
+        ? `Timeout de la peticion (${Math.round(timeoutMs / 1000)}s)`
+        : error instanceof Error
+          ? error.message
+          : "Network error";
+      throw new Error(`No se pudo conectar con el backend (${BASE}). ${reason}`);
+    }
+
+    if (res.status === 401) {
+      const refreshed = await refreshAccessToken();
+      if (!refreshed) {
+        clearStoredAuthSession();
+        window.location.href = "/login";
+        throw new Error("Sesión expirada. Por favor, inicia sesión nuevamente.");
+      }
+
+      token = getAccessToken();
+      const retryHeaders: Record<string, string> = { ...(requestInit.headers as any) };
+      if (token) retryHeaders.Authorization = `Bearer ${token}`;
+      res = await fetchWithTimeout(`${BASE}${path}`, { ...requestInit, headers: retryHeaders, cache: cacheMode }, timeoutMs);
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`API ${res.status}: ${text || res.statusText}`);
+    }
+
+    const blob = await res.blob();
+    blobCache.set(cacheKey, { blob, expiresAt: Date.now() + BLOB_CACHE_TTL_MS });
+    pruneBlobCache(Date.now());
+    return blob;
+  })().finally(() => {
+    inflightBlobRequests.delete(cacheKey);
+  });
+
+  inflightBlobRequests.set(cacheKey, blobPromise);
+
+  return blobPromise;
 }

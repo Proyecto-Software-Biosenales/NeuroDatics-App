@@ -57,6 +57,7 @@ export const CreateProjectDialog = ({
     isZipUploadInProgress,
     cancelZipUpload,
     setExperimentZip,
+    discardDraftProject,
   } = useCreateProjectWizard(onProjectCreated)
 
   const formatBytesToMB = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
@@ -77,18 +78,20 @@ export const CreateProjectDialog = ({
         saveError,
         saveProgressMessage,
       })
+      void discardDraftProject()
     }
     setIsOpen(open)
     if (!open) reset()
   }
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     console.warn("[CreateProjectDialog] cancel", {
       currentStep,
       isSaving,
       saveError,
       saveProgressMessage,
     })
+    await discardDraftProject()
     reset()
     setIsOpen(false)
   }
@@ -322,7 +325,7 @@ export const CreateProjectDialog = ({
             <Button
               type="button"
               variant="outline"
-              onClick={handleCancel}
+                onClick={() => void handleCancel()}
               disabled={isSaving && !saveError}
               className="p-4"
             >
@@ -332,7 +335,7 @@ export const CreateProjectDialog = ({
             {currentStep < 4 ? (
               <Button
                 type="button"
-                onClick={nextStep}
+                onClick={() => void nextStep()}
                 disabled={!canGoNext() || isSaving || !!saveError}
                 className="gap-2 p-4"
               >

@@ -1,11 +1,11 @@
-import { apiFetch, apiUploadFormWithProgress, type UploadProgress } from "@/lib/api/apiFetch";
+import { apiFetch, apiFetchBlob, apiUploadFormWithProgress, type UploadProgress } from "@/lib/api/apiFetch";
 import type { UploadedProjectZip } from "../types";
 
 export type ApiProject = {
   id: string;
   name: string;
   description?: string | null;
-  status?: "active" | "archived" | string;
+  status?: "draft" | "active" | "archived" | string;
   created_at?: string;
   updated_at?: string;
   sensors?: Array<{ id: string; sensor_type: string }>;
@@ -41,6 +41,10 @@ export type ApiProjectFile = {
   id: string;
   kind: string;
   filename: string;
+  external_id?: string | null;
+  source_entry_path?: string | null;
+  drive_web_view_link?: string | null;
+  drive_download_link?: string | null;
   mime_type?: string | null;
   size_bytes?: number | null;
   created_at?: string;
@@ -72,7 +76,7 @@ export type ApiDriveUploadProgress = {
 export const ProjectsApi = {
   list: () => apiFetch<ApiProject[]>("/api/projects/"),
 
-  create: (payload: { name: string; description?: string }) =>
+  create: (payload: { name: string; description?: string; status?: "draft" | "active" | "archived" }) =>
     apiFetch<ApiProject>("/api/projects/", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -162,4 +166,7 @@ export const ProjectsApi = {
 
   finalize: (projectId: string) =>
     apiFetch<void>(`/api/projects/${projectId}/finalize`, { method: "POST" }),
+
+  fetchScenarioImage: (projectId: string, fileId: string) =>
+    apiFetchBlob(`/api/projects/${projectId}/files/${fileId}/image`),
 };

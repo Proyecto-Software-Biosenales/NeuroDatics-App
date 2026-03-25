@@ -6,10 +6,10 @@ import { ProjectsApi } from "@/features/projects/api/projectsApi"
 
 const STORAGE_KEY = "neurodatics_projects"
 
-const normalizeStatus = (status: unknown): "active" | "archived" => {
+const normalizeStatus = (status: unknown): "draft" | "active" | "archived" => {
   if (typeof status !== "string") return "active"
   const normalized = status.toLowerCase()
-  if (normalized === "active" || normalized === "archived") return normalized
+  if (normalized === "draft" || normalized === "active" || normalized === "archived") return normalized
   return "active"
 }
 

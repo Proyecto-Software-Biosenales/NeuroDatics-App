@@ -235,6 +235,13 @@ class GoogleDriveClient:
             logger.warning("Failed renaming Drive object %s: %s", file_id, exc)
             return None
 
+    def download_file_content(self, file_id: str) -> bytes:
+        """Download file content bytes from Google Drive by file id."""
+        service = self._require_service()
+
+        request = service.files().get_media(fileId=file_id)
+        return request.execute(num_retries=max(0, int(settings.gdrive_request_retries)))
+
 
 # Global instance
 gdrive_client = GoogleDriveClient()
