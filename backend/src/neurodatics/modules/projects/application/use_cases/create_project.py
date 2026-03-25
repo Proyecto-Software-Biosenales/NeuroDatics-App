@@ -16,7 +16,7 @@ class CreateProjectUseCase:
             owner_id=owner_id,
             name=name,
             description=description,
-            status=ProjectStatus.DRAFT
+            status=ProjectStatus.ACTIVE
         )
         
         return await self.repository.create(project)

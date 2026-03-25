@@ -7,7 +7,6 @@ from ....infra.db.base import BaseModel
 
 
 class ProjectStatus(str, enum.Enum):
-    DRAFT = "draft"
     ACTIVE = "active"
     ARCHIVED = "archived"
 
@@ -20,7 +19,7 @@ class Project(BaseModel):
     owner_id = Column(UUID(as_uuid=True), nullable=False)  # FK to auth.users(id)
     name = Column(String(255), nullable=False)
     description = Column(Text)
-    status = Column(Enum(ProjectStatus), default=ProjectStatus.DRAFT, nullable=False)
+    status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE, nullable=False)
     ingestion_status = Column(String(20), nullable=False, default="PENDING")
     ingestion_error = Column(Text, nullable=True)
     last_ingested_at = Column(DateTime, nullable=True)
