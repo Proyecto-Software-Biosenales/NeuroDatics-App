@@ -146,7 +146,7 @@ export const ViewProjectDialog = ({
               <div className="rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4">
                 <div className="grid grid-cols-1 gap-y-3 sm:grid-cols-[130px_1fr] sm:gap-x-4">
                   <span className="text-sm font-semibold text-gray-600">Nombre</span>
-                  <span className="text-sm font-semibold text-gray-900">{projectDetail?.name || "-"}</span>
+                  <span className="text-base font-semibold text-gray-900">{projectDetail?.name || "-"}</span>
 
                   <span className="text-sm font-semibold text-gray-600">Descripcion</span>
                   <span className="text-sm font-medium leading-6 text-gray-800">
