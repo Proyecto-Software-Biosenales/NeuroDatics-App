@@ -40,7 +40,7 @@ En el estado actual del repositorio, el caso mas consolidado es la gestion de pr
 - Project: agregado principal del dominio.
 - ProjectFile: archivo fisico/logico asociado al proyecto (ZIP original, imagen escenario, video, CSV, etc).
 - ProjectSensor: sensores asociados al estudio (EEG, GSR, EyeTracker).
-- Participant: participante de experimento (codigo, edad, sexo).
+- Participant: participante de experimento (documento, edad, sexo).
 - Scenary: estimulo (image/video) asociado a un archivo.
 - AOI: area de interes dentro de un escenario.
 - Ingestion: pipeline de validacion + extraccion + subida + persistencia al cargar ZIP.
