@@ -228,7 +228,7 @@ export const CreateProjectDialog = ({
                   {/* Metrics row */}
                   <div className="grid grid-cols-3 gap-4 text-sm bg-white p-3 rounded-lg border border-gray-200">
                     <div className="flex items-start gap-2">
-                      <div className="h-6 w-6 rounded-full border border-gray-300 flex items-center justify-center mt-0.5">
+                      <div className="h-6 w-6 rounded-lg border border-gray-300 flex items-center justify-center mt-0.5">
                         <Gauge className="h-3.5 w-3.5 text-gray-600" />
                       </div>
                       <div>
@@ -239,7 +239,7 @@ export const CreateProjectDialog = ({
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <div className="h-6 w-6 rounded-full border border-gray-300 flex items-center justify-center mt-0.5">
+                      <div className="h-6 w-6 rounded-lg border border-gray-300 flex items-center justify-center mt-0.5">
                         <Clock3 className="h-3.5 w-3.5 text-gray-600" />
                       </div>
                       <div>
@@ -250,7 +250,7 @@ export const CreateProjectDialog = ({
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <div className="h-6 w-6 rounded-full border border-gray-300 flex items-center justify-center mt-0.5">
+                      <div className="h-6 w-6 rounded-lg border border-gray-300 flex items-center justify-center mt-0.5">
                         <Clock3 className="h-3.5 w-3.5 text-gray-600" />
                       </div>
                       <div>

@@ -4,6 +4,7 @@ import { Card } from "../../../components/ui/Card"
 import { SensorBadge } from "../../../features/projects/components/SensorBadge"
 import { DeleteProjectDialog } from "../../../features/projects/components/DeleteProjectDialog"
 import { EditProjectDialog } from "../../../features/projects/components/EditProjectDialog"
+import { ViewProjectDialog } from "../../../features/projects/components/ViewProjectDialog"
 import { ProjectsApi } from "../api/projectsApi"
 import type { DeleteProjectResult } from "@/features/projects/api/projectsApi"
 import type { Project, ProjectStatus } from "@/features/projects/types"
@@ -36,6 +37,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editOpenId, setEditOpenId] = useState<string | null>(null)
   const [deleteOpenId, setDeleteOpenId] = useState<string | null>(null)
+  const [viewOpenId, setViewOpenId] = useState<string | null>(null)
 
   const handleDeleteProject = async (projectId: string) => {
     setDeletingId(projectId)
@@ -101,6 +103,12 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
             onProjectUpdated={onEdit}
             isOpen={editOpenId === project.id}
             onOpenChange={(open) => setEditOpenId(open ? project.id : null)}
+          />
+          <ViewProjectDialog
+            projectId={project.id}
+            projectName={project.name}
+            isOpen={viewOpenId === project.id}
+            onOpenChange={(open) => setViewOpenId(open ? project.id : null)}
           />
 
           {/* Menu dropdown */}
@@ -207,6 +215,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
               <button
                 type="button"
                 className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                onClick={() => setViewOpenId(project.id)}
               >
                 Ver proyecto
               </button>
