@@ -1,4 +1,5 @@
 import csv
+import asyncio
 import hashlib
 import logging
 import uuid
@@ -17,8 +18,13 @@ from ...domain.entities import ProjectFile
 from ...domain.repository import ProjectRepository
 from ..services.zip_extraction_service import ZipExtractionService
 from ..services.zip_validation_service import ZipManifestEntry, ZipValidationService
+from ..services.drive_upload_progress_registry import drive_upload_progress_registry
 
 logger = logging.getLogger(__name__)
+
+
+class UploadCanceledError(Exception):
+    pass
 
 
 class UploadExperimentZipUseCase:
@@ -57,6 +63,15 @@ class UploadExperimentZipUseCase:
                 file_content=file_content,
             )
 
+            total_drive_bytes = sum(max(0, int(entry.size_bytes or 0)) for entry in manifest_entries)
+            zip_saved = bool(settings.ingestion_save_original_zip)
+            if zip_saved:
+                total_drive_bytes += len(file_content)
+
+            drive_uploaded_bytes = 0
+            drive_upload_progress_registry.start(project_id, total_drive_bytes)
+            self._raise_if_canceled(project_id)
+
             # Structure validation passed, now update project status and proceed with ingestion
             await self.repository.update_project_ingestion(
                 project_id=project_id,
@@ -67,10 +82,11 @@ class UploadExperimentZipUseCase:
                 },
             )
             await self.repository.commit()
+            self._raise_if_canceled(project_id)
 
             # Always ingest into a fresh root folder when uploading a new ZIP.
             # This allows us to safely replace previous Drive content for edits.
-            root_folder_info = self._create_new_drive_root_folder(project)
+            root_folder_info = await self._create_new_drive_root_folder(project)
             root_folder_id = root_folder_info.get("drive_file_id")
             root_folder_name = root_folder_info.get("name") or project.name
             root_folder_url = root_folder_info.get("drive_web_view_link")
@@ -99,16 +115,19 @@ class UploadExperimentZipUseCase:
 
             source_zip_file_id: Optional[UUID] = None
             zip_file_response: Optional[Dict[str, Any]] = None
-            zip_saved = bool(settings.ingestion_save_original_zip)
 
             if zip_saved:
-                zip_upload = gdrive_client.upload_file(
+                self._raise_if_canceled(project_id)
+                zip_upload = await asyncio.to_thread(
+                    gdrive_client.upload_file,
                     filename=filename,
                     mime_type=mime_type,
                     parent_id=root_folder_id,
                     file_content=file_content,
                 )
                 uploaded_drive_ids.append(zip_upload["drive_file_id"])
+                drive_uploaded_bytes += len(file_content)
+                drive_upload_progress_registry.mark_uploaded_bytes(project_id, drive_uploaded_bytes)
 
                 source_zip_file_id = uuid.uuid4()
                 checksum = hashlib.sha256(file_content).hexdigest()
@@ -154,7 +173,8 @@ class UploadExperimentZipUseCase:
 
             with ZipExtractionService.extract_to_temp(file_content, manifest_entries) as extracted:
                 for folder_path in extracted.folders:
-                    self._ensure_folder_path(
+                    self._raise_if_canceled(project_id)
+                    await self._ensure_folder_path(
                         folder_path=folder_path,
                         root_folder_id=root_folder_id,
                         folder_cache=folder_cache,
@@ -163,6 +183,7 @@ class UploadExperimentZipUseCase:
                     )
 
                 for entry in manifest_entries:
+                    self._raise_if_canceled(project_id)
                     local_path = extracted.files_by_entry_path.get(entry.source_entry_path)
                     if not local_path:
                         continue
@@ -171,7 +192,7 @@ class UploadExperimentZipUseCase:
                     if parent_path == ".":
                         parent_path = ""
 
-                    parent_folder_id = self._ensure_folder_path(
+                    parent_folder_id = await self._ensure_folder_path(
                         folder_path=parent_path,
                         root_folder_id=root_folder_id,
                         folder_cache=folder_cache,
@@ -179,13 +200,16 @@ class UploadExperimentZipUseCase:
                         counters=counts,
                     )
 
-                    upload_info = gdrive_client.upload_file(
+                    upload_info = await asyncio.to_thread(
+                        gdrive_client.upload_file,
                         filename=entry.filename,
                         mime_type=entry.mime_type,
                         parent_id=parent_folder_id,
                         local_path=local_path,
                     )
                     uploaded_drive_ids.append(upload_info["drive_file_id"])
+                    drive_uploaded_bytes += max(0, int(entry.size_bytes or 0))
+                    drive_upload_progress_registry.mark_uploaded_bytes(project_id, drive_uploaded_bytes)
 
                     if entry.kind == "scenario_image":
                         counts["images"] += 1
@@ -249,6 +273,7 @@ class UploadExperimentZipUseCase:
                     if maybe_scenary:
                         scenaries_to_insert.append(maybe_scenary)
 
+            self._raise_if_canceled(project_id)
             await self.repository.soft_delete_active_files(project_id)
             # DB has a unique constraint for one experiment ZIP per project.
             # Remove any historical experiment_zip rows before inserting the new one.
@@ -260,12 +285,14 @@ class UploadExperimentZipUseCase:
             # If this upload replaces a previous ingestion, remove old Drive root first.
             # If deletion fails, abort to avoid reporting success with stale remote content.
             if previous_root_folder_id and previous_root_folder_id != root_folder_id:
-                deleted = gdrive_client.delete_file(previous_root_folder_id)
+                self._raise_if_canceled(project_id)
+                deleted = await asyncio.to_thread(gdrive_client.delete_file, previous_root_folder_id)
                 if not deleted:
                     raise RuntimeError("Failed to delete previous Drive root folder")
 
             counts["scenaries_created"] = len(scenaries_to_insert)
 
+            self._raise_if_canceled(project_id)
             await self.repository.update_project_ingestion(
                 project_id=project_id,
                 updates={
@@ -279,6 +306,7 @@ class UploadExperimentZipUseCase:
                 },
             )
             await self.repository.commit()
+            drive_upload_progress_registry.complete(project_id)
 
             return {
                 "project_id": project_id,
@@ -301,17 +329,32 @@ class UploadExperimentZipUseCase:
             }
         except Exception as exc:
             logger.exception("Project ingestion failed for project %s", project_id)
+            drive_upload_progress_registry.fail(project_id, str(exc))
             await self.repository.rollback()
 
             for drive_id in reversed(uploaded_drive_ids):
                 try:
-                    gdrive_client.delete_file(drive_id)
+                    await asyncio.to_thread(gdrive_client.delete_file, drive_id)
                 except Exception:
                     logger.warning("Could not delete drive object during compensation: %s", drive_id)
 
             # If the error was a ZIP structure validation error, it was caught before any
             # project updates or Drive uploads, so we just re-raise it as-is.
             if isinstance(exc, ZipValidationService.ValidationError):
+                raise
+
+            if isinstance(exc, UploadCanceledError):
+                failure_updates = {
+                    "ingestion_status": "FAILED",
+                    "ingestion_error": "Upload canceled by user",
+                    "storage_provider": "gdrive",
+                }
+                try:
+                    await self.repository.update_project_ingestion(project_id=project_id, updates=failure_updates)
+                    await self.repository.commit()
+                except Exception:
+                    await self.repository.rollback()
+                    logger.exception("Could not update project ingestion status after cancellation")
                 raise
 
             # For other errors that occur after project updates (e.g., during Drive operations),
@@ -330,11 +373,15 @@ class UploadExperimentZipUseCase:
 
             raise
 
-    def _create_new_drive_root_folder(self, project: Any) -> Dict[str, Any]:
-        folder_name = f"{project.name}-{str(project.id)[:8]}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-        return gdrive_client.create_folder(name=folder_name, parent_id=None)
+    def _raise_if_canceled(self, project_id: UUID) -> None:
+        if drive_upload_progress_registry.is_cancel_requested(project_id):
+            raise UploadCanceledError("Upload canceled by user")
 
-    def _ensure_folder_path(
+    async def _create_new_drive_root_folder(self, project: Any) -> Dict[str, Any]:
+        folder_name = f"{project.name}-{str(project.id)[:8]}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+        return await asyncio.to_thread(gdrive_client.create_folder, name=folder_name, parent_id=None)
+
+    async def _ensure_folder_path(
         self,
         folder_path: str,
         root_folder_id: Optional[str],
@@ -356,11 +403,15 @@ class UploadExperimentZipUseCase:
                 current_parent = folder_cache[current_path]
                 continue
 
-            existing = gdrive_client.find_child_folder_by_name(name=part, parent_id=current_parent) if current_parent else None
+            existing = (
+                await asyncio.to_thread(gdrive_client.find_child_folder_by_name, name=part, parent_id=current_parent)
+                if current_parent
+                else None
+            )
             if existing:
                 folder_id = existing["drive_file_id"]
             else:
-                created = gdrive_client.create_folder(name=part, parent_id=current_parent)
+                created = await asyncio.to_thread(gdrive_client.create_folder, name=part, parent_id=current_parent)
                 folder_id = created["drive_file_id"]
                 uploaded_drive_ids.append(folder_id)
                 counters["folders_created"] += 1

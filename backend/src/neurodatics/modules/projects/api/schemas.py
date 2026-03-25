@@ -96,6 +96,17 @@ class UploadedProjectZipSummaryResponse(BaseModel):
     manifest: Dict[str, int]
 
 
+class DriveUploadProgressResponse(BaseModel):
+    phase: str
+    uploaded_bytes: int
+    total_bytes: int
+    percent: int
+    speed_mbps: Optional[float] = None
+    eta_seconds: Optional[int] = None
+    elapsed_seconds: int = 0
+    error: Optional[str] = None
+
+
 class ProjectSensorResponse(BaseModel):
     id: UUID
     sensor_type: str

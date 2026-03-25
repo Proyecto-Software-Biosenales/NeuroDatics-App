@@ -58,6 +58,17 @@ export type DeleteProjectResult = {
   drive_folder_deleted: boolean;
 };
 
+export type ApiDriveUploadProgress = {
+  phase: "idle" | "uploading" | "completed" | "failed" | "canceling" | string;
+  uploaded_bytes: number;
+  total_bytes: number;
+  percent: number;
+  speed_mbps?: number | null;
+  eta_seconds?: number | null;
+  elapsed_seconds?: number;
+  error?: string | null;
+};
+
 export const ProjectsApi = {
   list: () => apiFetch<ApiProject[]>("/api/projects/"),
 
@@ -82,12 +93,14 @@ export const ProjectsApi = {
   delete: (projectId: string) =>
     apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" }),
 
-  uploadZip: (projectId: string, file: File) => {
+  uploadZip: (projectId: string, file: File, signal?: AbortSignal) => {
     const form = new FormData();
     form.append("file", file);
     return apiUploadFormWithProgress<UploadedProjectZip>(
       `/api/projects/${projectId}/files/experiment-zip`,
       form,
+      undefined,
+      signal,
     );
   },
 
@@ -95,6 +108,7 @@ export const ProjectsApi = {
     projectId: string,
     file: File,
     onProgress?: (progress: UploadProgress) => void,
+    signal?: AbortSignal,
   ) => {
     const form = new FormData();
     form.append("file", file);
@@ -102,8 +116,17 @@ export const ProjectsApi = {
       `/api/projects/${projectId}/files/experiment-zip`,
       form,
       onProgress,
+      signal,
     );
   },
+
+  getZipUploadProgress: (projectId: string) =>
+    apiFetch<ApiDriveUploadProgress>(`/api/projects/${projectId}/files/experiment-zip/progress`),
+
+  cancelZipUpload: (projectId: string) =>
+    apiFetch<{ message: string }>(`/api/projects/${projectId}/files/experiment-zip/cancel`, {
+      method: "POST",
+    }),
 
   deleteZip: (projectId: string) =>
     apiFetch<{ message: string }>(`/api/projects/${projectId}/files/experiment-zip`, {

@@ -12,12 +12,13 @@ from ..infrastructure.repository_impl import SQLProjectRepository
 from ..application.use_cases.create_project import CreateProjectUseCase
 from ..application.use_cases.list_projects import ListProjectsUseCase
 from ..application.use_cases.delete_project import DeleteProjectUseCase
-from ..application.use_cases.upload_experiment_zip import UploadExperimentZipUseCase
+from ..application.use_cases.upload_experiment_zip import UploadExperimentZipUseCase, UploadCanceledError
+from ..application.services.drive_upload_progress_registry import drive_upload_progress_registry
 from ..domain.entities import ProjectStatus
 from .schemas import (
     CreateProjectRequest, UpdateProjectRequest, UpdateSensorsRequest,
     ProjectResponse, ProjectDetailResponse, ProjectFileResponse, UploadedProjectZipSummaryResponse,
-    DeleteProjectResponse,
+    DeleteProjectResponse, DriveUploadProgressResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -290,6 +291,11 @@ async def upload_experiment_zip(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found or access denied"
         )
+    except UploadCanceledError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Upload canceled by user"
+        )
     except Exception as e:
         from ..application.services.zip_validation_service import ZipValidationService
         
@@ -320,6 +326,91 @@ async def upload_experiment_zip(
         files=summary["files"],
         csv_processing=summary["csv_processing"],
         manifest=summary["manifest"],
+    )
+
+
+@router.post("/{project_id}/files/experiment-zip/cancel")
+async def cancel_experiment_zip_upload(
+    project_id: UUID,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    repository = SQLProjectRepository(db)
+    project = await repository.get_basic_by_id(project_id, UUID(current_user))
+
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
+    drive_upload_progress_registry.request_cancel(project_id)
+    return {"message": "Cancel requested"}
+
+
+@router.get("/{project_id}/files/experiment-zip/progress", response_model=DriveUploadProgressResponse)
+async def get_experiment_zip_upload_progress(
+    project_id: UUID,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    repository = SQLProjectRepository(db)
+    project = await repository.get_basic_by_id(project_id, UUID(current_user))
+
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
+    progress = drive_upload_progress_registry.get(project_id)
+    if progress:
+        return DriveUploadProgressResponse(
+            phase=str(progress.get("phase") or "idle"),
+            uploaded_bytes=int(progress.get("uploaded_bytes") or 0),
+            total_bytes=int(progress.get("total_bytes") or 0),
+            percent=int(progress.get("percent") or 0),
+            speed_mbps=float(progress["speed_mbps"]) if progress.get("speed_mbps") is not None else None,
+            eta_seconds=int(progress["eta_seconds"]) if progress.get("eta_seconds") is not None else None,
+            elapsed_seconds=int(progress.get("elapsed_seconds") or 0),
+            error=str(progress["error"]) if progress.get("error") else None,
+        )
+
+    # If there is no active snapshot, avoid inferring "completed" from historical READY.
+    # READY can come from previous ingestions and would show a false 100% during a new upload.
+    if project.ingestion_status and str(project.ingestion_status).upper() == "READY":
+        return DriveUploadProgressResponse(
+            phase="idle",
+            uploaded_bytes=0,
+            total_bytes=0,
+            percent=0,
+            speed_mbps=None,
+            eta_seconds=None,
+            elapsed_seconds=0,
+            error=None,
+        )
+
+    if project.ingestion_status and str(project.ingestion_status).upper() == "FAILED":
+        return DriveUploadProgressResponse(
+            phase="failed",
+            uploaded_bytes=0,
+            total_bytes=0,
+            percent=0,
+            speed_mbps=None,
+            eta_seconds=None,
+            elapsed_seconds=0,
+            error=project.ingestion_error,
+        )
+
+    return DriveUploadProgressResponse(
+        phase="idle",
+        uploaded_bytes=0,
+        total_bytes=0,
+        percent=0,
+        speed_mbps=None,
+        eta_seconds=None,
+        elapsed_seconds=0,
+        error=None,
     )
 
 

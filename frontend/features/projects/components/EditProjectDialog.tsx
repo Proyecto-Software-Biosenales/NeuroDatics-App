@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ChevronLeft, ChevronRight, Check, CheckCircle2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Check, CheckCircle2, Cloud, Gauge, Clock3, HardDrive } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,37 +21,6 @@ import { CreateProjectStep4 } from "@/features/projects/create-project/CreatePro
 import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi"
 import type { Project, ProjectStatus, SensorType } from "@/features/projects/types"
 import type { ParticipantData, ProjectFormData, scenaries } from "@/features/projects/create-project/types"
-
-const ZIP_PROCESSING_AVG_KEY = "neurodatics_zip_processing_avg_seconds"
-
-const getStoredProcessingAverageSeconds = (): number | null => {
-  try {
-    const raw = window.localStorage.getItem(ZIP_PROCESSING_AVG_KEY)
-    if (!raw) return null
-    const parsed = Number(raw)
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
-  } catch {
-    return null
-  }
-}
-
-const persistProcessingAverageSeconds = (nextSeconds: number) => {
-  try {
-    const prev = getStoredProcessingAverageSeconds()
-    const blended = prev ? Math.round(prev * 0.7 + nextSeconds * 0.3) : Math.round(nextSeconds)
-    window.localStorage.setItem(ZIP_PROCESSING_AVG_KEY, String(Math.max(1, blended)))
-  } catch {
-    // Ignore persistence errors.
-  }
-}
-
-const estimateProcessingSeconds = (totalBytes: number): number => {
-  const mb = totalBytes / (1024 * 1024)
-  const heuristic = Math.max(20, Math.round(mb * 0.9))
-  const storedAvg = getStoredProcessingAverageSeconds()
-  if (!storedAvg) return heuristic
-  return Math.max(10, Math.round(storedAvg * 0.7 + heuristic * 0.3))
-}
 
 interface EditProjectDialogProps {
   projectId: string
@@ -213,14 +182,16 @@ export const EditProjectDialog = ({
   const [isSaving, setIsSaving] = useState(false)
   const [isSaveCompleted, setIsSaveCompleted] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveNotice, setSaveNotice] = useState<string | null>(null)
   const [saveProgressMessage, setSaveProgressMessage] = useState<string | null>(null)
   const [zipUploadPercent, setZipUploadPercent] = useState<number | null>(null)
   const [zipUploadBytes, setZipUploadBytes] = useState<{ loaded: number; total: number } | null>(null)
   const [zipUploadSpeedMbps, setZipUploadSpeedMbps] = useState<number | null>(null)
   const [zipUploadEtaSeconds, setZipUploadEtaSeconds] = useState<number | null>(null)
   const [zipDriveProcessingSeconds, setZipDriveProcessingSeconds] = useState<number | null>(null)
-  const uploadStartedAtRef = useRef<number | null>(null)
-  const processingEstimateSecondsRef = useRef<number>(0)
+  const [isZipUploadInProgress, setIsZipUploadInProgress] = useState(false)
+  const uploadAbortControllerRef = useRef<AbortController | null>(null)
+  const activeZipUploadProjectIdRef = useRef<string | null>(null)
   const [shouldUpdateZip, setShouldUpdateZip] = useState(false)
   const originalFormDataRef = useRef<ProjectFormData | null>(null)
   const originalCreatedAtRef = useRef<string>("")
@@ -233,7 +204,20 @@ export const EditProjectDialog = ({
     const secs = safeSeconds % 60
     return `${minutes}:${String(secs).padStart(2, "0")}`
   }
-  const isDriveProcessing = zipDriveProcessingSeconds !== null
+  const isDriveSyncInProgress = zipUploadPercent !== null && zipUploadPercent < 100
+  const isDriveSyncFinalizing = zipUploadPercent !== null && zipUploadPercent >= 99 && zipUploadPercent < 100
+
+  const cancelZipUpload = () => {
+    if (uploadAbortControllerRef.current) {
+      uploadAbortControllerRef.current.abort()
+    }
+    if (activeZipUploadProjectIdRef.current) {
+      void ProjectsApi.cancelZipUpload(activeZipUploadProjectIdRef.current).catch((error: unknown) => {
+        console.warn("[EditProjectDialog] backend cancel request failed", error)
+      })
+    }
+    setSaveProgressMessage("Cancelando subida a Google Drive...")
+  }
 
   const [formData, setFormData] = useState<ProjectFormData>({
     projectName: "",
@@ -400,6 +384,7 @@ export const EditProjectDialog = ({
     setIsSaving(true)
     setIsSaveCompleted(false)
     setSaveError(null)
+    setSaveNotice(null)
 
     const updateProgress = (message: string) => {
       setSaveProgressMessage(message)
@@ -443,69 +428,138 @@ export const EditProjectDialog = ({
       const zipToUpload = formData.experimentZip
       if (shouldUploadZip && zipToUpload) {
         // Backend replaces previous Drive content (old ZIP + assets) with the new upload.
-        setZipUploadPercent(0)
-        setZipUploadBytes({ loaded: 0, total: zipToUpload.size })
+        setZipUploadPercent(null)
+        setZipUploadBytes(null)
         setZipUploadSpeedMbps(null)
         setZipUploadEtaSeconds(null)
         setZipDriveProcessingSeconds(null)
-        processingEstimateSecondsRef.current = estimateProcessingSeconds(zipToUpload.size)
-        uploadStartedAtRef.current = Date.now()
-        updateProgress("Subiendo nuevo ZIP... 0%")
+        updateProgress("Enviando nuevo ZIP al backend...")
+        setIsZipUploadInProgress(true)
+
+        const uploadAbortController = new AbortController()
+        uploadAbortControllerRef.current = uploadAbortController
+        activeZipUploadProjectIdRef.current = projectId
+
+        let driveProgressPollTimer: ReturnType<typeof setInterval> | null = null
+        let lastDriveSampleAt: number | null = null
+        let lastDriveUploadedBytes: number | null = null
+
+        const clearDriveProgressPolling = () => {
+          if (driveProgressPollTimer) {
+            clearInterval(driveProgressPollTimer)
+            driveProgressPollTimer = null
+          }
+        }
+
+        const pollDriveProgress = async () => {
+          const snapshot = await ProjectsApi.getZipUploadProgress(projectId)
+          const totalBytes = Math.max(0, snapshot.total_bytes || 0)
+          const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0)
+
+          if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
+            updateProgress("Preparando sincronización en Google Drive...")
+            return
+          }
+
+          const percent = Math.max(
+            0,
+            Math.min(
+              100,
+              Number.isFinite(snapshot.percent)
+                ? snapshot.percent
+                : totalBytes > 0
+                  ? Math.round((uploadedBytes / totalBytes) * 100)
+                  : 0
+            )
+          )
+
+          const now = Date.now()
+          let speedMbps = snapshot.speed_mbps ?? null
+          if ((speedMbps === null || !Number.isFinite(speedMbps)) && lastDriveSampleAt !== null && lastDriveUploadedBytes !== null) {
+            const deltaSeconds = Math.max(0.001, (now - lastDriveSampleAt) / 1000)
+            const deltaBytes = Math.max(0, uploadedBytes - lastDriveUploadedBytes)
+            const sampledSpeed = deltaBytes / deltaSeconds / (1024 * 1024)
+            speedMbps = Number.isFinite(sampledSpeed) && sampledSpeed > 0 ? sampledSpeed : null
+          }
+
+          const speedBytesPerSecond = speedMbps !== null ? speedMbps * 1024 * 1024 : null
+          const etaSeconds = snapshot.eta_seconds ?? (
+            speedBytesPerSecond && speedBytesPerSecond > 0
+              ? Math.max(0, Math.round((totalBytes - uploadedBytes) / speedBytesPerSecond))
+              : null
+          )
+
+          lastDriveSampleAt = now
+          lastDriveUploadedBytes = uploadedBytes
+
+          setZipUploadPercent(percent)
+          setZipUploadBytes({ loaded: uploadedBytes, total: totalBytes })
+          setZipUploadSpeedMbps(speedMbps !== null && Number.isFinite(speedMbps) ? speedMbps : null)
+          setZipUploadEtaSeconds(etaSeconds !== null && Number.isFinite(etaSeconds) ? etaSeconds : null)
+          setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0)
+          if (snapshot.phase === "canceling") {
+            updateProgress("Cancelando subida en backend...")
+          } else if (percent >= 99 && snapshot.phase !== "completed") {
+            updateProgress("Finalizando sincronización con Google Drive...")
+          } else {
+            updateProgress(`Sincronizando archivos en Google Drive... ${percent}%`)
+          }
+
+          if (snapshot.phase === "completed") {
+            clearDriveProgressPolling()
+          }
+          if (snapshot.phase === "failed") {
+            clearDriveProgressPolling()
+            if (snapshot.error) {
+              throw new Error(snapshot.error)
+            }
+          }
+        }
+
+        // Start polling immediately so we never miss Drive-side progress.
+        void pollDriveProgress().catch((error: unknown) => {
+          console.warn("[EditProjectDialog] initial Drive progress poll failed", error)
+        })
+        driveProgressPollTimer = setInterval(() => {
+          void pollDriveProgress().catch((error: unknown) => {
+            console.warn("[EditProjectDialog] Drive progress poll failed", error)
+          })
+        }, 1000)
+
         await ProjectsApi.uploadZipWithProgress(projectId, zipToUpload, (progress) => {
           if (progress.phase === "uploading") {
-            const now = Date.now()
-            const startedAt = uploadStartedAtRef.current ?? now
-            const elapsedSeconds = Math.max(0.001, (now - startedAt) / 1000)
-            const bytesPerSecond = progress.loaded / elapsedSeconds
-            const speedMbps = bytesPerSecond / (1024 * 1024)
-            const remainingBytes = Math.max(0, progress.total - progress.loaded)
-            const etaSeconds = bytesPerSecond > 0 ? remainingBytes / bytesPerSecond : 0
-            const pipelinePercent = Math.min(89, Math.round(progress.percent * 0.89))
-            const pipelineEtaSeconds = Math.max(0, Math.round(etaSeconds + processingEstimateSecondsRef.current))
-
-            setZipUploadPercent(pipelinePercent)
-            setZipUploadBytes({ loaded: progress.loaded, total: progress.total })
-            setZipUploadSpeedMbps(Number.isFinite(speedMbps) ? speedMbps : null)
-            setZipUploadEtaSeconds(Number.isFinite(pipelineEtaSeconds) ? pipelineEtaSeconds : null)
-            setZipDriveProcessingSeconds(null)
-            updateProgress(`Subiendo nuevo ZIP... ${pipelinePercent}%`)
+            updateProgress(`Enviando nuevo ZIP al backend... ${progress.percent}%`)
             return
           }
 
           if (progress.phase === "processing") {
-            const elapsed = progress.processingElapsedSeconds ?? 0
-            const processingRemaining = Math.max(0, processingEstimateSecondsRef.current - elapsed)
-            const processingProgress = processingEstimateSecondsRef.current > 0
-              ? Math.min(10, Math.round((elapsed / processingEstimateSecondsRef.current) * 10))
-              : 0
-            const pipelinePercent = Math.min(99, 89 + processingProgress)
-            const exceededEstimate = elapsed > processingEstimateSecondsRef.current + 5;
-
-            setZipUploadPercent(pipelinePercent);
-            setZipUploadSpeedMbps(null);
-            setZipUploadEtaSeconds(exceededEstimate ? null : Math.round(processingRemaining));
-            setZipDriveProcessingSeconds(elapsed)
-            updateProgress(`Sincronizando archivos en Google Drive... ${pipelinePercent}%`)
             return
           }
 
           if (progress.phase === "completed") {
-            setZipUploadPercent(100)
-            setZipUploadSpeedMbps(null)
-            setZipUploadEtaSeconds(0)
-            setZipDriveProcessingSeconds(progress.processingElapsedSeconds ?? 0)
-            if ((progress.processingElapsedSeconds ?? 0) > 0) {
-              persistProcessingAverageSeconds(progress.processingElapsedSeconds ?? 0)
-            }
+            clearDriveProgressPolling()
+            void pollDriveProgress().catch((error: unknown) => {
+              console.warn("[EditProjectDialog] final Drive progress poll failed", error)
+            })
           }
+        }, uploadAbortController.signal)
+
+        clearDriveProgressPolling()
+        await pollDriveProgress().catch((error: unknown) => {
+          console.warn("[EditProjectDialog] post-upload Drive progress poll failed", error)
         })
+
         setZipUploadPercent(100)
         setZipUploadBytes((prev) => {
-          const total = prev?.total ?? zipToUpload.size
+          const total = prev?.total ?? 0
           return { loaded: total, total }
         })
+        setZipUploadSpeedMbps(null)
         setZipUploadEtaSeconds(0)
         updateProgress("ZIP y sincronizacion en Google Drive completados.")
+        setIsZipUploadInProgress(false)
+        uploadAbortControllerRef.current = null
+        activeZipUploadProjectIdRef.current = null
       }
 
       // Clear upload-specific indicators before moving to non-upload stages.
@@ -572,6 +626,7 @@ export const EditProjectDialog = ({
       setCurrentStep(1)
     } catch (error) {
       const friendlyMessage = toFriendlyErrorMessage(error)
+      const wasCanceled = /cancelad|abort/i.test(friendlyMessage)
       const showSessionHint = isGoogleSessionExpiredError(friendlyMessage)
       const nextMessage = showSessionHint
         ? `${friendlyMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
@@ -583,8 +638,18 @@ export const EditProjectDialog = ({
         error,
         friendlyMessage,
       })
-      setSaveError(nextMessage)
-      toast.error("No se pudo guardar la edición del proyecto.")
+      if (wasCanceled) {
+        setSaveError(null)
+        setSaveNotice("Subida cancelada por el usuario.")
+      } else {
+        setSaveNotice(null)
+        setSaveError(nextMessage)
+      }
+      if (wasCanceled) {
+        toast("Subida cancelada por el usuario.")
+      } else {
+        toast.error("No se pudo guardar la edición del proyecto.")
+      }
     } finally {
       setIsSaving(false)
       setIsSaveCompleted(false)
@@ -594,8 +659,9 @@ export const EditProjectDialog = ({
       setZipUploadSpeedMbps(null)
       setZipUploadEtaSeconds(null)
       setZipDriveProcessingSeconds(null)
-      uploadStartedAtRef.current = null
-      processingEstimateSecondsRef.current = 0
+      setIsZipUploadInProgress(false)
+      uploadAbortControllerRef.current = null
+      activeZipUploadProjectIdRef.current = null
     }
   }
 
@@ -604,6 +670,7 @@ export const EditProjectDialog = ({
     setIsSaving(false)
     setCurrentStep(1)
     setSaveError(null)
+    setSaveNotice(null)
     setIsSaveCompleted(false)
     setSaveProgressMessage(null)
     setZipUploadPercent(null)
@@ -611,8 +678,9 @@ export const EditProjectDialog = ({
     setZipUploadSpeedMbps(null)
     setZipUploadEtaSeconds(null)
     setZipDriveProcessingSeconds(null)
-    uploadStartedAtRef.current = null
-    processingEstimateSecondsRef.current = 0
+    setIsZipUploadInProgress(false)
+    uploadAbortControllerRef.current = null
+    activeZipUploadProjectIdRef.current = null
   }
 
   const handleCancel = () => {
@@ -690,52 +758,132 @@ export const EditProjectDialog = ({
               </div>
             )}
 
+            {saveNotice && !saveError && (
+              <div className="mt-4 p-4 bg-gray-50 border border-gray-300 rounded-lg">
+                <p className="text-sm text-gray-700">{saveNotice}</p>
+              </div>
+            )}
+
             {isSaving && (
-              <div
-                className={`mt-4 p-4 border rounded-lg ${
-                  isDriveProcessing ? "bg-gray-100 border-gray-300" : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <div className="flex items-center gap-3 text-sm text-gray-800">
-                  {isSaveCompleted ? (
-                    <CheckCircle2 className="h-4 w-4 text-gray-700" />
-                  ) : (
-                    <div className="h-4 w-4 border-2 border-gray-400 border-t-black rounded-full animate-spin" />
-                  )}
-                  <span>{saveProgressMessage || "Guardando cambios del proyecto..."}</span>
-                </div>
-                {zipUploadPercent !== null && (
-                  <div className="mt-3">
-                    <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-150 ${
-                          isDriveProcessing ? "bg-gray-700 animate-pulse" : "bg-black"
-                        }`}
-                        style={{ width: `${zipUploadPercent}%` }}
-                      />
+              <div className="mt-4 p-5 bg-gray-50 border border-gray-300 rounded-2xl">
+                {zipUploadPercent !== null ? (
+                  <>
+                    {/* Header with title and percentage */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl border border-gray-200 bg-white flex items-center justify-center">
+                          <Cloud className="h-5 w-5 text-gray-700" />
+                        </div>
+                        <div>
+                          <p className="text-2sm font-semibold text-gray-900">
+                            {isDriveSyncFinalizing
+                              ? "Finalizando sincronización con Google Drive"
+                              : isDriveSyncInProgress
+                              ? "Sincronizando con Google Drive"
+                              : "Sincronización completada"}
+                          </p>
+                          <p className="text-sm text-gray-600">{zipUploadPercent}% completado</p>
+                        </div>
+                      </div>
+                      <span className="text-xl font-bold text-gray-900">{zipUploadPercent}%</span>
                     </div>
-                      <p className="mt-1 text-xs text-gray-700">
-                        Progreso total del proceso: {zipUploadPercent}%
-                        {zipUploadBytes && zipUploadBytes.total > 0 && (
-                          <span>
-                            {" "}
-                            ({formatBytesToMB(zipUploadBytes.loaded)} / {formatBytesToMB(zipUploadBytes.total)})
-                          </span>
-                        )}
-                      </p>
-                    <p className="mt-1 text-xs text-gray-700">
-                        Velocidad: {zipUploadSpeedMbps !== null ? `${zipUploadSpeedMbps.toFixed(2)} MB/s` : "calculando..."}
-                        {zipUploadEtaSeconds !== null ? (
-                        <span>{" "}| Restante estimado: {formatEta(zipUploadEtaSeconds)}</span>
-                        ) : isDriveProcessing ? (
-                        <span>{" "}| Tiempo variable, procesando...</span>
-                        ) : null}
-                      </p>
-                      {zipDriveProcessingSeconds !== null && (
-                      <p className="mt-1 text-xs text-gray-700">
-                          Procesando en Google Drive: {formatEta(zipDriveProcessingSeconds)} transcurridos
-                        </p>
-                      )}
+
+                    {/* Progress bar */}
+                    <div className="mb-4">
+                      <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-150 ${
+                            isDriveSyncInProgress ? "bg-gray-800 animate-pulse" : "bg-black"
+                          }`}
+                          style={{ width: `${zipUploadPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Data info grid */}
+                    {zipUploadBytes && zipUploadBytes.total > 0 && (
+                      <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <HardDrive className="h-4 w-4 text-gray-500" />
+                          <p>{formatBytesToMB(zipUploadBytes.total)}</p>
+                        </div>
+                        <div className="text-right font-medium text-gray-800">
+                          {formatBytesToMB(zipUploadBytes.loaded)} transferidos
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Metrics row */}
+                    <div className="grid grid-cols-3 gap-4 text-sm bg-white p-3 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-lg border border-gray-300 flex items-center justify-center mt-0.5">
+                          <Gauge className="h-3.5 w-3.5 text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs mb-1">VELOCIDAD</p>
+                          <p className="font-semibold text-gray-900">
+                            {zipUploadSpeedMbps !== null ? `${zipUploadSpeedMbps.toFixed(1)} MB/s` : "calculando..."}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-lg border border-gray-300 flex items-center justify-center mt-0.5">
+                          <Clock3 className="h-3.5 w-3.5 text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs mb-1">RESTANTE</p>
+                          <p className="font-semibold text-gray-900">
+                            {zipUploadEtaSeconds !== null ? formatEta(zipUploadEtaSeconds) : isDriveSyncInProgress ? "--" : "0:00"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-lg border border-gray-300 flex items-center justify-center mt-0.5">
+                          <Clock3 className="h-3.5 w-3.5 text-gray-600" />
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-xs mb-1">TRANSCURRIDO</p>
+                          <p className="font-semibold text-gray-900">
+                            {zipDriveProcessingSeconds !== null ? formatEta(zipDriveProcessingSeconds) : "0:00"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between text-gray-600 text-sm">
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse"
+                          style={{ animationDelay: "0ms", animationDuration: "900ms" }}
+                        />
+                        <span
+                          className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse"
+                          style={{ animationDelay: "180ms", animationDuration: "900ms" }}
+                        />
+                        <span
+                          className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse"
+                          style={{ animationDelay: "360ms", animationDuration: "900ms" }}
+                        />
+                        <span className="ml-2">Procesando en Google Drive...</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={cancelZipUpload}
+                        disabled={!isZipUploadInProgress}
+                        className="hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-3 text-sm text-gray-800">
+                    {isSaveCompleted ? (
+                      <CheckCircle2 className="h-4 w-4 text-gray-900" />
+                    ) : (
+                      <div className="h-4 w-4 border-2 border-gray-400 border-t-black rounded-full animate-spin" />
+                    )}
+                    <span>{saveProgressMessage || "Guardando cambios del proyecto..."}</span>
                   </div>
                 )}
               </div>
