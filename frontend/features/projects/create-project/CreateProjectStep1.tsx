@@ -205,7 +205,10 @@ export const CreateProjectStep1 = ({
               <Button 
                 variant="outline" 
                 type="button" 
-                onClick={pickFile}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  pickFile()
+                }}
                 disabled={isEditMode && !shouldUpdateZip}
               >
                 Seleccionar ZIP
