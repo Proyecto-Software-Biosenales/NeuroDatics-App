@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import type { ProjectFormData, SensorType, ParticipantData } from "./types";
 import type { Project } from "@/features/projects/types";
-import { ProjectsApi } from "@/features/projects/api/projectsApi";
+import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
 import { toast } from "sonner";
 
 
@@ -13,11 +13,7 @@ const initialParticipants: ParticipantData[] = [
   { id: "1023675443", sex: null, age: "" },
 ];
 
-const initialscenaries = [
-  { id: "1", name: "San Jeronimo", aois: [] },
-  { id: "2", name: "Yom Yom", aois: [] },
-  { id: "3", name: "Crem Helado", aois: [] },
-];
+const initialscenaries: ProjectFormData["scenaries"] = [];
 
 const formatDate = (iso?: string): string => {
   const d = iso ? new Date(iso) : new Date();
@@ -56,9 +52,59 @@ const isGoogleSessionExpiredError = (message: string): boolean => {
   return /google drive|oauth|invalid_grant|refresh token|token has expired|no se pudo configurar google drive/i.test(message);
 };
 
+const extractDriveFileId = (url?: string | null): string | null => {
+  if (!url) return null;
+  const filePathMatch = url.match(/\/d\/([^/]+)/i);
+  if (filePathMatch?.[1]) return filePathMatch[1];
+  const queryMatch = url.match(/[?&]id=([^&]+)/i);
+  if (queryMatch?.[1]) return queryMatch[1];
+  return null;
+};
+
+const resolveScenarioImageUrl = (file?: {
+  drive_download_link?: string | null;
+  external_id?: string | null;
+  drive_web_view_link?: string | null;
+}): string | null => {
+  if (!file) return null;
+  if (file.drive_download_link) return file.drive_download_link;
+  const driveFileId = file.external_id || extractDriveFileId(file.drive_web_view_link);
+  if (driveFileId) {
+    return `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w2000`;
+  }
+  return file.drive_web_view_link ?? null;
+};
+
+const buildStep4ImageScenaries = (detail: ApiProjectDetail): ProjectFormData["scenaries"] => {
+  const filesById = new Map<string, {
+    drive_web_view_link?: string | null;
+    drive_download_link?: string | null;
+    external_id?: string | null;
+  }>();
+  for (const file of detail.files || []) {
+    filesById.set(file.id, file);
+  }
+
+  return (detail.scenaries || [])
+    .filter((scenary) => String(scenary.type || "").toLowerCase() === "image")
+    .map((scenary) => {
+      const linkedFile = scenary.file_id ? filesById.get(scenary.file_id) : undefined;
+      return {
+        id: scenary.id,
+        projectId: detail.id,
+        name: scenary.name,
+        type: "image" as const,
+        fileId: scenary.file_id ?? null,
+        imageUrl: resolveScenarioImageUrl(linkedFile),
+        aois: [],
+      };
+    });
+};
+
 export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => void) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
+  const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -90,7 +136,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
   const [formData, setFormData] = useState<ProjectFormData>({
     projectName: "",
     description: "",
-    status: "active",
+    status: "draft",
     folderPath: "",
     uploadedZip: null,
     sensors: [],
@@ -156,7 +202,233 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     }
   };
 
-  const nextStep = () => currentStep < 4 && canGoNext() && setCurrentStep(prev => prev + 1);
+  const processStep1ZipAndContinue = async () => {
+    if (!formData.experimentZip) {
+      setSaveError("Debes seleccionar un archivo ZIP para continuar.");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveNotice(null);
+    setSaveProgressMessage("Creando proyecto borrador...");
+
+    let projectIdForUpload = draftProjectId;
+    let keepDraftOnFailure = false;
+
+    const updateProgress = (message: string) => {
+      setSaveProgressMessage(message);
+    };
+
+    try {
+      if (!projectIdForUpload) {
+        const created = await ProjectsApi.create({
+          name: formData.projectName,
+          description: formData.description.trim() || undefined,
+          status: "draft",
+        });
+        projectIdForUpload = created.id;
+        setDraftProjectId(created.id);
+      } else {
+        await ProjectsApi.update(projectIdForUpload, {
+          name: formData.projectName,
+          description: formData.description.trim(),
+          status: "draft",
+        });
+      }
+
+      setZipUploadPercent(null);
+      setZipUploadBytes(null);
+      setZipUploadSpeedMbps(null);
+      setZipUploadEtaSeconds(null);
+      setZipDriveProcessingSeconds(null);
+      updateProgress("Enviando ZIP al backend...");
+      setIsZipUploadInProgress(true);
+
+      const uploadAbortController = new AbortController();
+      uploadAbortControllerRef.current = uploadAbortController;
+      activeZipUploadProjectIdRef.current = projectIdForUpload;
+
+      let driveProgressPollTimer: ReturnType<typeof setInterval> | null = null;
+      let lastDriveSampleAt: number | null = null;
+      let lastDriveUploadedBytes: number | null = null;
+
+      const clearDriveProgressPolling = () => {
+        if (driveProgressPollTimer) {
+          clearInterval(driveProgressPollTimer);
+          driveProgressPollTimer = null;
+        }
+      };
+
+      const pollDriveProgress = async () => {
+        if (!projectIdForUpload) return;
+        const snapshot = await ProjectsApi.getZipUploadProgress(projectIdForUpload);
+        const totalBytes = Math.max(0, snapshot.total_bytes || 0);
+        const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0);
+
+        if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
+          updateProgress("Preparando sincronización en Google Drive...");
+          return;
+        }
+
+        const percent = Math.max(
+          0,
+          Math.min(
+            100,
+            Number.isFinite(snapshot.percent)
+              ? snapshot.percent
+              : totalBytes > 0
+                ? Math.round((uploadedBytes / totalBytes) * 100)
+                : 0
+          )
+        );
+
+        const now = Date.now();
+        let speedMbps = snapshot.speed_mbps ?? null;
+        if ((speedMbps === null || !Number.isFinite(speedMbps)) && lastDriveSampleAt !== null && lastDriveUploadedBytes !== null) {
+          const deltaSeconds = Math.max(0.001, (now - lastDriveSampleAt) / 1000);
+          const deltaBytes = Math.max(0, uploadedBytes - lastDriveUploadedBytes);
+          const sampledSpeed = deltaBytes / deltaSeconds / (1024 * 1024);
+          speedMbps = Number.isFinite(sampledSpeed) && sampledSpeed > 0 ? sampledSpeed : null;
+        }
+
+        const speedBytesPerSecond = speedMbps !== null ? speedMbps * 1024 * 1024 : null;
+        const etaSeconds = snapshot.eta_seconds ?? (
+          speedBytesPerSecond && speedBytesPerSecond > 0
+            ? Math.max(0, Math.round((totalBytes - uploadedBytes) / speedBytesPerSecond))
+            : null
+        );
+
+        lastDriveSampleAt = now;
+        lastDriveUploadedBytes = uploadedBytes;
+
+        setZipUploadPercent(percent);
+        setZipUploadBytes({ loaded: uploadedBytes, total: totalBytes });
+        setZipUploadSpeedMbps(speedMbps !== null && Number.isFinite(speedMbps) ? speedMbps : null);
+        setZipUploadEtaSeconds(etaSeconds !== null && Number.isFinite(etaSeconds) ? etaSeconds : null);
+        setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0);
+        if (snapshot.phase === "canceling") {
+          updateProgress("Cancelando subida en backend...");
+        } else if (percent >= 99 && snapshot.phase !== "completed") {
+          updateProgress("Finalizando sincronización con Google Drive...");
+        } else {
+          updateProgress(`Sincronizando archivos en Google Drive... ${percent}%`);
+        }
+
+        if (snapshot.phase === "completed") {
+          clearDriveProgressPolling();
+        }
+        if (snapshot.phase === "failed") {
+          clearDriveProgressPolling();
+          if (snapshot.error) {
+            throw new Error(snapshot.error);
+          }
+        }
+      };
+
+      void pollDriveProgress().catch((error: unknown) => {
+        console.warn("[CreateProjectWizard] initial Drive progress poll failed", error);
+      });
+      driveProgressPollTimer = setInterval(() => {
+        void pollDriveProgress().catch((error: unknown) => {
+          console.warn("[CreateProjectWizard] Drive progress poll failed", error);
+        });
+      }, 1000);
+
+      const uploadedZipResult = await ProjectsApi.uploadZipWithProgress(
+        projectIdForUpload,
+        formData.experimentZip,
+        (progress) => {
+          if (progress.phase === "uploading") {
+            updateProgress(`Enviando ZIP al backend... ${progress.percent}%`);
+            return;
+          }
+
+          if (progress.phase === "processing") {
+            return;
+          }
+
+          if (progress.phase === "completed") {
+            clearDriveProgressPolling();
+            void pollDriveProgress().catch((error: unknown) => {
+              console.warn("[CreateProjectWizard] final Drive progress poll failed", error);
+            });
+          }
+        },
+        uploadAbortController.signal,
+      );
+
+      clearDriveProgressPolling();
+      await pollDriveProgress().catch((error: unknown) => {
+        console.warn("[CreateProjectWizard] post-upload Drive progress poll failed", error);
+      });
+
+      if (uploadedZipResult.ingestion_status === "FAILED") {
+        throw new Error("La ingesta del ZIP falló en backend. Verifica estructura y contenido.");
+      }
+
+      const detail = await ProjectsApi.get(projectIdForUpload);
+
+      setFormData((prev) => ({
+        ...prev,
+        uploadedZip: uploadedZipResult,
+        scenaries: buildStep4ImageScenaries(detail),
+      }));
+
+      setCurrentStep(2);
+      keepDraftOnFailure = true;
+      setSaveProgressMessage(null);
+      setSaveNotice("ZIP procesado correctamente. Puedes continuar con la configuración.");
+    } catch (error: any) {
+      const rawErrorMessage = error?.message ?? "Error procesando ZIP";
+      const errorMessage = rawErrorMessage
+        .replace(/^API\s*\d+\s*:\s*/i, "")
+        .replace(/^Error subiendo archivo:\s*/i, "");
+
+      const showSessionHint = isGoogleSessionExpiredError(errorMessage);
+      const wasCanceled = /cancelad|abort/i.test(errorMessage);
+      setSaveNotice(null);
+      setSaveError(
+        wasCanceled
+          ? null
+          : showSessionHint
+            ? `${errorMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
+            : errorMessage
+      );
+
+      if (wasCanceled) {
+        setSaveNotice("Subida cancelada por el usuario.");
+      }
+
+      if (!keepDraftOnFailure && projectIdForUpload) {
+        try {
+          await ProjectsApi.delete(projectIdForUpload);
+          setDraftProjectId(null);
+        } catch (cleanupError) {
+          console.warn("[CreateProjectWizard] could not delete draft project after failed step 1", cleanupError);
+        }
+      }
+    } finally {
+      setIsSaving(false);
+      setIsZipUploadInProgress(false);
+      uploadAbortControllerRef.current = null;
+      activeZipUploadProjectIdRef.current = null;
+      setZipUploadPercent(null);
+      setZipUploadBytes(null);
+      setZipUploadSpeedMbps(null);
+      setZipUploadEtaSeconds(null);
+      setZipDriveProcessingSeconds(null);
+    }
+  };
+
+  const nextStep = async () => {
+    if (currentStep >= 4 || !canGoNext()) return;
+    if (currentStep === 1) {
+      await processStep1ZipAndContinue();
+      return;
+    }
+    setCurrentStep((prev) => prev + 1);
+  };
   const prevStep = () => currentStep > 1 && setCurrentStep(prev => prev - 1);
 
   const reset = () => {
@@ -173,7 +445,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     setFormData({
       projectName: "",
       description: "",
-      status: "active",
+      status: "draft",
       folderPath: "",
       uploadedZip: null,
       sensors: [],
@@ -181,251 +453,68 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       scenaries: initialscenaries,
       experimentZip: null,
     });
+    setDraftProjectId(null);
   };
 
-  // ✅ AHORA ES ASYNC y llama backend real con rollback
+  const discardDraftProject = async () => {
+    if (!draftProjectId) return;
+    try {
+      await ProjectsApi.delete(draftProjectId);
+    } catch (error) {
+      console.warn("[CreateProjectWizard] failed to delete draft project", { draftProjectId, error });
+    } finally {
+      setDraftProjectId(null);
+    }
+  };
+
   const saveProject = async () => {
     if (!hasValidParticipants()) {
-      setSaveError("Completa sexo y edad de todos los participantes antes de guardar.")
-      return
+      setSaveError("Completa sexo y edad de todos los participantes antes de guardar.");
+      return;
+    }
+
+    if (!draftProjectId) {
+      setSaveError("No hay un proyecto borrador para finalizar. Regresa al Paso 1 y procesa el ZIP.");
+      return;
     }
 
     setIsSaving(true);
     setSaveError(null);
     setSaveNotice(null);
     setIsSaveCompleted(false);
-    let createdProjectId: string | null = null;
 
     const updateProgress = (message: string) => {
       setSaveProgressMessage(message);
     };
 
     try {
-      // 1) Crear proyecto real
-      updateProgress("Creando proyecto...");
-      const created = await ProjectsApi.create({
-        name: formData.projectName,
-        description: formData.description.trim() || undefined,
-      });
-      createdProjectId = created.id;
-
-      // 2) Subir zip a Drive (si existe)
-      if (formData.experimentZip) {
-        try {
-          setZipUploadPercent(null);
-          setZipUploadBytes(null);
-          setZipUploadSpeedMbps(null);
-          setZipUploadEtaSeconds(null);
-          setZipDriveProcessingSeconds(null);
-          updateProgress("Enviando ZIP al backend...");
-          setIsZipUploadInProgress(true);
-
-          const uploadAbortController = new AbortController();
-          uploadAbortControllerRef.current = uploadAbortController;
-
-          const projectIdForUpload = createdProjectId;
-          if (!projectIdForUpload) {
-            throw new Error("No se pudo iniciar la subida del ZIP: proyecto no disponible.");
-          }
-          activeZipUploadProjectIdRef.current = projectIdForUpload;
-
-          let driveProgressPollTimer: ReturnType<typeof setInterval> | null = null;
-          let lastDriveSampleAt: number | null = null;
-          let lastDriveUploadedBytes: number | null = null;
-
-          const clearDriveProgressPolling = () => {
-            if (driveProgressPollTimer) {
-              clearInterval(driveProgressPollTimer);
-              driveProgressPollTimer = null;
-            }
-          };
-
-          const pollDriveProgress = async () => {
-            const snapshot = await ProjectsApi.getZipUploadProgress(projectIdForUpload);
-            const totalBytes = Math.max(0, snapshot.total_bytes || 0);
-            const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0);
-
-            if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
-              updateProgress("Preparando sincronización en Google Drive...");
-              return;
-            }
-
-            const percent = Math.max(
-              0,
-              Math.min(
-                100,
-                Number.isFinite(snapshot.percent)
-                  ? snapshot.percent
-                  : totalBytes > 0
-                    ? Math.round((uploadedBytes / totalBytes) * 100)
-                    : 0
-              )
-            );
-
-            const now = Date.now();
-            let speedMbps = snapshot.speed_mbps ?? null;
-            if ((speedMbps === null || !Number.isFinite(speedMbps)) && lastDriveSampleAt !== null && lastDriveUploadedBytes !== null) {
-              const deltaSeconds = Math.max(0.001, (now - lastDriveSampleAt) / 1000);
-              const deltaBytes = Math.max(0, uploadedBytes - lastDriveUploadedBytes);
-              const sampledSpeed = deltaBytes / deltaSeconds / (1024 * 1024);
-              speedMbps = Number.isFinite(sampledSpeed) && sampledSpeed > 0 ? sampledSpeed : null;
-            }
-
-            const speedBytesPerSecond = speedMbps !== null ? speedMbps * 1024 * 1024 : null;
-            const etaSeconds = snapshot.eta_seconds ?? (
-              speedBytesPerSecond && speedBytesPerSecond > 0
-                ? Math.max(0, Math.round((totalBytes - uploadedBytes) / speedBytesPerSecond))
-                : null
-            );
-
-            lastDriveSampleAt = now;
-            lastDriveUploadedBytes = uploadedBytes;
-
-            setZipUploadPercent(percent);
-            setZipUploadBytes({ loaded: uploadedBytes, total: totalBytes });
-            setZipUploadSpeedMbps(speedMbps !== null && Number.isFinite(speedMbps) ? speedMbps : null);
-            setZipUploadEtaSeconds(etaSeconds !== null && Number.isFinite(etaSeconds) ? etaSeconds : null);
-            setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0);
-            if (snapshot.phase === "canceling") {
-              updateProgress("Cancelando subida en backend...");
-            } else if (percent >= 99 && snapshot.phase !== "completed") {
-              updateProgress("Finalizando sincronización con Google Drive...");
-            } else {
-              updateProgress(`Sincronizando archivos en Google Drive... ${percent}%`);
-            }
-
-            if (snapshot.phase === "completed") {
-              clearDriveProgressPolling();
-            }
-            if (snapshot.phase === "failed") {
-              clearDriveProgressPolling();
-              if (snapshot.error) {
-                throw new Error(snapshot.error);
-              }
-            }
-          };
-
-          // Start polling immediately so we never miss Drive-side progress.
-          void pollDriveProgress().catch((error: unknown) => {
-            console.warn("[CreateProjectWizard] initial Drive progress poll failed", error);
-          });
-          driveProgressPollTimer = setInterval(() => {
-            void pollDriveProgress().catch((error: unknown) => {
-              console.warn("[CreateProjectWizard] Drive progress poll failed", error);
-            });
-          }, 1000);
-
-          const uploadedZipResult = await ProjectsApi.uploadZipWithProgress(
-            projectIdForUpload,
-            formData.experimentZip,
-            (progress) => {
-              if (progress.phase === "uploading") {
-                updateProgress(`Enviando ZIP al backend... ${progress.percent}%`);
-                return;
-              }
-
-              if (progress.phase === "processing") {
-                return;
-              }
-
-              if (progress.phase === "completed") {
-                clearDriveProgressPolling();
-                void pollDriveProgress().catch((error: unknown) => {
-                  console.warn("[CreateProjectWizard] final Drive progress poll failed", error);
-                });
-              }
-            },
-            uploadAbortController.signal,
-          );
-
-          clearDriveProgressPolling();
-          await pollDriveProgress().catch((error: unknown) => {
-            console.warn("[CreateProjectWizard] post-upload Drive progress poll failed", error);
-          });
-
-          setZipUploadPercent(100);
-          setZipUploadBytes((prev) => {
-            const total = prev?.total ?? 0;
-            return { loaded: total, total };
-          });
-          setZipUploadSpeedMbps(null);
-          setZipUploadEtaSeconds(0);
-          updateProgress("ZIP y sincronizacion en Google Drive completados.");
-          
-          // Almacenar resultado del upload en formData
-          setFormData(prev => ({
-            ...prev,
-            uploadedZip: uploadedZipResult
-          }));
-
-          if (uploadedZipResult.ingestion_status === "FAILED") {
-            throw new Error("La ingesta del ZIP fallo en backend. Verifica estructura y contenido.");
-          }
-
-          if (uploadedZipResult.csv_processing.failed > 0) {
-            console.warn("Algunos CSV no pudieron procesarse durante la ingesta", uploadedZipResult.csv_processing);
-          }
-
-          console.log(
-            `ZIP ingested successfully: files=${uploadedZipResult.counts.files_uploaded}, images=${uploadedZipResult.counts.images}, videos=${uploadedZipResult.counts.videos}, csv=${uploadedZipResult.counts.csv}`
-          );
-        } catch (error) {
-          setIsZipUploadInProgress(false);
-          uploadAbortControllerRef.current = null;
-          activeZipUploadProjectIdRef.current = null;
-          // Rollback: eliminar proyecto creado
-          try {
-            await ProjectsApi.delete(createdProjectId);
-          } catch {
-            console.error("[CreateProjectWizard] rollback delete failed", { createdProjectId });
-          }
-          console.error("[CreateProjectWizard] ZIP upload failed", {
-            createdProjectId,
-            error,
-          });
-          throw new Error(error instanceof Error ? error.message : "Error desconocido al subir el archivo ZIP.");
-        } finally {
-          setIsZipUploadInProgress(false);
-          uploadAbortControllerRef.current = null;
-          activeZipUploadProjectIdRef.current = null;
-        }
-      }
-
-      // Clear upload-specific indicators before moving to non-upload stages.
-      setZipUploadPercent(null);
-      setZipUploadBytes(null);
-      setZipUploadSpeedMbps(null);
-      setZipUploadEtaSeconds(null);
-      setZipDriveProcessingSeconds(null);
-    
-      // 3) Sensores y participantes primero
       updateProgress("Guardando sensores y participantes...");
       const updates: Promise<void>[] = [];
 
       if (formData.sensors.length > 0) {
-        updates.push(ProjectsApi.setSensors(createdProjectId, formData.sensors as string[]));
+        updates.push(ProjectsApi.setSensors(draftProjectId, formData.sensors as string[]));
       }
 
       if (formData.participants.length > 0) {
         const normalizedParticipants = normalizeParticipants(formData.participants);
-        updates.push(ProjectsApi.setParticipants(createdProjectId, normalizedParticipants));
+        updates.push(ProjectsApi.setParticipants(draftProjectId, normalizedParticipants));
       }
 
       await Promise.all(updates);
 
-      // 4) Finalizar proyecto al final para evitar carreras con updates en paralelo
       updateProgress("Finalizando configuración del proyecto...");
-      await ProjectsApi.finalize(createdProjectId);
+      await ProjectsApi.finalize(draftProjectId);
 
-      // 7) Actualiza UI (grid)
+      const finalized = await ProjectsApi.get(draftProjectId);
+
       const newProject: Project = {
-        id: createdProjectId,
-        name: created.name,
-        description: created.description ?? formData.description,
+        id: draftProjectId,
+        name: finalized.name,
+        description: finalized.description ?? formData.description,
         status: "active",
-        createdAt: formatDate(created.created_at),
-        updatedAt: hasRealUpdate(created.updated_at, created.created_at)
-          ? formatDateTime(created.updated_at)
+        createdAt: formatDate(finalized.created_at),
+        updatedAt: hasRealUpdate(finalized.updated_at, finalized.created_at)
+          ? formatDateTime(finalized.updated_at)
           : undefined,
         sensors: formData.sensors,
         participants: formData.participants.length,
@@ -435,49 +524,31 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       setIsSaveCompleted(true);
       setSaveProgressMessage("Proceso completado. Cerrando...");
       await new Promise((resolve) => setTimeout(resolve, 900));
-      toast.success(`Proyecto "${created.name}" creado correctamente.`);
+      toast.success(`Proyecto "${finalized.name}" creado correctamente.`);
       setIsOpen(false);
       reset();
     } catch (e: any) {
-      
-      // For validation/structure errors, show the error message directly
-      // For other errors, show context of where it failed
       const rawErrorMessage = e?.message ?? "Error guardando proyecto";
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
         .replace(/^Error subiendo archivo:\s*/i, "");
       const showSessionHint = isGoogleSessionExpiredError(errorMessage);
-      const wasCanceled = /cancelad|abort/i.test(errorMessage);
-      const isValidationError = errorMessage.includes("CSV") || 
-                                errorMessage.includes("Images") || 
-                                errorMessage.includes("Videos") ||
-                                errorMessage.includes("ZIP");
+
       console.error("[CreateProjectWizard] saveProject failed", {
         step: saveProgressMessage,
         error: e,
         normalizedError: errorMessage,
       });
-      
-      if (wasCanceled) {
-        setSaveError(null);
-        setSaveNotice("Subida cancelada por el usuario.");
-      } else {
-        setSaveNotice(null);
-        setSaveError(
-          showSessionHint
-            ? `${errorMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
-            : isValidationError
-              ? errorMessage
-              : (saveProgressMessage
-                  ? `Error guardando proyecto. Paso fallido: ${saveProgressMessage}`
-                  : errorMessage)
-        );
-      }
-      if (wasCanceled) {
-        toast("Subida cancelada por el usuario.");
-      } else {
-        toast.error("No se pudo guardar el proyecto.");
-      }
+
+      setSaveNotice(null);
+      setSaveError(
+        showSessionHint
+          ? `${errorMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
+          : (saveProgressMessage
+              ? `Error guardando proyecto. Paso fallido: ${saveProgressMessage}`
+              : errorMessage)
+      );
+      toast.error("No se pudo guardar el proyecto.");
     } finally {
       setIsSaving(false);
       setIsSaveCompleted(false);
@@ -521,5 +592,6 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     isZipUploadInProgress,
     cancelZipUpload,
     setExperimentZip,
+    discardDraftProject,
   };
 };

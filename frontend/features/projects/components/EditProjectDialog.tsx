@@ -43,7 +43,7 @@ const defaultScenaries: scenaries[] = [
 ]
 
 const toProjectStatus = (value: unknown): ProjectStatus => {
-  if (value === "active" || value === "archived") return value
+  if (value === "draft" || value === "active" || value === "archived") return value
   return "active"
 }
 
@@ -128,11 +128,47 @@ const isGoogleSessionExpiredError = (message: string): boolean => {
   return /google drive|oauth|invalid_grant|refresh token|token has expired|no se pudo configurar google drive/i.test(message)
 }
 
+const extractDriveFileId = (url?: string | null): string | null => {
+  if (!url) return null
+  const filePathMatch = url.match(/\/d\/([^/]+)/i)
+  if (filePathMatch?.[1]) return filePathMatch[1]
+  const queryMatch = url.match(/[?&]id=([^&]+)/i)
+  if (queryMatch?.[1]) return queryMatch[1]
+  return null
+}
+
+const resolveScenarioImageUrl = (file?: {
+  drive_web_view_link?: string | null
+  drive_download_link?: string | null
+  external_id?: string | null
+}): string | null => {
+  if (!file) return null
+  if (file.drive_download_link) return file.drive_download_link
+  const driveFileId = file.external_id || extractDriveFileId(file.drive_web_view_link)
+  if (driveFileId) {
+    return `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w2000`
+  }
+  return file.drive_web_view_link ?? null
+}
+
 const parseScenaries = (project: ApiProjectDetail): scenaries[] => {
+  const filesById = new Map<string, {
+    drive_web_view_link?: string | null
+    drive_download_link?: string | null
+    external_id?: string | null
+  }>()
+  for (const file of project.files || []) {
+    filesById.set(file.id, file)
+  }
+
   const source = project.scenaries || []
   return source.map((s) => ({
     id: s.id,
+    projectId: project.id,
     name: s.name,
+    type: String(s.type || "").toLowerCase() === "video" ? "video" : "image",
+    fileId: s.file_id ?? null,
+    imageUrl: s.file_id ? resolveScenarioImageUrl(filesById.get(s.file_id)) : null,
     aois: (s.aois || []).map((a) => {
       const shape = a.shape || {}
       return {
@@ -193,6 +229,7 @@ export const EditProjectDialog = ({
   const uploadAbortControllerRef = useRef<AbortController | null>(null)
   const activeZipUploadProjectIdRef = useRef<string | null>(null)
   const [shouldUpdateZip, setShouldUpdateZip] = useState(false)
+  const [hasProcessedZipUpdate, setHasProcessedZipUpdate] = useState(false)
   const originalFormDataRef = useRef<ProjectFormData | null>(null)
   const originalCreatedAtRef = useRef<string>("")
   const projectNameIdSuffixRef = useRef<string>("")
@@ -260,6 +297,7 @@ export const EditProjectDialog = ({
       }
 
       setFormData(newFormData)
+      setHasProcessedZipUpdate(false)
       originalFormDataRef.current = JSON.parse(JSON.stringify(newFormData))
       originalCreatedAtRef.current = detail.created_at
         ? new Date(detail.created_at).toLocaleDateString("es-ES")
@@ -321,7 +359,7 @@ export const EditProjectDialog = ({
   const canGoNext = () => {
     switch (currentStep) {
       case 1:
-        return formData.projectName.trim() !== ""
+        return formData.projectName.trim() !== "" && (!shouldUpdateZip || Boolean(formData.experimentZip))
       case 2:
         return formData.sensors.length > 0
       case 3:
@@ -371,8 +409,183 @@ export const EditProjectDialog = ({
     const shouldUpdateMetadata = metadataChanged()
     const shouldUpdateSensors = sensorsChanged()
     const shouldUpdateParticipants = participantsChanged()
-    const shouldUploadZip = Boolean(formData.experimentZip)
-    return shouldUpdateMetadata || shouldUpdateSensors || shouldUpdateParticipants || shouldUploadZip
+    return shouldUpdateMetadata || shouldUpdateSensors || shouldUpdateParticipants || hasProcessedZipUpdate
+  }
+
+  const processZipOnStep1 = async () => {
+    if (!shouldUpdateZip || !formData.experimentZip) {
+      setCurrentStep((prev) => prev + 1)
+      return
+    }
+
+    setIsSaving(true)
+    setSaveError(null)
+    setSaveNotice(null)
+    setSaveProgressMessage("Enviando nuevo ZIP al backend...")
+    setIsZipUploadInProgress(true)
+
+    try {
+      if (metadataChanged()) {
+        await ProjectsApi.update(projectId, {
+          name: formData.projectName.trim(),
+          description: formData.description.trim() || "",
+          status: formData.status,
+        })
+      }
+
+      const uploadAbortController = new AbortController()
+      uploadAbortControllerRef.current = uploadAbortController
+      activeZipUploadProjectIdRef.current = projectId
+
+      let driveProgressPollTimer: ReturnType<typeof setInterval> | null = null
+      let lastDriveSampleAt: number | null = null
+      let lastDriveUploadedBytes: number | null = null
+
+      const clearDriveProgressPolling = () => {
+        if (driveProgressPollTimer) {
+          clearInterval(driveProgressPollTimer)
+          driveProgressPollTimer = null
+        }
+      }
+
+      const pollDriveProgress = async () => {
+        const snapshot = await ProjectsApi.getZipUploadProgress(projectId)
+        const totalBytes = Math.max(0, snapshot.total_bytes || 0)
+        const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0)
+
+        if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
+          setSaveProgressMessage("Preparando sincronización en Google Drive...")
+          return
+        }
+
+        const percent = Math.max(
+          0,
+          Math.min(
+            100,
+            Number.isFinite(snapshot.percent)
+              ? snapshot.percent
+              : totalBytes > 0
+                ? Math.round((uploadedBytes / totalBytes) * 100)
+                : 0
+          )
+        )
+
+        const now = Date.now()
+        let speedMbps = snapshot.speed_mbps ?? null
+        if ((speedMbps === null || !Number.isFinite(speedMbps)) && lastDriveSampleAt !== null && lastDriveUploadedBytes !== null) {
+          const deltaSeconds = Math.max(0.001, (now - lastDriveSampleAt) / 1000)
+          const deltaBytes = Math.max(0, uploadedBytes - lastDriveUploadedBytes)
+          const sampledSpeed = deltaBytes / deltaSeconds / (1024 * 1024)
+          speedMbps = Number.isFinite(sampledSpeed) && sampledSpeed > 0 ? sampledSpeed : null
+        }
+
+        const speedBytesPerSecond = speedMbps !== null ? speedMbps * 1024 * 1024 : null
+        const etaSeconds = snapshot.eta_seconds ?? (
+          speedBytesPerSecond && speedBytesPerSecond > 0
+            ? Math.max(0, Math.round((totalBytes - uploadedBytes) / speedBytesPerSecond))
+            : null
+        )
+
+        lastDriveSampleAt = now
+        lastDriveUploadedBytes = uploadedBytes
+
+        setZipUploadPercent(percent)
+        setZipUploadBytes({ loaded: uploadedBytes, total: totalBytes })
+        setZipUploadSpeedMbps(speedMbps !== null && Number.isFinite(speedMbps) ? speedMbps : null)
+        setZipUploadEtaSeconds(etaSeconds !== null && Number.isFinite(etaSeconds) ? etaSeconds : null)
+        setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0)
+
+        if (snapshot.phase === "canceling") {
+          setSaveProgressMessage("Cancelando subida en backend...")
+        } else if (percent >= 99 && snapshot.phase !== "completed") {
+          setSaveProgressMessage("Finalizando sincronización con Google Drive...")
+        } else {
+          setSaveProgressMessage(`Sincronizando archivos en Google Drive... ${percent}%`)
+        }
+
+        if (snapshot.phase === "completed") {
+          clearDriveProgressPolling()
+        }
+        if (snapshot.phase === "failed") {
+          clearDriveProgressPolling()
+          if (snapshot.error) {
+            throw new Error(snapshot.error)
+          }
+        }
+      }
+
+      void pollDriveProgress().catch((error: unknown) => {
+        console.warn("[EditProjectDialog] initial Drive progress poll failed", error)
+      })
+      driveProgressPollTimer = setInterval(() => {
+        void pollDriveProgress().catch((error: unknown) => {
+          console.warn("[EditProjectDialog] Drive progress poll failed", error)
+        })
+      }, 1000)
+
+      await ProjectsApi.uploadZipWithProgress(
+        projectId,
+        formData.experimentZip,
+        (progress) => {
+          if (progress.phase === "uploading") {
+            setSaveProgressMessage(`Enviando nuevo ZIP al backend... ${progress.percent}%`)
+            return
+          }
+          if (progress.phase === "processing") {
+            return
+          }
+          if (progress.phase === "completed") {
+            clearDriveProgressPolling()
+            void pollDriveProgress().catch((error: unknown) => {
+              console.warn("[EditProjectDialog] final Drive progress poll failed", error)
+            })
+          }
+        },
+        uploadAbortController.signal
+      )
+
+      clearDriveProgressPolling()
+      await pollDriveProgress().catch((error: unknown) => {
+        console.warn("[EditProjectDialog] post-upload Drive progress poll failed", error)
+      })
+
+      const refreshed = await ProjectsApi.get(projectId)
+
+      setFormData((prev) => ({
+        ...prev,
+        folderPath: getCurrentZipFilename(refreshed) || prev.folderPath,
+        scenaries: parseScenaries(refreshed),
+      }))
+      setHasProcessedZipUpdate(true)
+      setCurrentStep(2)
+      setSaveNotice("ZIP procesado correctamente. Puedes continuar con la edición.")
+    } catch (error) {
+      const friendlyMessage = toFriendlyErrorMessage(error)
+      const wasCanceled = /cancelad|abort/i.test(friendlyMessage)
+      const showSessionHint = isGoogleSessionExpiredError(friendlyMessage)
+      const nextMessage = showSessionHint
+        ? `${friendlyMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
+        : friendlyMessage
+
+      if (wasCanceled) {
+        setSaveError(null)
+        setSaveNotice("Subida cancelada por el usuario.")
+      } else {
+        setSaveNotice(null)
+        setSaveError(nextMessage)
+      }
+    } finally {
+      setIsSaving(false)
+      setSaveProgressMessage(null)
+      setZipUploadPercent(null)
+      setZipUploadBytes(null)
+      setZipUploadSpeedMbps(null)
+      setZipUploadEtaSeconds(null)
+      setZipDriveProcessingSeconds(null)
+      setIsZipUploadInProgress(false)
+      uploadAbortControllerRef.current = null
+      activeZipUploadProjectIdRef.current = null
+    }
   }
 
   const saveProjectChanges = async () => {
@@ -394,7 +607,7 @@ export const EditProjectDialog = ({
       const shouldUpdateMetadata = metadataChanged()
       const shouldUpdateSensors = sensorsChanged()
       const shouldUpdateParticipants = participantsChanged()
-      const shouldUploadZip = Boolean(formData.experimentZip)
+      const shouldUploadZip = hasProcessedZipUpdate
 
       if (!hasAnyChanges()) {
         toast.success("No hay cambios por guardar.")
@@ -424,150 +637,6 @@ export const EditProjectDialog = ({
           status: formData.status,
         })
       }
-
-      const zipToUpload = formData.experimentZip
-      if (shouldUploadZip && zipToUpload) {
-        // Backend replaces previous Drive content (old ZIP + assets) with the new upload.
-        setZipUploadPercent(null)
-        setZipUploadBytes(null)
-        setZipUploadSpeedMbps(null)
-        setZipUploadEtaSeconds(null)
-        setZipDriveProcessingSeconds(null)
-        updateProgress("Enviando nuevo ZIP al backend...")
-        setIsZipUploadInProgress(true)
-
-        const uploadAbortController = new AbortController()
-        uploadAbortControllerRef.current = uploadAbortController
-        activeZipUploadProjectIdRef.current = projectId
-
-        let driveProgressPollTimer: ReturnType<typeof setInterval> | null = null
-        let lastDriveSampleAt: number | null = null
-        let lastDriveUploadedBytes: number | null = null
-
-        const clearDriveProgressPolling = () => {
-          if (driveProgressPollTimer) {
-            clearInterval(driveProgressPollTimer)
-            driveProgressPollTimer = null
-          }
-        }
-
-        const pollDriveProgress = async () => {
-          const snapshot = await ProjectsApi.getZipUploadProgress(projectId)
-          const totalBytes = Math.max(0, snapshot.total_bytes || 0)
-          const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0)
-
-          if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
-            updateProgress("Preparando sincronización en Google Drive...")
-            return
-          }
-
-          const percent = Math.max(
-            0,
-            Math.min(
-              100,
-              Number.isFinite(snapshot.percent)
-                ? snapshot.percent
-                : totalBytes > 0
-                  ? Math.round((uploadedBytes / totalBytes) * 100)
-                  : 0
-            )
-          )
-
-          const now = Date.now()
-          let speedMbps = snapshot.speed_mbps ?? null
-          if ((speedMbps === null || !Number.isFinite(speedMbps)) && lastDriveSampleAt !== null && lastDriveUploadedBytes !== null) {
-            const deltaSeconds = Math.max(0.001, (now - lastDriveSampleAt) / 1000)
-            const deltaBytes = Math.max(0, uploadedBytes - lastDriveUploadedBytes)
-            const sampledSpeed = deltaBytes / deltaSeconds / (1024 * 1024)
-            speedMbps = Number.isFinite(sampledSpeed) && sampledSpeed > 0 ? sampledSpeed : null
-          }
-
-          const speedBytesPerSecond = speedMbps !== null ? speedMbps * 1024 * 1024 : null
-          const etaSeconds = snapshot.eta_seconds ?? (
-            speedBytesPerSecond && speedBytesPerSecond > 0
-              ? Math.max(0, Math.round((totalBytes - uploadedBytes) / speedBytesPerSecond))
-              : null
-          )
-
-          lastDriveSampleAt = now
-          lastDriveUploadedBytes = uploadedBytes
-
-          setZipUploadPercent(percent)
-          setZipUploadBytes({ loaded: uploadedBytes, total: totalBytes })
-          setZipUploadSpeedMbps(speedMbps !== null && Number.isFinite(speedMbps) ? speedMbps : null)
-          setZipUploadEtaSeconds(etaSeconds !== null && Number.isFinite(etaSeconds) ? etaSeconds : null)
-          setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0)
-          if (snapshot.phase === "canceling") {
-            updateProgress("Cancelando subida en backend...")
-          } else if (percent >= 99 && snapshot.phase !== "completed") {
-            updateProgress("Finalizando sincronización con Google Drive...")
-          } else {
-            updateProgress(`Sincronizando archivos en Google Drive... ${percent}%`)
-          }
-
-          if (snapshot.phase === "completed") {
-            clearDriveProgressPolling()
-          }
-          if (snapshot.phase === "failed") {
-            clearDriveProgressPolling()
-            if (snapshot.error) {
-              throw new Error(snapshot.error)
-            }
-          }
-        }
-
-        // Start polling immediately so we never miss Drive-side progress.
-        void pollDriveProgress().catch((error: unknown) => {
-          console.warn("[EditProjectDialog] initial Drive progress poll failed", error)
-        })
-        driveProgressPollTimer = setInterval(() => {
-          void pollDriveProgress().catch((error: unknown) => {
-            console.warn("[EditProjectDialog] Drive progress poll failed", error)
-          })
-        }, 1000)
-
-        await ProjectsApi.uploadZipWithProgress(projectId, zipToUpload, (progress) => {
-          if (progress.phase === "uploading") {
-            updateProgress(`Enviando nuevo ZIP al backend... ${progress.percent}%`)
-            return
-          }
-
-          if (progress.phase === "processing") {
-            return
-          }
-
-          if (progress.phase === "completed") {
-            clearDriveProgressPolling()
-            void pollDriveProgress().catch((error: unknown) => {
-              console.warn("[EditProjectDialog] final Drive progress poll failed", error)
-            })
-          }
-        }, uploadAbortController.signal)
-
-        clearDriveProgressPolling()
-        await pollDriveProgress().catch((error: unknown) => {
-          console.warn("[EditProjectDialog] post-upload Drive progress poll failed", error)
-        })
-
-        setZipUploadPercent(100)
-        setZipUploadBytes((prev) => {
-          const total = prev?.total ?? 0
-          return { loaded: total, total }
-        })
-        setZipUploadSpeedMbps(null)
-        setZipUploadEtaSeconds(0)
-        updateProgress("ZIP y sincronizacion en Google Drive completados.")
-        setIsZipUploadInProgress(false)
-        uploadAbortControllerRef.current = null
-        activeZipUploadProjectIdRef.current = null
-      }
-
-      // Clear upload-specific indicators before moving to non-upload stages.
-      setZipUploadPercent(null)
-      setZipUploadBytes(null)
-      setZipUploadSpeedMbps(null)
-      setZipUploadEtaSeconds(null)
-      setZipDriveProcessingSeconds(null)
 
       // Only update sensors and/or participants if they actually changed.
       if (shouldUpdateSensors || shouldUpdateParticipants) {
@@ -679,8 +748,18 @@ export const EditProjectDialog = ({
     setZipUploadEtaSeconds(null)
     setZipDriveProcessingSeconds(null)
     setIsZipUploadInProgress(false)
+    setHasProcessedZipUpdate(false)
     uploadAbortControllerRef.current = null
     activeZipUploadProjectIdRef.current = null
+  }
+
+  const handleNextStep = async () => {
+    if (!canGoNext() || isSaving || isLoading) return
+    if (currentStep === 1) {
+      await processZipOnStep1()
+      return
+    }
+    setCurrentStep((prev) => prev + 1)
   }
 
   const handleCancel = () => {
@@ -920,7 +999,7 @@ export const EditProjectDialog = ({
             {currentStep < 4 ? (
               <Button
                 type="button"
-                onClick={() => setCurrentStep((prev) => prev + 1)}
+                onClick={() => void handleNextStep()}
                 disabled={!canGoNext() || isSaving || isLoading}
                 className="gap-2 p-4"
               >

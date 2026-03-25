@@ -12,7 +12,11 @@ export interface ParticipantData {
 
 export interface scenaries {
   id: string
+  projectId?: string
   name: string
+  type?: "image" | "video"
+  fileId?: string | null
+  imageUrl?: string | null
   aois: AOI[]
 }
 

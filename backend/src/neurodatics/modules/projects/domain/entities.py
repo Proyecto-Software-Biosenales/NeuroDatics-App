@@ -7,6 +7,7 @@ from ....infra.db.base import BaseModel
 
 
 class ProjectStatus(str, enum.Enum):
+    DRAFT = "draft"
     ACTIVE = "active"
     ARCHIVED = "archived"
 

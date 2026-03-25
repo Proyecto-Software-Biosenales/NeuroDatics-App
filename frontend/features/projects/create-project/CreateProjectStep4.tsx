@@ -1,16 +1,121 @@
 "use client"
 
-import { useState } from "react"
-import { ChevronDown, ChevronRight, X } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ChevronDown, ChevronRight, Loader2, X } from "lucide-react"
 import type { scenaries } from "./types"
+import { ProjectsApi } from "@/features/projects/api/projectsApi"
 
 interface CreateProjectStep4Props {
   scenaries: scenaries[]
 }
 
+const ScenarioPreviewImage = ({
+  projectId,
+  fileId,
+  fallbackUrl,
+  alt,
+}: {
+  projectId?: string
+  fileId?: string | null
+  fallbackUrl?: string | null
+  alt: string
+}) => {
+  const hasAnySource = Boolean((projectId && fileId) || fallbackUrl)
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [currentSrc, setCurrentSrc] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [isLoading, setIsLoading] = useState(hasAnySource)
+
+  useEffect(() => {
+    let cancelled = false
+    let objectUrl: string | null = null
+
+    setBlobUrl(null)
+    setCurrentSrc(null)
+    setLoadError(false)
+    setIsLoading(hasAnySource)
+
+    const load = async () => {
+      if (!projectId || !fileId) {
+        if (fallbackUrl) {
+          setCurrentSrc(fallbackUrl)
+        } else {
+          setIsLoading(false)
+        }
+        return
+      }
+      try {
+        const blob = await ProjectsApi.fetchScenarioImage(projectId, fileId)
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setBlobUrl(objectUrl)
+        setCurrentSrc(objectUrl)
+        setLoadError(false)
+      } catch {
+        if (!cancelled) {
+          if (fallbackUrl) {
+            setCurrentSrc(fallbackUrl)
+          } else {
+            setLoadError(true)
+            setIsLoading(false)
+          }
+        }
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [projectId, fileId, fallbackUrl, hasAnySource])
+
+  const finalSrc = currentSrc
+  if (loadError || (!finalSrc && !isLoading)) {
+    return (
+      <div className="absolute inset-0" />
+    )
+  }
+
+  return (
+    <>
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100/80 text-gray-600">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Cargando imagen...
+          </div>
+        </div>
+      )}
+      {finalSrc && (
+        <img
+          src={finalSrc}
+          alt={alt}
+          className={`h-full w-full object-contain transition-opacity ${isLoading ? "opacity-0" : "opacity-100"}`}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onLoad={() => setIsLoading(false)}
+          onError={() => {
+            // If proxy/object URL fails, try fallback URL before giving up.
+            if (blobUrl && fallbackUrl && finalSrc === blobUrl) {
+              setCurrentSrc(fallbackUrl)
+              setIsLoading(true)
+              return
+            }
+            setLoadError(true)
+            setIsLoading(false)
+          }}
+        />
+      )}
+    </>
+  )
+}
+
 export const CreateProjectStep4 = ({ scenaries }: CreateProjectStep4Props) => {
+  const imageScenaries = scenaries.filter((scenary) => (scenary.type || "image") === "image")
   const [openscenaries, setOpenscenaries] = useState<string>(
-    scenaries[0]?.id || ""
+    imageScenaries[0]?.id || ""
   )
 
   return (
@@ -25,7 +130,7 @@ export const CreateProjectStep4 = ({ scenaries }: CreateProjectStep4Props) => {
       </div>
 
       <div className="space-y-3">
-        {scenaries.map((scenary) => {
+        {imageScenaries.map((scenary) => {
           const isOpen = openscenaries === scenary.id
           const scenaryAois = scenary.aois || []
 
@@ -56,9 +161,12 @@ export const CreateProjectStep4 = ({ scenaries }: CreateProjectStep4Props) => {
                   <div className="pt-4 space-y-4">
                     {/* Image placeholder with AOI rectangles */}
                     <div className="relative rounded-xl overflow-hidden bg-gray-200 aspect-video">
-                      <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-                        Vista previa del estímulo
-                      </div>
+                      <ScenarioPreviewImage
+                        projectId={scenary.projectId}
+                        fileId={scenary.fileId}
+                        fallbackUrl={scenary.imageUrl}
+                        alt={scenary.name}
+                      />
                       {scenaryAois.map((aoi) => (
                         <div
                           key={aoi.id}
@@ -109,6 +217,11 @@ export const CreateProjectStep4 = ({ scenaries }: CreateProjectStep4Props) => {
             </div>
           )
         })}
+        {imageScenaries.length === 0 && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            No hay escenarios de imagen disponibles para definir AOIs.
+          </div>
+        )}
       </div>
     </div>
   )

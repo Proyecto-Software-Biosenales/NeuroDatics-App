@@ -23,11 +23,13 @@ interface ProjectsGridProps {
 }
 
 const statusLabel: Record<ProjectStatus, string> = {
+  draft: "Borrador",
   active: "Activo",
   archived: "Archivado",
 }
 
 const statusColorClass: Record<ProjectStatus, string> = {
+  draft: "bg-amber-500",
   active: "bg-emerald-500",
   archived: "bg-gray-400",
 }

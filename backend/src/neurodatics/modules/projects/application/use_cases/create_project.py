@@ -10,13 +10,19 @@ class CreateProjectUseCase:
     def __init__(self, repository: ProjectRepository):
         self.repository = repository
     
-    async def execute(self, owner_id: UUID, name: str, description: Optional[str] = None) -> Project:
+    async def execute(
+        self,
+        owner_id: UUID,
+        name: str,
+        description: Optional[str] = None,
+        status: ProjectStatus = ProjectStatus.DRAFT,
+    ) -> Project:
         """Create a new project"""
         project = Project(
             owner_id=owner_id,
             name=name,
             description=description,
-            status=ProjectStatus.ACTIVE
+            status=status,
         )
         
         return await self.repository.create(project)
