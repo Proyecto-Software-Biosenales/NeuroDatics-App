@@ -1,4 +1,4 @@
-import { Calendar, Clock3, Folder, Users, MoreVertical, Edit, Trash2, Archive } from "lucide-react"
+import { Calendar, Clock3, Folder, Users, MoreVertical, Edit, Trash2, Archive, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { Card } from "../../../components/ui/Card"
 import { SensorBadge } from "../../../features/projects/components/SensorBadge"
@@ -33,8 +33,18 @@ const statusColorClass: Record<ProjectStatus, string> = {
 
 export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) => {
   const [archivingId, setArchivingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editOpenId, setEditOpenId] = useState<string | null>(null)
   const [deleteOpenId, setDeleteOpenId] = useState<string | null>(null)
+
+  const handleDeleteProject = async (projectId: string) => {
+    setDeletingId(projectId)
+    try {
+      return await onDelete(projectId)
+    } finally {
+      setDeletingId((current) => (current === projectId ? null : current))
+    }
+  }
 
   const handleArchiveProject = async (projectId: string, project: Project) => {
     try {
@@ -69,16 +79,19 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
       {projects.map((project) => {
         const projectStatus = (project.status || "active") as ProjectStatus
         const participants = project.participants ?? 0
+        const isDeleting = deletingId === project.id
 
         return (
         <Card
           key={project.id}
-          className="group relative cursor-pointer rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+          className={`group relative cursor-pointer rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
+            isDeleting ? "animate-pulse scale-[0.99] opacity-70 pointer-events-none" : ""
+          }`}
         >
           <DeleteProjectDialog
             projectId={project.id}
             projectName={project.name}
-            onDelete={onDelete}
+            onDelete={handleDeleteProject}
             isOpen={deleteOpenId === project.id}
             onOpenChange={(open) => setDeleteOpenId(open ? project.id : null)}
           />
@@ -199,6 +212,15 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
               </button>
             </div>
           </div>
+
+          {isDeleting && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 backdrop-blur-[1px]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Eliminando proyecto...
+              </div>
+            </div>
+          )}
         </Card>
         )
       })}
