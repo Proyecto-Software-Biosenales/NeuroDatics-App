@@ -705,7 +705,12 @@ export const EditProjectDialog = ({
         }
       }}
     >
-      <DialogContent onClick={(e) => e.stopPropagation()} className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-8">
+      <DialogContent
+        onClick={(e) => e.stopPropagation()}
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-8"
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold">Editar proyecto</DialogTitle>
           <DialogDescription asChild>
