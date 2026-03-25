@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
+from datetime import datetime, timezone
 import logging
 
 from ....api.deps import get_db, get_current_user
@@ -186,7 +187,10 @@ async def update_project(
                     detail="No se pudo configurar Google Drive para sincronizar el nombre de la carpeta"
                 )
 
-            renamed = gdrive_client.rename_file(project.drive_root_folder_id, request.name)
+            drive_folder_name = (
+                f"{request.name}-{str(project.id)[:8]}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+            )
+            renamed = gdrive_client.rename_file(project.drive_root_folder_id, drive_folder_name)
             if not renamed or not renamed.get("name"):
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
