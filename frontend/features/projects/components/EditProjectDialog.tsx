@@ -44,7 +44,7 @@ const defaultScenaries: scenaries[] = [
 
 const toProjectStatus = (value: unknown): ProjectStatus => {
   if (value === "active" || value === "archived") return value
-  return "draft"
+  return "active"
 }
 
 const toParticipantSex = (value: unknown): "male" | "female" | "other" | null => {
@@ -222,7 +222,7 @@ export const EditProjectDialog = ({
   const [formData, setFormData] = useState<ProjectFormData>({
     projectName: "",
     description: "",
-    status: "draft",
+    status: "active",
     experimentZip: null,
     folderPath: "",
     uploadedZip: null,

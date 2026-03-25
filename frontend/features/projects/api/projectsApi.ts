@@ -5,7 +5,7 @@ export type ApiProject = {
   id: string;
   name: string;
   description?: string | null;
-  status?: "draft" | "active" | "archived" | string;
+  status?: "active" | "archived" | string;
   created_at?: string;
   updated_at?: string;
   sensors?: Array<{ id: string; sensor_type: string }>;

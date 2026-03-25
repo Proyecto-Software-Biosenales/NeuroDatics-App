@@ -23,13 +23,11 @@ interface ProjectsGridProps {
 
 const statusLabel: Record<ProjectStatus, string> = {
   active: "Activo",
-  draft: "Borrador",
   archived: "Archivado",
 }
 
 const statusColorClass: Record<ProjectStatus, string> = {
   active: "bg-emerald-500",
-  draft: "bg-amber-500",
   archived: "bg-gray-400",
 }
 
@@ -69,7 +67,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {projects.map((project) => {
-        const projectStatus = (project.status || "draft") as ProjectStatus
+        const projectStatus = (project.status || "active") as ProjectStatus
         const participants = project.participants ?? 0
 
         return (

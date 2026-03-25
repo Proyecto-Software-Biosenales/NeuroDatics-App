@@ -21,7 +21,7 @@ export default function ProyectosPage() {
 
   const filteredProjects = useMemo(() => {
     if (statusFilter === "all") return projects
-    return projects.filter((project) => (project.status || "draft") === statusFilter)
+    return projects.filter((project) => (project.status || "active") === statusFilter)
   }, [projects, statusFilter])
 
   const hasFilteredProjects = filteredProjects.length > 0
@@ -30,7 +30,6 @@ export default function ProyectosPage() {
     { value: "all", label: "Todos" },
     { value: "active", label: "Activos" },
     { value: "archived", label: "Archivados" },
-    { value: "draft", label: "Borradores" },
   ]
 
   return (

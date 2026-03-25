@@ -90,7 +90,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
   const [formData, setFormData] = useState<ProjectFormData>({
     projectName: "",
     description: "",
-    status: "draft",
+    status: "active",
     folderPath: "",
     uploadedZip: null,
     sensors: [],
@@ -173,7 +173,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     setFormData({
       projectName: "",
       description: "",
-      status: "draft",
+      status: "active",
       folderPath: "",
       uploadedZip: null,
       sensors: [],
