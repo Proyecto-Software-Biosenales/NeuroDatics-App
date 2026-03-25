@@ -193,7 +193,8 @@ type UploadProgressCallback = (progress: UploadProgress) => void;
 export async function apiUploadFormWithProgress<T>(
   path: string,
   formData: FormData,
-  onProgress?: UploadProgressCallback
+  onProgress?: UploadProgressCallback,
+  signal?: AbortSignal
 ): Promise<T> {
   // Proactively refresh token if expired to avoid 401 errors
   if (isAccessTokenExpired()) {
@@ -212,6 +213,19 @@ export async function apiUploadFormWithProgress<T>(
       const xhr = new XMLHttpRequest();
       let processingTimer: ReturnType<typeof setInterval> | null = null;
       let processingStartedAt: number | null = null;
+      let settled = false;
+
+      const finalizeReject = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        reject(error);
+      };
+
+      const finalizeResolve = (response: Response) => {
+        if (settled) return;
+        settled = true;
+        resolve(response);
+      };
 
       const clearProcessingTimer = () => {
         if (processingTimer) {
@@ -219,6 +233,24 @@ export async function apiUploadFormWithProgress<T>(
           processingTimer = null;
         }
       };
+
+      const onAbortRequest = () => {
+        clearProcessingTimer();
+        try {
+          xhr.abort();
+        } catch {
+          // ignore abort errors
+        }
+        finalizeReject(new Error("Subida cancelada por el usuario."));
+      };
+
+      if (signal) {
+        if (signal.aborted) {
+          onAbortRequest();
+          return;
+        }
+        signal.addEventListener("abort", onAbortRequest, { once: true });
+      }
 
       xhr.open("POST", `${BASE}${path}`);
       xhr.timeout = ZIP_UPLOAD_TIMEOUT_MS;
@@ -266,15 +298,22 @@ export async function apiUploadFormWithProgress<T>(
 
       xhr.onerror = () => {
         clearProcessingTimer();
-        reject(new Error("No se pudo conectar con el backend durante la subida del ZIP."));
+        finalizeReject(new Error("No se pudo conectar con el backend durante la subida del ZIP."));
       };
       xhr.ontimeout = () => {
         clearProcessingTimer();
-        reject(new Error("La subida del ZIP excedio el tiempo de espera."));
+        finalizeReject(new Error("La subida del ZIP excedio el tiempo de espera."));
+      };
+      xhr.onabort = () => {
+        clearProcessingTimer();
+        finalizeReject(new Error("Subida cancelada por el usuario."));
       };
 
       xhr.onload = () => {
         clearProcessingTimer();
+        if (signal) {
+          signal.removeEventListener("abort", onAbortRequest);
+        }
 
         if (onProgress) {
           const elapsedSeconds = processingStartedAt
@@ -294,7 +333,7 @@ export async function apiUploadFormWithProgress<T>(
           status: xhr.status,
           statusText: xhr.statusText,
         });
-        resolve(response);
+        finalizeResolve(response);
       };
 
       xhr.send(formData);
