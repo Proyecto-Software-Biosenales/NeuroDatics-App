@@ -92,15 +92,39 @@ const toNumber = (value: unknown, fallback = 0): number => {
 }
 
 const extractProjectNameAndId = (fullName: string): { name: string; id: string } => {
-  const lastDashIndex = fullName.lastIndexOf("-")
+  const normalized = fullName.trim()
+  if (!normalized) {
+    return { name: fullName, id: "" }
+  }
+
+  // Handles names like: "Proyecto-9ac9ef2b-20260324225557"
+  const shortIdWithTimestampMatch = normalized.match(/^(.*)-([a-fA-F0-9]{8}-\d{14})$/)
+  if (shortIdWithTimestampMatch) {
+    return {
+      name: shortIdWithTimestampMatch[1],
+      id: shortIdWithTimestampMatch[2],
+    }
+  }
+
+  // Handles names like: "Proyecto-550e8400-e29b-41d4-a716-446655440000"
+  const uuidMatch = normalized.match(
+    /^(.*)-([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})$/
+  )
+  if (uuidMatch) {
+    return {
+      name: uuidMatch[1],
+      id: uuidMatch[2],
+    }
+  }
+
+  // Fallback for legacy IDs appended after the last dash.
+  const lastDashIndex = normalized.lastIndexOf("-")
   if (lastDashIndex === -1) {
     return { name: fullName, id: "" }
   }
 
-  const name = fullName.substring(0, lastDashIndex)
-  const id = fullName.substring(lastDashIndex + 1)
-
-  // Only treat it as an ID if it contains uppercase hex characters or looks like a UUID
+  const name = normalized.substring(0, lastDashIndex)
+  const id = normalized.substring(lastDashIndex + 1)
   if (/^[a-fA-F0-9\-]{8,}$/.test(id)) {
     return { name, id }
   }
@@ -408,14 +432,9 @@ export const EditProjectDialog = ({
 
       if (shouldUpdateMetadata) {
         updateProgress("Actualizando datos generales del proyecto...")
-        
-        // Combine the edited name with the original ID suffix
-        const nameToSend = projectNameIdSuffixRef.current
-          ? `${formData.projectName}-${projectNameIdSuffixRef.current}`
-          : formData.projectName
-        
+
         updatedMetadata = await ProjectsApi.update(projectId, {
-          name: nameToSend,
+          name: formData.projectName.trim(),
           description: formData.description.trim() || "",
           status: formData.status,
         })
