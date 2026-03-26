@@ -120,6 +120,11 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
   const uploadAbortControllerRef = useRef<AbortController | null>(null);
   const activeZipUploadProjectIdRef = useRef<string | null>(null);
 
+  const clearStep1RetryState = () => {
+    setSaveError(null);
+    setSaveNotice(null);
+  };
+
   const cancelZipUpload = () => {
     if (uploadAbortControllerRef.current) {
       uploadAbortControllerRef.current.abort();
@@ -145,10 +150,23 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     experimentZip: null,
   });
 
-  const updateProjectName = (name: string) => setFormData(prev => ({ ...prev, projectName: name }));
-  const updateDescription = (description: string) => setFormData(prev => ({ ...prev, description }));
-  const updateFolderPath = (path: string) => setFormData(prev => ({ ...prev, folderPath: path }));
+  const updateProjectName = (name: string) => {
+    clearStep1RetryState();
+    setFormData(prev => ({ ...prev, projectName: name }));
+  };
+
+  const updateDescription = (description: string) => {
+    clearStep1RetryState();
+    setFormData(prev => ({ ...prev, description }));
+  };
+
+  const updateFolderPath = (path: string) => {
+    clearStep1RetryState();
+    setFormData(prev => ({ ...prev, folderPath: path }));
+  };
+
   const setExperimentZip = (file: File | null) => {
+    clearStep1RetryState();
     setFormData((prev) => ({
       ...prev,
       experimentZip: file,
