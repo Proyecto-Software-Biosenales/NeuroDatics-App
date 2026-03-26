@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   Activity,
+  ChevronDown,
+  ChevronRight,
   Image,
   Loader2,
   Users,
@@ -60,6 +62,25 @@ const toScenaryTypeLabel = (type?: string | null): string => {
   return type
 }
 
+const extractDriveFileId = (url?: string | null): string | null => {
+  if (!url) return null
+  const filePathMatch = url.match(/\/d\/([^/]+)/i)
+  if (filePathMatch?.[1]) return filePathMatch[1]
+  const queryMatch = url.match(/[?&]id=([^&]+)/i)
+  if (queryMatch?.[1]) return queryMatch[1]
+  return null
+}
+
+const resolveScenarioImageUrl = (file?: ApiProjectFile): string | null => {
+  if (!file) return null
+  if (file.drive_download_link) return file.drive_download_link
+  const driveFileId = file.external_id || extractDriveFileId(file.drive_web_view_link)
+  if (driveFileId) {
+    return `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w2000`
+  }
+  return file.drive_web_view_link ?? null
+}
+
 export const ViewProjectDialog = ({
   projectId,
   projectName,
@@ -70,6 +91,7 @@ export const ViewProjectDialog = ({
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [projectDetail, setProjectDetail] = useState<ApiProjectDetail | null>(null)
+  const [openScenaryId, setOpenScenaryId] = useState<string>("")
 
   const isOpen = controlledIsOpen ?? internalIsOpen
   const setIsOpen = (value: boolean) => {
@@ -116,7 +138,24 @@ export const ViewProjectDialog = ({
   const participants = projectDetail?.participants || []
   const sensors = projectDetail?.sensors || []
   const scenaries = projectDetail?.scenaries || []
+  const filesById = useMemo(() => {
+    const map = new Map<string, ApiProjectFile>()
+    for (const file of projectDetail?.files || []) {
+      map.set(file.id, file)
+    }
+    return map
+  }, [projectDetail?.files])
   const zipFilename = useMemo(() => getLatestZipFilename(projectDetail?.files), [projectDetail?.files])
+
+  useEffect(() => {
+    if (!isOpen) {
+      setOpenScenaryId("")
+      return
+    }
+
+    const firstImageScenary = scenaries.find((scenary) => String(scenary.type || "").toLowerCase() !== "video")
+    setOpenScenaryId(firstImageScenary?.id || scenaries[0]?.id || "")
+  }, [isOpen, scenaries])
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -240,20 +279,46 @@ export const ViewProjectDialog = ({
               </h3>
               <div className="space-y-2">
                 {scenaries.length > 0 ? (
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {scenaries.map((scenary) => (
-                      <li key={scenary.id} className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3 text-sm text-gray-700">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-700">
-                          {String(scenary.type || "").toLowerCase() === "video" ? (
-                            <Video className="h-5 w-5" />
+                      <li key={scenary.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                        <button
+                          type="button"
+                          onClick={() => setOpenScenaryId((prev) => (prev === scenary.id ? "" : scenary.id))}
+                          className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-semibold text-gray-900">{scenary.name}</p>
+                            <p className="text-sm font-medium text-gray-500">{toScenaryTypeLabel(scenary.type)}</p>
+                          </div>
+                          {openScenaryId === scenary.id ? (
+                            <ChevronDown className="h-5 w-5 text-gray-500" />
                           ) : (
-                            <Image className="h-5 w-5" />
+                            <ChevronRight className="h-5 w-5 text-gray-500" />
                           )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-base font-semibold text-gray-900">{scenary.name}</p>
-                          <p className="text-sm font-medium text-gray-500">{toScenaryTypeLabel(scenary.type)}</p>
-                        </div>
+                        </button>
+
+                        {openScenaryId === scenary.id && (
+                          <div className="border-t border-gray-100 p-4">
+                            {String(scenary.type || "").toLowerCase() === "video" ? (
+                              <div className="flex aspect-video items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600">
+                                <div className="flex items-center gap-2 text-sm font-medium">
+                                  <Video className="h-4 w-4" />
+                                  Escenario de video
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-gray-100 aspect-video">
+                                <ScenarioPreviewImage
+                                  projectId={projectId}
+                                  fileId={scenary.file_id}
+                                  fallbackUrl={scenary.file_id ? resolveScenarioImageUrl(filesById.get(scenary.file_id)) : null}
+                                  alt={scenary.name}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -266,5 +331,107 @@ export const ViewProjectDialog = ({
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+const ScenarioPreviewImage = ({
+  projectId,
+  fileId,
+  fallbackUrl,
+  alt,
+}: {
+  projectId?: string
+  fileId?: string | null
+  fallbackUrl?: string | null
+  alt: string
+}) => {
+  const hasAnySource = Boolean((projectId && fileId) || fallbackUrl)
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [currentSrc, setCurrentSrc] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [isLoading, setIsLoading] = useState(hasAnySource)
+
+  useEffect(() => {
+    let cancelled = false
+    let objectUrl: string | null = null
+
+    setBlobUrl(null)
+    setCurrentSrc(null)
+    setLoadError(false)
+    setIsLoading(hasAnySource)
+
+    const load = async () => {
+      if (!projectId || !fileId) {
+        if (fallbackUrl) {
+          setCurrentSrc(fallbackUrl)
+        } else {
+          setIsLoading(false)
+        }
+        return
+      }
+
+      try {
+        const blob = await ProjectsApi.fetchScenarioImage(projectId, fileId)
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setBlobUrl(objectUrl)
+        setCurrentSrc(objectUrl)
+        setLoadError(false)
+      } catch {
+        if (!cancelled) {
+          if (fallbackUrl) {
+            setCurrentSrc(fallbackUrl)
+          } else {
+            setLoadError(true)
+            setIsLoading(false)
+          }
+        }
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [projectId, fileId, fallbackUrl, hasAnySource])
+
+  const finalSrc = currentSrc
+  if (loadError || (!finalSrc && !isLoading)) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+        <Image className="h-4 w-4" />
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100/80 text-gray-600">
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </div>
+      )}
+      {finalSrc && (
+        <img
+          src={finalSrc}
+          alt={alt}
+          className={`h-full w-full object-contain transition-opacity ${isLoading ? "opacity-0" : "opacity-100"}`}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onLoad={() => setIsLoading(false)}
+          onError={() => {
+            if (blobUrl && fallbackUrl && finalSrc === blobUrl) {
+              setCurrentSrc(fallbackUrl)
+              setIsLoading(true)
+              return
+            }
+            setLoadError(true)
+            setIsLoading(false)
+          }}
+        />
+      )}
+    </>
   )
 }

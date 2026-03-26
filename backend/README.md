@@ -19,12 +19,9 @@ python -m uvicorn neurodatics.main:app --reload --host 0.0.0.0 --port 8000 --app
 Inicio backend
 .\.venv\Scripts\Activate.ps1
 python -m uvicorn neurodatics.main:app --reload --host 0.0.0.0 --port 8000 --app-dir src
+
+
 ```powershell
-docker build -t neurodatics-backend .
-docker rm -f neurodatics-backend-app 2>$null
-docker run --rm -d --name neurodatics-backend-app -p 8000:8000 --env-file .env neurodatics-backend`
-
-
 docker build -t neurodatics-backend .
 docker run --rm -p 8000:8000 --env-file .env neurodatics-backend
 
