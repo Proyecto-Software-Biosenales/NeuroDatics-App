@@ -11,25 +11,29 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '001'
-down_revision = None
+down_revision = '000'
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    # Drop any existing constraint on status column (use system catalog to be safe)
+    # Drop existing status-related CHECK constraints safely
     op.execute("""
         DO $$
         DECLARE
-            r RECORD;
+            rec RECORD;
         BEGIN
-            FOR r IN (
-                SELECT constraint_name
-                FROM information_schema.table_constraints
-                WHERE table_name = 'projects'
-                  AND constraint_type = 'CHECK'
-            ) LOOP
-                EXECUTE 'ALTER TABLE projects DROP CONSTRAINT ' || r.constraint_name;
+            FOR rec IN
+                SELECT con.conname AS name
+                FROM pg_constraint con
+                JOIN pg_class rel ON rel.oid = con.conrelid
+                JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+                WHERE rel.relname = 'projects'
+                  AND nsp.nspname = current_schema()
+                  AND con.contype = 'c'
+                  AND pg_get_constraintdef(con.oid) ILIKE '%status%'
+            LOOP
+                EXECUTE format('ALTER TABLE projects DROP CONSTRAINT %I', rec.name);
             END LOOP;
         END $$;
     """)
