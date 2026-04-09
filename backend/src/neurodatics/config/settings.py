@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     google_application_credentials: Optional[str] = None
     gdrive_service_account_json: Optional[str] = None
     gdrive_folder_id: Optional[str] = None
+    gdrive_refresh_token: Optional[str] = None
     gdrive_http_timeout_seconds: int = 300
     gdrive_request_retries: int = 5
     project_zip_max_size_mb: int = 500
