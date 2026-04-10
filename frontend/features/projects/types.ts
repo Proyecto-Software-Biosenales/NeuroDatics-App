@@ -41,6 +41,11 @@ export interface UploadedProjectZipCsvProcessing {
   failed: number
 }
 
+export interface DetectedParticipant {
+  participant_code: string
+  user_index: number
+}
+
 export interface UploadedProjectZipSummary {
   id?: string
   project_id: string
@@ -60,6 +65,8 @@ export interface UploadedProjectZipSummary {
     csv: number
     other: number
   }
+  detected_sensors?: string[]
+  participants?: DetectedParticipant[]
 }
 
 export type UploadedProjectZip = UploadedProjectZipSummary

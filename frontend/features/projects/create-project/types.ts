@@ -33,7 +33,7 @@ export interface ProjectFormData {
   projectName: string
   description: string
   status: ProjectStatus
-  experimentZip: File | null  // No opcional, pero puede ser null
+  experimentFolderFiles: File[] | null  // No opcional, pero puede ser null
   folderPath: string
   uploadedZip: UploadedProjectZip | null  // Result from backend after upload
   sensors: SensorType[]

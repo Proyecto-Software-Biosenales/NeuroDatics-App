@@ -18,6 +18,10 @@ from neurodatics.modules.projects.domain.entities import Project, ProjectFile, P
 from neurodatics.modules.participants.domain.entities import Participant
 from neurodatics.modules.scenaries.domain.entities import Scenaries, AOI
 
+# Fix psycopg async on Windows (ProactorEventLoop is not supported)
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

@@ -1,7 +1,7 @@
 ---
-name: Planner
+name: Planner-Mini
 description: Creates comprehensive implementation plans by researching the codebase, consulting documentation, and identifying edge cases. Use when you need a detailed plan before implementing a feature or fixing a complex issue.
-model: Claude Opus 4.6 (copilot)
+model: Claude Sonnet 4.6 (copilot)
 tools: [vscode, execute, read, agent, edit, search, web, 'io.github.upstash/context7/*', todo]
 ---
 

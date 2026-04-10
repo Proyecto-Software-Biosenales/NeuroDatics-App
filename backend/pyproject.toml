@@ -20,6 +20,8 @@ pyjwt = {extras = ["crypto"], version = "^2.8.0"}
 python-jose = {extras = ["cryptography"], version = "^3.4.0"}
 httpx = "^0.25.2"
 cryptography = "^41.0.7"
+pandas = "^2.0.0"
+pyarrow = "^16.0.0"
 google-api-python-client = "^2.108.0"
 google-auth = "^2.23.4"
 python-multipart = "^0.0.6"

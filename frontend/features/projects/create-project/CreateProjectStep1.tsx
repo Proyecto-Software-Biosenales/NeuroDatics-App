@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Upload, AlertCircle, X, CheckCircle, FileArchive } from "lucide-react"
+import { FolderOpen, AlertCircle, X, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -17,11 +17,11 @@ interface CreateProjectStep1Props {
   onProjectNameChange: (name: string) => void
   onDescriptionChange: (description: string) => void
   onFolderPathChange: (path: string) => void
-  onZipSelected: (file: File | null) => void
+  onFolderSelected: (files: File[] | null) => void
   zipRequired?: boolean
   isEditMode?: boolean
-  shouldUpdateZip?: boolean
-  onShouldUpdateZipChange?: (shouldUpdate: boolean) => void
+  shouldUpdateFolder?: boolean
+  onShouldUpdateFolderChange?: (shouldUpdate: boolean) => void
 }
 
 export const CreateProjectStep1 = ({
@@ -32,70 +32,146 @@ export const CreateProjectStep1 = ({
   onProjectNameChange,
   onDescriptionChange,
   onFolderPathChange,
-  onZipSelected,
+  onFolderSelected,
   zipRequired = true,
   isEditMode = false,
-  shouldUpdateZip = false,
-  onShouldUpdateZipChange,
+  shouldUpdateFolder = false,
+  onShouldUpdateFolderChange,
 }: CreateProjectStep1Props) => {
-  const fileRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
 
-  const pickFile = () => fileRef.current?.click()
+  const pickFile = () => fileInputRef.current?.click()
 
-  const handleFile = (file: File | null) => {
+  const handleFolder = (files: File[]) => {
+    if (files.length === 0) {
+      onFolderSelected(null)
+      setFileError("No se encontraron archivos en la carpeta")
+      return
+    }
+
+    const getRelativePath = (file: File): string =>
+      (file as any)._relativePath || file.webkitRelativePath || file.name
+
+    const filteredFiles = files.filter((file) => {
+      const relativePath = getRelativePath(file)
+      return !file.name.startsWith(".") && !relativePath.includes("__MACOSX/")
+    })
+
+    const totalSize = filteredFiles.reduce((sum, file) => sum + file.size, 0)
+    const maxSize = 500 * 1024 * 1024
+    if (totalSize > maxSize) {
+      setFileError("La carpeta es demasiado grande. Máximo 500MB.")
+      onFolderSelected(null)
+      onFolderPathChange("")
+      return
+    }
+
+    const hasCsv = filteredFiles.some((file) => getRelativePath(file).toLowerCase().endsWith(".csv"))
+    if (!hasCsv) {
+      setFileError("La carpeta debe contener al menos un archivo CSV")
+      onFolderSelected(null)
+      onFolderPathChange("")
+      return
+    }
+
+    const hasImagesOrVideos = filteredFiles.some((file) => {
+      const relativePath = getRelativePath(file).toLowerCase()
+      return relativePath.includes("/images/") || relativePath.includes("/videos/")
+    })
+    if (!hasImagesOrVideos) {
+      setFileError("La carpeta debe contener subcarpetas Images y/o Videos con archivos")
+      onFolderSelected(null)
+      onFolderPathChange("")
+      return
+    }
+
+    // Only keep files the backend needs: CSVs + files inside Images/ or Videos/ folders
+    const relevantFiles = filteredFiles.filter((file) => {
+      const p = getRelativePath(file).toLowerCase()
+      return p.endsWith(".csv") || p.includes("/images/") || p.includes("/videos/")
+    })
+
+    const folderName = getRelativePath(files[0]).split("/")[0]
+    onFolderSelected(relevantFiles)
+    onFolderPathChange(folderName)
     setFileError(null)
-    
-    if (!file) {
-      onZipSelected(null)
-      onFolderPathChange("")
-      return
-    }
-
-    // Validación: solo zip
-    const isZip =
-      file.type === "application/zip" ||
-      file.name.toLowerCase().endsWith(".zip")
-
-    if (!isZip) {
-      setFileError("Por favor selecciona un archivo .zip válido")
-      onZipSelected(null)
-      onFolderPathChange("")
-      return
-    }
-
-    // Validación: tamaño máximo (100MB)
-    const maxSize = 100 * 1024 * 1024 // 100MB
-    if (file.size > maxSize) {
-      setFileError("El archivo es demasiado grande. Máximo 100MB.")
-      onZipSelected(null)
-      onFolderPathChange("")
-      return
-    }
-
-    onZipSelected(file)
-    onFolderPathChange(file.name) // mostramos nombre en UI
   }
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null
-    handleFile(file)
+    const files = Array.from(e.target.files ?? [])
+    handleFolder(files)
   }
 
-  const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const readAllEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> => {
+    return new Promise((resolve, reject) => {
+      const results: FileSystemEntry[] = []
+      const readBatch = () => {
+        reader.readEntries((entries) => {
+          if (entries.length === 0) {
+            resolve(results)
+          } else {
+            results.push(...entries)
+            readBatch()
+          }
+        }, reject)
+      }
+      readBatch()
+    })
+  }
+
+  const readDirectoryEntries = async (dirEntry: FileSystemDirectoryEntry, basePath = ""): Promise<File[]> => {
+    const reader = dirEntry.createReader()
+    const entries = await readAllEntries(reader)
+    const files: File[] = []
+    for (const entry of entries) {
+      if (entry.isFile) {
+        if (entry.name.startsWith(".")) continue
+        const file = await new Promise<File>((resolve, reject) => {
+          ;(entry as FileSystemFileEntry).file(resolve, reject)
+        })
+        // Store reconstructed relative path for drag-drop files.
+        const relativePath = basePath ? `${basePath}/${entry.name}` : `${dirEntry.name}/${entry.name}`
+        ;(file as any)._relativePath = relativePath
+        files.push(file)
+      } else if (entry.isDirectory) {
+        if (entry.name.startsWith(".")) continue
+        const subPath = basePath ? `${basePath}/${entry.name}` : `${dirEntry.name}/${entry.name}`
+        const subFiles = await readDirectoryEntries(entry as FileSystemDirectoryEntry, subPath)
+        files.push(...subFiles)
+      }
+    }
+    return files
+  }
+
+  const onDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setIsDragOver(false)
-    const file = e.dataTransfer.files?.[0] ?? null
-    handleFile(file)
+    if (isEditMode && !shouldUpdateFolder) return
+
+    const item = e.dataTransfer.items?.[0]
+    if (!item) return
+    const entry = item.webkitGetAsEntry?.()
+    if (!entry?.isDirectory) {
+      setFileError("Por favor arrastra una carpeta, no un archivo suelto")
+      return
+    }
+
+    try {
+      const files = await readDirectoryEntries(entry as FileSystemDirectoryEntry)
+      handleFolder(files)
+    } catch {
+      setFileError("Error al leer la carpeta arrastrada")
+    }
   }
 
-  const clearFile = () => {
+  const clearFolder = () => {
     setFileError(null)
-    onZipSelected(null)
+    onFolderSelected(null)
     onFolderPathChange("")
-    if (fileRef.current) {
-      fileRef.current.value = ""
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
     }
   }
 
@@ -136,46 +212,46 @@ export const CreateProjectStep1 = ({
 
         <div className="space-y-2">
           <Label htmlFor="carpeta-experimento" className="text-base">
-            Carpeta del experimento (ZIP){zipRequired || isEditMode ? "" : " (opcional)"}
+            Carpeta del experimento{zipRequired || isEditMode ? "" : " (opcional)"}
           </Label>
 
           {isEditMode && (
             <div className="mb-4 flex items-center gap-3 bg-gray-100 border border-gray-300 rounded-lg p-3 hover:bg-gray-200 transition-colors">
               <Checkbox
-                id="actualizar-zip"
-                checked={shouldUpdateZip}
-                onCheckedChange={(checked) => onShouldUpdateZipChange?.(checked === true)}
+                id="actualizar-carpeta"
+                checked={shouldUpdateFolder}
+                onCheckedChange={(checked) => onShouldUpdateFolderChange?.(checked === true)}
                 className="cursor-pointer border-gray-400"
               />
-              <Label htmlFor="actualizar-zip" className="text-sm cursor-pointer">
-                Actualizar archivo ZIP
+              <Label htmlFor="actualizar-carpeta" className="text-sm cursor-pointer">
+                Actualizar carpeta del experimento
               </Label>
             </div>
           )}
 
           {/* input oculto */}
           <input
-            ref={fileRef}
+            ref={fileInputRef}
             type="file"
-            accept=".zip,application/zip"
             className="hidden"
             onChange={onInputChange}
+            {...({ webkitdirectory: "", mozdirectory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
           />
 
           <div
-            onClick={isEditMode && !shouldUpdateZip ? undefined : pickFile}
+            onClick={isEditMode && !shouldUpdateFolder ? undefined : pickFile}
             onDragOver={(e) => {
-              if (isEditMode && !shouldUpdateZip) return
+              if (isEditMode && !shouldUpdateFolder) return
               e.preventDefault()
               setIsDragOver(true)
             }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={(e) => {
-              if (isEditMode && !shouldUpdateZip) return
+              if (isEditMode && !shouldUpdateFolder) return
               onDrop(e)
             }}
             className={`border-2 border-dashed rounded-xl bg-gradient-to-br from-gray-50 to-white transition-all duration-300 ${
-              isEditMode && !shouldUpdateZip
+              isEditMode && !shouldUpdateFolder
                 ? "cursor-not-allowed opacity-50 border-gray-200 bg-gray-100"
                 : "cursor-pointer"
             } ${
@@ -190,16 +266,16 @@ export const CreateProjectStep1 = ({
               <div className="mb-5 relative">
                 <div className="absolute inset-0 bg-gray-200 rounded-full blur-xl opacity-50" />
                 <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-                  <Upload size={20} />
+                  <FolderOpen size={20} />
                 </div>
               </div>
 
               <h3 className="text-base font-medium text-gray-900 mb-2">
-                Arrastra el ZIP aquí o haz clic para seleccionar
+                Arrastra la carpeta aquí o haz clic para seleccionar
               </h3>
 
               <p className="text-gray-500 text-base leading-relaxed max-w-xl mb-4">
-                Sube un archivo .zip con imágenes, vídeos y CSV del experimento.
+                Selecciona la carpeta del experimento con imágenes, vídeos y CSV.
               </p>
 
               <Button 
@@ -209,21 +285,21 @@ export const CreateProjectStep1 = ({
                   e.stopPropagation()
                   pickFile()
                 }}
-                disabled={isEditMode && !shouldUpdateZip}
+                disabled={isEditMode && !shouldUpdateFolder}
               >
-                Seleccionar ZIP
+                Seleccionar carpeta
               </Button>
 
               {/* mostrar nombre */}
               {folderPath && !fileError && (
                 <div className="mt-4 flex items-center gap-2 text-sm text-gray-700">
-                  <span>Archivo seleccionado: <span className="font-medium">{folderPath}</span></span>
+                  <span>Carpeta seleccionada: <span className="font-medium">{folderPath}</span></span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation()
-                      clearFile()
+                      clearFolder()
                     }}
                     className="h-6 w-6 p-0 hover:bg-gray-200"
                   >
@@ -244,7 +320,7 @@ export const CreateProjectStep1 = ({
                     />
                     <div>
                       <h4 className={`font-medium ${ingestionFailed ? "text-red-900" : "text-green-900"}`}>
-                        {ingestionFailed ? "Ingesta con errores" : "ZIP procesado"}
+                        {ingestionFailed ? "Ingesta con errores" : "Carpeta procesada"}
                       </h4>
                       <p className={`text-xs mt-1 ${ingestionFailed ? "text-red-700" : "text-green-700"}`}>
                         {uploadedZip.zip_file?.filename ?? folderPath}

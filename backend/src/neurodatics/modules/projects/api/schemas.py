@@ -86,6 +86,11 @@ class UploadedProjectCsvProcessingResponse(BaseModel):
     failed: int
 
 
+class DetectedParticipantResponse(BaseModel):
+    participant_code: str
+    user_index: int
+
+
 class UploadedProjectZipSummaryResponse(BaseModel):
     project_id: UUID
     ingestion_status: str
@@ -98,6 +103,8 @@ class UploadedProjectZipSummaryResponse(BaseModel):
     files: List[UploadedProjectZipResponse]
     csv_processing: UploadedProjectCsvProcessingResponse
     manifest: Dict[str, int]
+    detected_sensors: List[str] = []
+    participants: List[DetectedParticipantResponse] = []
 
 
 class DriveUploadProgressResponse(BaseModel):

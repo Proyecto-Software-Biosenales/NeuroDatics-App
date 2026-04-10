@@ -2,16 +2,12 @@
 
 import { useRef, useState } from "react";
 import type { ProjectFormData, SensorType, ParticipantData } from "./types";
-import type { Project } from "@/features/projects/types";
+import type { Project, DetectedParticipant } from "@/features/projects/types";
 import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
 import { toast } from "sonner";
 
 
-const initialParticipants: ParticipantData[] = [
-  { id: "1000557085", sex: null, age: "" },
-  { id: "1000187293", sex: null, age: "" },
-  { id: "1023675443", sex: null, age: "" },
-];
+const initialParticipants: ParticipantData[] = [];
 
 const initialscenaries: ProjectFormData["scenaries"] = [];
 
@@ -137,7 +133,6 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     setSaveProgressMessage("Cancelando subida a Google Drive...");
   };
 
-  // 👇 agrega aquí experimentZip si ya lo estás capturando desde Step1
   const [formData, setFormData] = useState<ProjectFormData>({
     projectName: "",
     description: "",
@@ -147,7 +142,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     sensors: [],
     participants: initialParticipants,
     scenaries: initialscenaries,
-    experimentZip: null,
+    experimentFolderFiles: null,
   });
 
   const updateProjectName = (name: string) => {
@@ -165,12 +160,12 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     setFormData(prev => ({ ...prev, folderPath: path }));
   };
 
-  const setExperimentZip = (file: File | null) => {
+  const setExperimentFolder = (files: File[] | null) => {
     clearStep1RetryState();
     setFormData((prev) => ({
       ...prev,
-      experimentZip: file,
-      folderPath: file ? file.name : "", // para mostrar nombre en UI
+      experimentFolderFiles: files,
+      folderPath: files?.[0] ? ((files[0] as any)._relativePath || files[0].webkitRelativePath || files[0].name).split("/")[0] : "",
     }))
   }
 
@@ -210,7 +205,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
   const canGoNext = () => {
     switch (currentStep) {
       case 1:
-        return formData.projectName.trim() !== "" && !!formData.experimentZip
+        return formData.projectName.trim() !== "" && !!formData.experimentFolderFiles?.length
       case 2:
         return formData.sensors.length > 0;
       case 3:
@@ -221,8 +216,8 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
   };
 
   const processStep1ZipAndContinue = async () => {
-    if (!formData.experimentZip) {
-      setSaveError("Debes seleccionar un archivo ZIP para continuar.");
+    if (!formData.experimentFolderFiles?.length) {
+      setSaveError("Debes seleccionar una carpeta para continuar.");
       return;
     }
 
@@ -255,12 +250,37 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
         });
       }
 
+      // Package folder into ZIP for backend upload
+      updateProgress("Empaquetando carpeta del experimento...");
+      let zipFile: File;
+      try {
+        const JSZip = (await import("jszip")).default;
+        const zip = new JSZip();
+        const getFilePath = (file: File): string =>
+          (file as any)._relativePath || file.webkitRelativePath || file.name;
+
+        const folderName = getFilePath(formData.experimentFolderFiles[0]).split("/")[0];
+        for (const file of formData.experimentFolderFiles) {
+          const fullPath = getFilePath(file);
+          // Strip the root folder name from the path so entries are relative
+          const relativePath = fullPath.startsWith(folderName + "/")
+            ? fullPath.slice(folderName.length + 1)
+            : fullPath || file.name;
+          zip.file(relativePath, file, { compression: "STORE" });
+        }
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        zipFile = new File([zipBlob], `${folderName}.zip`, { type: "application/zip" });
+      } catch (packError: any) {
+        console.error("[CreateProjectWizard] JSZip packaging failed", packError);
+        throw new Error("Error al empaquetar la carpeta. Verifica que no exceda 500MB.");
+      }
+
       setZipUploadPercent(null);
       setZipUploadBytes(null);
       setZipUploadSpeedMbps(null);
       setZipUploadEtaSeconds(null);
       setZipDriveProcessingSeconds(null);
-      updateProgress("Enviando ZIP al backend...");
+      updateProgress("Enviando experimento al backend...");
       setIsZipUploadInProgress(true);
 
       const uploadAbortController = new AbortController();
@@ -355,10 +375,10 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
 
       const uploadedZipResult = await ProjectsApi.uploadZipWithProgress(
         projectIdForUpload,
-        formData.experimentZip,
+        zipFile,
         (progress) => {
           if (progress.phase === "uploading") {
-            updateProgress(`Enviando ZIP al backend... ${progress.percent}%`);
+            updateProgress(`Enviando experimento al backend... ${progress.percent}%`);
             return;
           }
 
@@ -382,23 +402,39 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       });
 
       if (uploadedZipResult.ingestion_status === "FAILED") {
-        throw new Error("La ingesta del ZIP falló en backend. Verifica estructura y contenido.");
+        throw new Error("La ingesta falló en backend. Verifica estructura y contenido.");
       }
 
       const detail = await ProjectsApi.get(projectIdForUpload);
+
+      // Auto-populate detected sensors from CSV analysis
+      const detectedSensors = (uploadedZipResult.detected_sensors ?? []).filter(
+        (s: string): s is SensorType => ["EEG", "GSR", "EyeTracker"].includes(s)
+      );
+
+      // Auto-populate participants from CSV recording numbers
+      const csvParticipants: ParticipantData[] = (uploadedZipResult.participants ?? [])
+        .sort((a: DetectedParticipant, b: DetectedParticipant) => a.user_index - b.user_index)
+        .map((p: DetectedParticipant) => ({
+          id: p.participant_code,
+          sex: null as ParticipantData["sex"],
+          age: "",
+        }));
 
       setFormData((prev) => ({
         ...prev,
         uploadedZip: uploadedZipResult,
         scenaries: buildStep4ImageScenaries(detail),
+        sensors: detectedSensors.length > 0 ? detectedSensors : prev.sensors,
+        participants: csvParticipants.length > 0 ? csvParticipants : prev.participants,
       }));
 
       setCurrentStep(2);
       keepDraftOnFailure = true;
       setSaveProgressMessage(null);
-      setSaveNotice("ZIP procesado correctamente. Puedes continuar con la configuración.");
+      setSaveNotice("Carpeta procesada correctamente. Puedes continuar con la configuración.");
     } catch (error: any) {
-      const rawErrorMessage = error?.message ?? "Error procesando ZIP";
+      const rawErrorMessage = error?.message ?? "Error procesando carpeta";
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
         .replace(/^Error subiendo archivo:\s*/i, "");
@@ -445,9 +481,15 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       await processStep1ZipAndContinue();
       return;
     }
+    setSaveNotice(null);
     setCurrentStep((prev) => prev + 1);
   };
-  const prevStep = () => currentStep > 1 && setCurrentStep(prev => prev - 1);
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setSaveNotice(null);
+      setCurrentStep((prev) => prev - 1);
+    }
+  };
 
   const reset = () => {
     setCurrentStep(1);
@@ -469,7 +511,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       sensors: [],
       participants: initialParticipants,
       scenaries: initialscenaries,
-      experimentZip: null,
+      experimentFolderFiles: null,
     });
     setDraftProjectId(null);
   };
@@ -492,7 +534,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     }
 
     if (!draftProjectId) {
-      setSaveError("No hay un proyecto borrador para finalizar. Regresa al Paso 1 y procesa el ZIP.");
+      setSaveError("No hay un proyecto borrador para finalizar. Regresa al Paso 1 y procesa la carpeta.");
       return;
     }
 
@@ -609,7 +651,7 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     zipDriveProcessingSeconds,
     isZipUploadInProgress,
     cancelZipUpload,
-    setExperimentZip,
+    setExperimentFolder,
     discardDraftProject,
   };
 };
