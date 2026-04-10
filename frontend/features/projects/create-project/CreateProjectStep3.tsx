@@ -50,7 +50,7 @@ export const CreateProjectStep3 = ({
       </div>
 
       {participants.length > 0 && incompleteCount > 0 && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+        <div className="p-3 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-700">
           {incompleteCount === 1
             ? "1 participante requiere sexo y edad para continuar."
             : `${incompleteCount} participantes requieren sexo y edad para continuar.`}
@@ -78,7 +78,7 @@ export const CreateProjectStep3 = ({
                     {participant.id}
                   </span>
                   {!isParticipantComplete(participant) && (
-                    <span className="ml-2 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                    <span className="ml-2 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-200 rounded-full px-2 py-0.5">
                       Completar
                     </span>
                   )}
