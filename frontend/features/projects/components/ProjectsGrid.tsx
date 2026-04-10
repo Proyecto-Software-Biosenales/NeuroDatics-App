@@ -86,8 +86,13 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
         const participants = project.participants ?? 0
         const isDeleting = deletingId === project.id
         const isDraftProcessing =
+          project.status === "draft" && project.ingestionStatus === "PROCESSING"
+
+        // PENDING = upload never completed (interrupted or never started).
+        // No backend work is running for these — show a "Retomar" footer.
+        const isDraftPending =
           project.status === "draft" &&
-          (project.ingestionStatus === "PENDING" || project.ingestionStatus === "PROCESSING")
+          (!project.ingestionStatus || project.ingestionStatus === "PENDING")
 
         const canContinueDraft =
           project.status === "draft" &&
@@ -98,7 +103,13 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           key={project.id}
           className={`group relative cursor-pointer rounded-2xl border p-6 transition-all duration-200 ${
             isDeleting ? "animate-pulse scale-[0.99] opacity-70 pointer-events-none" : ""
-          } ${isDraftProcessing ? "border-gray-200 shadow-none bg-gray-50/60 pb-20" : "border-gray-200 shadow-sm bg-white hover:-translate-y-0.5 hover:shadow-lg"}`}
+          } ${
+            isDraftProcessing
+              ? "border-gray-200 shadow-none bg-gray-50/60 pb-20"
+              : isDraftPending
+              ? "border-gray-200 shadow-sm bg-white pb-14"
+              : "border-gray-200 shadow-sm bg-white hover:-translate-y-0.5 hover:shadow-lg"
+          }`}
         >
           <DeleteProjectDialog
             projectId={project.id}
@@ -230,7 +241,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
               </div>
 
               <div className="flex items-center gap-1">
-                {!isDraftProcessing && !canContinueDraft && (
+                {!isDraftProcessing && !isDraftPending && !canContinueDraft && (
                   <button
                     type="button"
                     className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100 hover:text-gray-900"
@@ -242,7 +253,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                 {canContinueDraft && (
                   <button
                     type="button"
-                    className="rounded-md px-2 py-1 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
+                    className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100 hover:text-gray-800"
                     onClick={() => onContinueDraft?.(project)}
                   >
                     Continuar
@@ -283,7 +294,6 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                 {/* Text */}
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold leading-tight text-gray-700">Procesando archivos</p>
-                  <p className="mt-0.5 text-xs leading-tight text-gray-500">Sincronizando con Google Drive...</p>
                 </div>
                 {/* Bouncing dots */}
                 <div className="flex flex-shrink-0 items-end gap-1 pb-0.5">
@@ -291,6 +301,24 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                   <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "150ms" }} />
                   <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "300ms" }} />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {isDraftPending && (
+            <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-gray-200 rounded-b-2xl z-[10]">
+              <div className="flex items-center justify-between bg-white px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                  <p className="text-xs text-gray-500">Paso 1 incompleto</p>
+                </div>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-gray-600 hover:text-gray-900 underline underline-offset-2 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); onContinueDraft?.(project) }}
+                >
+                  Retomar
+                </button>
               </div>
             </div>
           )}
