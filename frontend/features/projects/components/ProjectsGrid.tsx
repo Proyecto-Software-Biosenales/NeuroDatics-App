@@ -105,7 +105,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             isDeleting ? "animate-pulse scale-[0.99] opacity-70 pointer-events-none" : ""
           } ${
             isDraftProcessing
-              ? "border-gray-200 shadow-none bg-gray-50/60 pb-20"
+              ? "border-gray-200 shadow-none bg-gray-50/60 pb-16"
               : isDraftPending
               ? "border-gray-200 shadow-sm bg-white pb-14"
               : "border-gray-200 shadow-sm bg-white hover:-translate-y-0.5 hover:shadow-lg"
@@ -288,18 +288,18 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                 <div className="absolute inset-y-0 left-0 w-2/3 animate-pulse bg-gradient-to-r from-transparent via-gray-500 to-transparent" />
               </div>
               {/* Footer body */}
-              <div className="flex items-center gap-3 bg-gray-100/95 backdrop-blur-sm px-4 py-3">
+              <div className="flex items-center gap-3 bg-gray-100/95 backdrop-blur-sm px-4 py-4">
                 {/* Custom spinner */}
-                <div className="h-4 w-4 flex-shrink-0 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />
+                <div className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />
                 {/* Text */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold leading-tight text-gray-700">Procesando archivos</p>
+                  <p className="text-sm font-semibold leading-tight text-gray-700">Procesando archivos</p>
                 </div>
                 {/* Bouncing dots */}
                 <div className="flex flex-shrink-0 items-end gap-1 pb-0.5">
-                  <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "0ms" }} />
-                  <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "150ms" }} />
-                  <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "300ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "0ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "150ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             </div>

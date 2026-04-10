@@ -159,7 +159,7 @@ export const ViewProjectDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-x-hidden overflow-y-auto p-0">
         <DialogHeader className="border-b border-gray-200 px-6 pt-6 pb-4">
           <DialogTitle className="truncate text-2xl font-semibold text-gray-900">
             Ver proyecto
@@ -193,9 +193,9 @@ export const ViewProjectDialog = ({
                   </span>
 
                   <span className="text-sm font-semibold text-gray-600">Carpeta</span>
-                  <div className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800">
-                    <FileArchive className="h-4 w-4 text-gray-500" />
-                    {zipFilename}
+                  <div className="flex min-w-0 max-w-full items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800">
+                    <FileArchive className="h-4 w-4 shrink-0 text-gray-500" />
+                    <span className="break-all">{zipFilename}</span>
                   </div>
                 </div>
               </div>
@@ -288,7 +288,7 @@ export const ViewProjectDialog = ({
                           className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-base font-semibold text-gray-900">{scenary.name}</p>
+                            <p className="break-words text-base font-semibold text-gray-900">{scenary.name}</p>
                             <p className="text-sm font-medium text-gray-500">{toScenaryTypeLabel(scenary.type)}</p>
                           </div>
                           {openScenaryId === scenary.id ? (
