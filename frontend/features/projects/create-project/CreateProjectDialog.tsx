@@ -65,6 +65,7 @@ export const CreateProjectDialog = ({
     setExperimentFolder,
     discardDraftProject,
     openForResume,
+    isResumedDraft,
   } = useCreateProjectWizard(onProjectCreated, onStep1Complete)
 
   useEffect(() => {
@@ -84,17 +85,22 @@ export const CreateProjectDialog = ({
   const isDriveSyncInProgress = zipUploadPercent !== null && zipUploadPercent < 100
   const isDriveSyncFinalizing = zipUploadPercent !== null && zipUploadPercent >= 99 && zipUploadPercent < 100
 
+  const step1Done =
+    isResumedDraft ||
+    formData.uploadedZip?.ingestion_status === "READY" ||
+    formData.uploadedZip?.ingestion_status === "PROCESSING"
+
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      if (isZipUploadInProgress) {
-        // Upload running in background — do NOT delete the project
-        // Refresh projects list so card appears with processing state
+      if (isZipUploadInProgress || step1Done) {
+        // Upload running or step 1 already completed — keep the project alive
+        // and refresh the cards list so the draft card shows the current state
         onStep1Complete?.()
         setIsOpen(false)
         reset()
         return
       }
-      // No upload in progress — safe to delete draft and reset
+      // Step 1 never completed — safe to delete draft and reset
       void discardDraftProject()
       reset()
     }
@@ -102,7 +108,7 @@ export const CreateProjectDialog = ({
   }
 
   const handleCancel = async () => {
-    if (isZipUploadInProgress) {
+    if (isZipUploadInProgress || step1Done) {
       onStep1Complete?.()
       setIsOpen(false)
       reset()
@@ -332,7 +338,7 @@ export const CreateProjectDialog = ({
                 type="button"
                 variant="outline"
                 onClick={prevStep}
-                disabled={isSaving || !!saveError}
+                disabled={isSaving || !!saveError || (isResumedDraft && currentStep === 2)}
                 className="gap-2 p-4"
               >
                 <ChevronLeft className="w-4 h-4" />

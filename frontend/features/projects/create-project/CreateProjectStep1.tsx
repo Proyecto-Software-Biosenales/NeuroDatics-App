@@ -244,19 +244,21 @@ export const CreateProjectStep1 = ({
           />
 
           <div
-            onClick={isEditMode && !shouldUpdateFolder ? undefined : pickFile}
+            onClick={(isEditMode && !shouldUpdateFolder) || disableProjectMetadataEditing ? undefined : pickFile}
             onDragOver={(e) => {
               if (isEditMode && !shouldUpdateFolder) return
+              if (disableProjectMetadataEditing) return
               e.preventDefault()
               setIsDragOver(true)
             }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={(e) => {
               if (isEditMode && !shouldUpdateFolder) return
+              if (disableProjectMetadataEditing) return
               onDrop(e)
             }}
             className={`border-2 border-dashed rounded-xl bg-gradient-to-br from-gray-50 to-white transition-all duration-300 ${
-              isEditMode && !shouldUpdateFolder
+              (isEditMode && !shouldUpdateFolder) || disableProjectMetadataEditing
                 ? "cursor-not-allowed opacity-50 border-gray-200 bg-gray-100"
                 : "cursor-pointer"
             } ${
@@ -290,7 +292,7 @@ export const CreateProjectStep1 = ({
                   e.stopPropagation()
                   pickFile()
                 }}
-                disabled={isEditMode && !shouldUpdateFolder}
+                disabled={(isEditMode && !shouldUpdateFolder) || disableProjectMetadataEditing}
               >
                 Seleccionar carpeta
               </Button>
@@ -306,6 +308,7 @@ export const CreateProjectStep1 = ({
                       e.stopPropagation()
                       clearFolder()
                     }}
+                    disabled={disableProjectMetadataEditing}
                     className="h-6 w-6 p-0 hover:bg-gray-200"
                   >
                     <X size={14} />

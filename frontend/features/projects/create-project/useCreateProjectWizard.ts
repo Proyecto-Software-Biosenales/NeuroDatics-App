@@ -117,6 +117,7 @@ export const useCreateProjectWizard = (
   const [zipUploadEtaSeconds, setZipUploadEtaSeconds] = useState<number | null>(null);
   const [zipDriveProcessingSeconds, setZipDriveProcessingSeconds] = useState<number | null>(null);
   const [isZipUploadInProgress, setIsZipUploadInProgress] = useState(false);
+  const [isResumedDraft, setIsResumedDraft] = useState(false);
   const uploadAbortControllerRef = useRef<AbortController | null>(null);
   const activeZipUploadProjectIdRef = useRef<string | null>(null);
 
@@ -555,10 +556,26 @@ export const useCreateProjectWizard = (
       experimentFolderFiles: null,
     });
     setDraftProjectId(null);
+    setIsResumedDraft(false);
   };
 
   const discardDraftProject = async () => {
     if (!draftProjectId) return;
+
+    // Never delete a project that is being resumed from the cards list.
+    if (isResumedDraft) {
+      setDraftProjectId(null);
+      return;
+    }
+
+    // Never delete if step 1 already completed — files are in Drive and the
+    // user should be able to resume via "Continuar" from the projects list.
+    const ingestionStatus = formData.uploadedZip?.ingestion_status;
+    if (ingestionStatus === "READY" || ingestionStatus === "PROCESSING") {
+      setDraftProjectId(null);
+      return;
+    }
+
     try {
       await ProjectsApi.delete(draftProjectId);
     } catch (error) {
@@ -625,6 +642,7 @@ export const useCreateProjectWizard = (
         scenaries: detectedScenaries,
       });
       setCurrentStep(2);
+      setIsResumedDraft(true);
       setIsOpen(true);
     } catch (error) {
       console.warn("[CreateProjectWizard] openForResume could not load full project detail", {
@@ -633,6 +651,7 @@ export const useCreateProjectWizard = (
       });
       setFormData(baseFormData);
       setCurrentStep(2);
+      setIsResumedDraft(true);
       setIsOpen(true);
     }
   };
@@ -764,5 +783,6 @@ export const useCreateProjectWizard = (
     setExperimentFolder,
     discardDraftProject,
     openForResume,
+    isResumedDraft,
   };
 };

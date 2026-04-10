@@ -196,13 +196,18 @@ export const useProjectsStorage = () => {
   }, [hasProcessingDraft])
 
   const addProject = (project: Project) => {
-    setProjects((prev) => [project, ...prev])
-    // Sync to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([project, ...projects]))
-    } catch {
-      // ignore storage errors
-    }
+    setProjects((prev) => {
+      const exists = prev.some((p) => p.id === project.id)
+      const next = exists
+        ? prev.map((p) => (p.id === project.id ? project : p))
+        : [project, ...prev]
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      } catch {
+        // ignore storage errors
+      }
+      return next
+    })
   }
 
   const removeProject = async (id: string) => {

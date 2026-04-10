@@ -29,6 +29,7 @@ export default function ProyectosPage() {
 
   const filterButtons: Array<{ value: ProjectFilter; label: string }> = [
     { value: "all", label: "Todos" },
+    { value: "draft", label: "Borradores" },
     { value: "active", label: "Activos" },
     { value: "archived", label: "Archivados" },
   ]
