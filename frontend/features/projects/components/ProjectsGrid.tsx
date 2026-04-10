@@ -20,6 +20,7 @@ interface ProjectsGridProps {
   projects: Project[]
   onDelete: (id: string) => Promise<DeleteProjectResult | void> | DeleteProjectResult | void
   onEdit: (project: Project) => void
+  onContinueDraft?: (project: Project) => void
 }
 
 const statusLabel: Record<ProjectStatus, string> = {
@@ -34,7 +35,7 @@ const statusColorClass: Record<ProjectStatus, string> = {
   archived: "bg-gray-400",
 }
 
-export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) => {
+export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: ProjectsGridProps) => {
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editOpenId, setEditOpenId] = useState<string | null>(null)
@@ -84,6 +85,13 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
         const projectStatus = (project.status || "active") as ProjectStatus
         const participants = project.participants ?? 0
         const isDeleting = deletingId === project.id
+        const isDraftProcessing =
+          project.status === "draft" &&
+          (project.ingestionStatus === "PENDING" || project.ingestionStatus === "PROCESSING")
+
+        const canContinueDraft =
+          project.status === "draft" &&
+          project.ingestionStatus === "READY"
 
         return (
         <Card
@@ -116,10 +124,13 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
           {/* Menu dropdown */}
           <div className="absolute top-4 right-4">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild disabled={isDraftProcessing}>
                 <button
                   type="button"
-                  className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                  className={`rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 ${
+                    isDraftProcessing ? "cursor-not-allowed opacity-40" : ""
+                  }`}
+                  disabled={isDraftProcessing}
                   aria-label="Opciones del proyecto"
                 >
                   <MoreVertical className="h-5 w-5" />
@@ -128,12 +139,14 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => setEditOpenId(project.id)}
+                  disabled={isDraftProcessing}
                 >
                   <Edit className="h-4 w-4" />
                   <span>Editar</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setDeleteOpenId(project.id)}
+                  disabled={isDraftProcessing}
                 >
                   <Trash2 className="h-4 w-4" />
                   <span>Eliminar</span>
@@ -141,7 +154,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
                 {projectStatus !== "archived" ? (
                   <DropdownMenuItem
                     onClick={() => handleArchiveProject(project.id, project)}
-                    disabled={archivingId === project.id}
+                    disabled={isDraftProcessing || archivingId === project.id}
                   >
                     <Archive className="h-4 w-4" />
                     <span>
@@ -151,7 +164,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
                 ) : (
                   <DropdownMenuItem
                     onClick={() => handleUnarchiveProject(project.id, project)}
-                    disabled={archivingId === project.id}
+                    disabled={isDraftProcessing || archivingId === project.id}
                   >
                     <Archive className="h-4 w-4" />
                     <span>
@@ -214,13 +227,24 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
                 </span>
               </div>
 
-              <button
-                type="button"
-                className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                onClick={() => setViewOpenId(project.id)}
-              >
-                Ver proyecto
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  onClick={() => setViewOpenId(project.id)}
+                >
+                  Ver proyecto
+                </button>
+                {canContinueDraft && (
+                  <button
+                    type="button"
+                    className="rounded-md px-2 py-1 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
+                    onClick={() => onContinueDraft?.(project)}
+                  >
+                    Continuar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -230,6 +254,13 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit }: ProjectsGridProps) 
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Eliminando proyecto...
               </div>
+            </div>
+          )}
+
+          {isDraftProcessing && (
+            <div className="absolute bottom-0 left-0 right-0 flex items-center gap-2 bg-muted/80 backdrop-blur-sm rounded-b-2xl px-4 py-2.5 text-sm text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Procesando archivos...</span>
             </div>
           )}
         </Card>

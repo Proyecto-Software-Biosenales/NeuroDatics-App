@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     gdrive_request_retries: int = 5
     project_zip_max_size_mb: int = 500
     ingestion_save_original_zip: bool = True
+
+    # Redis / Queue
+    redis_url: str = "redis://localhost:6379"
     
     # App
     app_name: str = "NeuroDatics API"

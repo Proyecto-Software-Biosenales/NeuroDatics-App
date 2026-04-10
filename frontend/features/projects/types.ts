@@ -6,6 +6,7 @@ export interface Project {
   name: string
   description?: string
   status?: ProjectStatus
+  ingestionStatus?: "PENDING" | "PROCESSING" | "READY" | "FAILED"
   createdAt: string
   updatedAt?: string
   sensors: SensorType[]

@@ -142,6 +142,11 @@ class ProjectResponse(BaseModel):
     description: Optional[str]
     status: ProjectStatus
     created_at: datetime
+    ingestion_status: Optional[str] = None
+    ingestion_error: Optional[str] = None
+    drive_root_folder_id: Optional[str] = None
+    drive_root_folder_name: Optional[str] = None
+    drive_root_folder_url: Optional[str] = None
     sensors: List[ProjectSensorResponse] = []
     participants_count: int = 0
     
@@ -155,6 +160,11 @@ class ProjectDetailResponse(BaseModel):
     description: Optional[str]
     status: ProjectStatus
     created_at: datetime
+    ingestion_status: Optional[str] = None
+    ingestion_error: Optional[str] = None
+    drive_root_folder_id: Optional[str] = None
+    drive_root_folder_name: Optional[str] = None
+    drive_root_folder_url: Optional[str] = None
     files: List[ProjectFileResponse] = []
     sensors: List[ProjectSensorResponse] = []
     participants: List[ParticipantResponse] = []

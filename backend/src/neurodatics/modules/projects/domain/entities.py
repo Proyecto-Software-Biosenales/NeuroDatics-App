@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, Enum, ForeignKey, Integer, JSON, DateTime
+from sqlalchemy import Column, String, Text, Enum, ForeignKey, Integer, JSON, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -10,6 +10,14 @@ class ProjectStatus(str, enum.Enum):
     DRAFT = "draft"
     ACTIVE = "active"
     ARCHIVED = "archived"
+
+
+class JobStatus(str, enum.Enum):
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    CANCELED = "CANCELED"
 
 
 class Project(BaseModel):
@@ -89,3 +97,23 @@ class ProjectSensor(BaseModel):
     
     # Relationships
     project = relationship("Project", back_populates="sensors")
+
+
+class ProcessingJob(BaseModel):
+    """Tracks background processing jobs for projects."""
+    __tablename__ = "processing_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    job_id = Column(String(255), unique=True, nullable=True)  # RQ job ID
+    job_type = Column(String(100), nullable=False)  # e.g. "process_experiment_zip"
+    status = Column(Enum(JobStatus, native_enum=False), default=JobStatus.QUEUED, nullable=False)
+    progress_percent = Column(Integer, default=0)
+    message = Column(Text, nullable=True)
+    error_detail = Column(Text, nullable=True)
+    result_metadata = Column(JSON, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    project = relationship("Project", backref="processing_jobs")

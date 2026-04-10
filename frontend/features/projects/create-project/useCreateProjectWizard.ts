@@ -6,6 +6,7 @@ import type { Project, DetectedParticipant } from "@/features/projects/types";
 import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
 import { toast } from "sonner";
 
+const STEP1_LOADING_TOAST_ID = "create-project-step1-drive-sync";
 
 const initialParticipants: ParticipantData[] = [];
 
@@ -97,7 +98,10 @@ const buildStep4ImageScenaries = (detail: ApiProjectDetail): ProjectFormData["sc
     });
 };
 
-export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => void) => {
+export const useCreateProjectWizard = (
+  onProjectCreated?: (project: Project) => void,
+  onStep1Complete?: () => void,
+) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
@@ -275,6 +279,21 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
         throw new Error("Error al empaquetar la carpeta. Verifica que no exceda 500MB.");
       }
 
+      // Lock inputs immediately by setting ingestion_status to PROCESSING
+      setFormData((prev) => ({
+        ...prev,
+        uploadedZip: {
+          project_id: projectIdForUpload || "",
+          ingestion_status: "PROCESSING",
+          zip_saved: false,
+          zip_file: null,
+          counts: { folders_created: 0, files_uploaded: 0, images: 0, videos: 0, csv: 0, other: 0, scenaries_created: 0 },
+          files: [],
+          csv_processing: { detected: 0, processed: 0, failed: 0 },
+          manifest: { total_detected: 0, images: 0, videos: 0, csv: 0, other: 0 },
+        },
+      }));
+
       setZipUploadPercent(null);
       setZipUploadBytes(null);
       setZipUploadSpeedMbps(null);
@@ -350,7 +369,11 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
         } else if (percent >= 99 && snapshot.phase !== "completed") {
           updateProgress("Finalizando sincronización con Google Drive...");
         } else {
-          updateProgress(`Sincronizando archivos en Google Drive... ${percent}%`);
+          toast.loading(`Procesando archivos de ${formData.projectName} - ${percent}%`, {
+            id: STEP1_LOADING_TOAST_ID,
+            position: "bottom-center",
+            duration: Infinity,
+          });
         }
 
         if (snapshot.phase === "completed") {
@@ -429,6 +452,22 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
         participants: csvParticipants.length > 0 ? csvParticipants : prev.participants,
       }));
 
+      // Immediately persist detected sensors and participants to DB so they are
+      // available when the user closes the wizard and resumes via "Continuar".
+      if (detectedSensors.length > 0) {
+        await ProjectsApi.setSensors(projectIdForUpload!, detectedSensors as string[]).catch((err: unknown) => {
+          console.warn("[CreateProjectWizard] could not save detected sensors to DB", err);
+        });
+      }
+      if (csvParticipants.length > 0) {
+        await ProjectsApi.setParticipants(
+          projectIdForUpload!,
+          csvParticipants.map((p) => ({ participant_code: p.id, age: null, sex: null }))
+        ).catch((err: unknown) => {
+          console.warn("[CreateProjectWizard] could not save detected participants to DB", err);
+        });
+      }
+
       setCurrentStep(2);
       keepDraftOnFailure = true;
       setSaveProgressMessage(null);
@@ -472,6 +511,8 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       setZipUploadSpeedMbps(null);
       setZipUploadEtaSeconds(null);
       setZipDriveProcessingSeconds(null);
+      toast.dismiss(STEP1_LOADING_TOAST_ID);
+      onStep1Complete?.();
     }
   };
 
@@ -524,6 +565,75 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
       console.warn("[CreateProjectWizard] failed to delete draft project", { draftProjectId, error });
     } finally {
       setDraftProjectId(null);
+    }
+  };
+
+  const openForResume = async (project: Project) => {
+    setDraftProjectId(project.id);
+
+    const baseFormData: ProjectFormData = {
+      projectName: project.name,
+      description: project.description || "",
+      status: "draft",
+      folderPath: "",
+      experimentFolderFiles: null,
+      uploadedZip: {
+        project_id: project.id,
+        ingestion_status: "READY",
+        zip_saved: false,
+        zip_file: null,
+        counts: { folders_created: 0, files_uploaded: 0, images: 0, videos: 0, csv: 0, other: 0, scenaries_created: 0 },
+        files: [],
+        csv_processing: { detected: 0, processed: 0, failed: 0 },
+        manifest: { total_detected: 0, images: 0, videos: 0, csv: 0, other: 0 },
+      },
+      sensors: [],
+      participants: [],
+      scenaries: [],
+    };
+
+    try {
+      const detail = await ProjectsApi.get(project.id);
+
+      const detectedSensors = (detail.sensors || [])
+        .map((sensor) => sensor.sensor_type)
+        .filter((sensorType): sensorType is SensorType => ["EEG", "GSR", "EyeTracker"].includes(sensorType));
+
+      const detectedParticipants: ParticipantData[] = (detail.participants || []).map((p) => ({
+        id: p.participant_code,
+        sex: (p.sex as ParticipantData["sex"] | null) ?? null,
+        age: p.age !== null && p.age !== undefined ? String(p.age) : "",
+      }));
+
+      const detectedScenaries = buildStep4ImageScenaries(detail);
+
+      setFormData({
+        ...baseFormData,
+        uploadedZip: {
+          project_id: project.id,
+          ingestion_status: "READY",
+          zip_saved: false,
+          zip_file: null,
+          counts: { folders_created: 0, files_uploaded: 0, images: 0, videos: 0, csv: 0, other: 0, scenaries_created: 0 },
+          files: [],
+          csv_processing: { detected: 0, processed: 0, failed: 0 },
+          manifest: { total_detected: 0, images: 0, videos: 0, csv: 0, other: 0 },
+          detected_sensors: detectedSensors.map((s) => s as string),
+        },
+        sensors: detectedSensors.length > 0 ? detectedSensors : [],
+        participants: detectedParticipants.length > 0 ? detectedParticipants : [],
+        scenaries: detectedScenaries,
+      });
+      setCurrentStep(2);
+      setIsOpen(true);
+    } catch (error) {
+      console.warn("[CreateProjectWizard] openForResume could not load full project detail", {
+        projectId: project.id,
+        error,
+      });
+      setFormData(baseFormData);
+      setCurrentStep(2);
+      setIsOpen(true);
     }
   };
 
@@ -653,5 +763,6 @@ export const useCreateProjectWizard = (onProjectCreated?: (project: Project) => 
     cancelZipUpload,
     setExperimentFolder,
     discardDraftProject,
+    openForResume,
   };
 };

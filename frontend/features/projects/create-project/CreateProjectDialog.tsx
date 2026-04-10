@@ -17,17 +17,23 @@ import { CreateProjectStep1 } from "./CreateProjectStep1"
 import { CreateProjectStep2 } from "./CreateProjectStep2"
 import { CreateProjectStep3 } from "./CreateProjectStep3"
 import { CreateProjectStep4 } from "./CreateProjectStep4"
-import type { ReactNode } from "react"
+import { useEffect, type ReactNode } from "react"
 import type { Project, SensorType } from "@/features/projects/types"
 
 interface CreateProjectDialogProps {
   trigger: ReactNode
   onProjectCreated?: (project: Project) => void
+  onStep1Complete?: () => void
+  resumeProject?: Project | null
+  onResumeHandled?: () => void
 }
 
 export const CreateProjectDialog = ({
   trigger,
   onProjectCreated,
+  onStep1Complete,
+  resumeProject,
+  onResumeHandled,
 }: CreateProjectDialogProps) => {
   const {
     currentStep,
@@ -58,7 +64,15 @@ export const CreateProjectDialog = ({
     cancelZipUpload,
     setExperimentFolder,
     discardDraftProject,
-  } = useCreateProjectWizard(onProjectCreated)
+    openForResume,
+  } = useCreateProjectWizard(onProjectCreated, onStep1Complete)
+
+  useEffect(() => {
+    if (!resumeProject) return
+    void openForResume(resumeProject)
+    onResumeHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeProject])
 
   const formatBytesToMB = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   const formatEta = (seconds: number) => {
@@ -72,25 +86,28 @@ export const CreateProjectDialog = ({
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      console.warn("[CreateProjectDialog] closed", {
-        currentStep,
-        isSaving,
-        saveError,
-        saveProgressMessage,
-      })
+      if (isZipUploadInProgress) {
+        // Upload running in background — do NOT delete the project
+        // Refresh projects list so card appears with processing state
+        onStep1Complete?.()
+        setIsOpen(false)
+        reset()
+        return
+      }
+      // No upload in progress — safe to delete draft and reset
       void discardDraftProject()
+      reset()
     }
     setIsOpen(open)
-    if (!open) reset()
   }
 
   const handleCancel = async () => {
-    console.warn("[CreateProjectDialog] cancel", {
-      currentStep,
-      isSaving,
-      saveError,
-      saveProgressMessage,
-    })
+    if (isZipUploadInProgress) {
+      onStep1Complete?.()
+      setIsOpen(false)
+      reset()
+      return
+    }
     await discardDraftProject()
     reset()
     setIsOpen(false)

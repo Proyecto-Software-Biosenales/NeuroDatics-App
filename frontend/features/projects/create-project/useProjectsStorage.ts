@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { toast } from "sonner"
 import type { Project } from "@/features/projects/types"
 import { ProjectsApi } from "@/features/projects/api/projectsApi"
 
@@ -11,6 +12,17 @@ const normalizeStatus = (status: unknown): "draft" | "active" | "archived" => {
   const normalized = status.toLowerCase()
   if (normalized === "draft" || normalized === "active" || normalized === "archived") return normalized
   return "active"
+}
+
+const normalizeIngestionStatus = (status?: string): string | undefined => {
+  if (!status) return undefined
+  return status.toUpperCase()
+}
+
+const isDraftStep1Processing = (project: Project): boolean => {
+  if (project.status !== "draft") return false
+  const ing = normalizeIngestionStatus(project.ingestionStatus)
+  return ing === "PENDING" || ing === "PROCESSING"
 }
 
 const formatDate = (iso?: string): string => {
@@ -47,6 +59,36 @@ export const useProjectsStorage = () => {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const projectsRef = useRef<Project[]>([])
+  const previousStatusByIdRef = useRef<Map<string, string | undefined>>(new Map())
+  const hasProcessingDraftRef = useRef(false)
+
+  const buildProject = (bp: any): Project => ({
+    id: bp.id,
+    name: bp.name,
+    description: bp.description,
+    status: normalizeStatus(bp.status),
+    ingestionStatus: bp.ingestion_status?.toUpperCase() as Project["ingestionStatus"] || undefined,
+    createdAt: formatDate(bp.created_at),
+    updatedAt: hasRealUpdate(bp.updated_at, bp.created_at)
+      ? formatDateTime(bp.updated_at)
+      : undefined,
+    sensors: bp.sensors && bp.sensors.length > 0
+      ? bp.sensors.map((s: any) => s.sensor_type || s)
+      : [],
+    participants: bp.participants_count || 0,
+  })
+
+  const refreshProjects = async () => {
+    try {
+      const backendProjects = await ProjectsApi.list()
+      const formattedProjects: Project[] = backendProjects.map(buildProject)
+      setProjects(formattedProjects)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formattedProjects))
+    } catch {
+      // Silent - do not overwrite error state
+    }
+  }
 
   // Load projects from backend on mount
   useEffect(() => {
@@ -59,20 +101,7 @@ export const useProjectsStorage = () => {
         const backendProjects = await ProjectsApi.list()
         
         // Transform backend response to frontend format if needed
-        const formattedProjects: Project[] = backendProjects.map((bp: any) => ({
-          id: bp.id,
-          name: bp.name,
-          description: bp.description,
-          status: normalizeStatus(bp.status),
-          createdAt: formatDate(bp.created_at),
-          updatedAt: hasRealUpdate(bp.updated_at, bp.created_at)
-            ? formatDateTime(bp.updated_at)
-            : undefined,
-          sensors: bp.sensors && bp.sensors.length > 0 
-            ? bp.sensors.map((s: any) => s.sensor_type || s)
-            : [],
-          participants: bp.participants_count || 0,
-        }))
+        const formattedProjects: Project[] = backendProjects.map(buildProject)
         
         setProjects(formattedProjects)
         // Sync to localStorage for offline support
@@ -99,6 +128,72 @@ export const useProjectsStorage = () => {
 
     loadProjects()
   }, [])
+
+  useEffect(() => {
+    projectsRef.current = projects
+    hasProcessingDraftRef.current = projects.some(isDraftStep1Processing)
+    previousStatusByIdRef.current = new Map(
+      projects.map((p) => [p.id, normalizeIngestionStatus(p.ingestionStatus)])
+    )
+  }, [projects])
+
+  const hasProcessingDraft = projects.some(isDraftStep1Processing)
+
+  useEffect(() => {
+    if (!hasProcessingDraftRef.current) return
+
+    let interval: ReturnType<typeof setInterval> | null = null
+
+    const pollProjects = async () => {
+      try {
+        const backendProjects = await ProjectsApi.list()
+        const previousMap = previousStatusByIdRef.current
+
+        const nextProjects: Project[] = backendProjects.map(buildProject)
+
+        for (const project of nextProjects) {
+          const previous = previousMap.get(project.id)
+          const current = normalizeIngestionStatus(project.ingestionStatus)
+          if (
+            (previous === "PENDING" || previous === "PROCESSING") &&
+            current === "READY" &&
+            project.status === "draft"
+          ) {
+            toast.success(
+              `Paso 1 completado para "${project.name}". Ya puedes continuar con los pasos 2, 3 y 4.`,
+              { position: "top-center" }
+            )
+          }
+        }
+
+        setProjects(nextProjects)
+        projectsRef.current = nextProjects
+        previousStatusByIdRef.current = new Map(
+          nextProjects.map((p) => [p.id, normalizeIngestionStatus(p.ingestionStatus)])
+        )
+
+        const stillProcessing = nextProjects.some(isDraftStep1Processing)
+        hasProcessingDraftRef.current = stillProcessing
+        if (!stillProcessing && interval) {
+          clearInterval(interval)
+          interval = null
+        }
+      } catch {
+        // Ignore polling errors silently
+      }
+    }
+
+    interval = setInterval(() => {
+      void pollProjects()
+    }, 3000)
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+        interval = null
+      }
+    }
+  }, [hasProcessingDraft])
 
   const addProject = (project: Project) => {
     setProjects((prev) => [project, ...prev])
@@ -136,5 +231,5 @@ export const useProjectsStorage = () => {
     }
   }
 
-  return { projects, addProject, updateProject, removeProject, loading, error }
+  return { projects, addProject, updateProject, removeProject, refreshProjects, loading, error }
 }
