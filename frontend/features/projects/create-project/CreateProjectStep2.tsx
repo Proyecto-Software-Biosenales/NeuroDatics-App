@@ -6,6 +6,7 @@ import type { SensorType } from "./types"
 interface CreateProjectStep2Props {
   selectedSensors: SensorType[]
   onToggleSensor: (sensor: SensorType) => void
+  autoDetectedSensors?: SensorType[]
 }
 
 const sensors = [
@@ -32,6 +33,7 @@ const sensors = [
 export const CreateProjectStep2 = ({
   selectedSensors,
   onToggleSensor,
+  autoDetectedSensors = [],
 }: CreateProjectStep2Props) => {
   return (
     <div className="space-y-6">
@@ -77,6 +79,12 @@ export const CreateProjectStep2 = ({
               <p className="text-sm text-gray-600 leading-relaxed">
                 {sensor.description}
               </p>
+
+              {autoDetectedSensors.includes(sensor.id) && (
+                <span className="mt-2 inline-block text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                  Auto-detectado
+                </span>
+              )}
             </button>
           )
         })}

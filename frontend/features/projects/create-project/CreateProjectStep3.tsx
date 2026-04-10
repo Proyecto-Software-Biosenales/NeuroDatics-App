@@ -29,6 +29,15 @@ export const CreateProjectStep3 = ({
     { label: "Otro", value: "other" },
   ] as const
 
+  const isParticipantComplete = (p: ParticipantData): boolean => {
+    const hasValidSex = p.sex === "male" || p.sex === "female" || p.sex === "other"
+    const ageNum = Number(p.age)
+    const hasValidAge = p.age.trim() !== "" && Number.isFinite(ageNum) && ageNum > 0
+    return p.id.trim() !== "" && hasValidSex && hasValidAge
+  }
+
+  const incompleteCount = participants.filter((p) => !isParticipantComplete(p)).length
+
   return (
     <div className="space-y-6">
       <div>
@@ -39,6 +48,14 @@ export const CreateProjectStep3 = ({
           Información demográfica del participante del experimento
         </p>
       </div>
+
+      {participants.length > 0 && incompleteCount > 0 && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+          {incompleteCount === 1
+            ? "1 participante requiere sexo y edad para continuar."
+            : `${incompleteCount} participantes requieren sexo y edad para continuar.`}
+        </div>
+      )}
 
       <div className="space-y-3">
         {participants.map((participant) => {
@@ -56,9 +73,16 @@ export const CreateProjectStep3 = ({
                 }
                 className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
               >
-                <span className="font-medium text-gray-900">
-                  {participant.id}
-                </span>
+                <div className="flex items-center">
+                  <span className="font-medium text-gray-900">
+                    {participant.id}
+                  </span>
+                  {!isParticipantComplete(participant) && (
+                    <span className="ml-2 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                      Completar
+                    </span>
+                  )}
+                </div>
                 {isOpen ? (
                   <ChevronDown className="w-5 h-5 text-gray-500" />
                 ) : (

@@ -18,7 +18,7 @@ import { CreateProjectStep2 } from "./CreateProjectStep2"
 import { CreateProjectStep3 } from "./CreateProjectStep3"
 import { CreateProjectStep4 } from "./CreateProjectStep4"
 import type { ReactNode } from "react"
-import type { Project } from "@/features/projects/types"
+import type { Project, SensorType } from "@/features/projects/types"
 
 interface CreateProjectDialogProps {
   trigger: ReactNode
@@ -56,7 +56,7 @@ export const CreateProjectDialog = ({
     zipDriveProcessingSeconds,
     isZipUploadInProgress,
     cancelZipUpload,
-    setExperimentZip,
+    setExperimentFolder,
     discardDraftProject,
   } = useCreateProjectWizard(onProjectCreated)
 
@@ -139,7 +139,7 @@ export const CreateProjectDialog = ({
               onProjectNameChange={updateProjectName}
               onDescriptionChange={updateDescription}
               onFolderPathChange={updateFolderPath}
-              onZipSelected={setExperimentZip}
+              onFolderSelected={setExperimentFolder}
               zipRequired
             />
           )}
@@ -148,6 +148,9 @@ export const CreateProjectDialog = ({
             <CreateProjectStep2
               selectedSensors={formData.sensors}
               onToggleSensor={toggleSensor}
+              autoDetectedSensors={(formData.uploadedZip?.detected_sensors ?? []).filter(
+                (s): s is SensorType => ["EEG", "GSR", "EyeTracker"].includes(s)
+              )}
             />
           )}
 

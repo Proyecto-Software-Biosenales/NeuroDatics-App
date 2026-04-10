@@ -501,7 +501,7 @@ async def upload_experiment_zip(
         # Generic error message for other exceptions
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error procesando el archivo ZIP. Verifica que sea válido e intenta nuevamente."
+            detail=f"Error procesando el archivo: {e}"
         )
 
     return UploadedProjectZipSummaryResponse(
@@ -515,6 +515,8 @@ async def upload_experiment_zip(
         counts=summary["counts"],
         files=summary["files"],
         csv_processing=summary["csv_processing"],
+        detected_sensors=summary.get("detected_sensors", []),
+        participants=summary.get("participants", []),
         manifest=summary["manifest"],
     )
 

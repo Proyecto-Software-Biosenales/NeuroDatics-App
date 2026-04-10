@@ -228,8 +228,8 @@ export const EditProjectDialog = ({
   const [isZipUploadInProgress, setIsZipUploadInProgress] = useState(false)
   const uploadAbortControllerRef = useRef<AbortController | null>(null)
   const activeZipUploadProjectIdRef = useRef<string | null>(null)
-  const [shouldUpdateZip, setShouldUpdateZip] = useState(false)
-  const [hasProcessedZipUpdate, setHasProcessedZipUpdate] = useState(false)
+  const [shouldUpdateFolder, setShouldUpdateFolder] = useState(false)
+  const [hasProcessedFolderUpdate, setHasProcessedFolderUpdate] = useState(false)
   const originalFormDataRef = useRef<ProjectFormData | null>(null)
   const originalCreatedAtRef = useRef<string>("")
   const projectNameIdSuffixRef = useRef<string>("")
@@ -260,7 +260,7 @@ export const EditProjectDialog = ({
     projectName: "",
     description: "",
     status: "active",
-    experimentZip: null,
+    experimentFolderFiles: null,
     folderPath: "",
     uploadedZip: null,
     sensors: [],
@@ -288,7 +288,7 @@ export const EditProjectDialog = ({
         projectName: extractedName,
         description: detail.description || "",
         status: toProjectStatus(detail.status),
-        experimentZip: null,
+        experimentFolderFiles: null,
         folderPath: getCurrentZipFilename(detail),
         uploadedZip: null,
         sensors: ((detail.sensors || []).map((s) => s.sensor_type) as SensorType[]) || [],
@@ -297,7 +297,7 @@ export const EditProjectDialog = ({
       }
 
       setFormData(newFormData)
-      setHasProcessedZipUpdate(false)
+      setHasProcessedFolderUpdate(false)
       originalFormDataRef.current = JSON.parse(JSON.stringify(newFormData))
       originalCreatedAtRef.current = detail.created_at
         ? new Date(detail.created_at).toLocaleDateString("es-ES")
@@ -313,17 +313,17 @@ export const EditProjectDialog = ({
   useEffect(() => {
     if (!isOpen) return
     void loadProject()
-    setShouldUpdateZip(false)
+    setShouldUpdateFolder(false)
   }, [isOpen])
 
   const updateProjectName = (name: string) => setFormData((prev) => ({ ...prev, projectName: name }))
   const updateDescription = (description: string) => setFormData((prev) => ({ ...prev, description }))
   const updateFolderPath = (path: string) => setFormData((prev) => ({ ...prev, folderPath: path }))
-  const setExperimentZip = (file: File | null) => {
+  const setExperimentFolder = (files: File[] | null) => {
     setFormData((prev) => ({
       ...prev,
-      experimentZip: file,
-      folderPath: file ? file.name : "",
+      experimentFolderFiles: files,
+      folderPath: files?.[0] ? ((files[0] as any)._relativePath || files[0].webkitRelativePath || files[0].name).split("/")[0] : "",
     }))
   }
 
@@ -359,7 +359,7 @@ export const EditProjectDialog = ({
   const canGoNext = () => {
     switch (currentStep) {
       case 1:
-        return formData.projectName.trim() !== "" && (!shouldUpdateZip || Boolean(formData.experimentZip))
+        return formData.projectName.trim() !== "" && (!shouldUpdateFolder || Boolean(formData.experimentFolderFiles?.length))
       case 2:
         return formData.sensors.length > 0
       case 3:
@@ -409,11 +409,11 @@ export const EditProjectDialog = ({
     const shouldUpdateMetadata = metadataChanged()
     const shouldUpdateSensors = sensorsChanged()
     const shouldUpdateParticipants = participantsChanged()
-    return shouldUpdateMetadata || shouldUpdateSensors || shouldUpdateParticipants || hasProcessedZipUpdate
+    return shouldUpdateMetadata || shouldUpdateSensors || shouldUpdateParticipants || hasProcessedFolderUpdate
   }
 
   const processZipOnStep1 = async () => {
-    if (!shouldUpdateZip || !formData.experimentZip) {
+    if (!shouldUpdateFolder || !formData.experimentFolderFiles?.length) {
       setCurrentStep((prev) => prev + 1)
       return
     }
@@ -421,8 +421,12 @@ export const EditProjectDialog = ({
     setIsSaving(true)
     setSaveError(null)
     setSaveNotice(null)
-    setSaveProgressMessage("Enviando nuevo ZIP al backend...")
+    setSaveProgressMessage("Enviando nuevo experimento al backend...")
     setIsZipUploadInProgress(true)
+
+    const updateProgress = (message: string) => {
+      setSaveProgressMessage(message)
+    }
 
     try {
       if (metadataChanged()) {
@@ -436,6 +440,30 @@ export const EditProjectDialog = ({
       const uploadAbortController = new AbortController()
       uploadAbortControllerRef.current = uploadAbortController
       activeZipUploadProjectIdRef.current = projectId
+
+      // Package folder into ZIP for backend upload
+      updateProgress("Empaquetando carpeta del experimento...")
+      let zipFile: File
+      try {
+        const JSZip = (await import("jszip")).default
+        const zip = new JSZip()
+        const getFilePath = (file: File): string =>
+          (file as any)._relativePath || file.webkitRelativePath || file.name
+
+        const folderName = getFilePath(formData.experimentFolderFiles[0]).split("/")[0]
+        for (const file of formData.experimentFolderFiles) {
+          const fullPath = getFilePath(file)
+          const relativePath = fullPath.startsWith(folderName + "/")
+            ? fullPath.slice(folderName.length + 1)
+            : fullPath || file.name
+          zip.file(relativePath, file, { compression: "STORE" })
+        }
+        const zipBlob = await zip.generateAsync({ type: "blob" })
+        zipFile = new File([zipBlob], `${folderName}.zip`, { type: "application/zip" })
+      } catch (packError: any) {
+        console.error("[EditProjectDialog] JSZip packaging failed", packError)
+        throw new Error("Error al empaquetar la carpeta. Verifica que no exceda 500MB.")
+      }
 
       let driveProgressPollTimer: ReturnType<typeof setInterval> | null = null
       let lastDriveSampleAt: number | null = null
@@ -525,10 +553,10 @@ export const EditProjectDialog = ({
 
       await ProjectsApi.uploadZipWithProgress(
         projectId,
-        formData.experimentZip,
+        zipFile,
         (progress) => {
           if (progress.phase === "uploading") {
-            setSaveProgressMessage(`Enviando nuevo ZIP al backend... ${progress.percent}%`)
+            setSaveProgressMessage(`Enviando nuevo experimento al backend... ${progress.percent}%`)
             return
           }
           if (progress.phase === "processing") {
@@ -556,9 +584,9 @@ export const EditProjectDialog = ({
         folderPath: getCurrentZipFilename(refreshed) || prev.folderPath,
         scenaries: parseScenaries(refreshed),
       }))
-      setHasProcessedZipUpdate(true)
+      setHasProcessedFolderUpdate(true)
       setCurrentStep(2)
-      setSaveNotice("ZIP procesado correctamente. Puedes continuar con la edición.")
+      setSaveNotice("Experimento procesado correctamente. Puedes continuar con la edición.")
     } catch (error) {
       const friendlyMessage = toFriendlyErrorMessage(error)
       const wasCanceled = /cancelad|abort/i.test(friendlyMessage)
@@ -607,7 +635,7 @@ export const EditProjectDialog = ({
       const shouldUpdateMetadata = metadataChanged()
       const shouldUpdateSensors = sensorsChanged()
       const shouldUpdateParticipants = participantsChanged()
-      const shouldUploadZip = hasProcessedZipUpdate
+      const shouldUploadFolder = hasProcessedFolderUpdate
 
       if (!hasAnyChanges()) {
         toast.success("No hay cambios por guardar.")
@@ -653,9 +681,9 @@ export const EditProjectDialog = ({
         await Promise.all(updates)
       }
 
-      const shouldFinalize = shouldUploadZip
+      const shouldFinalize = shouldUploadFolder
       if (shouldFinalize) {
-        // Finalize only when a new ZIP was uploaded.
+        // Finalize only when a new experiment folder was uploaded.
         updateProgress("Finalizando actualización del proyecto...")
         await ProjectsApi.finalize(projectId)
       }
@@ -748,7 +776,7 @@ export const EditProjectDialog = ({
     setZipUploadEtaSeconds(null)
     setZipDriveProcessingSeconds(null)
     setIsZipUploadInProgress(false)
-    setHasProcessedZipUpdate(false)
+    setHasProcessedFolderUpdate(false)
     uploadAbortControllerRef.current = null
     activeZipUploadProjectIdRef.current = null
   }
@@ -816,11 +844,11 @@ export const EditProjectDialog = ({
                 onProjectNameChange={updateProjectName}
                 onDescriptionChange={updateDescription}
                 onFolderPathChange={updateFolderPath}
-                onZipSelected={setExperimentZip}
+                onFolderSelected={setExperimentFolder}
                 zipRequired={false}
                 isEditMode={true}
-                shouldUpdateZip={shouldUpdateZip}
-                onShouldUpdateZipChange={setShouldUpdateZip}
+                shouldUpdateFolder={shouldUpdateFolder}
+                onShouldUpdateFolderChange={setShouldUpdateFolder}
               />
             )}
 
