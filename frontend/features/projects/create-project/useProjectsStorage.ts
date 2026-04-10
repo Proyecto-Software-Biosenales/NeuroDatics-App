@@ -7,6 +7,30 @@ import { ProjectsApi } from "@/features/projects/api/projectsApi"
 
 const STORAGE_KEY = "neurodatics_projects"
 
+const playStep1ReadySound = () => {
+  try {
+    const ctx = new AudioContext()
+    const notes = [523.25, 659.25, 783.99] // C5, E5, G5
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = "sine"
+      osc.frequency.value = freq
+      const start = ctx.currentTime + i * 0.13
+      gain.gain.setValueAtTime(0, start)
+      gain.gain.linearRampToValueAtTime(0.18, start + 0.03)
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35)
+      osc.start(start)
+      osc.stop(start + 0.35)
+    })
+    setTimeout(() => ctx.close(), 1200)
+  } catch {
+    // Web Audio API may not be available in some environments
+  }
+}
+
 const normalizeStatus = (status: unknown): "draft" | "active" | "archived" => {
   if (typeof status !== "string") return "active"
   const normalized = status.toLowerCase()
@@ -165,6 +189,7 @@ export const useProjectsStorage = () => {
               `Paso 1 completado para "${project.name}". Ya puedes continuar con los pasos 2, 3 y 4.`,
               { position: "top-center" }
             )
+            playStep1ReadySound()
           }
         }
 
