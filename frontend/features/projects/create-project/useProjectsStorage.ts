@@ -22,7 +22,9 @@ const normalizeIngestionStatus = (status?: string): string | undefined => {
 const isDraftStep1Processing = (project: Project): boolean => {
   if (project.status !== "draft") return false
   const ing = normalizeIngestionStatus(project.ingestionStatus)
-  return ing === "PENDING" || ing === "PROCESSING"
+  // Only poll when the backend is ACTIVELY processing (file was fully received).
+  // PENDING means the upload was never completed — no backend work is running.
+  return ing === "PROCESSING"
 }
 
 const formatDate = (iso?: string): string => {

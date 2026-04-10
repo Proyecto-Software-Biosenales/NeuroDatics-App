@@ -588,6 +588,28 @@ export const useCreateProjectWizard = (
   const openForResume = async (project: Project) => {
     setDraftProjectId(project.id);
 
+    // Step 1 was never completed (upload interrupted or never started) —
+    // open the wizard at step 1 so the user can re-upload the folder.
+    const ing = String(project.ingestionStatus || "").toUpperCase();
+    if (ing === "PENDING" || ing === "") {
+      setFormData({
+        projectName: project.name,
+        description: project.description || "",
+        status: "draft",
+        folderPath: "",
+        experimentFolderFiles: null,
+        uploadedZip: null,
+        sensors: [],
+        participants: initialParticipants,
+        scenaries: initialscenaries,
+      });
+      setCurrentStep(1);
+      // isResumedDraft=true prevents deletion on cancel (project already existed)
+      setIsResumedDraft(true);
+      setIsOpen(true);
+      return;
+    }
+
     const baseFormData: ProjectFormData = {
       projectName: project.name,
       description: project.description || "",
