@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from ...scenaries.domain.entities import Scenaries
-from .entities import Project, ProjectFile, ProjectSensor
+from .entities import ProcessingJob, Project, ProjectFile, ProjectSensor
 
 
 class ProjectRepository(ABC):
@@ -75,6 +75,50 @@ class ProjectRepository(ABC):
         project_id: UUID,
         updates: Dict[str, Any],
     ) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def commit(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def rollback(self) -> None:
+        raise NotImplementedError
+
+
+class ProcessingJobRepository(ABC):
+    @abstractmethod
+    async def create(self, job: "ProcessingJob") -> "ProcessingJob":
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_by_id(self, job_id: UUID) -> Optional["ProcessingJob"]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_by_rq_job_id(self, rq_job_id: str) -> Optional["ProcessingJob"]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_by_project_id(
+        self,
+        project_id: UUID,
+        status: Optional[str] = None,
+        limit: int = 10,
+    ) -> List["ProcessingJob"]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def update_status(self, job_id: UUID, status: str, message: Optional[str] = None) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def update_progress(
+        self,
+        job_id: UUID,
+        progress_percent: int,
+        message: Optional[str] = None,
+    ) -> bool:
         raise NotImplementedError
 
     @abstractmethod

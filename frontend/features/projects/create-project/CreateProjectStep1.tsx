@@ -177,6 +177,9 @@ export const CreateProjectStep1 = ({
 
   const ingestionStatus = uploadedZip?.ingestion_status ?? null
   const ingestionReady = ingestionStatus === "READY"
+  const disableProjectMetadataEditing =
+    uploadedZip?.ingestion_status === "PROCESSING" ||
+    uploadedZip?.ingestion_status === "PENDING"
   const ingestionFailed = ingestionStatus === "FAILED"
 
   return (
@@ -192,6 +195,7 @@ export const CreateProjectStep1 = ({
             placeholder="Ej: Publicidad Coca-cola"
             value={projectName}
             onChange={(e) => onProjectNameChange(e.target.value)}
+            disabled={disableProjectMetadataEditing}
           />
         </div>
 
@@ -207,6 +211,7 @@ export const CreateProjectStep1 = ({
             placeholder="Describe brevemente el objetivo del proyecto"
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
+            disabled={disableProjectMetadataEditing}
           />
         </div>
 

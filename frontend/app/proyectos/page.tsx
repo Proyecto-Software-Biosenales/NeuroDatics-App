@@ -6,7 +6,7 @@ import { CreateProjectButton } from "@/features/projects/components/CreateProjec
 import { ProjectsEmptyContainer } from "@/features/projects/components/ProjectsEmptyContainer"
 import { ProjectsGrid } from "@/features/projects/components/ProjectsGrid"
 import { AuthGuard } from "@/features/auth/components/AuthGuard"
-import type { ProjectStatus } from "@/features/projects/types"
+import type { Project, ProjectStatus } from "@/features/projects/types"
 import {
   CreateProjectDialog,
   useProjectsStorage,
@@ -15,8 +15,9 @@ import {
 type ProjectFilter = "all" | ProjectStatus
 
 export default function ProyectosPage() {
-  const { projects, addProject, updateProject, removeProject, loading, error } = useProjectsStorage()
+  const { projects, addProject, updateProject, removeProject, loading, error, refreshProjects } = useProjectsStorage()
   const [statusFilter, setStatusFilter] = useState<ProjectFilter>("all")
+  const [resumeProject, setResumeProject] = useState<Project | null>(null)
   const hasProjects = projects.length > 0
 
   const filteredProjects = useMemo(() => {
@@ -47,7 +48,13 @@ export default function ProyectosPage() {
               </p>
             </div>
 
-              <CreateProjectDialog onProjectCreated={addProject} trigger={<CreateProjectButton compact />} />
+              <CreateProjectDialog
+                onProjectCreated={addProject}
+                onStep1Complete={refreshProjects}
+                resumeProject={resumeProject}
+                onResumeHandled={() => setResumeProject(null)}
+                trigger={<CreateProjectButton compact />}
+              />
           </div>
 
           {/* Loading state */}
@@ -95,7 +102,12 @@ export default function ProyectosPage() {
                   </div>
 
                   {hasFilteredProjects ? (
-                    <ProjectsGrid projects={filteredProjects} onDelete={removeProject} onEdit={updateProject} />
+                    <ProjectsGrid
+                      projects={filteredProjects}
+                      onDelete={removeProject}
+                      onEdit={updateProject}
+                      onContinueDraft={setResumeProject}
+                    />
                   ) : (
                     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-600">
                       No hay proyectos en este estado.
@@ -104,7 +116,7 @@ export default function ProyectosPage() {
                 </>
               ) : (
                 <div className="transition-all duration-300">
-                  <ProjectsEmptyContainer onProjectCreated={addProject} />
+                  <ProjectsEmptyContainer onProjectCreated={addProject} onStep1Complete={refreshProjects} />
                 </div>
               )}
             </>

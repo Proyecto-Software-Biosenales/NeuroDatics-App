@@ -14,8 +14,11 @@ import time
 import anyio
 
 from ....api.deps import get_db, get_current_user
+from ....infra.storage.gdrive_oauth_credentials import build_google_drive_oauth_credentials
 from ....infra.storage.gdrive_client import gdrive_client
 from ...integrations.google_drive.infrastructure.configure_client import configure_gdrive_client_with_oauth
+from ...integrations.google_drive.infrastructure.repository import SystemIntegrationRepository
+from ....infra.storage.gdrive_client import GoogleDriveClient
 from ..infrastructure.repository_impl import SQLProjectRepository
 from ..application.use_cases.create_project import CreateProjectUseCase
 from ..application.use_cases.list_projects import ListProjectsUseCase
@@ -105,6 +108,24 @@ async def _cleanup_image_download_lock(cache_key: str, lock: asyncio.Lock) -> No
             _image_cache_download_locks.pop(cache_key, None)
 
 
+async def _build_isolated_drive_client(db: AsyncSession) -> Optional["GoogleDriveClient"]:
+    """Create a fresh GoogleDriveClient without touching the global singleton."""
+    repository = SystemIntegrationRepository(db)
+    integration = await repository.get_by_provider("google_drive")
+    if not integration:
+        return None
+    refresh_token = integration.get("refresh_token")
+    if not refresh_token:
+        return None
+    credentials = build_google_drive_oauth_credentials(
+        refresh_token=refresh_token,
+        scope=integration.get("scope"),
+    )
+    client = GoogleDriveClient()
+    client.set_oauth_credentials(credentials)
+    return client
+
+
 @router.get("/{project_id}/files/{file_id}/image")
 async def get_project_file_image(
     project_id: UUID,
@@ -181,8 +202,8 @@ async def get_project_file_image(
                     headers={**response_headers, "X-Image-Cache": "HIT"},
                 )
 
-            configured = await configure_gdrive_client_with_oauth(db, silent=True)
-            if not configured:
+            drive_client = await _build_isolated_drive_client(db)
+            if not drive_client:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail="No se pudo configurar Google Drive para servir la imagen"
@@ -190,7 +211,7 @@ async def get_project_file_image(
 
             try:
                 # Drive client is synchronous; offload to worker thread to avoid blocking event loop.
-                content = await anyio.to_thread.run_sync(gdrive_client.download_file_content, project_file.external_id)
+                content = await anyio.to_thread.run_sync(drive_client.download_file_content, project_file.external_id)
             except Exception as exc:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
@@ -241,6 +262,11 @@ async def create_project(
         description=project.description,
         status=project.status,
         created_at=project.created_at,
+        ingestion_status=project.ingestion_status,
+        ingestion_error=project.ingestion_error,
+        drive_root_folder_id=project.drive_root_folder_id,
+        drive_root_folder_name=project.drive_root_folder_name,
+        drive_root_folder_url=project.drive_root_folder_url,
         sensors=[],
         participants_count=0
     )
@@ -264,6 +290,11 @@ async def list_projects(
             description=project.description,
             status=project.status,
             created_at=project.created_at,
+            ingestion_status=project.ingestion_status,
+            ingestion_error=project.ingestion_error,
+            drive_root_folder_id=project.drive_root_folder_id,
+            drive_root_folder_name=project.drive_root_folder_name,
+            drive_root_folder_url=project.drive_root_folder_url,
             sensors=[{"id": s.id, "sensor_type": s.sensor_type} for s in project.sensors],
             participants_count=len(project.participants)
         )
@@ -293,6 +324,11 @@ async def get_project(
         description=project.description,
         status=project.status,
         created_at=project.created_at,
+        ingestion_status=project.ingestion_status,
+        ingestion_error=project.ingestion_error,
+        drive_root_folder_id=project.drive_root_folder_id,
+        drive_root_folder_name=project.drive_root_folder_name,
+        drive_root_folder_url=project.drive_root_folder_url,
         files=[
             ProjectFileResponse(
                 id=f.id,
@@ -412,6 +448,11 @@ async def update_project(
         description=updated_project.description,
         status=updated_project.status,
         created_at=updated_project.created_at,
+        ingestion_status=updated_project.ingestion_status,
+        ingestion_error=updated_project.ingestion_error,
+        drive_root_folder_id=updated_project.drive_root_folder_id,
+        drive_root_folder_name=updated_project.drive_root_folder_name,
+        drive_root_folder_url=updated_project.drive_root_folder_url,
         sensors=[{"id": s.id, "sensor_type": s.sensor_type} for s in updated_project.sensors],
         participants_count=len(updated_project.participants)
     )

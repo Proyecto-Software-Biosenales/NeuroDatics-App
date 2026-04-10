@@ -6,6 +6,11 @@ export type ApiProject = {
   name: string;
   description?: string | null;
   status?: "draft" | "active" | "archived" | string;
+  ingestion_status?: string | null;
+  ingestion_error?: string | null;
+  drive_root_folder_id?: string | null;
+  drive_root_folder_name?: string | null;
+  drive_root_folder_url?: string | null;
   created_at?: string;
   updated_at?: string;
   sensors?: Array<{ id: string; sensor_type: string }>;

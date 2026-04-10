@@ -1,7 +1,5 @@
-import json
 import threading
 import time
-from pathlib import Path
 from typing import Dict, Optional
 from uuid import UUID
 
@@ -9,46 +7,24 @@ from uuid import UUID
 class DriveUploadProgressRegistry:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        backend_root = Path(__file__).resolve().parents[7]
-        self._storage_path = backend_root / "data" / "drive_upload_progress.json"
-        self._storage_path.parent.mkdir(parents=True, exist_ok=True)
+        self._data: Dict[str, Dict[str, object]] = {}
         self._max_age_seconds = 60 * 60 * 6
 
-    def _load_from_disk(self) -> Dict[str, Dict[str, object]]:
-        if not self._storage_path.exists():
-            return {}
-        try:
-            raw = self._storage_path.read_text(encoding="utf-8")
-            if not raw.strip():
-                return {}
-            parsed = json.loads(raw)
-            if isinstance(parsed, dict):
-                return {str(k): v for k, v in parsed.items() if isinstance(v, dict)}
-        except Exception:
-            return {}
-        return {}
-
-    def _save_to_disk(self, data: Dict[str, Dict[str, object]]) -> None:
-        temp_path = self._storage_path.with_suffix(".tmp")
-        temp_path.write_text(json.dumps(data, ensure_ascii=True), encoding="utf-8")
-        temp_path.replace(self._storage_path)
-
-    def _prune_stale(self, data: Dict[str, Dict[str, object]], now: float) -> None:
+    def _prune_stale(self, now: float) -> None:
         stale_keys = []
-        for key, item in data.items():
+        for key, item in self._data.items():
             updated_at = float(item.get("updated_at") or 0)
             if updated_at > 0 and now - updated_at > self._max_age_seconds:
                 stale_keys.append(key)
         for key in stale_keys:
-            data.pop(key, None)
+            self._data.pop(key, None)
 
     def start(self, project_id: UUID, total_bytes: int) -> None:
         now = time.time()
         safe_total = max(1, int(total_bytes))
         with self._lock:
-            data = self._load_from_disk()
-            self._prune_stale(data, now)
-            data[str(project_id)] = {
+            self._prune_stale(now)
+            self._data[str(project_id)] = {
                 "phase": "uploading",
                 "uploaded_bytes": 0,
                 "total_bytes": safe_total,
@@ -63,16 +39,14 @@ class DriveUploadProgressRegistry:
                 "last_uploaded_bytes": 0,
                 "last_sample_at": now,
             }
-            self._save_to_disk(data)
 
     def request_cancel(self, project_id: UUID) -> None:
         now = time.time()
         key = str(project_id)
 
         with self._lock:
-            data = self._load_from_disk()
-            self._prune_stale(data, now)
-            item = data.get(key)
+            self._prune_stale(now)
+            item = self._data.get(key)
 
             if not item:
                 item = {
@@ -90,8 +64,7 @@ class DriveUploadProgressRegistry:
                     "last_uploaded_bytes": 0,
                     "last_sample_at": now,
                 }
-                data[key] = item
-                self._save_to_disk(data)
+                self._data[key] = item
                 return
 
             item["cancel_requested"] = True
@@ -99,19 +72,16 @@ class DriveUploadProgressRegistry:
             item["speed_mbps"] = None
             item["eta_seconds"] = None
             item["updated_at"] = now
-            data[key] = item
-            self._save_to_disk(data)
+            self._data[key] = item
 
     def is_cancel_requested(self, project_id: UUID) -> bool:
         key = str(project_id)
         with self._lock:
             now = time.time()
-            data = self._load_from_disk()
-            self._prune_stale(data, now)
-            item = data.get(key)
+            self._prune_stale(now)
+            item = self._data.get(key)
             if not item:
                 return False
-            self._save_to_disk(data)
             return bool(item.get("cancel_requested"))
 
     def mark_uploaded_bytes(self, project_id: UUID, uploaded_bytes: int) -> None:
@@ -119,9 +89,8 @@ class DriveUploadProgressRegistry:
         key = str(project_id)
 
         with self._lock:
-            data = self._load_from_disk()
-            self._prune_stale(data, now)
-            item = data.get(key)
+            self._prune_stale(now)
+            item = self._data.get(key)
             if not item:
                 return
 
@@ -151,17 +120,15 @@ class DriveUploadProgressRegistry:
             item["last_uploaded_bytes"] = bounded_uploaded
             item["last_sample_at"] = now
             item["cancel_requested"] = bool(item.get("cancel_requested", False))
-            data[key] = item
-            self._save_to_disk(data)
+            self._data[key] = item
 
     def complete(self, project_id: UUID) -> None:
         now = time.time()
         key = str(project_id)
 
         with self._lock:
-            data = self._load_from_disk()
-            self._prune_stale(data, now)
-            item = data.get(key)
+            self._prune_stale(now)
+            item = self._data.get(key)
             if not item:
                 return
 
@@ -176,17 +143,15 @@ class DriveUploadProgressRegistry:
             item["last_uploaded_bytes"] = total_bytes
             item["last_sample_at"] = now
             item["cancel_requested"] = False
-            data[key] = item
-            self._save_to_disk(data)
+            self._data[key] = item
 
     def fail(self, project_id: UUID, error: str) -> None:
         now = time.time()
         key = str(project_id)
 
         with self._lock:
-            data = self._load_from_disk()
-            self._prune_stale(data, now)
-            item = data.get(key)
+            self._prune_stale(now)
+            item = self._data.get(key)
             if not item:
                 return
 
@@ -197,19 +162,22 @@ class DriveUploadProgressRegistry:
             item["elapsed_seconds"] = int(max(0.0, now - float(item["started_at"])))
             item["updated_at"] = now
             item["cancel_requested"] = bool(item.get("cancel_requested", False))
-            data[key] = item
-            self._save_to_disk(data)
+            self._data[key] = item
 
     def get(self, project_id: UUID) -> Optional[Dict[str, object]]:
         with self._lock:
             now = time.time()
-            data = self._load_from_disk()
-            self._prune_stale(data, now)
-            item = data.get(str(project_id))
+            self._prune_stale(now)
+            item = self._data.get(str(project_id))
             if not item:
                 return None
-            self._save_to_disk(data)
             return dict(item)
+
+    def remove(self, project_id: UUID) -> None:
+        with self._lock:
+            now = time.time()
+            self._prune_stale(now)
+            self._data.pop(str(project_id), None)
 
 
 drive_upload_progress_registry = DriveUploadProgressRegistry()
