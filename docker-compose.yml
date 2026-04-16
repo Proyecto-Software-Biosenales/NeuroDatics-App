@@ -24,6 +24,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    volumes:
+      - parquet_cache:/data/parquet_cache
 
   worker:
     build:
@@ -38,9 +40,14 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    volumes:
+      - parquet_cache:/data/parquet_cache
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health/worker')\""]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 10s
+
+volumes:
+  parquet_cache:
