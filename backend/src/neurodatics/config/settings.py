@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     # App
     app_name: str = "NeuroDatics API"
     debug: bool = False
+
+    # Analytics cache
+    parquet_cache_dir: str = "/data/parquet_cache"
+    parquet_cache_ttl_hours: int = 4
+    analytics_redis_ttl_seconds: int = 900
     
     class Config:
         env_file = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")
