@@ -186,19 +186,27 @@ export function PupilDilationTab({
               No hay datos de dilatación pupilar para los filtros seleccionados.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={chartData} onClick={handleChartClick} margin={{ top: 8, right: 16, left: 8, bottom: 24 }}>
+            <ResponsiveContainer width="100%" height={460}>
+              <LineChart data={chartData} onClick={handleChartClick} margin={{ top: 8, right: 24, left: 16, bottom: 80 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
                   dataKey="time"
                   type="number"
                   domain={["dataMin", "dataMax"]}
                   tickFormatter={(value) => String(Math.round(Number(value)))}
-                  label={{ value: "Tiempo (s)", position: "insideBottom", offset: -16 }}
+                  tickMargin={8}
+                  label={{ value: "Tiempo (s)", position: "insideBottom", offset: -8 }}
                 />
-                <YAxis label={{ value: "Amplitud pupilar (mm)", angle: -90, position: "insideLeft" }} />
+                <YAxis
+                  width={72}
+                  label={{ value: "Amplitud pupilar (mm)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
+                />
                 <Tooltip content={<PupilTooltip />} />
-                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: "12px" }} />
+                <Legend
+                  verticalAlign="bottom"
+                  height={52}
+                  wrapperStyle={{ paddingTop: "36px" }}
+                />
 
                 {typeof stats?.mean === "number" ? (
                   <ReferenceLine y={stats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
