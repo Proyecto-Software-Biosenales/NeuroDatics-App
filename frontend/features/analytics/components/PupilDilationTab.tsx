@@ -6,6 +6,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -19,13 +20,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card"
+import { Minus, TrendingDown, TrendingUp } from "lucide-react"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { cn } from "@/lib/utils"
+import { KpiCard } from "@/components/ui/KpiCard"
+import { AnalyticsApi } from "../api/analyticsApi"
 import {
   useGazeAt,
   usePupilStatistics,
   usePupilTimeseries,
 } from "../hooks/useAnalyticsData"
+import { PupilStatsSection } from "./PupilStatsSection"
 
 type ViewMode = "both" | "left" | "right"
 
@@ -82,6 +87,7 @@ export function PupilDilationTab({
 }: PupilDilationTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("both")
   const [clickedTime, setClickedTime] = useState<number | null>(null)
+  const [pinnedTime, setPinnedTime] = useState<number | null>(null)
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
 
   const { data: timeseriesData, loading: timeseriesLoading } = usePupilTimeseries(
@@ -109,6 +115,56 @@ export function PupilDilationTab({
       average: timeseriesData.average[index],
     }))
   }, [timeseriesData])
+
+  const minTime = useMemo(() => {
+    if (chartData.length === 0) return null
+    let minVal = Infinity
+    let minT = chartData[0].time
+    for (const pt of chartData) {
+      const v = Math.min(pt.smooth_left, pt.smooth_right)
+      if (v < minVal) { minVal = v; minT = pt.time }
+    }
+    return minT
+  }, [chartData])
+
+  const maxTime = useMemo(() => {
+    if (chartData.length === 0) return null
+    let maxVal = -Infinity
+    let maxT = chartData[0].time
+    for (const pt of chartData) {
+      const v = Math.max(pt.smooth_left, pt.smooth_right)
+      if (v > maxVal) { maxVal = v; maxT = pt.time }
+    }
+    return maxT
+  }, [chartData])
+
+  const [maxGaze, setMaxGaze] = useState<{ gx: number | null; gy: number | null } | null>(null)
+  const [minGaze, setMinGaze] = useState<{ gx: number | null; gy: number | null } | null>(null)
+
+  useEffect(() => {
+    if (!projectId || !participantCode || maxTime == null) return
+    let cancelled = false
+    AnalyticsApi.getGazeAt(projectId, participantCode, maxTime)
+      .then((data) => { if (!cancelled && data) setMaxGaze({ gx: data.gx, gy: data.gy }) })
+      .catch(() => { if (!cancelled) setMaxGaze(null) })
+    return () => { cancelled = true }
+  }, [projectId, participantCode, maxTime])
+
+  useEffect(() => {
+    if (!projectId || !participantCode || minTime == null) return
+    let cancelled = false
+    AnalyticsApi.getGazeAt(projectId, participantCode, minTime)
+      .then((data) => { if (!cancelled && data) setMinGaze({ gx: data.gx, gy: data.gy }) })
+      .catch(() => { if (!cancelled) setMinGaze(null) })
+    return () => { cancelled = true }
+  }, [projectId, participantCode, minTime])
+
+  const handleKpiClick = (time: number | null) => {
+    if (time == null) return
+    setPinnedTime((prev) => (prev === time ? null : time))
+    setClickedTime(time)
+    fetchGaze(time)
+  }
 
   useEffect(() => {
     if (!gazeData?.scenario_file_id) {
@@ -179,6 +235,49 @@ export function PupilDilationTab({
         </CardHeader>
 
         <CardContent>
+          <div className="mb-6 grid grid-cols-3 gap-10 px-7 ml-13">
+            <KpiCard
+              label="Media"
+              value={stats?.mean}
+              description="Promedio ambas pupilas"
+              Icon={Minus}
+              loading={statsLoading}
+              bgClass="bg-purple-50"
+              iconBgClass="bg-purple-100"
+              accentClass="text-purple-400"
+              borderCardClass="border border-purple-100"
+              titleColorClass="text-purple-600"
+            />
+            <KpiCard
+              label="Mínimo"
+              value={stats?.min}
+              description="Valor más bajo registrado"
+              Icon={TrendingDown}
+              loading={statsLoading}
+              bgClass="bg-cyan-50"
+              iconBgClass="bg-cyan-100"
+              accentClass="text-cyan-500"
+              borderCardClass="border border-cyan-100"
+              titleColorClass="text-cyan-700"
+              onClick={minTime != null ? () => handleKpiClick(minTime) : undefined}
+              active={pinnedTime != null && pinnedTime === minTime}
+            />
+            <KpiCard
+              label="Máximo"
+              value={stats?.max}
+              description="Pico de dilatación"
+              Icon={TrendingUp}
+              loading={statsLoading}
+              bgClass="bg-rose-50"
+              iconBgClass="bg-rose-100"
+              accentClass="text-rose-400"
+              borderCardClass="border border-rose-100"
+              titleColorClass="text-rose-600"
+              onClick={maxTime != null ? () => handleKpiClick(maxTime) : undefined}
+              active={pinnedTime != null && pinnedTime === maxTime}
+            />
+          </div>
+
           {timeseriesLoading ? (
             <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200" />
           ) : chartData.length === 0 ? (
@@ -212,6 +311,24 @@ export function PupilDilationTab({
                   <ReferenceLine y={stats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
                 ) : null}
 
+                {pinnedTime != null ? (
+                  <ReferenceLine
+                    x={pinnedTime}
+                    stroke="#374151"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 3"
+                    label={{ value: `${Math.round(pinnedTime)}s`, position: "top", fontSize: 11, fill: "#374151" }}
+                  />
+                ) : null}
+
+                {pinnedTime != null && stats?.min != null && (viewMode === "both" || viewMode === "right") ? (
+                  <ReferenceDot x={pinnedTime} y={stats.min} r={5} fill="#6366F1" stroke="white" strokeWidth={2} ifOverflow="visible" />
+                ) : null}
+
+                {pinnedTime != null && stats?.max != null && (viewMode === "both" || viewMode === "right") ? (
+                  <ReferenceDot x={pinnedTime} y={stats.max} r={5} fill="#F43F5E" stroke="white" strokeWidth={2} ifOverflow="visible" />
+                ) : null}
+
                 {(viewMode === "both" || viewMode === "left") ? (
                   <Line
                     type="monotone"
@@ -238,25 +355,6 @@ export function PupilDilationTab({
           )}
         </CardContent>
       </Card>
-
-      <section className="grid grid-cols-3 gap-6">
-        {[
-          { label: "Media", value: stats?.mean },
-          { label: "Mínimo", value: stats?.min },
-          { label: "Máximo", value: stats?.max },
-        ].map((kpi) => (
-          <Card key={kpi.label}>
-            <CardContent className="p-6 text-center">
-              {statsLoading || kpi.value == null ? (
-                <div className="mx-auto h-8 w-20 animate-pulse rounded bg-gray-200" />
-              ) : (
-                <p className="text-2xl font-semibold text-gray-900">{kpi.value.toFixed(2)} mm</p>
-              )}
-              <p className="mt-1 text-sm text-gray-500">{kpi.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </section>
 
       {gazeData ? (
         <Card>
@@ -303,44 +401,14 @@ export function PupilDilationTab({
         </Card>
       ) : null}
 
-      <section>
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Estadísticas</h3>
-          <p className="text-sm text-gray-500">
-            Resumen numérico de la señal: tendencia, variabilidad y extremos.
-          </p>
-        </div>
-
-        {statsLoading || !stats ? (
-          <div className="grid grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-20 animate-pulse rounded-xl bg-gray-200" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: "Media", value: stats.mean },
-              { label: "Mínimo", value: stats.min },
-              { label: "Máximo", value: stats.max },
-              { label: "Desv. Estándar", value: stats.std },
-              { label: "Mediana", value: stats.median },
-              { label: "Línea Base", value: stats.baseline },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-3"
-              >
-                <p className="text-xs text-gray-500">{item.label}</p>
-                <p className="mt-1 text-lg font-semibold text-gray-900">
-                  {item.value.toFixed(4)}{" "}
-                  <span className="text-sm font-normal text-gray-400">mm</span>
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <PupilStatsSection
+        stats={stats}
+        loading={statsLoading}
+        maxTime={maxTime}
+        minTime={minTime}
+        maxGaze={maxGaze}
+        minGaze={minGaze}
+      />
     </div>
   )
 }
