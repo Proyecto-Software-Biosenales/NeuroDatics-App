@@ -242,11 +242,11 @@ export function PupilDilationTab({
               description="Promedio ambas pupilas"
               Icon={Minus}
               loading={statsLoading}
-              bgClass="bg-purple-50"
-              iconBgClass="bg-purple-100"
-              accentClass="text-purple-400"
-              borderCardClass="border border-purple-100"
-              titleColorClass="text-purple-600"
+              bgClass="bg-indigo-50"
+              iconBgClass="bg-indigo-100"
+              accentClass="text-indigo-400"
+              borderCardClass="border border-indigo-100"
+              titleColorClass="text-indigo-600"
             />
             <KpiCard
               label="Mínimo"
@@ -254,11 +254,11 @@ export function PupilDilationTab({
               description="Valor más bajo registrado"
               Icon={TrendingDown}
               loading={statsLoading}
-              bgClass="bg-cyan-50"
-              iconBgClass="bg-cyan-100"
-              accentClass="text-cyan-500"
-              borderCardClass="border border-cyan-100"
-              titleColorClass="text-cyan-700"
+              bgClass="bg-violet-50"
+              iconBgClass="bg-violet-100"
+              accentClass="text-violet-500"
+              borderCardClass="border border-violet-100"
+              titleColorClass="text-violet-700"
               onClick={minTime != null ? () => handleKpiClick(minTime) : undefined}
               active={pinnedTime != null && pinnedTime === minTime}
             />
@@ -268,11 +268,11 @@ export function PupilDilationTab({
               description="Pico de dilatación"
               Icon={TrendingUp}
               loading={statsLoading}
-              bgClass="bg-rose-50"
-              iconBgClass="bg-rose-100"
-              accentClass="text-rose-400"
-              borderCardClass="border border-rose-100"
-              titleColorClass="text-rose-600"
+              bgClass="bg-blue-50"
+              iconBgClass="bg-blue-100"
+              accentClass="text-blue-400"
+              borderCardClass="border border-blue-100"
+              titleColorClass="text-blue-600"
               onClick={maxTime != null ? () => handleKpiClick(maxTime) : undefined}
               active={pinnedTime != null && pinnedTime === maxTime}
             />
