@@ -7,10 +7,6 @@ export interface KpiCardProps {
   /** Numeric value. Pass null/undefined to show the skeleton loader. */
   value?: number | null
   /** Short description shown below the value. */
-  description?: string
-  /** Lucide icon component rendered in the top-right badge. */
-  Icon: ElementType
-  /** Number of decimal places. Defaults to 2. */
   decimals?: number
   /** Unit suffix. Defaults to "mm". */
   unit?: string
@@ -42,8 +38,6 @@ export interface KpiCardProps {
 export function KpiCard({
   label,
   value,
-  description,
-  Icon,
   decimals = 2,
   unit = "mm",
   bgClass = "bg-gray-50",
@@ -80,25 +74,20 @@ export function KpiCard({
         borderCardClass,
       )}
     >
-      <div className="flex items-start justify-between">
-        <span className={cn("text-sm font-semibold", titleColorClass)}>{label}</span>
-        <div className={cn("rounded-full p-1.5", iconBgClass)}>
-          <Icon className={cn("h-4 w-4", accentClass)} />
-        </div>
+      <div className="flex flex-col items-center text-center">
+        <span className={cn("text-base font-semibold", titleColorClass)}>{label}</span>
       </div>
 
-      {loading || value == null ? (
-        <div className="mt-3 h-8 w-24 animate-pulse rounded bg-white/60" />
-      ) : (
-        <p className="mt-2 text-3xl font-bold text-gray-900">
-          {value.toFixed(decimals)}{" "}
-          <span className="text-lg font-bold text-gray-900">{unit}</span>
-        </p>
-      )}
-
-      {description ? (
-        <p className={cn("mt-1 text-xs", accentClass)}>{description}</p>
-      ) : null}
+      <div className="flex flex-col items-center text-center">
+        {loading || value == null ? (
+          <div className="mt-3 h-8 w-24 rounded bg-white/60" />
+        ) : (
+          <p className="mt-2 text-3xl font-bold text-gray-900">
+            {value.toFixed(decimals)}{" "}
+            <span className="text-xl font-bold text-gray-900">{unit}</span>
+          </p>
+        )}
+      </div>
     </div>
   )
 }
