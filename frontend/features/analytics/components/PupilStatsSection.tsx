@@ -29,46 +29,46 @@ const METRIC_CONFIG = [
     key: "mean" as const,
     rawKey: "raw_mean" as const,
     label: "MEDIA",
-    borderColorClass: "border-l-purple-400",
-    borderCardClass: "border-purple-100",
-    labelColorClass: "text-purple-500",
-    bgColorClass: "bg-gradient-to-br from-purple-50 to-white",
+    borderColorClass: "border-l-indigo-400",
+    borderCardClass: "border-indigo-100",
+    labelColorClass: "text-indigo-500",
+    bgColorClass: "bg-gradient-to-br from-indigo-50 to-white",
   },
   {
     key: "min" as const,
     rawKey: "raw_min" as const,
     label: "MÍNIMO",
-    borderColorClass: "border-l-cyan-400",
-    borderCardClass: "border-cyan-100",
-    labelColorClass: "text-cyan-500",
-    bgColorClass: "bg-gradient-to-br from-cyan-50 to-white",
+    borderColorClass: "border-l-violet-400",
+    borderCardClass: "border-violet-100",
+    labelColorClass: "text-violet-500",
+    bgColorClass: "bg-gradient-to-br from-violet-50 to-white",
   },
   {
     key: "max" as const,
     rawKey: "raw_max" as const,
     label: "MÁXIMO",
-    borderColorClass: "border-l-rose-400",
-    borderCardClass: "border-rose-100",
-    labelColorClass: "text-rose-500",
-    bgColorClass: "bg-gradient-to-br from-rose-50 to-white",
+    borderColorClass: "border-l-blue-400",
+    borderCardClass: "border-blue-100",
+    labelColorClass: "text-blue-500",
+    bgColorClass: "bg-gradient-to-br from-blue-50 to-white",
   },
   {
     key: "std" as const,
     rawKey: "raw_std" as const,
     label: "DESV. ESTÁNDAR",
-    borderColorClass: "border-l-amber-400",
-    borderCardClass: "border-amber-100",
-    labelColorClass: "text-amber-500",
-    bgColorClass: "bg-gradient-to-br from-amber-50 to-white",
+    borderColorClass: "border-l-sky-400",
+    borderCardClass: "border-sky-100",
+    labelColorClass: "text-sky-500",
+    bgColorClass: "bg-gradient-to-br from-sky-50 to-white",
   },
   {
     key: "median" as const,
     rawKey: "raw_median" as const,
     label: "MEDIANA",
-    borderColorClass: "border-l-emerald-400",
-    borderCardClass: "border-emerald-100",
-    labelColorClass: "text-emerald-500",
-    bgColorClass: "bg-gradient-to-br from-emerald-50 to-white",
+    borderColorClass: "border-l-purple-400",
+    borderCardClass: "border-purple-100",
+    labelColorClass: "text-purple-500",
+    bgColorClass: "bg-gradient-to-br from-purple-50 to-white",
   },
   {
     key: "baseline" as const,
@@ -101,7 +101,7 @@ export function PupilStatsSection({
     {
       id: "max",
       badge: (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500 px-3 py-1 text-sm font-semibold text-white">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-400 px-3 py-1 text-sm font-semibold text-blue-500">
           <TrendingUp className="h-3 w-3" /> Max
         </span>
       ),
@@ -109,13 +109,13 @@ export function PupilStatsSection({
       posX: maxGaze?.gx != null ? Math.round(maxGaze.gx) : null,
       posY: maxGaze?.gy != null ? Math.round(maxGaze.gy) : null,
       value: stats?.max ?? null,
-      valueColorClass: "text-rose-500",
-      hoverBgClass: "hover:bg-rose-50/50",
+      valueColorClass: "text-blue-500",
+      hoverBgClass: "hover:bg-blue-50/50",
     },
     {
       id: "min",
       badge: (
-        <span className="inline-flex items-center gap-1.5 rounded-full border bg-cyan-50 border-cyan-400 px-3 py-1 text-sm font-semibold text-cyan-500">
+        <span className="inline-flex items-center gap-1.5 rounded-full border bg-violet-50 border-violet-400 px-3 py-1 text-sm font-semibold text-violet-500">
           <TrendingDown className="h-3 w-3" /> Min
         </span>
       ),
@@ -123,8 +123,8 @@ export function PupilStatsSection({
       posX: minGaze?.gx != null ? Math.round(minGaze.gx) : null,
       posY: minGaze?.gy != null ? Math.round(minGaze.gy) : null,
       value: stats?.min ?? null,
-      valueColorClass: "text-cyan-500",
-      hoverBgClass: "hover:bg-cyan-50/50",
+      valueColorClass: "text-violet-500",
+      hoverBgClass: "hover:bg-violet-50/50",
     },
   ]
 
@@ -175,7 +175,7 @@ export function PupilStatsSection({
           {/* ── Right column: peaks table ─────────────────────────── */}
           <div>
             <div className="mb-4 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-rose-500" />
+              <span className="h-2 w-2 rounded-full bg-blue-500" />
               <h4 className="text-sm font-semibold text-gray-700">
                 Ubicación y valores de picos de dilatación
               </h4>
