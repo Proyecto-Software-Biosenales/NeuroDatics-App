@@ -25,6 +25,12 @@ export interface PupilStatistics {
   std: number
   median: number
   baseline: number
+  raw_mean: number | null
+  raw_min: number | null
+  raw_max: number | null
+  raw_std: number | null
+  raw_median: number | null
+  raw_baseline: number | null
 }
 
 export interface GazeAtData {

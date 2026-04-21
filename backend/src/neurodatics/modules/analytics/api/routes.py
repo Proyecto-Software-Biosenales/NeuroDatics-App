@@ -166,9 +166,12 @@ async def gaze_at(
 
     gaze_data = await anyio.to_thread.run_sync(lambda: PupilAnalyticsService.find_gaze_at(df, t_s))
 
+    from pathlib import Path as _Path
+
     scenario_name = gaze_data.get("scenario")
     scenario_file_id = None
     if scenario_name:
+        # Tier 1: exact match
         result = await db.execute(
             select(Scenaries).where(
                 Scenaries.project_id == project_id,
@@ -176,8 +179,37 @@ async def gaze_at(
             )
         )
         scenary = result.scalar_one_or_none()
+
+        # Tier 2: normalized match (case-insensitive stem, spaces removed)
+        # Handles variants like "Instruction1" vs "Instruction 1"
+        if scenary is None:
+            all_result = await db.execute(
+                select(Scenaries).where(Scenaries.project_id == project_id)
+            )
+            all_scenarios = all_result.scalars().all()
+
+            def _norm(name: str) -> str:
+                return _Path(str(name).strip()).stem.lower().replace(" ", "")
+
+            target_stem = _norm(scenario_name)
+            for s in all_scenarios:
+                if _norm(s.name) == target_stem:
+                    scenary = s
+                    logger.info(
+                        "Scenario name normalized: parquet=%r -> db=%r",
+                        scenario_name,
+                        s.name,
+                    )
+                    break
+
         if scenary and scenary.file_id:
             scenario_file_id = str(scenary.file_id)
+        elif scenary is None:
+            logger.warning(
+                "No scenario found for name=%r in project_id=%s",
+                scenario_name,
+                project_id,
+            )
 
     response_data = {
         **gaze_data,

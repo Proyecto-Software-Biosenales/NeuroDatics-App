@@ -106,42 +106,100 @@ class PupilAnalyticsService:
 
     @staticmethod
     def compute_statistics(df: pd.DataFrame, scenario: Optional[str] = None) -> dict:
-        """Compute pupil statistics over per-sample average of both eyes."""
+        """Compute pupil statistics on the smoothed signal (matches what the chart displays)."""
+        _empty = {
+            "mean": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "std": 0.0,
+            "median": 0.0,
+            "baseline": 0.0,
+            "raw_mean": None,
+            "raw_min": None,
+            "raw_max": None,
+            "raw_std": None,
+            "raw_median": None,
+            "raw_baseline": None,
+        }
+
         if scenario and scenario != "all" and "scenario" in df.columns:
             df = df[df["scenario"].astype(str).str.strip() == scenario]
 
         if "lx_pupil" not in df.columns or "rx_pupil" not in df.columns:
-            return {"mean": 0, "min": 0, "max": 0, "std": 0, "median": 0, "baseline": 0}
+            return _empty
 
-        lx = df["lx_pupil"]
-        rx = df["rx_pupil"]
-        avg = pd.Series(
-            np.where(
-                lx.notna() & rx.notna(),
-                (lx + rx) / 2,
-                np.where(lx.notna(), lx, rx),
-            )
-        ).dropna()
+        # Keep rows where at least one eye is valid, sort by time (match timeseries pipeline)
+        mask = df["lx_pupil"].notna() | df["rx_pupil"].notna()
+        df = (
+            df.loc[mask].sort_values("time").reset_index(drop=True)
+            if "time" in df.columns
+            else df.loc[mask].reset_index(drop=True)
+        )
 
-        if avg.empty:
-            return {"mean": 0, "min": 0, "max": 0, "std": 0, "median": 0, "baseline": 0}
+        if df.empty:
+            return _empty
 
-        # Robust baseline: mean of values between 5th and 20th percentiles
-        avg_arr = avg.to_numpy()
+        # Infer sampling frequency and window (same as compute_timeseries)
+        if "time" in df.columns and df["time"].notna().any():
+            t = df["time"].dropna().to_numpy(dtype=float)
+            fs = _infer_fs(t)
+        else:
+            fs = 60.0
+        win = max(1, int(round(fs * 0.25)))
+
+        # Smooth both channels
+        smooth_left_arr = _moving_average(df["lx_pupil"].to_numpy(dtype=float), win)
+        smooth_right_arr = _moving_average(df["rx_pupil"].to_numpy(dtype=float), win)
+
+        # Per-sample average of smoothed channels (use valid eye when only one is available)
+        lx_valid = df["lx_pupil"].notna().to_numpy()
+        rx_valid = df["rx_pupil"].notna().to_numpy()
+        avg_arr = np.where(
+            lx_valid & rx_valid,
+            (smooth_left_arr + smooth_right_arr) / 2.0,
+            np.where(lx_valid, smooth_left_arr, smooth_right_arr),
+        )
+
+        # Keep only finite values
+        finite_mask = np.isfinite(avg_arr)
+        avg_arr = avg_arr[finite_mask]
+
+        if avg_arr.size == 0:
+            return _empty
+
         baseline = _robust_baseline(avg_arr)
 
-        def safe_float(value: float) -> float:
-            if pd.isna(value):
+        def safe_float(v: float) -> float:
+            if not np.isfinite(v):
                 return 0.0
-            return round(float(value), 4)
+            return round(float(v), 4)
+
+        ddof = 1 if avg_arr.size > 1 else 0
+
+        # Raw (unsmoothed) stats for comparison - shown as hover tooltip on frontend
+        lx_raw = df["lx_pupil"].to_numpy(dtype=float)
+        rx_raw = df["rx_pupil"].to_numpy(dtype=float)
+        raw_avg = np.where(
+            lx_valid & rx_valid,
+            (lx_raw + rx_raw) / 2.0,
+            np.where(lx_valid, lx_raw, rx_raw),
+        )
+        raw_avg_finite = raw_avg[np.isfinite(raw_avg)]
+        raw_ddof = 1 if raw_avg_finite.size > 1 else 0
 
         return {
-            "mean": safe_float(avg.mean()),
-            "min": safe_float(avg.min()),
-            "max": safe_float(avg.max()),
-            "std": safe_float(avg.std()),
-            "median": safe_float(avg.median()),
+            "mean": safe_float(np.mean(avg_arr)),
+            "min": safe_float(np.min(avg_arr)),
+            "max": safe_float(np.max(avg_arr)),
+            "std": safe_float(np.std(avg_arr, ddof=ddof)),
+            "median": safe_float(np.median(avg_arr)),
             "baseline": safe_float(baseline),
+            "raw_mean": round(float(np.mean(raw_avg_finite)), 4) if raw_avg_finite.size else None,
+            "raw_min": round(float(np.min(raw_avg_finite)), 4) if raw_avg_finite.size else None,
+            "raw_max": round(float(np.max(raw_avg_finite)), 4) if raw_avg_finite.size else None,
+            "raw_std": round(float(np.std(raw_avg_finite, ddof=raw_ddof)), 4) if raw_avg_finite.size else None,
+            "raw_median": round(float(np.median(raw_avg_finite)), 4) if raw_avg_finite.size else None,
+            "raw_baseline": round(float(_robust_baseline(raw_avg_finite)), 4) if raw_avg_finite.size else None,
         }
 
     @staticmethod
