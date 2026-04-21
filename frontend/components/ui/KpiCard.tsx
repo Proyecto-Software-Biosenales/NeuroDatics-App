@@ -7,6 +7,10 @@ export interface KpiCardProps {
   /** Numeric value. Pass null/undefined to show the skeleton loader. */
   value?: number | null
   /** Short description shown below the value. */
+  description?: string
+  /** Lucide icon component rendered in the top-right badge. */
+  Icon: ElementType
+  /** Number of decimal places. Defaults to 2. */
   decimals?: number
   /** Unit suffix. Defaults to "mm". */
   unit?: string
@@ -26,6 +30,8 @@ export interface KpiCardProps {
   onClick?: () => void
   /** When true renders a focus ring to indicate pinned/selected state. */
   active?: boolean
+  /** Optional tooltip text shown on hover (e.g. raw/unsmoothed value). */
+  tooltip?: string
 }
 
 /**
@@ -38,6 +44,8 @@ export interface KpiCardProps {
 export function KpiCard({
   label,
   value,
+  description,
+  Icon,
   decimals = 2,
   unit = "mm",
   bgClass = "bg-muted/50",
@@ -48,37 +56,41 @@ export function KpiCard({
   loading = false,
   onClick,
   active = false,
+  tooltip,
 }: KpiCardProps) {
   const isInteractive = onClick != null
 
   return (
-    <div
-      role={isInteractive ? "button" : undefined}
-      tabIndex={isInteractive ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={
-        isInteractive
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") onClick()
-            }
-          : undefined
-      }
-      className={cn(
-        "rounded-xl p-5 transition-all duration-200 ease-out",
-        "hover:-translate-y-1 hover:scale-[1.02] hover:shadow-md",
-        isInteractive
-          ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1"
-          : "cursor-default",
-        active ? "ring-2 ring-offset-1 ring-gray-500" : "",
-        bgClass,
-        borderCardClass,
-      )}
-    >
-      <div className="flex flex-col items-center text-center">
-        <span className={cn("text-base font-semibold", titleColorClass)}>{label}</span>
-      </div>
+    <div className="relative group">
+      <div
+        role={isInteractive ? "button" : undefined}
+        tabIndex={isInteractive ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={
+          isInteractive
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") onClick()
+              }
+            : undefined
+        }
+        className={cn(
+          "rounded-xl p-5 transition-all duration-200 ease-out",
+          "hover:-translate-y-1 hover:scale-[1.02] hover:shadow-md",
+          isInteractive
+            ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1"
+            : "cursor-default",
+          active ? "ring-2 ring-offset-1 ring-gray-500" : "",
+          bgClass,
+          borderCardClass,
+        )}
+      >
+        <div className="flex items-start justify-between">
+          <span className={cn("text-sm font-semibold", titleColorClass)}>{label}</span>
+          <div className={cn("rounded-full p-1.5", iconBgClass)}>
+            <Icon className={cn("h-4 w-4", accentClass)} />
+          </div>
+        </div>
 
-      <div className="flex flex-col items-center text-center">
         {loading || value == null ? (
           <div className="mt-3 h-8 w-24 rounded bg-muted-foreground/20" />
         ) : (
@@ -87,7 +99,17 @@ export function KpiCard({
             <span className="text-xl font-bold text-foreground">{unit}</span>
           </p>
         )}
+
+        {description ? (
+          <p className={cn("mt-1 text-xs", accentClass)}>{description}</p>
+        ) : null}
       </div>
+      {tooltip && (
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+          {tooltip}
+          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+        </div>
+      )}
     </div>
   )
 }
