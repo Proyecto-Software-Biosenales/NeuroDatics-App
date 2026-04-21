@@ -30,6 +30,13 @@ class PupilStatisticsResponse(BaseModel):
     std: float
     median: float
     baseline: float
+    # Raw (unsmoothed) counterparts - shown as tooltips on the frontend
+    raw_mean: Optional[float] = None
+    raw_min: Optional[float] = None
+    raw_max: Optional[float] = None
+    raw_std: Optional[float] = None
+    raw_median: Optional[float] = None
+    raw_baseline: Optional[float] = None
 
 
 class GazeAtResponse(BaseModel):

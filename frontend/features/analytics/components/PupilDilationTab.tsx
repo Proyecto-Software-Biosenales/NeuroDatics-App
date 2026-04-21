@@ -1,12 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   CartesianGrid,
   Legend,
   Line,
   LineChart,
-  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -24,13 +23,11 @@ import { Minus, TrendingDown, TrendingUp } from "lucide-react"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/KpiCard"
-import { AnalyticsApi } from "../api/analyticsApi"
 import {
   useGazeAt,
   usePupilStatistics,
   usePupilTimeseries,
 } from "../hooks/useAnalyticsData"
-import { PupilStatsSection } from "./PupilStatsSection"
 
 type ViewMode = "both" | "left" | "right"
 
@@ -80,15 +77,36 @@ function PupilTooltip({ active, payload, label }: PupilTooltipProps) {
   )
 }
 
+/** Returns true if the scenario name looks like an instruction/non-stimulus screen. */
+function isNoImageScenario(name: string | null): boolean {
+  if (!name) return false
+  const lower = name.toLowerCase().trim()
+  return (
+    lower.startsWith("instruction") ||
+    lower.startsWith("instruccion") ||
+    lower.startsWith("instrucción") ||
+    lower.startsWith("practice") ||
+    lower.startsWith("practica") ||
+    lower.startsWith("intro") ||
+    lower.startsWith("blank") ||
+    lower.startsWith("rest") ||
+    lower.startsWith("fixation")
+  )
+}
+
 export function PupilDilationTab({
   projectId,
   participantCode,
   scenario,
 }: PupilDilationTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("both")
-  const [clickedTime, setClickedTime] = useState<number | null>(null)
-  const [pinnedTime, setPinnedTime] = useState<number | null>(null)
+  const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
+  // Refs for letterbox-corrected gaze positioning
+  const imageContainerRef = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+  // Gaze position remapped to account for object-contain letterboxing
+  const [gazeOffset, setGazeOffset] = useState<{ x: number; y: number } | null>(null)
 
   const { data: timeseriesData, loading: timeseriesLoading } = usePupilTimeseries(
     projectId,
@@ -104,6 +122,7 @@ export function PupilDilationTab({
     data: gazeData,
     loading: gazeLoading,
     fetchGaze,
+    clear: clearGaze,
   } = useGazeAt(projectId, participantCode)
 
   const chartData = useMemo<LinePoint[]>(() => {
@@ -121,7 +140,7 @@ export function PupilDilationTab({
     let minVal = Infinity
     let minT = chartData[0].time
     for (const pt of chartData) {
-      const v = Math.min(pt.smooth_left, pt.smooth_right)
+      const v = (pt.smooth_left + pt.smooth_right) / 2
       if (v < minVal) { minVal = v; minT = pt.time }
     }
     return minT
@@ -132,41 +151,66 @@ export function PupilDilationTab({
     let maxVal = -Infinity
     let maxT = chartData[0].time
     for (const pt of chartData) {
-      const v = Math.max(pt.smooth_left, pt.smooth_right)
+      const v = (pt.smooth_left + pt.smooth_right) / 2
       if (v > maxVal) { maxVal = v; maxT = pt.time }
     }
     return maxT
   }, [chartData])
 
-  const [maxGaze, setMaxGaze] = useState<{ gx: number | null; gy: number | null } | null>(null)
-  const [minGaze, setMinGaze] = useState<{ gx: number | null; gy: number | null } | null>(null)
+  /**
+   * Remaps gaze coordinates from "% of image" to "% of container".
+   *
+   * object-contain adds letterbox padding when the image aspect ratio doesn't
+   * match the container. Without this correction, dots at extreme x or y values
+   * land in the empty letterbox area rather than on the visible image content.
+   */
+  const computeGazeOffset = useCallback(() => {
+    const img = imageRef.current
+    const container = imageContainerRef.current
+    if (!img || !container || gazeData?.gx == null || gazeData?.gy == null) {
+      setGazeOffset(null)
+      return
+    }
 
-  useEffect(() => {
-    if (!projectId || !participantCode || maxTime == null) return
-    let cancelled = false
-    AnalyticsApi.getGazeAt(projectId, participantCode, maxTime)
-      .then((data) => { if (!cancelled && data) setMaxGaze({ gx: data.gx, gy: data.gy }) })
-      .catch(() => { if (!cancelled) setMaxGaze(null) })
-    return () => { cancelled = true }
-  }, [projectId, participantCode, maxTime])
+    const cW = container.clientWidth
+    const cH = container.clientHeight
+    const iW = img.naturalWidth
+    const iH = img.naturalHeight
 
+    if (!cW || !cH || !iW || !iH) {
+      setGazeOffset(null)
+      return
+    }
+
+    // Scale factor for object-contain: uniform scale that fits image inside container
+    const scale = Math.min(cW / iW, cH / iH)
+    const renderedW = iW * scale
+    const renderedH = iH * scale
+    // Letterbox offsets (may be 0 on one axis)
+    const offsetX = (cW - renderedW) / 2
+    const offsetY = (cH - renderedH) / 2
+
+    // Map from image-% to container-% through the letterbox transform
+    setGazeOffset({
+      x: ((offsetX + (gazeData.gx / 100) * renderedW) / cW) * 100,
+      y: ((offsetY + (gazeData.gy / 100) * renderedH) / cH) * 100,
+    })
+  }, [gazeData?.gx, gazeData?.gy])
+
+  // Recompute offset when gazeData changes (image may already be loaded)
   useEffect(() => {
-    if (!projectId || !participantCode || minTime == null) return
-    let cancelled = false
-    AnalyticsApi.getGazeAt(projectId, participantCode, minTime)
-      .then((data) => { if (!cancelled && data) setMinGaze({ gx: data.gx, gy: data.gy }) })
-      .catch(() => { if (!cancelled) setMinGaze(null) })
-    return () => { cancelled = true }
-  }, [projectId, participantCode, minTime])
+    computeGazeOffset()
+  }, [computeGazeOffset])
 
   const handleKpiClick = (time: number | null) => {
     if (time == null) return
-    setPinnedTime((prev) => (prev === time ? null : time))
-    setClickedTime(time)
-    fetchGaze(time)
+    const next = selectedTime === time ? null : time
+    setSelectedTime(next)
+    if (next !== null) fetchGaze(next)
   }
 
   useEffect(() => {
+    setGazeOffset(null)
     if (!gazeData?.scenario_file_id) {
       return
     }
@@ -194,9 +238,17 @@ export function PupilDilationTab({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChartClick = (state: any) => {
-    const time = state?.activePayload?.[0]?.payload?.time
-    if (typeof time !== "number") return
-    setClickedTime(time)
+    if (!state) return
+    // Primary: from payload (when tooltip cursor was active on hover)
+    const fromPayload = state?.activePayload?.[0]?.payload?.time
+    // Fallback: activeLabel is the XAxis value at the clicked position
+    const fromLabel =
+      state?.activeLabel != null && !Number.isNaN(Number(state.activeLabel))
+        ? Number(state.activeLabel)
+        : null
+    const time = fromPayload ?? fromLabel
+    if (typeof time !== "number" || Number.isNaN(time)) return
+    setSelectedTime(time)
     fetchGaze(time)
   }
 
@@ -239,6 +291,7 @@ export function PupilDilationTab({
             <KpiCard
               label="Media"
               value={stats?.mean}
+              tooltip={stats?.raw_mean != null ? `Valor real: ${stats.raw_mean.toFixed(4)} mm` : undefined}
               description="Promedio ambas pupilas"
               Icon={Minus}
               loading={statsLoading}
@@ -251,6 +304,7 @@ export function PupilDilationTab({
             <KpiCard
               label="Mínimo"
               value={stats?.min}
+              tooltip={stats?.raw_min != null ? `Valor real: ${stats.raw_min.toFixed(4)} mm` : undefined}
               description="Valor más bajo registrado"
               Icon={TrendingDown}
               loading={statsLoading}
@@ -260,11 +314,12 @@ export function PupilDilationTab({
               borderCardClass="border border-cyan-100"
               titleColorClass="text-cyan-700"
               onClick={minTime != null ? () => handleKpiClick(minTime) : undefined}
-              active={pinnedTime != null && pinnedTime === minTime}
+              active={selectedTime === minTime}
             />
             <KpiCard
               label="Máximo"
               value={stats?.max}
+              tooltip={stats?.raw_max != null ? `Valor real: ${stats.raw_max.toFixed(4)} mm` : undefined}
               description="Pico de dilatación"
               Icon={TrendingUp}
               loading={statsLoading}
@@ -274,7 +329,7 @@ export function PupilDilationTab({
               borderCardClass="border border-rose-100"
               titleColorClass="text-rose-600"
               onClick={maxTime != null ? () => handleKpiClick(maxTime) : undefined}
-              active={pinnedTime != null && pinnedTime === maxTime}
+              active={selectedTime === maxTime}
             />
           </div>
 
@@ -311,22 +366,14 @@ export function PupilDilationTab({
                   <ReferenceLine y={stats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
                 ) : null}
 
-                {pinnedTime != null ? (
+                {selectedTime != null ? (
                   <ReferenceLine
-                    x={pinnedTime}
+                    x={selectedTime}
                     stroke="#374151"
                     strokeWidth={1.5}
                     strokeDasharray="4 3"
-                    label={{ value: `${Math.round(pinnedTime)}s`, position: "top", fontSize: 11, fill: "#374151" }}
+                    label={{ value: `${Math.round(selectedTime)}s`, position: "top", fontSize: 11, fill: "#374151" }}
                   />
-                ) : null}
-
-                {pinnedTime != null && stats?.min != null && (viewMode === "both" || viewMode === "right") ? (
-                  <ReferenceDot x={pinnedTime} y={stats.min} r={5} fill="#6366F1" stroke="white" strokeWidth={2} ifOverflow="visible" />
-                ) : null}
-
-                {pinnedTime != null && stats?.max != null && (viewMode === "both" || viewMode === "right") ? (
-                  <ReferenceDot x={pinnedTime} y={stats.max} r={5} fill="#F43F5E" stroke="white" strokeWidth={2} ifOverflow="visible" />
                 ) : null}
 
                 {(viewMode === "both" || viewMode === "left") ? (
@@ -356,59 +403,139 @@ export function PupilDilationTab({
         </CardContent>
       </Card>
 
-      {gazeData ? (
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="mb-4 text-lg font-semibold text-gray-900">
-              Mirada en t = {gazeData.nearest_time_s}s
-            </h3>
+      {/* Gaze Snapshot Section */}
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Instantánea de mirada</h3>
+            <p className="text-sm text-gray-500">
+              Punto de fijación del participante en el escenario en el instante seleccionado.
+            </p>
+          </div>
+          {gazeData && (
+            <button
+              type="button"
+              onClick={() => { clearGaze(); setSelectedTime(null) }}
+              className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            >
+              Limpiar selección
+            </button>
+          )}
+        </div>
 
-            {gazeData.gx == null || gazeData.gy == null ? (
-              <p className="text-sm text-gray-500">Sin datos de mirada válidos para este instante.</p>
-            ) : (
-              <>
-                {scenarioImageUrl ? (
-                  <div className="relative overflow-hidden rounded-lg border border-gray-200">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={scenarioImageUrl}
-                      alt="Escenario"
-                      className="max-h-[420px] w-full object-contain"
-                    />
-                    <div
-                      className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-red-500"
-                      style={{ left: `${gazeData.gx}%`, top: `${gazeData.gy}%` }}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">
-                    No se pudo cargar la imagen del escenario para este punto de mirada.
-                  </p>
-                )}
-
-                <div className="mt-4 space-y-1 text-sm text-gray-600">
-                  <p>Tiempo más cercano: {gazeData.nearest_time_s}s</p>
-                  <p>Escenario: {gazeData.scenario ?? "N/A"}</p>
-                  <p>Coordenadas: ({gazeData.gx}, {gazeData.gy})</p>
-                </div>
-              </>
+        {!gazeData && !gazeLoading ? (
+          <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-400">
+            Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante
+          </div>
+        ) : gazeLoading ? (
+          <div className="h-48 animate-pulse rounded-xl bg-gray-200" />
+        ) : gazeData && (gazeData.gx == null || gazeData.gy == null) ? (
+          <div className="flex h-48 flex-col items-center justify-center gap-1 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-500">
+            <span>Sin coordenadas de mirada registradas para t = {gazeData.nearest_time_s.toFixed(1)}s</span>
+            {gazeData.scenario && (
+              <span className="text-xs text-gray-400">Escenario: {gazeData.scenario}</span>
             )}
+          </div>
+        ) : gazeData && !gazeData.scenario_file_id ? (
+          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-6 text-center">
+            <span className="text-sm font-medium text-gray-600">
+              {isNoImageScenario(gazeData.scenario)
+                ? "Pantalla de instrucción — no hay imagen de estímulo asociada a este escenario"
+                : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene imagen de estímulo registrada`}
+            </span>
+            <span className="text-xs text-gray-400">
+              t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
+            </span>
+          </div>
+        ) : gazeData ? (
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            {scenarioImageUrl ? (
+              <div className="relative" ref={imageContainerRef}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  ref={imageRef}
+                  src={scenarioImageUrl}
+                  alt="Escenario"
+                  className="max-h-[500px] w-full object-contain"
+                  onLoad={computeGazeOffset}
+                />
+                {gazeOffset && (
+                  <div
+                    className="absolute -translate-x-1/2 -translate-y-1/2"
+                    style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
+                  >
+                    <div className="h-8 w-8 rounded-full border-4 border-cyan-400 bg-cyan-400/20 shadow-lg" />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex h-48 items-center justify-center text-sm text-gray-500">
+                No se pudo cargar la imagen del escenario.
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-4 border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
+              <div>
+                <span className="font-medium text-gray-700">Tiempo</span>
+                <p>{gazeData.nearest_time_s.toFixed(2)}s</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Escenario</span>
+                <p className="truncate">{gazeData.scenario ?? "N/A"}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Coordenadas</span>
+                <p>({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </section>
 
-            {gazeLoading && clickedTime != null ? (
-              <p className="mt-3 text-xs text-gray-500">Buscando mirada para t = {clickedTime}s...</p>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
+      {/* Statistics Section */}
+      <section>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Estadísticas</h3>
+          <p className="text-sm text-gray-500">
+            Resumen numérico de la señal suavizada: tendencia, variabilidad y extremos.
+          </p>
+        </div>
 
-      <PupilStatsSection
-        stats={stats}
-        loading={statsLoading}
-        maxTime={maxTime}
-        minTime={minTime}
-        maxGaze={maxGaze}
-        minGaze={minGaze}
-      />
+        {statsLoading || !stats ? (
+          <div className="grid grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-20 animate-pulse rounded-xl bg-gray-200" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: "Media", value: stats.mean, rawValue: stats.raw_mean },
+              { label: "Mínimo", value: stats.min, rawValue: stats.raw_min },
+              { label: "Máximo", value: stats.max, rawValue: stats.raw_max },
+              { label: "Desv. Estándar", value: stats.std, rawValue: stats.raw_std },
+              { label: "Mediana", value: stats.median, rawValue: stats.raw_median },
+              { label: "Línea Base", value: stats.baseline, rawValue: stats.raw_baseline },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="group relative rounded-xl border border-gray-200 bg-white px-4 py-3"
+              >
+                <p className="text-xs text-gray-500">{item.label}</p>
+                <p className="mt-1 text-lg font-semibold text-gray-900">
+                  {item.value.toFixed(4)}{" "}
+                  <span className="text-sm font-normal text-gray-400">mm</span>
+                </p>
+                {item.rawValue != null && (
+                  <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+                    Valor real: {item.rawValue.toFixed(4)} mm
+                    <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   )
 }

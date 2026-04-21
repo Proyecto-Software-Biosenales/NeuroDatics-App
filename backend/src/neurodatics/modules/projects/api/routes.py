@@ -8,7 +8,9 @@ from datetime import datetime, timezone
 from collections import OrderedDict
 import asyncio
 import hashlib
+import io
 import logging
+import os
 import time
 
 import anyio
@@ -43,6 +45,49 @@ _image_cache_lock = asyncio.Lock()
 _image_cache_total_bytes = 0
 _image_cache_store: "OrderedDict[str, Tuple[float, bytes, str, str]]" = OrderedDict()
 _image_cache_download_locks: dict[str, asyncio.Lock] = {}
+
+# Persistent disk cache for images - survives in-memory eviction, cleared on container restart
+_IMAGE_DISK_CACHE_DIR = os.environ.get("IMAGE_CACHE_DIR", "/data/image_cache")
+
+
+def _disk_cache_path(file_id: UUID) -> "Path":
+    """Return the path for the disk-cached image file."""
+    from pathlib import Path
+    base = Path(_IMAGE_DISK_CACHE_DIR)
+    base.mkdir(parents=True, exist_ok=True)
+    return base / str(file_id)
+
+
+def _disk_cache_mime_path(file_id: UUID) -> "Path":
+    """Return the path for the disk-cached mime type file."""
+    from pathlib import Path
+    base = Path(_IMAGE_DISK_CACHE_DIR)
+    return base / f"{file_id}.mime"
+
+
+def _read_disk_cache(file_id: UUID) -> "Optional[Tuple[bytes, str]]":
+    """Read image bytes + mime type from disk. Returns None on miss."""
+    try:
+        img_path = _disk_cache_path(file_id)
+        mime_path = _disk_cache_mime_path(file_id)
+        if img_path.exists() and mime_path.exists():
+            content = img_path.read_bytes()
+            mime_type = mime_path.read_text(encoding="utf-8").strip()
+            return content, mime_type
+    except OSError:
+        pass
+    return None
+
+
+def _write_disk_cache(file_id: UUID, content: bytes, mime_type: str) -> None:
+    """Write image bytes + mime type to disk cache. Silently ignores errors."""
+    try:
+        img_path = _disk_cache_path(file_id)
+        mime_path = _disk_cache_mime_path(file_id)
+        img_path.write_bytes(content)
+        mime_path.write_text(mime_type, encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Failed to write image disk cache for %s: %s", file_id, exc)
 
 
 def _build_image_etag(cache_key: str) -> str:
@@ -175,6 +220,22 @@ async def get_project_file_image(
         "ETag": etag,
     }
 
+    # Tier 0: disk cache (session-persistent, no TTL)
+    disk_cached = await anyio.to_thread.run_sync(
+        lambda: _read_disk_cache(project_file.id)
+    )
+    if disk_cached:
+        disk_content, disk_mime = disk_cached
+        # Also populate in-memory cache for hot path
+        await _set_cached_image(cache_key, disk_content, disk_mime, etag)
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+        return Response(
+            content=disk_content,
+            media_type=disk_mime,
+            headers={**response_headers, "X-Image-Cache": "DISK"},
+        )
+
     cached_image = await _get_cached_image(cache_key)
     if cached_image:
         cached_content, cached_mime_type, cached_etag = cached_image
@@ -217,6 +278,11 @@ async def get_project_file_image(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail="No se pudo descargar la imagen desde Google Drive"
                 ) from exc
+
+            # Persist to disk for session-level caching
+            await anyio.to_thread.run_sync(
+                lambda: _write_disk_cache(project_file.id, content, project_file.mime_type)
+            )
 
             await _set_cached_image(cache_key, content, project_file.mime_type, etag)
     finally:

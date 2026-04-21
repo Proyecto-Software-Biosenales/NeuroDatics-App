@@ -27,6 +27,7 @@ export interface PupilStatsSectionProps {
 const METRIC_CONFIG = [
   {
     key: "mean" as const,
+    rawKey: "raw_mean" as const,
     label: "MEDIA",
     borderColorClass: "border-l-purple-400",
     borderCardClass: "border-purple-100",
@@ -35,6 +36,7 @@ const METRIC_CONFIG = [
   },
   {
     key: "min" as const,
+    rawKey: "raw_min" as const,
     label: "MÍNIMO",
     borderColorClass: "border-l-cyan-400",
     borderCardClass: "border-cyan-100",
@@ -43,6 +45,7 @@ const METRIC_CONFIG = [
   },
   {
     key: "max" as const,
+    rawKey: "raw_max" as const,
     label: "MÁXIMO",
     borderColorClass: "border-l-rose-400",
     borderCardClass: "border-rose-100",
@@ -51,6 +54,7 @@ const METRIC_CONFIG = [
   },
   {
     key: "std" as const,
+    rawKey: "raw_std" as const,
     label: "DESV. ESTÁNDAR",
     borderColorClass: "border-l-amber-400",
     borderCardClass: "border-amber-100",
@@ -59,6 +63,7 @@ const METRIC_CONFIG = [
   },
   {
     key: "median" as const,
+    rawKey: "raw_median" as const,
     label: "MEDIANA",
     borderColorClass: "border-l-emerald-400",
     borderCardClass: "border-emerald-100",
@@ -67,6 +72,7 @@ const METRIC_CONFIG = [
   },
   {
     key: "baseline" as const,
+    rawKey: "raw_baseline" as const,
     label: "LÍNEA BASE",
     borderColorClass: "border-l-gray-300",
     borderCardClass: "border-gray-100",
@@ -155,6 +161,7 @@ export function PupilStatsSection({
                     key={m.key}
                     label={m.label}
                     value={stats[m.key]}
+                    rawValue={stats[m.rawKey] ?? null}
                     borderColorClass={m.borderColorClass}
                     borderCardClass={m.borderCardClass}
                     labelColorClass={m.labelColorClass}

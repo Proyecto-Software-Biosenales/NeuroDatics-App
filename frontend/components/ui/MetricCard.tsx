@@ -24,6 +24,8 @@ export interface MetricCardProps {
   onClick?: () => void
   /** Adds a visible focus ring to indicate the card is selected/pinned. */
   active?: boolean
+  /** Raw unsmoothed value shown in hover tooltip when available. */
+  rawValue?: number | null
 }
 
 /**
@@ -44,45 +46,54 @@ export function MetricCard({
   loading = false,
   onClick,
   active = false,
+  rawValue = null,
 }: MetricCardProps) {
   const isInteractive = onClick != null
 
   return (
-    <div
-      role={isInteractive ? "button" : undefined}
-      tabIndex={isInteractive ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={
-        isInteractive
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") onClick?.()
-            }
-          : undefined
-      }
-      className={cn(
-        "rounded-xl border px-4 py-3 shadow-sm",
-        "border-l-4 transition-all duration-200 ease-out",
-        "hover:-translate-y-1 hover:scale-[1] hover:shadow-md",
-        borderCardClass,
-        bgColorClass,
-        borderColorClass,
-        isInteractive
-          ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1"
-          : "cursor-default",
-        active ? "ring-2 ring-gray-400 ring-offset-1" : "",
-      )}
-    >
-      <p className={cn("text-[10px] font-semibold uppercase tracking-wider", labelColorClass)}>
-        {label}
-      </p>
-
-      {loading || value == null ? (
-        <div className="mt-2 h-7 w-24 animate-pulse rounded bg-gray-100" />
-      ) : (
-        <p className="mt-1 text-2xl font-bold text-gray-900">
-          {value.toFixed(decimals)}{" "}
-          <span className="text-sm font-normal text-gray-400">{unit}</span>
+    <div className="relative group">
+      <div
+        role={isInteractive ? "button" : undefined}
+        tabIndex={isInteractive ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={
+          isInteractive
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") onClick?.()
+              }
+            : undefined
+        }
+        className={cn(
+          "rounded-xl border px-4 py-3 shadow-sm",
+          "border-l-4 transition-all duration-200 ease-out",
+          "hover:-translate-y-1 hover:scale-[1] hover:shadow-md",
+          borderCardClass,
+          bgColorClass,
+          borderColorClass,
+          isInteractive
+            ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1"
+            : "cursor-default",
+          active ? "ring-2 ring-gray-400 ring-offset-1" : "",
+        )}
+      >
+        <p className={cn("text-[10px] font-semibold uppercase tracking-wider", labelColorClass)}>
+          {label}
         </p>
+
+        {loading || value == null ? (
+          <div className="mt-2 h-7 w-24 animate-pulse rounded bg-gray-100" />
+        ) : (
+          <p className="mt-1 text-2xl font-bold text-gray-900">
+            {value.toFixed(decimals)}{" "}
+            <span className="text-sm font-normal text-gray-400">{unit}</span>
+          </p>
+        )}
+      </div>
+      {rawValue != null && (
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+          Valor real: {rawValue.toFixed(4)} mm
+          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+        </div>
       )}
     </div>
   )
