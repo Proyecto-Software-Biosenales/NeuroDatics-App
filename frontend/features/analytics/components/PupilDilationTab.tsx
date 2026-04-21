@@ -263,7 +263,7 @@ export function PupilDilationTab({
             </CardDescription>
           </div>
 
-          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+          <div className="inline-flex overflow-hidden rounded-lg border border-border">
             {[
               { key: "both", label: "Ambas pupilas" },
               { key: "left", label: "Izquierda" },
@@ -276,8 +276,8 @@ export function PupilDilationTab({
                 className={cn(
                   "px-3 py-1.5 text-sm",
                   viewMode === option.key
-                    ? "bg-gray-900 text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-50"
+                    ? "bg-foreground text-background"
+                    : "bg-background text-muted-foreground hover:bg-muted"
                 )}
               >
                 {option.label}
@@ -295,11 +295,11 @@ export function PupilDilationTab({
               description="Promedio ambas pupilas"
               Icon={Minus}
               loading={statsLoading}
-              bgClass="bg-purple-50"
-              iconBgClass="bg-purple-100"
-              accentClass="text-purple-400"
-              borderCardClass="border border-purple-100"
-              titleColorClass="text-purple-600"
+              bgClass="bg-indigo-50/50 dark:bg-indigo-950/30"
+              iconBgClass="bg-indigo-100 dark:bg-indigo-900/40"
+              accentClass="text-indigo-400"
+              borderCardClass="border border-indigo-50 dark:border-indigo-800/30"
+              titleColorClass="text-indigo-600 dark:text-indigo-400"
             />
             <KpiCard
               label="Mínimo"
@@ -308,11 +308,11 @@ export function PupilDilationTab({
               description="Valor más bajo registrado"
               Icon={TrendingDown}
               loading={statsLoading}
-              bgClass="bg-cyan-50"
-              iconBgClass="bg-cyan-100"
-              accentClass="text-cyan-500"
-              borderCardClass="border border-cyan-100"
-              titleColorClass="text-cyan-700"
+              bgClass="bg-violet-50/50 dark:bg-violet-950/30"
+              iconBgClass="bg-violet-100 dark:bg-violet-900/40"
+              accentClass="text-violet-500"
+              borderCardClass="border border-violet-50 dark:border-violet-800/30"
+              titleColorClass="text-violet-800 dark:text-violet-400"
               onClick={minTime != null ? () => handleKpiClick(minTime) : undefined}
               active={selectedTime === minTime}
             />
@@ -323,20 +323,20 @@ export function PupilDilationTab({
               description="Pico de dilatación"
               Icon={TrendingUp}
               loading={statsLoading}
-              bgClass="bg-rose-50"
-              iconBgClass="bg-rose-100"
-              accentClass="text-rose-400"
-              borderCardClass="border border-rose-100"
-              titleColorClass="text-rose-600"
+              bgClass="bg-blue-50/50 dark:bg-blue-950/30"
+              iconBgClass="bg-blue-100 dark:bg-blue-900/40"
+              accentClass="text-blue-400"
+              borderCardClass="border border-blue-50 dark:border-blue-800/30"
+              titleColorClass="text-blue-600 dark:text-blue-400"
               onClick={maxTime != null ? () => handleKpiClick(maxTime) : undefined}
               active={selectedTime === maxTime}
             />
           </div>
 
           {timeseriesLoading ? (
-            <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200" />
+            <div className="h-[400px] w-full animate-pulse rounded-lg bg-muted" />
           ) : chartData.length === 0 ? (
-            <div className="flex h-[400px] items-center justify-center text-sm text-gray-500">
+            <div className="flex h-[400px] items-center justify-center text-sm text-muted-foreground">
               No hay datos de dilatación pupilar para los filtros seleccionados.
             </div>
           ) : (

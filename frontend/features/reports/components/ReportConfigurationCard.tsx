@@ -41,14 +41,14 @@ export const ReportConfigurationCard = ({
   return (
     <Card className="p-8 transition-all duration-300">
       <div className="flex items-start gap-4 mb-6">
-        <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-          <span className="text-gray-800 font-semibold text-lg">2</span>
+        <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+          <span className="text-foreground font-semibold text-lg">2</span>
         </div>
         <div className="flex-1">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl font-semibold text-foreground mb-2">
             Configuración del reporte
           </h2>
-          <p className="text-sm text-gray-600 leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Define el tipo y alcance del reporte a generar
           </p>
         </div>
@@ -58,10 +58,10 @@ export const ReportConfigurationCard = ({
         {reportOptions.map((option) => (
           <div key={option.id}>
             <label
-              className={`flex items-start gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer transition-all duration-200 ${
+              className={`flex items-start gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
                 reportType === option.id
-                  ? "border-gray-500 bg-gray-100"
-                  : "hover:border-gray-300 hover:bg-gray-50"
+                  ? "border-foreground/40 bg-muted"
+                  : "hover:border-border hover:bg-muted/50"
               }`}
             >
               <input
@@ -73,10 +73,10 @@ export const ReportConfigurationCard = ({
                 className="mt-1 w-4 h-4 accent-gray-950"
               />
               <div className="flex-1">
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                <h3 className="text-sm font-semibold text-foreground mb-1">
                   {option.title}
                 </h3>
-                <p className="text-xs text-gray-600 leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {option.description}
                 </p>
               </div>
@@ -85,8 +85,8 @@ export const ReportConfigurationCard = ({
             {reportType === "by-sensor" &&
               option.id === "by-sensor" &&
               availableSensors.length > 0 && (
-                <div className="ml-7 mt-3 p-4 bg-gray-50 rounded-xl border border-gray-200 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <p className="text-xs font-medium text-gray-700 mb-3">
+                <div className="ml-7 mt-3 p-4 bg-muted/50 rounded-xl border border-border animate-in fade-in slide-in-from-top-2 duration-300">
+                  <p className="text-xs font-medium text-foreground mb-3">
                     Selecciona los sensores a incluir:
                   </p>
                   <div className="space-y-2">

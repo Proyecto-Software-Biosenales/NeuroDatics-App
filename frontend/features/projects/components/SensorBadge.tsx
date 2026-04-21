@@ -17,7 +17,7 @@ const sensorConfig = {
 }
 
 const variantStyles = {
-  default: "font-medium text-gray-700 bg-gray-100 group-hover:bg-gray-200",
+  default: "font-medium text-foreground bg-muted hover:bg-accent",
   secondary: "font-normal text-white bg-gray-950",
 }
 

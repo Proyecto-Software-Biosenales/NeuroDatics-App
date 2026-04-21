@@ -13,7 +13,7 @@ export const ProjectsEmptyContainer = ({
   onStep1Complete,
 }: ProjectsEmptyContainerProps) => {
   return (
-    <div className="border-2 border-dashed border-gray-300 rounded-xl bg-gradient-to-br from-gray-50 to-white transition-all duration-300 hover:border-gray-400">
+    <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 transition-all duration-300 hover:border-gray-400 dark:hover:border-gray-600">
       <EmptyState
         title="No hay proyectos creados"
         description="Comienza creando tu primer proyecto experimental para analizar datos de EEG, GSR y Eye Tracking"

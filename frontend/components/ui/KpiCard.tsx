@@ -48,11 +48,11 @@ export function KpiCard({
   Icon,
   decimals = 2,
   unit = "mm",
-  bgClass = "bg-gray-50",
-  iconBgClass = "bg-gray-100",
-  accentClass = "text-gray-400",
-  borderCardClass = "border border-gray-100",
-  titleColorClass = "text-gray-700",
+  bgClass = "bg-muted/50",
+  iconBgClass = "bg-muted",
+  accentClass = "text-muted-foreground",
+  borderCardClass = "border border-border",
+  titleColorClass = "text-muted-foreground",
   loading = false,
   onClick,
   active = false,
@@ -92,11 +92,11 @@ export function KpiCard({
         </div>
 
         {loading || value == null ? (
-          <div className="mt-3 h-8 w-24 animate-pulse rounded bg-white/60" />
+          <div className="mt-3 h-8 w-24 rounded bg-muted-foreground/20" />
         ) : (
-          <p className="mt-2 text-3xl font-bold text-gray-900">
+          <p className="mt-2 text-3xl font-bold text-foreground">
             {value.toFixed(decimals)}{" "}
-            <span className="text-lg font-bold text-gray-900">{unit}</span>
+            <span className="text-xl font-bold text-foreground">{unit}</span>
           </p>
         )}
 

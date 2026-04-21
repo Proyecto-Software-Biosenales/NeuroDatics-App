@@ -36,14 +36,14 @@ export default function ProyectosPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-black">
         <div className="max-w-6xl mx-auto px-8 py-10">
           <div className="mb-10 flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-semibold text-gray-900 mb-3 tracking-tight">
+              <h1 className="text-3xl font-semibold text-foreground mb-3 tracking-tight">
                 Proyectos
               </h1>
-              <p className="text-lg text-gray-600 leading-relaxed">
+              <p className="text-lg text-muted-foreground leading-relaxed">
                 Gestiona tus experimentos de neuromarketing y análisis de
                 bioseñales.
               </p>
@@ -62,19 +62,19 @@ export default function ProyectosPage() {
           {loading && (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-200 mb-4">
-                  <div className="w-8 h-8 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted mb-4">
+                  <div className="w-8 h-8 border-4 border-border border-t-foreground rounded-full animate-spin"></div>
                 </div>
-                <p className="text-gray-600">Cargando proyectos...</p>
+                <p className="text-muted-foreground">Cargando proyectos...</p>
               </div>
             </div>
           )}
 
           {/* Error state */}
           {error && !loading && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-6 mb-6">
-              <p className="text-red-800 font-medium">{error}</p>
-              <p className="text-red-700 text-sm mt-2">
+            <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-6 mb-6">
+              <p className="text-red-800 dark:text-red-400 font-medium">{error}</p>
+              <p className="text-red-700 dark:text-red-500 text-sm mt-2">
                 Si el problema persiste, intenta recargar la página.
               </p>
             </div>
@@ -94,7 +94,7 @@ export default function ProyectosPage() {
                           type="button"
                           variant={isActive ? "default" : "outline"}
                           onClick={() => setStatusFilter(filter.value)}
-                          className={isActive ? "bg-black text-white hover:bg-gray-800" : ""}
+                          className={isActive ? "bg-foreground text-background hover:bg-foreground/90" : ""}
                         >
                           {filter.label}
                         </Button>
@@ -110,7 +110,7 @@ export default function ProyectosPage() {
                       onContinueDraft={setResumeProject}
                     />
                   ) : (
-                    <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-600">
+                    <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
                       No hay proyectos en este estado.
                     </div>
                   )}
