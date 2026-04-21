@@ -81,7 +81,7 @@ const ScenarioPreviewImage = ({
   return (
     <>
       {isLoading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100/80 text-gray-600">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/80 text-muted-foreground">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Loader2 className="h-4 w-4 animate-spin" />
             Cargando imagen...
@@ -121,10 +121,10 @@ export const CreateProjectStep4 = ({ scenaries }: CreateProjectStep4Props) => {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+        <h3 className="text-xl font-semibold text-foreground mb-2">
           Áreas de Interés (AOIs)
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Dibuja rectángulos sobre la imagen para delimitar las áreas de interés
         </p>
       </div>
@@ -137,30 +137,30 @@ export const CreateProjectStep4 = ({ scenaries }: CreateProjectStep4Props) => {
           return (
             <div
               key={scenary.id}
-              className="border border-gray-200 rounded-xl bg-white overflow-hidden"
+              className="border border-border rounded-xl bg-card overflow-hidden"
             >
               <button
                 type="button"
                 onClick={() =>
                   setOpenscenaries(isOpen ? "" : scenary.id)
                 }
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
               >
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-foreground">
                   {scenary.name}
                 </span>
                 {isOpen ? (
-                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
                 ) : (
-                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 )}
               </button>
 
               {isOpen && (
-                <div className="px-4 pb-4 border-t border-gray-100">
+                <div className="px-4 pb-4 border-t border-border">
                   <div className="pt-4 space-y-4">
                     {/* Image placeholder with AOI rectangles */}
-                    <div className="relative rounded-xl overflow-hidden bg-gray-200 aspect-video">
+                    <div className="relative rounded-xl overflow-hidden bg-muted aspect-video">
                       <ScenarioPreviewImage
                         projectId={scenary.projectId}
                         fileId={scenary.fileId}
@@ -183,31 +183,31 @@ export const CreateProjectStep4 = ({ scenaries }: CreateProjectStep4Props) => {
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                      <h4 className="text-sm font-semibold text-foreground mb-3">
                         AOIs creadas ({scenaryAois.length})
                       </h4>
                       <div className="space-y-2">
                         {scenaryAois.map((aoi) => (
                           <div
                             key={aoi.id}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                            className="flex items-center justify-between p-3 bg-muted/40 rounded-lg border border-border"
                           >
                             <div className="flex items-center gap-3">
                               <div className="w-4 h-4 rounded bg-blue-500" />
-                              <span className="text-sm font-medium text-gray-900">
+                              <span className="text-sm font-medium text-foreground">
                                 {aoi.name}
                               </span>
                             </div>
                             <button
                               type="button"
-                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              className="p-1 hover:bg-accent rounded transition-colors"
                             >
-                              <X className="w-4 h-4 text-gray-500" />
+                              <X className="w-4 h-4 text-muted-foreground" />
                             </button>
                           </div>
                         ))}
                         {scenaryAois.length === 0 && (
-                          <p className="text-sm text-gray-500">No hay AOIs registradas para este estímulo.</p>
+                          <p className="text-sm text-muted-foreground">No hay AOIs registradas para este estímulo.</p>
                         )}
                       </div>
                     </div>
@@ -218,7 +218,7 @@ export const CreateProjectStep4 = ({ scenaries }: CreateProjectStep4Props) => {
           )
         })}
         {imageScenaries.length === 0 && (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+          <div className="rounded-xl border border-border bg-muted p-4 text-sm text-muted-foreground">
             No hay escenarios de imagen disponibles para definir AOIs.
           </div>
         )}

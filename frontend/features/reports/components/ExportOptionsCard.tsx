@@ -37,14 +37,14 @@ export const ExportOptionsCard = ({
       }`}
     >
       <div className="flex items-start gap-4 mb-6">
-        <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-          <span className="text-gray-800 font-semibold text-lg">4</span>
+        <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+          <span className="text-foreground font-semibold text-lg">4</span>
         </div>
         <div className="flex-1">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl font-semibold text-foreground mb-2">
             Opciones de exportación
           </h2>
-          <p className="text-sm text-gray-600 leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Personaliza el formato y metadatos del documento PDF
           </p>
         </div>
@@ -54,11 +54,11 @@ export const ExportOptionsCard = ({
         {exportOptions.map((option) => (
           <label
             key={option.key}
-            className={`flex items-start gap-3 p-4 border border-gray-200 rounded-xl cursor-pointer transition-all duration-200 ${
+            className={`flex items-start gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
               enabled
                 ? options[option.key]
-                  ? "border-gray-500 bg-gray-100"
-                  : "hover:border-gray-300 hover:bg-gray-50"
+                  ? "border-foreground/40 bg-muted"
+                  : "hover:border-border hover:bg-muted/50"
                 : ""
             }`}
           >
@@ -70,10 +70,10 @@ export const ExportOptionsCard = ({
               className="mt-1 w-4 h-4 accent-gray-950"
             />
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">
+              <h3 className="text-sm font-semibold text-foreground mb-1">
                 {option.title}
               </h3>
-              <p className="text-xs text-gray-600 leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 {option.description}
               </p>
             </div>

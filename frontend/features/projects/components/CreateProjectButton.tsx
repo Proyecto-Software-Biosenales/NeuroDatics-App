@@ -18,7 +18,7 @@ export const CreateProjectButton = ({
     <Button
       type={type}
       className={cn(
-        "bg-black text-white rounded-lg hover:bg-gray-700 transition-colors duration-200 font-medium",
+        "bg-black text-white dark:bg-white dark:text-black rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors duration-200 font-medium",
         compact ? "px-6 py-5 text-sm gap-2" : "px-8 py-5 text-base",
         className,
       )}

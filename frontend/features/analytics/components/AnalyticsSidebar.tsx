@@ -80,8 +80,8 @@ export function AnalyticsSidebar({
           "flex w-full items-center rounded-lg text-left text-sm",
           collapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2",
           isActive
-            ? "bg-gray-900 text-white"
-            : "text-gray-700 hover:bg-gray-100"
+            ? "bg-foreground text-background"
+            : "text-muted-foreground hover:bg-muted"
         )}
         aria-label={sensor.label}
         title={sensor.label}
@@ -106,13 +106,13 @@ export function AnalyticsSidebar({
   }, [selectedProject])
 
   return (
-    <aside className={cn("flex h-full flex-col border-r border-gray-200 bg-white", collapsed ? "w-12" : "w-60")}>
-      <div className="flex items-center justify-between border-b border-gray-200 px-3 py-2">
-        {!collapsed ? <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Proyectos</span> : null}
+    <aside className={cn("flex h-full flex-col border-r border-border bg-card", collapsed ? "w-12" : "w-60")}>
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+        {!collapsed ? <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proyectos</span> : null}
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label={collapsed ? "Expandir panel" : "Contraer panel"}
         >
           {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
@@ -139,7 +139,7 @@ export function AnalyticsSidebar({
                     <button
                       type="button"
                       onClick={() => toggleProject(project.id)}
-                      className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                       aria-label={isExpanded ? "Contraer proyecto" : "Expandir proyecto"}
                     >
                       {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -150,8 +150,8 @@ export function AnalyticsSidebar({
                       className={cn(
                         "flex-1 rounded-lg px-2 py-1.5 text-left text-sm font-medium",
                         selectedProject?.id === project.id
-                          ? "text-gray-900"
-                          : "text-gray-700 hover:bg-gray-100"
+                          ? "text-foreground"
+                          : "text-muted-foreground hover:bg-muted"
                       )}
                     >
                       {project.name}
@@ -171,11 +171,11 @@ export function AnalyticsSidebar({
         )}
       </div>
 
-      <div className="border-t border-gray-200 p-4">
+      <div className="border-t border-border p-4">
         <button
           type="button"
           className={cn(
-            "flex w-full items-center rounded-lg text-sm text-gray-700 hover:bg-gray-100",
+            "flex w-full items-center rounded-lg text-sm text-muted-foreground hover:bg-muted",
             collapsed ? "justify-center px-2 py-2" : "gap-2 px-3 py-2"
           )}
         >

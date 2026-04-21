@@ -822,10 +822,10 @@ export const EditProjectDialog = ({
           <DialogTitle className="text-2xl font-semibold">Editar proyecto</DialogTitle>
           <DialogDescription asChild>
             <div>
-              <span className="text-sm text-gray-600">Paso {currentStep} de 4</span>
+              <span className="text-sm text-muted-foreground">Paso {currentStep} de 4</span>
               <div className="flex gap-2 mt-4">
                 {[1, 2, 3, 4].map((step) => (
-                  <Progress key={step} value={currentStep >= step ? 100 : 0} className={currentStep >= step ? "" : "bg-gray-200"} />
+                  <Progress key={step} value={currentStep >= step ? 100 : 0} className={currentStep >= step ? "" : "opacity-30"} />
                 ))}
               </div>
             </div>
@@ -833,7 +833,7 @@ export const EditProjectDialog = ({
         </DialogHeader>
 
         {isLoading ? (
-          <div className="py-10 text-center text-gray-600">Cargando datos del proyecto...</div>
+          <div className="py-10 text-center text-muted-foreground">Cargando datos del proyecto...</div>
         ) : (
           <div className="py-6">
             {currentStep === 1 && (
@@ -863,49 +863,49 @@ export const EditProjectDialog = ({
             {currentStep === 4 && <CreateProjectStep4 scenaries={formData.scenaries} />}
 
             {saveError && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">
+              <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-sm text-red-500">
                   <strong>Error:</strong> {saveError}
                 </p>
               </div>
             )}
 
             {saveNotice && !saveError && (
-              <div className="mt-4 p-4 bg-gray-50 border border-gray-300 rounded-lg">
-                <p className="text-sm text-gray-700">{saveNotice}</p>
+              <div className="mt-4 p-4 bg-muted border border-border rounded-lg">
+                <p className="text-sm text-foreground">{saveNotice}</p>
               </div>
             )}
 
             {isSaving && (
-              <div className="mt-4 p-5 bg-gray-50 border border-gray-300 rounded-2xl">
+              <div className="mt-4 p-5 bg-muted border border-border rounded-2xl">
                 {zipUploadPercent !== null ? (
                   <>
                     {/* Header with title and percentage */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl border border-gray-200 bg-white flex items-center justify-center">
-                          <Cloud className="h-5 w-5 text-gray-700" />
+                        <div className="h-10 w-10 rounded-xl border border-border bg-card flex items-center justify-center">
+                          <Cloud className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-2sm font-semibold text-gray-900">
+                          <p className="text-2sm font-semibold text-foreground">
                             {isDriveSyncFinalizing
                               ? "Finalizando sincronización con Google Drive"
                               : isDriveSyncInProgress
                               ? "Sincronizando con Google Drive"
                               : "Sincronización completada"}
                           </p>
-                          <p className="text-sm text-gray-600">{zipUploadPercent}% completado</p>
+                          <p className="text-sm text-muted-foreground">{zipUploadPercent}% completado</p>
                         </div>
                       </div>
-                      <span className="text-xl font-bold text-gray-900">{zipUploadPercent}%</span>
+                      <span className="text-xl font-bold text-foreground">{zipUploadPercent}%</span>
                     </div>
 
                     {/* Progress bar */}
                     <div className="mb-4">
-                      <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+                      <div className="h-2 w-full rounded-full bg-border overflow-hidden">
                         <div
                           className={`h-full transition-all duration-150 ${
-                            isDriveSyncInProgress ? "bg-gray-800 animate-pulse" : "bg-black"
+                            isDriveSyncInProgress ? "bg-foreground/70 animate-pulse" : "bg-foreground"
                           }`}
                           style={{ width: `${zipUploadPercent}%` }}
                         />
@@ -914,66 +914,66 @@ export const EditProjectDialog = ({
 
                     {/* Data info grid */}
                     {zipUploadBytes && zipUploadBytes.total > 0 && (
-                      <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-gray-700">
+                      <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-foreground">
                         <div className="flex items-center gap-2">
-                          <HardDrive className="h-4 w-4 text-gray-500" />
+                          <HardDrive className="h-4 w-4 text-muted-foreground" />
                           <p>{formatBytesToMB(zipUploadBytes.total)}</p>
                         </div>
-                        <div className="text-right font-medium text-gray-800">
+                        <div className="text-right font-medium text-foreground">
                           {formatBytesToMB(zipUploadBytes.loaded)} transferidos
                         </div>
                       </div>
                     )}
 
                     {/* Metrics row */}
-                    <div className="grid grid-cols-3 gap-4 text-sm bg-white p-3 rounded-lg border border-gray-200">
+                    <div className="grid grid-cols-3 gap-4 text-sm bg-card p-3 rounded-lg border border-border">
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-lg border border-gray-300 flex items-center justify-center mt-0.5">
-                          <Gauge className="h-3.5 w-3.5 text-gray-600" />
+                        <div className="h-6 w-6 rounded-lg border border-border flex items-center justify-center mt-0.5">
+                          <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-gray-500 text-xs mb-1">VELOCIDAD</p>
-                          <p className="font-semibold text-gray-900">
+                          <p className="text-muted-foreground text-xs mb-1">VELOCIDAD</p>
+                          <p className="font-semibold text-foreground">
                             {zipUploadSpeedMbps !== null ? `${zipUploadSpeedMbps.toFixed(1)} MB/s` : "calculando..."}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-lg border border-gray-300 flex items-center justify-center mt-0.5">
-                          <Clock3 className="h-3.5 w-3.5 text-gray-600" />
+                        <div className="h-6 w-6 rounded-lg border border-border flex items-center justify-center mt-0.5">
+                          <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-gray-500 text-xs mb-1">RESTANTE</p>
-                          <p className="font-semibold text-gray-900">
+                          <p className="text-muted-foreground text-xs mb-1">RESTANTE</p>
+                          <p className="font-semibold text-foreground">
                             {zipUploadEtaSeconds !== null ? formatEta(zipUploadEtaSeconds) : isDriveSyncInProgress ? "--" : "0:00"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-lg border border-gray-300 flex items-center justify-center mt-0.5">
-                          <Clock3 className="h-3.5 w-3.5 text-gray-600" />
+                        <div className="h-6 w-6 rounded-lg border border-border flex items-center justify-center mt-0.5">
+                          <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-gray-500 text-xs mb-1">TRANSCURRIDO</p>
-                          <p className="font-semibold text-gray-900">
+                          <p className="text-muted-foreground text-xs mb-1">TRANSCURRIDO</p>
+                          <p className="font-semibold text-foreground">
                             {zipDriveProcessingSeconds !== null ? formatEta(zipDriveProcessingSeconds) : "0:00"}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between text-gray-600 text-sm">
+                    <div className="mt-3 flex items-center justify-between text-muted-foreground text-sm">
                       <div className="flex items-center gap-1">
                         <span
-                          className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse"
+                          className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
                           style={{ animationDelay: "0ms", animationDuration: "900ms" }}
                         />
                         <span
-                          className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse"
+                          className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
                           style={{ animationDelay: "180ms", animationDuration: "900ms" }}
                         />
                         <span
-                          className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse"
+                          className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
                           style={{ animationDelay: "360ms", animationDuration: "900ms" }}
                         />
                         <span className="ml-2">Procesando en Google Drive...</span>
@@ -982,18 +982,18 @@ export const EditProjectDialog = ({
                         type="button"
                         onClick={cancelZipUpload}
                         disabled={!isZipUploadInProgress}
-                        className="hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Cancelar
                       </button>
                     </div>
                   </>
                 ) : (
-                  <div className="flex items-center gap-3 text-sm text-gray-800">
+                  <div className="flex items-center gap-3 text-sm text-foreground">
                     {isSaveCompleted ? (
-                      <CheckCircle2 className="h-4 w-4 text-gray-900" />
+                      <CheckCircle2 className="h-4 w-4 text-foreground" />
                     ) : (
-                      <div className="h-4 w-4 border-2 border-gray-400 border-t-black rounded-full animate-spin" />
+                      <div className="h-4 w-4 border-2 border-muted-foreground border-t-foreground rounded-full animate-spin" />
                     )}
                     <span>{saveProgressMessage || "Guardando cambios del proyecto..."}</span>
                   </div>

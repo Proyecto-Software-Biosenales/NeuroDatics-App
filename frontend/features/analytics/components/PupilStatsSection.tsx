@@ -30,54 +30,54 @@ const METRIC_CONFIG = [
     rawKey: "raw_mean" as const,
     label: "MEDIA",
     borderColorClass: "border-l-indigo-400",
-    borderCardClass: "border-indigo-100",
+    borderCardClass: "border-indigo-100 dark:border-indigo-800/40",
     labelColorClass: "text-indigo-500",
-    bgColorClass: "bg-gradient-to-br from-indigo-50 to-white",
+    bgColorClass: "bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/30 dark:to-transparent",
   },
   {
     key: "min" as const,
     rawKey: "raw_min" as const,
     label: "MÍNIMO",
     borderColorClass: "border-l-violet-400",
-    borderCardClass: "border-violet-100",
+    borderCardClass: "border-violet-100 dark:border-violet-800/40",
     labelColorClass: "text-violet-500",
-    bgColorClass: "bg-gradient-to-br from-violet-50 to-white",
+    bgColorClass: "bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-transparent",
   },
   {
     key: "max" as const,
     rawKey: "raw_max" as const,
     label: "MÁXIMO",
     borderColorClass: "border-l-blue-400",
-    borderCardClass: "border-blue-100",
+    borderCardClass: "border-blue-100 dark:border-blue-800/40",
     labelColorClass: "text-blue-500",
-    bgColorClass: "bg-gradient-to-br from-blue-50 to-white",
+    bgColorClass: "bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-transparent",
   },
   {
     key: "std" as const,
     rawKey: "raw_std" as const,
     label: "DESV. ESTÁNDAR",
     borderColorClass: "border-l-sky-400",
-    borderCardClass: "border-sky-100",
+    borderCardClass: "border-sky-100 dark:border-sky-800/40",
     labelColorClass: "text-sky-500",
-    bgColorClass: "bg-gradient-to-br from-sky-50 to-white",
+    bgColorClass: "bg-gradient-to-br from-sky-50 to-white dark:from-sky-950/30 dark:to-transparent",
   },
   {
     key: "median" as const,
     rawKey: "raw_median" as const,
     label: "MEDIANA",
     borderColorClass: "border-l-purple-400",
-    borderCardClass: "border-purple-100",
+    borderCardClass: "border-purple-100 dark:border-purple-800/40",
     labelColorClass: "text-purple-500",
-    bgColorClass: "bg-gradient-to-br from-purple-50 to-white",
+    bgColorClass: "bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-transparent",
   },
   {
     key: "baseline" as const,
     rawKey: "raw_baseline" as const,
     label: "LÍNEA BASE",
     borderColorClass: "border-l-gray-300",
-    borderCardClass: "border-gray-100",
+    borderCardClass: "border-gray-100 dark:border-gray-700/40",
     labelColorClass: "text-gray-400",
-    bgColorClass: "bg-gradient-to-br from-gray-50 to-white",
+    bgColorClass: "bg-gradient-to-br from-gray-50 to-white dark:from-gray-900/50 dark:to-transparent",
   },
 ] as const
 
@@ -101,7 +101,7 @@ export function PupilStatsSection({
     {
       id: "max",
       badge: (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-400 px-3 py-1 text-sm font-semibold text-blue-500">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 border border-blue-400 px-3 py-1 text-sm font-semibold text-blue-500">
           <TrendingUp className="h-3 w-3" /> Max
         </span>
       ),
@@ -115,7 +115,7 @@ export function PupilStatsSection({
     {
       id: "min",
       badge: (
-        <span className="inline-flex items-center gap-1.5 rounded-full border bg-violet-50 border-violet-400 px-3 py-1 text-sm font-semibold text-violet-500">
+        <span className="inline-flex items-center gap-1.5 rounded-full border bg-violet-50 dark:bg-violet-950/40 border-violet-400 px-3 py-1 text-sm font-semibold text-violet-500">
           <TrendingDown className="h-3 w-3" /> Min
         </span>
       ),
@@ -143,7 +143,7 @@ export function PupilStatsSection({
           <div>
             <div className="mb-4 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-purple-500" />
-              <h4 className="text-sm font-semibold text-gray-700">
+              <h4 className="text-sm font-semibold text-foreground/80">
                 Variabilidad de dilatación pupilar promedio
               </h4>
             </div>
@@ -151,7 +151,7 @@ export function PupilStatsSection({
             {loading || !stats ? (
               <div className="grid grid-cols-2 gap-3">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-20 animate-pulse rounded-xl bg-gray-100" />
+                  <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />
                 ))}
               </div>
             ) : (
@@ -176,7 +176,7 @@ export function PupilStatsSection({
           <div>
             <div className="mb-4 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-blue-500" />
-              <h4 className="text-sm font-semibold text-gray-700">
+              <h4 className="text-sm font-semibold text-foreground/80">
                 Ubicación y valores de picos de dilatación
               </h4>
             </div>

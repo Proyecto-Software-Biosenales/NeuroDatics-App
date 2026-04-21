@@ -52,7 +52,7 @@ const toSexLabel = (sex?: string | null): string => {
 }
 
 const getSexPillClass = (): string => {
-  return "bg-gray-50 text-gray-700 border-gray-300"
+  return "bg-muted text-foreground border-border"
 }
 
 const toScenaryTypeLabel = (type?: string | null): string => {
@@ -160,41 +160,41 @@ export const ViewProjectDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-x-hidden overflow-y-auto p-0">
-        <DialogHeader className="border-b border-gray-200 px-6 pt-6 pb-4">
-          <DialogTitle className="truncate text-2xl font-semibold text-gray-900">
+        <DialogHeader className="border-b border-border px-6 pt-6 pb-4">
+          <DialogTitle className="truncate text-2xl font-semibold text-foreground">
             Ver proyecto
           </DialogTitle>
         </DialogHeader>
 
         {isLoading ? (
-          <div className="py-12 flex items-center justify-center text-gray-600">
+          <div className="py-12 flex items-center justify-center text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Cargando información del proyecto...
           </div>
         ) : loadError ? (
-          <div className="m-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="m-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 dark:text-red-400">
             {loadError}
           </div>
         ) : (
           <div className="space-y-7 px-6 pb-6 pt-2">
             <section className="space-y-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-gray-500">
+              <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 <Package className="h-4 w-4" />
                 Informacion general
               </h3>
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4">
+              <div className="rounded-2xl border border-border bg-muted/40 px-5 py-4">
                 <div className="grid grid-cols-1 gap-y-3 sm:grid-cols-[130px_1fr] sm:gap-x-4">
-                  <span className="text-sm font-semibold text-gray-600">Nombre</span>
-                  <span className="text-base font-semibold text-gray-900">{projectDetail?.name || "-"}</span>
+                  <span className="text-sm font-semibold text-muted-foreground">Nombre</span>
+                  <span className="text-base font-semibold text-foreground">{projectDetail?.name || "-"}</span>
 
-                  <span className="text-sm font-semibold text-gray-600">Descripcion</span>
-                  <span className="text-sm font-medium leading-6 text-gray-800">
+                  <span className="text-sm font-semibold text-muted-foreground">Descripcion</span>
+                  <span className="text-sm font-medium leading-6 text-foreground">
                     {projectDetail?.description || "Sin descripción"}
                   </span>
 
-                  <span className="text-sm font-semibold text-gray-600">Carpeta</span>
-                  <div className="flex min-w-0 max-w-full items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800">
-                    <FileArchive className="h-4 w-4 shrink-0 text-gray-500" />
+                  <span className="text-sm font-semibold text-muted-foreground">Carpeta</span>
+                  <div className="flex min-w-0 max-w-full items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-sm font-medium text-foreground">
+                    <FileArchive className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="break-all">{zipFilename}</span>
                   </div>
                 </div>
@@ -202,43 +202,43 @@ export const ViewProjectDialog = ({
             </section>
 
             <section className="space-y-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-gray-500">
+              <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 <Activity className="h-4 w-4" />
                 Sensores asociados
-                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-gray-200 px-1.5 text-xs font-semibold text-gray-700">
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground">
                   {sensors.length}
                 </span>
               </h3>
-              <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="rounded-2xl border border-border bg-card p-4">
                 {sensors.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {sensors.map((sensor) => (
                       <span
                         key={sensor.id}
-                        className="inline-flex items-center rounded-xl border border-gray-300 bg-gray-50 px-3 py-1.5 text-sm font-semibold text-gray-700"
+                        className="inline-flex items-center rounded-xl border border-border bg-muted px-3 py-1.5 text-sm font-semibold text-foreground"
                       >
                         {sensor.sensor_type}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">No hay sensores asociados.</p>
+                  <p className="text-sm text-muted-foreground">No hay sensores asociados.</p>
                 )}
               </div>
             </section>
 
             <section className="space-y-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-gray-500">
+              <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 <Users className="h-4 w-4" />
                 Participantes
-                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-gray-200 px-1.5 text-xs font-semibold text-gray-700">
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground">
                   {participants.length}
                 </span>
               </h3>
-              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
                 {participants.length > 0 ? (
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-gray-500">
+                    <thead className="bg-muted text-muted-foreground">
                       <tr className="text-left">
                         <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Documento</th>
                         <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Edad</th>
@@ -247,10 +247,10 @@ export const ViewProjectDialog = ({
                     </thead>
                     <tbody>
                       {participants.map((participant) => (
-                        <tr key={participant.id} className="border-t border-gray-100 text-gray-700">
+                        <tr key={participant.id} className="border-t border-border text-foreground">
                           <td className="px-4 py-3 text-sm font-medium">{participant.participant_code}</td>
                           <td className="px-4 py-3">
-                            <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-gray-100 px-2 py-0.5 text-sm font-semibold text-gray-700">
+                            <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-muted px-2 py-0.5 text-sm font-semibold text-foreground">
                               {participant.age ?? "-"}
                             </span>
                           </td>
@@ -264,16 +264,16 @@ export const ViewProjectDialog = ({
                     </tbody>
                   </table>
                 ) : (
-                  <p className="text-sm text-gray-500">No hay participantes registrados.</p>
+                  <p className="text-sm text-muted-foreground">No hay participantes registrados.</p>
                 )}
               </div>
             </section>
 
             <section className="space-y-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-gray-500">
+              <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 <Layers3 className="h-4 w-4" />
                 Escenarios
-                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-gray-200 px-1.5 text-xs font-semibold text-gray-700">
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground">
                   {scenaries.length}
                 </span>
               </h3>
@@ -281,34 +281,34 @@ export const ViewProjectDialog = ({
                 {scenaries.length > 0 ? (
                   <ul className="space-y-3">
                     {scenaries.map((scenary) => (
-                      <li key={scenary.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                      <li key={scenary.id} className="overflow-hidden rounded-2xl border border-border bg-card">
                         <button
                           type="button"
                           onClick={() => setOpenScenaryId((prev) => (prev === scenary.id ? "" : scenary.id))}
-                          className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
+                          className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-muted/50 transition-colors"
                         >
                           <div className="min-w-0">
-                            <p className="break-words text-base font-semibold text-gray-900">{scenary.name}</p>
-                            <p className="text-sm font-medium text-gray-500">{toScenaryTypeLabel(scenary.type)}</p>
+                            <p className="break-words text-base font-semibold text-foreground">{scenary.name}</p>
+                            <p className="text-sm font-medium text-muted-foreground">{toScenaryTypeLabel(scenary.type)}</p>
                           </div>
                           {openScenaryId === scenary.id ? (
-                            <ChevronDown className="h-5 w-5 text-gray-500" />
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
                           ) : (
-                            <ChevronRight className="h-5 w-5 text-gray-500" />
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
                           )}
                         </button>
 
                         {openScenaryId === scenary.id && (
-                          <div className="border-t border-gray-100 p-4">
+                          <div className="border-t border-border p-4">
                             {String(scenary.type || "").toLowerCase() === "video" ? (
-                              <div className="flex aspect-video items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600">
+                              <div className="flex aspect-video items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
                                 <div className="flex items-center gap-2 text-sm font-medium">
                                   <Video className="h-4 w-4" />
                                   Escenario de video
                                 </div>
                               </div>
                             ) : (
-                              <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-gray-100 aspect-video">
+                              <div className="relative overflow-hidden rounded-xl border border-border bg-muted aspect-video">
                                 <ScenarioPreviewImage
                                   projectId={projectId}
                                   fileId={scenary.file_id}
@@ -323,7 +323,7 @@ export const ViewProjectDialog = ({
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-gray-500">No hay escenarios disponibles.</p>
+                  <p className="text-sm text-muted-foreground">No hay escenarios disponibles.</p>
                 )}
               </div>
             </section>
@@ -400,7 +400,7 @@ const ScenarioPreviewImage = ({
   const finalSrc = currentSrc
   if (loadError || (!finalSrc && !isLoading)) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+      <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
         <Image className="h-4 w-4" />
       </div>
     )
@@ -409,7 +409,7 @@ const ScenarioPreviewImage = ({
   return (
     <>
       {isLoading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100/80 text-gray-600">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/80 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
         </div>
       )}

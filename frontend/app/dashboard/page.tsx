@@ -88,7 +88,7 @@ export default function DashboardPage() {
 
   return (
     <AuthGuard>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gray-50 dark:bg-black">
         <AnalyticsSidebar
           projects={projects}
           selectedProjectId={selectedProjectId}
@@ -113,7 +113,7 @@ export default function DashboardPage() {
 
           <main className="flex-1 overflow-y-auto px-6 pb-6">
             {!selectedProjectId ? (
-              <div className="flex h-full items-center justify-center text-sm text-gray-500">
+              <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
                 Selecciona un proyecto del panel lateral
               </div>
             ) : selectedSensor !== "EyeTracker" ? (
@@ -122,7 +122,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <>
-                <div className="flex gap-6 border-b border-gray-200 px-6">
+                <div className="flex gap-6 text-muted-foreground border-b border-gray-200 dark:border-border px-6">
                   {ANALYTICS_TABS.map((tab) => {
                     const isActive = activeTab === tab.key
                     return (
@@ -132,8 +132,8 @@ export default function DashboardPage() {
                         onClick={() => setActiveTab(tab.key)}
                         className={
                           isActive
-                            ? "cursor-pointer border-b-2 border-gray-900 pb-3 text-sm font-semibold text-gray-900"
-                            : "cursor-pointer pb-3 text-sm text-gray-500 hover:text-gray-700"
+                            ? "cursor-pointer border-b-2 border-gray-900 dark:border-white pb-3 text-sm font-semibold text-foreground"
+                            : "cursor-pointer pb-3 text-sm text-muted-foreground hover:text-gray-700 dark:hover:text-gray-200"
                         }
                       >
                         {tab.label}
