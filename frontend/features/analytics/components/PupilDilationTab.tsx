@@ -263,7 +263,7 @@ export function PupilDilationTab({
             </CardDescription>
           </div>
 
-          <div className="inline-flex overflow-hidden rounded-lg border border-gray-200">
+          <div className="inline-flex overflow-hidden rounded-lg border border-border">
             {[
               { key: "both", label: "Ambas pupilas" },
               { key: "left", label: "Izquierda" },
@@ -276,8 +276,8 @@ export function PupilDilationTab({
                 className={cn(
                   "px-3 py-1.5 text-sm",
                   viewMode === option.key
-                    ? "bg-gray-900 text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-50"
+                    ? "bg-foreground text-background"
+                    : "bg-background text-muted-foreground hover:bg-muted"
                 )}
               >
                 {option.label}
@@ -334,9 +334,9 @@ export function PupilDilationTab({
           </div>
 
           {timeseriesLoading ? (
-            <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200" />
+            <div className="h-[400px] w-full animate-pulse rounded-lg bg-muted" />
           ) : chartData.length === 0 ? (
-            <div className="flex h-[400px] items-center justify-center text-sm text-gray-500">
+            <div className="flex h-[400px] items-center justify-center text-sm text-muted-foreground">
               No hay datos de dilatación pupilar para los filtros seleccionados.
             </div>
           ) : (
