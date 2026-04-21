@@ -33,8 +33,8 @@ export default function HomePage() {
           color1={isDark ? "#ffffff" : "#1a1a1a"}
           color2={isDark ? "#ffffff" : "#1a1a1a"}
           color3={isDark ? "#ffffff" : "#1a1a1a"}
-          enableMouseInteraction={false}
-          mouseInfluence={2}
+          enableMouseInteraction={true}
+          mouseInfluence={3}
         />
       </div>
 
