@@ -105,10 +105,10 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             isDeleting ? "animate-pulse scale-[0.99] opacity-70 pointer-events-none" : ""
           } ${
             isDraftProcessing
-              ? "border-gray-200 shadow-none bg-gray-50/60 pb-16"
+              ? "border-border shadow-none bg-muted/40 pb-16"
               : isDraftPending
-              ? "border-gray-200 shadow-sm bg-white pb-14"
-              : "border-gray-200 shadow-sm bg-white hover:-translate-y-0.5 hover:shadow-lg"
+              ? "border-border shadow-sm bg-card pb-14"
+              : "border-border shadow-sm bg-card hover:-translate-y-0.5 hover:shadow-lg"
           }`}
         >
           <DeleteProjectDialog
@@ -138,7 +138,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
               <DropdownMenuTrigger asChild disabled={isDraftProcessing}>
                 <button
                   type="button"
-                  className={`rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 ${
+                  className={`rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
                     isDraftProcessing ? "cursor-not-allowed opacity-40" : ""
                   }`}
                   disabled={isDraftProcessing}
@@ -188,14 +188,14 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           </div>
 
           <div className="mb-5 flex items-center gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gray-100 transition-colors ${
-                isDraftProcessing ? "animate-pulse" : "group-hover:bg-gray-200"
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors ${
+                isDraftProcessing ? "animate-pulse" : "group-hover:bg-accent"
               }`}>
-              <Folder className={`h-6 w-6 ${isDraftProcessing ? "text-gray-400" : "text-gray-600"}`} />
+              <Folder className={`h-6 w-6 ${isDraftProcessing ? "text-muted-foreground" : "text-foreground"}`} />
             </div>
 
             <div className="min-w-0 flex-1 pr-24">
-              <h3 className="mb-0.5 truncate text-lg font-semibold leading-tight text-gray-900">
+              <h3 className="mb-0.5 truncate text-lg font-semibold leading-tight text-foreground">
                 {project.name}
               </h3>
 
@@ -209,18 +209,18 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             </div>
           </div>
 
-          <div className="space-y-1.5 text-sm text-gray-600">
+          <div className="space-y-1.5 text-sm text-muted-foreground">
             <p className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
+              <Calendar className="h-4 w-4 text-muted-foreground" />
               <span>Creado: </span>
-              <span className="font-medium text-gray-700">{project.createdAt}</span>
+              <span className="font-medium text-foreground">{project.createdAt}</span>
             </p>
 
             {project.updatedAt && (
               <p className="flex items-center gap-2">
-                <Clock3 className="h-4 w-4 text-gray-500" />
+                <Clock3 className="h-4 w-4 text-muted-foreground" />
                 <span>Modificado: </span>
-                <span className="font-medium text-gray-700">{project.updatedAt}</span>
+                <span className="font-medium text-foreground">{project.updatedAt}</span>
               </p>
             )}
           </div>
@@ -231,11 +231,11 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             ))}
           </div>
 
-          <div className="border-t border-gray-100 pt-4">
+          <div className="border-t border-border pt-4">
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-gray-600">
-                <Users className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">
                   {participants} participante{participants !== 1 ? "s" : ""}
                 </span>
               </div>
@@ -244,7 +244,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                 {!isDraftProcessing && !isDraftPending && !canContinueDraft && (
                   <button
                     type="button"
-                    className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    className="rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground"
                     onClick={() => setViewOpenId(project.id)}
                   >
                     Ver proyecto
@@ -253,7 +253,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                 {canContinueDraft && (
                   <button
                     type="button"
-                    className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                    className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 dark:text-gray-200 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white"
                     onClick={() => onContinueDraft?.(project)}
                   >
                     Continuar
@@ -266,15 +266,15 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           {isDraftProcessing && (
             <>
               {/* Pulsing border */}
-              <div className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-gray-300 animate-pulse z-[5]" />
+              <div className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-gray-300 dark:border-gray-600 animate-pulse z-[5]" />
               {/* Content dimming overlay */}
-              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-white/40 z-[6]" />
+              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-white/40 dark:bg-gray-900/40 z-[6]" />
             </>
           )}
 
           {isDeleting && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 backdrop-blur-[1px]">
-              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm">
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 dark:bg-gray-900/70 backdrop-blur-[1px]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Eliminando proyecto...
               </div>
@@ -284,37 +284,37 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           {isDraftProcessing && (
             <div className="absolute bottom-0 left-0 right-0 rounded-b-2xl overflow-hidden z-[10]">
               {/* Animated shimmer line */}
-              <div className="relative h-0.5 w-full overflow-hidden bg-gray-200">
+              <div className="relative h-0.5 w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
                 <div className="absolute inset-y-0 left-0 w-2/3 animate-pulse bg-gradient-to-r from-transparent via-gray-500 to-transparent" />
               </div>
               {/* Footer body */}
-              <div className="flex items-center gap-3 bg-gray-100/95 backdrop-blur-sm px-4 py-4">
+              <div className="flex items-center gap-3 bg-gray-100/95 dark:bg-gray-800/95 backdrop-blur-sm px-4 py-4">
                 {/* Custom spinner */}
-                <div className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />
+                <div className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 animate-spin" />
                 {/* Text */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold leading-tight text-gray-700">Procesando archivos</p>
+                  <p className="text-sm font-semibold leading-tight text-gray-700 dark:text-gray-200">Procesando archivos</p>
                 </div>
                 {/* Bouncing dots */}
                 <div className="flex flex-shrink-0 items-end gap-1 pb-0.5">
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "0ms" }} />
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "150ms" }} />
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: "300ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" style={{ animationDelay: "0ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" style={{ animationDelay: "150ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             </div>
           )}
 
           {isDraftPending && (
-            <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-gray-200 rounded-b-2xl z-[10]">
-              <div className="flex items-center justify-between bg-white px-4 py-2.5">
+            <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 rounded-b-2xl z-[10]">
+              <div className="flex items-center justify-between bg-white dark:bg-gray-800 px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  <p className="text-xs text-gray-500">Paso 1 incompleto</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Paso 1 incompleto</p>
                 </div>
                 <button
                   type="button"
-                  className="text-xs font-medium text-gray-600 hover:text-gray-900 underline underline-offset-2 transition-colors"
+                  className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white underline underline-offset-2 transition-colors"
                   onClick={(e) => { e.stopPropagation(); onContinueDraft?.(project) }}
                 >
                   Retomar

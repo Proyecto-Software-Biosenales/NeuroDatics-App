@@ -32,7 +32,7 @@ export const ProjectSelect = ({
 }: ProjectSelectProps) => {
   return (
     <Combobox value={value} onValueChange={(val) => val && onChange(val)}>
-      <ComboboxTrigger className="w-full flex items-center justify-between px-5 py-3.5 bg-white border border-gray-300 rounded-xl text-left text-gray-700 hover:border-gray-400 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-700 focus:border-transparent transition-all duration-200">
+      <ComboboxTrigger className="w-full flex items-center justify-between px-5 py-3.5 bg-background border border-input rounded-xl text-left text-foreground hover:border-ring hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200">
         <ComboboxValue placeholder={placeholder} />
       </ComboboxTrigger>
 
@@ -41,7 +41,7 @@ export const ProjectSelect = ({
           {projects.map((project) => (
             <ComboboxItem key={project.id} value={project.id} label={project.name}>
               <div className="flex flex-col gap-2 py-1">
-                <span className="font-medium text-gray-900">{project.name}</span>
+                <span className="font-medium text-foreground">{project.name}</span>
                 {project.sensors && project.sensors.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {project.sensors.map((sensor) => (

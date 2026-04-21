@@ -38,9 +38,9 @@ export function MetricCard({
   unit = "mm",
   decimals = 4,
   borderColorClass = "border-l-gray-300",
-  borderCardClass = "border-gray-100",
+  borderCardClass = "border-border",
   labelColorClass = "text-gray-400",
-  bgColorClass = "bg-white",
+  bgColorClass = "bg-card",
   loading = false,
   onClick,
   active = false,
@@ -77,11 +77,11 @@ export function MetricCard({
       </p>
 
       {loading || value == null ? (
-        <div className="mt-2 h-7 w-24 animate-pulse rounded bg-gray-100" />
+        <div className="mt-2 h-7 w-24 animate-pulse rounded bg-muted" />
       ) : (
-        <p className="mt-1 text-2xl font-bold text-gray-900">
+        <p className="mt-1 text-2xl font-bold text-foreground">
           {value.toFixed(decimals)}{" "}
-          <span className="text-sm font-normal text-gray-400">{unit}</span>
+          <span className="text-sm font-normal text-muted-foreground">{unit}</span>
         </p>
       )}
     </div>
