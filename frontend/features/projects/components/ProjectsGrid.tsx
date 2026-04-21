@@ -199,7 +199,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                 {project.name}
               </h3>
 
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${statusColorClass[projectStatus]}`}
                   aria-hidden="true"
