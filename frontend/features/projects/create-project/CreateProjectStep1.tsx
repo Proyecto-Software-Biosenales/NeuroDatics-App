@@ -221,7 +221,7 @@ export const CreateProjectStep1 = ({
           </Label>
 
           {isEditMode && (
-            <div className="mb-4 flex items-center gap-3 bg-gray-100 border border-gray-300 rounded-lg p-3 hover:bg-gray-200 transition-colors">
+            <div className="mb-4 flex items-center gap-3 bg-muted border border-border rounded-lg p-3 hover:bg-accent transition-colors">
               <Checkbox
                 id="actualizar-carpeta"
                 checked={shouldUpdateFolder}
@@ -257,31 +257,31 @@ export const CreateProjectStep1 = ({
               if (disableProjectMetadataEditing) return
               onDrop(e)
             }}
-            className={`border-2 border-dashed rounded-xl bg-gradient-to-br from-gray-50 to-white transition-all duration-300 ${
+            className={`border-2 border-dashed rounded-xl bg-card transition-all duration-300 ${
               (isEditMode && !shouldUpdateFolder) || disableProjectMetadataEditing
-                ? "cursor-not-allowed opacity-50 border-gray-200 bg-gray-100"
+                ? "cursor-not-allowed opacity-50 border-border bg-muted"
                 : "cursor-pointer"
             } ${
               isDragOver
-                ? "border-gray-700 bg-gray-50"
+                ? "border-foreground bg-muted"
                 : fileError
                 ? "border-red-300 hover:border-red-400"
-                : "border-gray-300 hover:border-gray-600"
+                : "border-border hover:border-foreground/60"
             }`}
           >
             <div className="flex flex-col items-center justify-center py-12 px-8 text-center">
               <div className="mb-5 relative">
-                <div className="absolute inset-0 bg-gray-200 rounded-full blur-xl opacity-50" />
-                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
+                <div className="absolute inset-0 bg-muted rounded-full blur-xl opacity-50" />
+                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center shadow-sm">
                   <FolderOpen size={20} />
                 </div>
               </div>
 
-              <h3 className="text-base font-medium text-gray-900 mb-2">
+              <h3 className="text-base font-medium text-foreground mb-2">
                 Arrastra la carpeta aquí o haz clic para seleccionar
               </h3>
 
-              <p className="text-gray-500 text-base leading-relaxed max-w-xl mb-4">
+              <p className="text-muted-foreground text-base leading-relaxed max-w-xl mb-4">
                 Selecciona la carpeta del experimento con imágenes, vídeos y CSV.
               </p>
 
@@ -299,7 +299,7 @@ export const CreateProjectStep1 = ({
 
               {/* mostrar nombre */}
               {folderPath && !fileError && (
-                <div className="mt-4 flex items-center gap-2 text-sm text-gray-700">
+                <div className="mt-4 flex items-center gap-2 text-sm text-foreground">
                   <span>Carpeta seleccionada: <span className="font-medium">{folderPath}</span></span>
                   <Button
                     variant="ghost"
@@ -309,7 +309,7 @@ export const CreateProjectStep1 = ({
                       clearFolder()
                     }}
                     disabled={disableProjectMetadataEditing}
-                    className="h-6 w-6 p-0 hover:bg-gray-200"
+                    className="h-6 w-6 p-0 hover:bg-accent"
                   >
                     <X size={14} />
                   </Button>
@@ -319,7 +319,7 @@ export const CreateProjectStep1 = ({
               {/* mostrar resultado del ZIP upload procesado */}
               {uploadedZip && (
                 <div className={`mt-6 rounded-lg p-4 space-y-3 border ${
-                  ingestionFailed ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"
+                  ingestionFailed ? "border-red-500/30 bg-red-500/10" : "border-green-500/30 bg-green-500/10"
                 }`}>
                   <div className="flex items-start gap-2">
                     <CheckCircle
@@ -327,10 +327,10 @@ export const CreateProjectStep1 = ({
                       className={`flex-shrink-0 mt-0.5 ${ingestionFailed ? "text-red-600" : "text-green-600"}`}
                     />
                     <div>
-                      <h4 className={`font-medium ${ingestionFailed ? "text-red-900" : "text-green-900"}`}>
+                      <h4 className={`font-medium ${ingestionFailed ? "text-red-500" : "text-green-400"}`}>
                         {ingestionFailed ? "Ingesta con errores" : "Carpeta procesada"}
                       </h4>
-                      <p className={`text-xs mt-1 ${ingestionFailed ? "text-red-700" : "text-green-700"}`}>
+                      <p className={`text-xs mt-1 ${ingestionFailed ? "text-red-400" : "text-green-300 dark:text-green-400"}`}>
                         {uploadedZip.zip_file?.filename ?? folderPath}
                       </p>
                     </div>
@@ -339,54 +339,54 @@ export const CreateProjectStep1 = ({
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     {typeof uploadedZip.manifest?.total_detected === "number" && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Detectados:</span>
-                        <span className="font-medium text-gray-900">{uploadedZip.manifest.total_detected}</span>
+                        <span className="text-muted-foreground">Detectados:</span>
+                        <span className="font-medium text-foreground">{uploadedZip.manifest.total_detected}</span>
                       </div>
                     )}
                     
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Subidos:</span>
-                      <span className="font-medium text-gray-900">{uploadedZip.counts.files_uploaded}</span>
+                      <span className="text-muted-foreground">Subidos:</span>
+                      <span className="font-medium text-foreground">{uploadedZip.counts.files_uploaded}</span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Imágenes:</span>
-                      <span className="font-medium text-gray-900">{uploadedZip.counts.images}</span>
+                      <span className="text-muted-foreground">Imágenes:</span>
+                      <span className="font-medium text-foreground">{uploadedZip.counts.images}</span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Videos:</span>
-                      <span className="font-medium text-gray-900">{uploadedZip.counts.videos}</span>
+                      <span className="text-muted-foreground">Videos:</span>
+                      <span className="font-medium text-foreground">{uploadedZip.counts.videos}</span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">CSV:</span>
-                      <span className="font-medium text-gray-900">{uploadedZip.counts.csv}</span>
+                      <span className="text-muted-foreground">CSV:</span>
+                      <span className="font-medium text-foreground">{uploadedZip.counts.csv}</span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-600">CSV procesados:</span>
-                      <span className={`font-medium ${uploadedZip.csv_processing.failed > 0 ? "text-amber-700" : "text-gray-900"}`}>
+                      <span className="text-muted-foreground">CSV procesados:</span>
+                      <span className={`font-medium ${uploadedZip.csv_processing.failed > 0 ? "text-amber-500" : "text-foreground"}`}>
                         {uploadedZip.csv_processing.processed}/{uploadedZip.csv_processing.detected}
                       </span>
                     </div>
 
                     {uploadedZip.drive_root_folder_name && (
                       <div className="flex justify-between col-span-2">
-                        <span className="text-gray-600">Carpeta raíz:</span>
-                        <span className="font-medium text-gray-900">{uploadedZip.drive_root_folder_name}</span>
+                        <span className="text-muted-foreground">Carpeta raíz:</span>
+                        <span className="font-medium text-foreground">{uploadedZip.drive_root_folder_name}</span>
                       </div>
                     )}
 
                     <div className="flex justify-between col-span-2">
-                      <span className="text-gray-600">Estado:</span>
+                      <span className="text-muted-foreground">Estado:</span>
                       <span
                         className={`font-medium ${
                           ingestionReady
-                            ? "text-green-700"
+                            ? "text-green-400"
                             : ingestionFailed
-                            ? "text-red-700"
-                            : "text-amber-700"
+                            ? "text-red-400"
+                            : "text-amber-400"
                         }`}
                       >
                         {ingestionStatus || "PROCESSING"}
@@ -395,8 +395,8 @@ export const CreateProjectStep1 = ({
 
                     {uploadedZip.drive_root_folder_id && (
                       <div className="flex justify-between col-span-2">
-                        <span className="text-gray-600">Drive root:</span>
-                        <span className="font-medium text-gray-900">{uploadedZip.drive_root_folder_id}</span>
+                        <span className="text-muted-foreground">Drive root:</span>
+                        <span className="font-medium text-foreground">{uploadedZip.drive_root_folder_id}</span>
                       </div>
                     )}
                   </div>
@@ -406,7 +406,7 @@ export const CreateProjectStep1 = ({
                       href={uploadedZip.drive_root_folder_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs text-blue-700 hover:text-blue-800 underline"
+                      className="text-xs text-blue-400 hover:text-blue-300 underline"
                     >
                       Abrir carpeta raíz en Google Drive
                     </a>
@@ -416,7 +416,7 @@ export const CreateProjectStep1 = ({
 
               {/* mostrar error */}
               {fileError && (
-                <div className="mt-4 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+                <div className="mt-4 text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">
                   {fileError}
                 </div>
               )}
@@ -425,11 +425,11 @@ export const CreateProjectStep1 = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 rounded-xl bg-gray-100 py-4 px-5">
+      <div className="flex items-center gap-4 rounded-xl bg-muted py-4 px-5">
         <div className="shrink-0 rounded-lg bg-black p-1.5 text-white">
           <AlertCircle size={20} />
         </div>
-        <p className="flex-1 text-xs text-gray-900 leading-relaxed">
+        <p className="flex-1 text-xs text-foreground leading-relaxed">
           Recuerda poner un nombre descriptivo a las imágenes y vídeos
           utilizados, que coincida con lo que se obtiene en los datos.
         </p>

@@ -67,13 +67,13 @@ export default function ReportesPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-black">
         <div className="max-w-6xl mx-auto px-8 py-10">
           <div className="mb-10">
-            <h1 className="text-3xl font-semibold text-gray-900 mb-3 tracking-tight">
+            <h1 className="text-3xl font-semibold text-foreground mb-3 tracking-tight">
               Reportes
             </h1>
-            <p className="text-lg text-gray-600 leading-relaxed">
+            <p className="text-lg text-muted-foreground leading-relaxed">
               Genera y descarga reportes en PDF de tus proyectos, incluyendo
               gráficas, estadísticas y análisis de sensores.
             </p>

@@ -8,17 +8,17 @@ interface SelectedProjectInfoProps {
 
 export const SelectedProjectInfo = ({ project }: SelectedProjectInfoProps) => {
   return (
-    <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 animate-in fade-in slide-in-from-top-2 duration-300">
+    <div className="mt-4 p-4 bg-muted/40 rounded-xl border border-border animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex-shrink-0 w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-            <FolderClosed className="w-5 h-5 text-gray-700" />
+          <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+            <FolderClosed className="w-5 h-5 text-foreground" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-sm font-semibold text-foreground">
               {project.name}
             </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Fecha: {project.createdAt}
             </p>
           </div>

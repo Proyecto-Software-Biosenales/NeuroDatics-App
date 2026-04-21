@@ -40,14 +40,14 @@ export function PeaksTable({
   columnLabels = ["ESTÍMULO", "SEGUNDO", "POS X %", "POS Y %", "VALOR"],
 }: PeaksTableProps) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow duration-200 hover:shadow-md">
       <table className="w-full text-base">
         <thead>
-          <tr className="border-b border-gray-100 bg-gray-50">
+          <tr className="border-b border-border bg-muted">
             {columnLabels.map((col) => (
               <th
                 key={col}
-                className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-gray-700"
+                className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wider text-muted-foreground"
               >
                 {col}
               </th>
@@ -58,7 +58,7 @@ export function PeaksTable({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={5} className="px-4 py-8 text-center text-xs text-gray-400">
+              <td colSpan={5} className="px-4 py-8 text-center text-xs text-muted-foreground">
                 Cargando...
               </td>
             </tr>
@@ -68,18 +68,18 @@ export function PeaksTable({
                 key={row.id}
                 className={cn(
                   "transition-colors duration-150",
-                  row.hoverBgClass ?? "hover:bg-gray-50/50",
-                  idx < rows.length - 1 ? "border-b border-gray-50" : "",
+                  row.hoverBgClass ?? "hover:bg-muted/30",
+                  idx < rows.length - 1 ? "border-b border-border/50" : "",
                 )}
               >
                 <td className="px-4 py-4">{row.badge}</td>
-                <td className="px-4 py-4 text-gray-700">
+                <td className="px-4 py-4 text-foreground/80">
                   {row.second != null ? row.second : "—"}
                 </td>
-                <td className="px-4 py-4 text-gray-700">
+                <td className="px-4 py-4 text-foreground/80">
                   {row.posX != null ? row.posX : "—"}
                 </td>
-                <td className="px-4 py-4 text-gray-700">
+                <td className="px-4 py-4 text-foreground/80">
                   {row.posY != null ? row.posY : "—"}
                 </td>
                 <td className={cn("px-4 py-4 font-bold text-lg", row.valueColorClass ?? "text-gray-900")}>
