@@ -8,7 +8,7 @@ import {
   LineChart,
   ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from "recharts"
@@ -19,10 +19,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card"
-import { Minus, TrendingDown, TrendingUp } from "lucide-react"
+import {
+  Activity,
+  Clock,
+  Crosshair,
+  Eye,
+  MapPin,
+  RotateCcw,
+  Ruler,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/KpiCard"
+import { StatisticsTable } from "@/components/ui/StatisticsTable"
+import type { StatRow } from "@/components/ui/StatisticsTable"
 import {
   useGazeAt,
   usePupilStatistics,
@@ -135,6 +148,12 @@ export function PupilDilationTab({
     }))
   }, [timeseriesData])
 
+  // Pin the XAxis domain to the full data range so ReferenceLine never causes zoom.
+  const chartDomain = useMemo<[number, number] | ["dataMin", "dataMax"]>(() => {
+    if (chartData.length === 0) return ["dataMin", "dataMax"]
+    return [chartData[0].time, chartData[chartData.length - 1].time]
+  }, [chartData])
+
   const minTime = useMemo(() => {
     if (chartData.length === 0) return null
     let minVal = Infinity
@@ -156,6 +175,73 @@ export function PupilDilationTab({
     }
     return maxT
   }, [chartData])
+
+  const selectedValue = useMemo<number | null>(() => {
+    if (selectedTime == null || chartData.length === 0) return null
+    let nearest = chartData[0]
+    let minDiff = Math.abs(chartData[0].time - selectedTime)
+    for (const pt of chartData) {
+      const diff = Math.abs(pt.time - selectedTime)
+      if (diff < minDiff) { minDiff = diff; nearest = pt }
+    }
+    return nearest.average
+  }, [selectedTime, chartData])
+
+  const eyeStats = useMemo(() => {
+    if (chartData.length === 0) return null
+    const compute = (values: number[]) => {
+      const f = values.filter(v => v != null && !Number.isNaN(v))
+      if (f.length === 0) return null
+      const n = f.length
+      const mean = f.reduce((a, b) => a + b, 0) / n
+      const std = Math.sqrt(f.reduce((a, b) => a + (b - mean) ** 2, 0) / n)
+      const sorted = [...f].sort((a, b) => a - b)
+      const median = n % 2 === 0
+        ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
+        : sorted[Math.floor(n / 2)]
+      return { count: n, std, median, min: sorted[0], max: sorted[n - 1] }
+    }
+    return {
+      left: compute(chartData.map(p => p.smooth_left)),
+      right: compute(chartData.map(p => p.smooth_right)),
+    }
+  }, [chartData])
+
+  const tableRows = useMemo<StatRow[]>(() => {
+    const promedioRow: StatRow = {
+      serie: "Promedio",
+      count: chartData.length > 0 ? chartData.length : null,
+      baseline: stats?.baseline ?? null,
+      std: stats?.std ?? null,
+      median: stats?.median ?? null,
+      min: stats?.min ?? null,
+      max: stats?.max ?? null,
+      peak: (stats?.max != null && stats?.baseline != null && stats.baseline !== 0)
+        ? ((stats.max - stats.baseline) / Math.abs(stats.baseline)) * 100
+        : null,
+    }
+    const leftRow: StatRow = {
+      serie: "Izquierda",
+      count: eyeStats?.left?.count ?? null,
+      baseline: null,
+      std: eyeStats?.left?.std ?? null,
+      median: eyeStats?.left?.median ?? null,
+      min: eyeStats?.left?.min ?? null,
+      max: eyeStats?.left?.max ?? null,
+      peak: null,
+    }
+    const rightRow: StatRow = {
+      serie: "Derecha",
+      count: eyeStats?.right?.count ?? null,
+      baseline: null,
+      std: eyeStats?.right?.std ?? null,
+      median: eyeStats?.right?.median ?? null,
+      min: eyeStats?.right?.min ?? null,
+      max: eyeStats?.right?.max ?? null,
+      peak: null,
+    }
+    return [promedioRow, leftRow, rightRow]
+  }, [stats, eyeStats, chartData])
 
   /**
    * Remaps gaze coordinates from "% of image" to "% of container".
@@ -287,50 +373,56 @@ export function PupilDilationTab({
         </CardHeader>
 
         <CardContent>
-          <div className="mb-6 grid grid-cols-3 gap-10 px-7 ml-13">
-            <KpiCard
-              label="Media"
-              value={stats?.mean}
-              tooltip={stats?.raw_mean != null ? `Valor real: ${stats.raw_mean.toFixed(4)} mm` : undefined}
-              description="Promedio ambas pupilas"
-              Icon={Minus}
-              loading={statsLoading}
-              bgClass="bg-purple-50"
-              iconBgClass="bg-purple-100"
-              accentClass="text-purple-400"
-              borderCardClass="border border-purple-100"
-              titleColorClass="text-purple-600"
-            />
-            <KpiCard
-              label="Mínimo"
-              value={stats?.min}
-              tooltip={stats?.raw_min != null ? `Valor real: ${stats.raw_min.toFixed(4)} mm` : undefined}
-              description="Valor más bajo registrado"
-              Icon={TrendingDown}
-              loading={statsLoading}
-              bgClass="bg-cyan-50"
-              iconBgClass="bg-cyan-100"
-              accentClass="text-cyan-500"
-              borderCardClass="border border-cyan-100"
-              titleColorClass="text-cyan-700"
-              onClick={minTime != null ? () => handleKpiClick(minTime) : undefined}
-              active={selectedTime === minTime}
-            />
-            <KpiCard
-              label="Máximo"
-              value={stats?.max}
-              tooltip={stats?.raw_max != null ? `Valor real: ${stats.raw_max.toFixed(4)} mm` : undefined}
-              description="Pico de dilatación"
-              Icon={TrendingUp}
-              loading={statsLoading}
-              bgClass="bg-rose-50"
-              iconBgClass="bg-rose-100"
-              accentClass="text-rose-400"
-              borderCardClass="border border-rose-100"
-              titleColorClass="text-rose-600"
-              onClick={maxTime != null ? () => handleKpiClick(maxTime) : undefined}
-              active={selectedTime === maxTime}
-            />
+          <div className="mb-6 grid grid-cols-3 gap-4">
+            {[
+              {
+                label: "Media",
+                value: stats?.mean,
+                description: "Promedio ambas pupilas",
+                tooltip: "Promedio del diámetro pupilar en el intervalo visualizado",
+                tooltipExtra: stats?.raw_mean != null ? `Valor real: ${stats.raw_mean.toFixed(4)} mm` : undefined,
+                Icon: Activity,
+                iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
+                iconColorClass: "text-indigo-500",
+                labelColorClass: "text-indigo-600 dark:text-indigo-400",
+                hoverBgClass: "hover:bg-indigo-50 dark:hover:bg-indigo-950/30",
+                activeBgClass: "bg-indigo-50 dark:bg-indigo-950/30",
+                onClick: undefined as (() => void) | undefined,
+                active: false,
+              },
+              {
+                label: "Mínimo",
+                value: stats?.min,
+                description: "Valor más bajo registrado",
+                tooltip: "Valor mínimo registrado en la señal suavizada",
+                tooltipExtra: stats?.raw_min != null ? `Valor real: ${stats.raw_min.toFixed(4)} mm` : undefined,
+                Icon: TrendingDown,
+                iconBgClass: "bg-cyan-100 dark:bg-cyan-900/40",
+                iconColorClass: "text-cyan-500",
+                labelColorClass: "text-cyan-600 dark:text-cyan-400",
+                hoverBgClass: "hover:bg-cyan-50/50 dark:hover:bg-cyan-950/30",
+                activeBgClass: "bg-cyan-50/50 dark:bg-cyan-950/30",
+                onClick: minTime != null ? () => handleKpiClick(minTime) : undefined,
+                active: selectedTime === minTime,
+              },
+              {
+                label: "Máximo",
+                value: stats?.max,
+                description: "Pico de dilatación",
+                tooltip: "Valor máximo o pico de dilatación registrado",
+                tooltipExtra: stats?.raw_max != null ? `Valor real: ${stats.raw_max.toFixed(4)} mm` : undefined,
+                Icon: TrendingUp,
+                iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
+                iconColorClass: "text-rose-500",
+                labelColorClass: "text-rose-600 dark:text-rose-400",
+                hoverBgClass: "hover:bg-rose-50/50 dark:hover:bg-rose-950/30",
+                activeBgClass: "bg-rose-50/50 dark:bg-rose-950/30",
+                onClick: maxTime != null ? () => handleKpiClick(maxTime) : undefined,
+                active: selectedTime === maxTime,
+              },
+            ].map((cardProps) => (
+              <KpiCard key={cardProps.label} loading={statsLoading} {...cardProps} />
+            ))}
           </div>
 
           {timeseriesLoading ? (
@@ -346,7 +438,7 @@ export function PupilDilationTab({
                 <XAxis
                   dataKey="time"
                   type="number"
-                  domain={["dataMin", "dataMax"]}
+                  domain={chartDomain}
                   tickFormatter={(value) => String(Math.round(Number(value)))}
                   tickMargin={8}
                   label={{ value: "Tiempo (s)", position: "insideBottom", offset: -8 }}
@@ -355,7 +447,7 @@ export function PupilDilationTab({
                   width={72}
                   label={{ value: "Amplitud pupilar (mm)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
                 />
-                <Tooltip content={<PupilTooltip />} />
+                <RechartsTooltip content={<PupilTooltip />} />
                 <Legend
                   verticalAlign="bottom"
                   height={52}
@@ -401,141 +493,195 @@ export function PupilDilationTab({
             </ResponsiveContainer>
           )}
         </CardContent>
-      </Card>
-
-      {/* Gaze Snapshot Section */}
-      <section>
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Instantánea de mirada</h3>
-            <p className="text-sm text-gray-500">
-              Punto de fijación del participante en el escenario en el instante seleccionado.
-            </p>
+        </Card>
+        {/* Gaze Snapshot Section */}
+      <Card className="overflow-hidden">
+        <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-lg">Punto de fijación sobre estímulo visual</CardTitle>
+              {gazeData?.scenario && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-indigo-100 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  {gazeData.scenario}
+                </span>
+              )}
+            </div>
+            <CardDescription>
+              Ubicación del punto de dilatación pupilar durante la visualización del estímulo.
+            </CardDescription>
           </div>
           {gazeData && (
             <button
               type="button"
               onClick={() => { clearGaze(); setSelectedTime(null) }}
-              className="rounded-lg px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
+              <RotateCcw className="h-3.5 w-3.5" />
               Limpiar selección
             </button>
           )}
-        </div>
+        </CardHeader>
 
-        {!gazeData && !gazeLoading ? (
-          <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-400">
-            Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante
-          </div>
-        ) : gazeLoading ? (
-          <div className="h-48 animate-pulse rounded-xl bg-gray-200" />
-        ) : gazeData && (gazeData.gx == null || gazeData.gy == null) ? (
-          <div className="flex h-48 flex-col items-center justify-center gap-1 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-500">
-            <span>Sin coordenadas de mirada registradas para t = {gazeData.nearest_time_s.toFixed(1)}s</span>
-            {gazeData.scenario && (
-              <span className="text-xs text-gray-400">Escenario: {gazeData.scenario}</span>
-            )}
-          </div>
-        ) : gazeData && !gazeData.scenario_file_id ? (
-          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-6 text-center">
-            <span className="text-sm font-medium text-gray-600">
-              {isNoImageScenario(gazeData.scenario)
-                ? "Pantalla de instrucción — no hay imagen de estímulo asociada a este escenario"
-                : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene imagen de estímulo registrada`}
-            </span>
-            <span className="text-xs text-gray-400">
-              t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
-            </span>
-          </div>
-        ) : gazeData ? (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            {scenarioImageUrl ? (
-              <div className="relative" ref={imageContainerRef}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  ref={imageRef}
-                  src={scenarioImageUrl}
-                  alt="Escenario"
-                  className="max-h-[500px] w-full object-contain"
-                  onLoad={computeGazeOffset}
-                />
-                {gazeOffset && (
-                  <div
-                    className="absolute -translate-x-1/2 -translate-y-1/2"
-                    style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
-                  >
-                    <div className="h-8 w-8 rounded-full border-4 border-cyan-400 bg-cyan-400/20 shadow-lg" />
+        <CardContent className="space-y-4 mt-4">
+          {/* 4-metric summary row */}
+          {gazeData && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                {
+                  label: "SEGUNDO",
+                  value: `${gazeData.nearest_time_s.toFixed(0)}`,
+                  sub: `de ${Math.round(chartData[chartData.length - 1]?.time ?? 0)} segundos`,
+                  Icon: Clock,
+                  bg: "bg-blue-50 dark:bg-blue-950/40",
+                  iconColor: "text-blue-500",
+                },
+                {
+                  label: "VALOR",
+                  value: selectedValue != null ? `${selectedValue.toFixed(2)}` : "—",
+                  sub: "mm dilatación",
+                  Icon: Ruler,
+                  bg: "bg-teal-50 dark:bg-teal-950/40",
+                  iconColor: "text-teal-500",
+                },
+                {
+                  label: "POS X",
+                  value: gazeData.gx != null ? `${gazeData.gx.toFixed(0)}%` : "—",
+                  sub: "horizontal",
+                  Icon: Crosshair,
+                  bg: "bg-violet-50 dark:bg-violet-950/40",
+                  iconColor: "text-violet-500",
+                },
+                {
+                  label: "POS Y",
+                  value: gazeData.gy != null ? `${gazeData.gy.toFixed(0)}%` : "—",
+                  sub: "vertical",
+                  Icon: Crosshair,
+                  bg: "bg-sky-50 dark:bg-sky-950/40",
+                  iconColor: "text-sky-500",
+                },
+              ].map(({ label, value, sub, Icon, bg, iconColor }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+                >
+                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", bg)}>
+                    <Icon className={cn("h-5 w-5", iconColor)} />
                   </div>
-                )}
+                  <div className="min-w-0 flex flex-col">
+                    <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
+                      {label}
+                    </p>
+                    <p className="mt-2 text-3xl font-bold leading-tight text-foreground">{value}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Conditional rendering states */}
+          {!gazeData && !gazeLoading ? (
+            <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+              Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante
+            </div>
+          ) : gazeLoading ? (
+            <div className="h-48 animate-pulse rounded-xl bg-muted" />
+          ) : gazeData && (gazeData.gx == null || gazeData.gy == null) ? (
+            <div className="flex h-48 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
+              <span>Sin coordenadas de mirada registradas para t = {gazeData.nearest_time_s.toFixed(1)}s</span>
+              {gazeData.scenario && (
+                <span className="text-xs text-muted-foreground/60">Escenario: {gazeData.scenario}</span>
+              )}
+            </div>
+          ) : gazeData && !gazeData.scenario_file_id ? (
+            <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
+              <span className="text-sm font-medium text-foreground">
+                {isNoImageScenario(gazeData.scenario)
+                  ? "Pantalla de instrucción — no hay imagen de estímulo asociada a este escenario"
+                  : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene imagen de estímulo registrada`}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
+              </span>
+            </div>
+          ) : gazeData ? (
+            <div className="overflow-hidden rounded-xl bg-card">
+              {scenarioImageUrl ? (
+                <div className="relative" ref={imageContainerRef}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    ref={imageRef}
+                    src={scenarioImageUrl}
+                    alt="Escenario"
+                    className="max-h-[500px] w-full object-contain"
+                    onLoad={computeGazeOffset}
+                  />
+                  {gazeOffset && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className="absolute -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
+                            style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
+                          >
+                            <div className="h-8 w-8 rounded-full border-4 border-cyan-400 bg-cyan-400/20 shadow-lg" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="flex items-center gap-3 px-3 py-2.5">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-950">
+                            <Crosshair className="h-4 w-4 text-cyan-500" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold leading-none">Punto de atención</p>
+                            <p className="mt-1 text-xs leading-none text-muted-foreground">
+                              ({gazeData.gx?.toFixed(0)}, {gazeData.gy?.toFixed(0)})
+                            </p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              ) : (
+                <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+                  No se pudo cargar la imagen del escenario.
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {/* Bottom callout — only when gaze data is loaded */}
+          {gazeData && (
+            <div className="flex items-center gap-3 rounded-xl border border-cyan-200 bg-cyan-50/60 px-4 py-3.5 dark:border-cyan-800/40 dark:bg-cyan-950/30">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-600 dark:bg-cyan-600">
+                <Eye className="h-5 w-5 text-white" />
               </div>
-            ) : (
-              <div className="flex h-48 items-center justify-center text-sm text-gray-500">
-                No se pudo cargar la imagen del escenario.
-              </div>
-            )}
-            <div className="grid grid-cols-3 gap-4 border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
               <div>
-                <span className="font-medium text-gray-700">Tiempo</span>
-                <p>{gazeData.nearest_time_s.toFixed(2)}s</p>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Escenario</span>
-                <p className="truncate">{gazeData.scenario ?? "N/A"}</p>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Coordenadas</span>
-                <p>({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})</p>
+                <p className="text-base font-medium text-cyan-700 dark:text-cyan-400">Punto de atención</p>
+                <p className="text-sm text-cyan-600 dark:text-cyan-500">
+                  {selectedValue != null
+                    ? `El indicador aguamarina marca la ubicación exacta donde se registró la dilatación pupilar (${selectedValue.toFixed(2)} mm) en el segundo ${Math.round(gazeData.nearest_time_s)} de la visualización.`
+                    : "El indicador aguamarina marca la ubicación exacta donde se registró la fijación en el instante seleccionado sobre el estímulo visual."}
+                </p>
               </div>
             </div>
-          </div>
-        ) : null}
-      </section>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Statistics Section */}
-      <section>
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Estadísticas</h3>
-          <p className="text-sm text-gray-500">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Estadísticas</CardTitle>
+          <CardDescription>
             Resumen numérico de la señal suavizada: tendencia, variabilidad y extremos.
-          </p>
-        </div>
-
-        {statsLoading || !stats ? (
-          <div className="grid grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-20 animate-pulse rounded-xl bg-gray-200" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: "Media", value: stats.mean, rawValue: stats.raw_mean },
-              { label: "Mínimo", value: stats.min, rawValue: stats.raw_min },
-              { label: "Máximo", value: stats.max, rawValue: stats.raw_max },
-              { label: "Desv. Estándar", value: stats.std, rawValue: stats.raw_std },
-              { label: "Mediana", value: stats.median, rawValue: stats.raw_median },
-              { label: "Línea Base", value: stats.baseline, rawValue: stats.raw_baseline },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="group relative rounded-xl border border-gray-200 bg-white px-4 py-3"
-              >
-                <p className="text-xs text-gray-500">{item.label}</p>
-                <p className="mt-1 text-lg font-semibold text-gray-900">
-                  {item.value.toFixed(4)}{" "}
-                  <span className="text-sm font-normal text-gray-400">mm</span>
-                </p>
-                {item.rawValue != null && (
-                  <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
-                    Valor real: {item.rawValue.toFixed(4)} mm
-                    <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <StatisticsTable rows={tableRows} summaryRow={tableRows[0]} loading={statsLoading || !stats} />
+        </CardContent>
+      </Card>
     </div>
   )
 }
