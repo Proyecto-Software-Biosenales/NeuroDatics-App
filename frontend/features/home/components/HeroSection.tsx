@@ -9,7 +9,7 @@ export const HeroSection = () => {
     <section className="relative text-center px-6 py-24">
       <div className="flex justify-center mb-4">
         <Image
-          src="/assets/NeuroDatics-logo.svg"
+          src="/assets/NeuroDatics-logo.png"
           alt="NeuroDatics Logo"
           width={96}
           height={96}
