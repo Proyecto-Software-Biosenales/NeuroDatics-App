@@ -373,7 +373,7 @@ export function PupilDilationTab({
         </CardHeader>
 
         <CardContent>
-          <div className="mb-6 grid grid-cols-3 gap-4">
+          <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
             {[
               {
                 label: "Media",

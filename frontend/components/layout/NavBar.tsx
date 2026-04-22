@@ -62,7 +62,7 @@ export const NavBar = () => {
               <img
                 src="assets/NeuroDatics-logo.svg"
                 alt="NeuroDatics Logo"
-                className="h-8 w-auto transition-transform group-hover:scale-105"
+                className="h-10 w-auto transition-transform group-hover:scale-105"
               />
               <span className="text-lg font-semibold text-foreground tracking-tight">
                 NeuroDatics
