@@ -378,7 +378,6 @@ export function PupilDilationTab({
               {
                 label: "Media",
                 value: stats?.mean,
-                description: "Promedio ambas pupilas",
                 tooltip: "Promedio del diámetro pupilar en el intervalo visualizado",
                 tooltipExtra: stats?.raw_mean != null ? `Valor real: ${stats.raw_mean.toFixed(4)} mm` : undefined,
                 Icon: Activity,
@@ -393,7 +392,6 @@ export function PupilDilationTab({
               {
                 label: "Mínimo",
                 value: stats?.min,
-                description: "Valor más bajo registrado",
                 tooltip: "Valor mínimo registrado en la señal suavizada",
                 tooltipExtra: stats?.raw_min != null ? `Valor real: ${stats.raw_min.toFixed(4)} mm` : undefined,
                 Icon: TrendingDown,
@@ -408,7 +406,6 @@ export function PupilDilationTab({
               {
                 label: "Máximo",
                 value: stats?.max,
-                description: "Pico de dilatación",
                 tooltip: "Valor máximo o pico de dilatación registrado",
                 tooltipExtra: stats?.raw_max != null ? `Valor real: ${stats.raw_max.toFixed(4)} mm` : undefined,
                 Icon: TrendingUp,
