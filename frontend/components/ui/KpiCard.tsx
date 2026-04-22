@@ -140,28 +140,28 @@ export function KpiCard({
         {/* Accent icon circle */}
         <div
           className={cn(
-            "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl",
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
             iconBgClass,
           )}
         >
-          <Icon className={cn("h-7 w-7", iconColorClass)} />
+          <Icon className={cn("h-5 w-5", iconColorClass)} />
         </div>
 
         {/* Label / value / description */}
         <div>
-          <p className={cn("text-base font-medium", labelColorClass)}>{label}</p>
-          <p className="mt-1 text-3xl font-bold tracking-tight text-foreground">
+          <p className={cn("text-sm font-medium", labelColorClass)}>{label}</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
             {value != null ? (
               <>
                 {value.toFixed(decimals).replace(".", ",")}
-                <span className="ml-1 text-lg font-semibold text-foreground/80">{unit}</span>
+                <span className="ml-1 text-lg font-semibold text-foreground">{unit}</span>
               </>
             ) : (
               "—"
             )}
           </p>
           {description && (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
           )}
         </div>
       </div>
