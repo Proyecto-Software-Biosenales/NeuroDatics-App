@@ -46,3 +46,94 @@ class GazeAtResponse(BaseModel):
     gx: Optional[float] = None
     gy: Optional[float] = None
     scenario_file_id: Optional[str] = None
+
+
+class GazeTimeseriesResponse(BaseModel):
+    time: List[float]
+    gx_clean: List[float]
+    gy_clean: List[float]
+
+
+class GazeStatisticsResponse(BaseModel):
+    gx_mean: float
+    gx_min: float
+    gx_max: float
+    gx_std: float
+    gx_median: float
+    gx_baseline: float
+    gy_mean: float
+    gy_min: float
+    gy_max: float
+    gy_std: float
+    gy_median: float
+    gy_baseline: float
+
+
+class DistanceTimeseriesResponse(BaseModel):
+    time: List[float]
+    distance_cm: List[float]
+
+
+class DistanceStatisticsResponse(BaseModel):
+    mean: float
+    min: float
+    max: float
+    std: float
+    median: float
+    baseline: float
+
+
+class ScanpathObjective(BaseModel):
+    id: int
+    cx: float
+    cy: float
+    duration_s: float
+    radius_norm: float
+    t_start: float
+    t_end: float
+    n_points: int
+
+
+class ScanpathResponse(BaseModel):
+    objectives: List[ScanpathObjective]
+    n_objectives: int
+    total_distance_px: float
+    avg_duration_s: float
+    scenario_file_id: Optional[str] = None
+
+
+class FixationPoint(BaseModel):
+    x_norm: float
+    y_norm: float
+    time_s: float
+    duration_s: float
+
+
+class FixationStats(BaseModel):
+    n_fixations: int
+    max_duration_s: float
+    avg_duration_s: float
+
+
+class FixationDataResponse(BaseModel):
+    fixations: List[FixationPoint]
+    stats: FixationStats
+    scenario_file_id: Optional[str] = None
+
+
+class FixationHistogramBin(BaseModel):
+    rango_min: int
+    rango_max: int
+    label: str
+    conteo: int
+    porcentaje: float
+    promedio_ms: float
+
+
+class FixationHistogramResponse(BaseModel):
+    bins: List[FixationHistogramBin]
+    n_fixations: int
+    total_duration_ms: float
+    mean_duration_ms: float
+    min_duration_ms: float
+    max_duration_ms: float

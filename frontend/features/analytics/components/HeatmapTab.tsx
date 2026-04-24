@@ -1,0 +1,227 @@
+"use client"
+
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Clock, Flame, Hash, Timer } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card"
+import { KpiCard } from "@/components/ui/KpiCard"
+import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { useFixationData, useHeatmapOverlay } from "../hooks/useAnalyticsData"
+
+interface HeatmapTabProps {
+  projectId: string
+  participantCode: string | null
+  scenario: string
+}
+
+export function HeatmapTab({
+  projectId,
+  participantCode,
+  scenario,
+}: HeatmapTabProps) {
+  const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
+  const [showPurple, setShowPurple] = useState(false)
+  const imageContainerRef = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+
+  // Fixation stats (for KPI cards)
+  const { data: fixData, loading: fixLoading } = useFixationData(projectId, participantCode, scenario)
+
+  // PNG heatmap overlay from backend
+  const { overlayUrl, loading: heatmapLoading, error: heatmapError } = useHeatmapOverlay(
+    projectId,
+    participantCode,
+    scenario
+  )
+
+  const loading = fixLoading || heatmapLoading
+
+  // Load scenario background image
+  useEffect(() => {
+    setScenarioImageUrl(null)
+    const fileId = fixData?.scenario_file_id
+    if (!fileId) return
+
+    let cancelled = false
+    let currentUrl: string | null = null
+
+    apiFetchBlob(`/api/projects/${projectId}/files/${fileId}/image`)
+      .then((blob) => {
+        if (cancelled) return
+        currentUrl = URL.createObjectURL(blob)
+        setScenarioImageUrl(currentUrl)
+      })
+      .catch(() => {
+        if (!cancelled) setScenarioImageUrl(null)
+      })
+
+    return () => {
+      cancelled = true
+      if (currentUrl) URL.revokeObjectURL(currentUrl)
+    }
+  }, [projectId, fixData?.scenario_file_id])
+
+  if (scenario === "all") {
+    return (
+      <div className="space-y-6 py-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Mapa de calor</CardTitle>
+            <CardDescription>
+              Representación visual de la densidad de atención sobre el estímulo basada en la duración y frecuencia de las fijaciones.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+              <Flame className="h-8 w-8 text-muted-foreground/40" />
+              <span>Selecciona un escenario específico para visualizar el mapa de calor</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6 py-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Mapa de calor</CardTitle>
+          <CardDescription>
+            Representación visual de la densidad de atención sobre el estímulo basada en la duración y frecuencia de las fijaciones.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!participantCode ? (
+            <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+              Selecciona un participante para ver el mapa de calor.
+            </div>
+          ) : (
+            <>
+              {/* KPI Cards */}
+              <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
+                <KpiCard
+                  label="Fijaciones"
+                  value={fixData?.stats?.n_fixations}
+                  unit=""
+                  description="Total de fijaciones en el escenario"
+                  tooltip="Número total de puntos de fijación detectados"
+                  Icon={Hash}
+                  loading={fixLoading}
+                  bgClass="bg-card"
+                  iconBgClass="bg-orange-100 dark:bg-orange-900/30"
+                  iconColorClass="text-orange-500"
+                  labelColorClass="text-orange-600 dark:text-orange-400"
+                  decimals={0}
+                />
+                <KpiCard
+                  label="Fijación más larga"
+                  value={fixData ? fixData.stats.max_duration_s * 1000 : null}
+                  unit="ms"
+                  description="Duración de la fijación más prolongada"
+                  tooltip="Duración en milisegundos de la fijación más larga"
+                  Icon={Timer}
+                  loading={fixLoading}
+                  bgClass="bg-card"
+                  iconBgClass="bg-rose-100 dark:bg-rose-900/30"
+                  iconColorClass="text-rose-500"
+                  labelColorClass="text-rose-600 dark:text-rose-400"
+                  decimals={0}
+                />
+                <KpiCard
+                  label="Duración media"
+                  value={fixData ? fixData.stats.avg_duration_s * 1000 : null}
+                  unit="ms"
+                  description="Promedio de duración por fijación"
+                  tooltip="Duración media de cada punto de fijación"
+                  Icon={Clock}
+                  loading={fixLoading}
+                  bgClass="bg-card"
+                  iconBgClass="bg-amber-100 dark:bg-amber-900/30"
+                  iconColorClass="text-amber-500"
+                  labelColorClass="text-amber-600 dark:text-amber-400"
+                  decimals={0}
+                />
+              </div>
+
+              {/* Image + overlay area */}
+              {loading ? (
+                <div className="h-[500px] w-full animate-pulse rounded-lg bg-muted" />
+              ) : heatmapError ? (
+                <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+                  Error al cargar el mapa de calor: {heatmapError}
+                </div>
+              ) : !fixData || fixData.fixations.length === 0 ? (
+                <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+                  No hay datos de fijación para los filtros seleccionados.
+                </div>
+              ) : !fixData.scenario_file_id ? (
+                <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+                  No se encontró imagen del escenario seleccionado.
+                </div>
+              ) : (
+                <>
+                  <div className="relative overflow-hidden rounded-lg" ref={imageContainerRef}>
+                    {/* Background scenario image */}
+                    {!scenarioImageUrl ? (
+                      <div className="h-[500px] w-full animate-pulse rounded-lg bg-muted" />
+                    ) : (
+                      <img
+                        ref={imageRef}
+                        src={scenarioImageUrl}
+                        alt="Escenario"
+                        className="max-h-[580px] w-full object-contain"
+                      />
+                    )}
+
+                    {/* Heatmap PNG overlay — matches image exactly via object-contain */}
+                    {overlayUrl && scenarioImageUrl && (
+                      <img
+                        src={overlayUrl}
+                        alt="Mapa de calor"
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+                        style={{ opacity: 0.82 }}
+                      />
+                    )}
+
+                    {/* Optional purple tint overlay */}
+                    {showPurple && (
+                      <div
+                        className="pointer-events-none absolute inset-0"
+                        style={{
+                          background: "rgba(60, 0, 160, 0.52)",
+                          mixBlendMode: "multiply",
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Controls bar */}
+                  <div className="mt-4 flex items-center justify-end gap-3 rounded-xl border border-border bg-muted/30 px-5 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowPurple((p) => !p)}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                        showPurple
+                          ? "border-violet-500 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
+                          : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      Filtro violeta
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

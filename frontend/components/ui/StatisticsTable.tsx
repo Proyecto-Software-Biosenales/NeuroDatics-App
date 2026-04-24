@@ -17,6 +17,8 @@ interface StatisticsTableProps {
   /** When provided, renders 4 summary KPI cards above the table using this row's data */
   summaryRow?: StatRow
   loading?: boolean
+  /** Unit suffix for numeric values. Defaults to " mm". */
+  unit?: string
 }
 
 const fmt = (v: number | null, decimals = 4, suffix = " mm") =>
@@ -40,7 +42,7 @@ const SERIE_META: Record<string, { Icon: typeof Activity; bg: string; iconColor:
   },
 }
 
-function SummaryCards({ row, loading }: { row?: StatRow; loading?: boolean }) {
+function SummaryCards({ row, loading, unit = " mm" }: { row?: StatRow; loading?: boolean; unit?: string }) {
   if (loading) {
     return (
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -65,7 +67,7 @@ function SummaryCards({ row, loading }: { row?: StatRow; loading?: boolean }) {
   const items = [
     {
       label: "MEDIA (PROMEDIO)",
-      value: fmt(row.median, 4),
+      value: fmt(row.median, 4, unit),
       Icon: Activity,
       bg: "bg-indigo-50 dark:bg-indigo-950/40",
       iconColor: "text-indigo-500",
@@ -73,7 +75,7 @@ function SummaryCards({ row, loading }: { row?: StatRow; loading?: boolean }) {
     },
     {
       label: "MIN (PROMEDIO)",
-      value: fmt(row.min, 4),
+      value: fmt(row.min, 4, unit),
       Icon: TrendingDown,
       bg: "bg-cyan-50 dark:bg-cyan-950/40",
       iconColor: "text-cyan-500",
@@ -81,7 +83,7 @@ function SummaryCards({ row, loading }: { row?: StatRow; loading?: boolean }) {
     },
     {
       label: "MAX (PROMEDIO)",
-      value: fmt(row.max, 4),
+      value: fmt(row.max, 4, unit),
       Icon: TrendingUp,
       bg: "bg-rose-50 dark:bg-rose-950/40",
       iconColor: "text-rose-500",
@@ -145,10 +147,10 @@ const TABLE_HEADERS = [
   "PICO %",
 ]
 
-export function StatisticsTable({ rows, summaryRow, loading }: StatisticsTableProps) {
+export function StatisticsTable({ rows, summaryRow, loading, unit = " mm" }: StatisticsTableProps) {
   return (
     <div>
-      <SummaryCards row={summaryRow} loading={loading} />
+      <SummaryCards row={summaryRow} loading={loading} unit={unit} />
 
       {loading ? (
         <div className="overflow-hidden rounded-xl border border-border">
@@ -229,23 +231,23 @@ export function StatisticsTable({ rows, summaryRow, loading }: StatisticsTablePr
                     </td>
 
                     <td className="px-4 py-4 text-right text-muted-foreground">
-                      {fmt(row.baseline)}
+                      {fmt(row.baseline, 4, unit)}
                     </td>
 
                     <td className="px-4 py-4 text-right text-foreground/80">
-                      {fmt(row.std)}
+                      {fmt(row.std, 4, unit)}
                     </td>
 
                     <td className="px-4 py-4 text-right font-semibold text-foreground">
-                      {fmt(row.median)}
+                      {fmt(row.median, 4, unit)}
                     </td>
 
                     <td className="px-4 py-4 text-right font-medium text-cyan-500 dark:text-cyan-400">
-                      {fmt(row.min)}
+                      {fmt(row.min, 4, unit)}
                     </td>
 
                     <td className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">
-                      {fmt(row.max)}
+                      {fmt(row.max, 4, unit)}
                     </td>
 
                     <td className="px-4 py-4 text-right">
