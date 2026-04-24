@@ -4,6 +4,7 @@ from uuid import UUID
 
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,14 +12,27 @@ from ....api.deps import get_current_user, get_db
 from ...participants.domain.entities import Participant
 from ...projects.domain.entities import Project
 from ...scenaries.domain.entities import Scenaries
-from ..application.services.analytics_service import PupilAnalyticsService
+from ..application.services.analytics_service import (
+    FixationDataService,
+    FixationHistogramService,
+    HeatmapAnalyticsService,
+    PupilAnalyticsService,
+    ScanpathAnalyticsService,
+)
 from ..application.services.parquet_reader_service import ParquetReaderService
 from ..infrastructure.redis_cache import AnalyticsRedisCache
 from .schemas import (
+    DistanceStatisticsResponse,
+    DistanceTimeseriesResponse,
+    FixationDataResponse,
+    FixationHistogramResponse,
     GazeAtResponse,
+    GazeStatisticsResponse,
+    GazeTimeseriesResponse,
     ParticipantItem,
     PupilStatisticsResponse,
     PupilTimeseriesResponse,
+    ScanpathResponse,
     ScenarioItem,
 )
 
@@ -218,3 +232,331 @@ async def gaze_at(
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data))
     return GazeAtResponse(**response_data)
+
+
+@router.get("/timeseries/gaze", response_model=GazeTimeseriesResponse)
+async def gaze_timeseries(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "timeseries_gaze", scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return GazeTimeseriesResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: PupilAnalyticsService.compute_gaze_timeseries(df, scenario)
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return GazeTimeseriesResponse(**result_data)
+
+
+@router.get("/statistics/gaze", response_model=GazeStatisticsResponse)
+async def gaze_statistics(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "statistics_gaze", scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return GazeStatisticsResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: PupilAnalyticsService.compute_gaze_statistics(df, scenario)
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return GazeStatisticsResponse(**result_data)
+
+
+@router.get("/timeseries/distance", response_model=DistanceTimeseriesResponse)
+async def distance_timeseries(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "timeseries_distance", scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return DistanceTimeseriesResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: PupilAnalyticsService.compute_distance_timeseries(df, scenario)
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return DistanceTimeseriesResponse(**result_data)
+
+
+@router.get("/statistics/distance", response_model=DistanceStatisticsResponse)
+async def distance_statistics(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "statistics_distance", scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return DistanceStatisticsResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: PupilAnalyticsService.compute_distance_statistics(df, scenario)
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return DistanceStatisticsResponse(**result_data)
+
+
+@router.get("/scanpath", response_model=ScanpathResponse)
+async def scanpath(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "scanpath", scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return ScanpathResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: ScanpathAnalyticsService.compute_scanpath(df, scenario)
+    )
+
+    # Resolve scenario file_id (same two-tier matching as gaze_at)
+    from pathlib import Path as _Path
+
+    scenario_file_id = None
+    if scenario and scenario != "all":
+        result = await db.execute(
+            select(Scenaries).where(
+                Scenaries.project_id == project_id,
+                Scenaries.name == scenario,
+            )
+        )
+        scenary = result.scalar_one_or_none()
+
+        if scenary is None:
+            all_result = await db.execute(
+                select(Scenaries).where(Scenaries.project_id == project_id)
+            )
+            all_scenarios = all_result.scalars().all()
+
+            def _norm(name: str) -> str:
+                return _Path(str(name).strip()).stem.lower().replace(" ", "")
+
+            target_stem = _norm(scenario)
+            for s in all_scenarios:
+                if _norm(s.name) == target_stem:
+                    scenary = s
+                    break
+
+        if scenary and scenary.file_id:
+            scenario_file_id = str(scenary.file_id)
+
+    response_data = {**result_data, "scenario_file_id": scenario_file_id}
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data))
+    return ScanpathResponse(**response_data)
+
+
+@router.get("/fixations", response_model=FixationDataResponse)
+async def fixation_data(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    if not scenario or scenario == "all":
+        raise HTTPException(status_code=400, detail="scenario must be specified")
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "fixations", scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return FixationDataResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: FixationDataService.compute_fixation_data(df, scenario)
+    )
+
+    if not result_data["fixations"]:
+        raise HTTPException(status_code=404, detail="No fixation data for this scenario/participant")
+
+    # Resolve scenario file_id (two-tier matching - same as scanpath endpoint)
+    from pathlib import Path as _Path
+
+    scenario_file_id = None
+    result = await db.execute(
+        select(Scenaries).where(
+            Scenaries.project_id == project_id,
+            Scenaries.name == scenario,
+        )
+    )
+    scenary = result.scalar_one_or_none()
+
+    if scenary is None:
+        all_result = await db.execute(
+            select(Scenaries).where(Scenaries.project_id == project_id)
+        )
+        all_scenarios = all_result.scalars().all()
+
+        def _norm(name: str) -> str:
+            return _Path(str(name).strip()).stem.lower().replace(" ", "")
+
+        target_stem = _norm(scenario)
+        for s in all_scenarios:
+            if _norm(s.name) == target_stem:
+                scenary = s
+                break
+
+    if scenary and scenary.file_id:
+        scenario_file_id = str(scenary.file_id)
+
+    response_data = {**result_data, "scenario_file_id": scenario_file_id}
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data))
+    return FixationDataResponse(**response_data)
+
+
+@router.get("/heatmap")
+async def heatmap_overlay(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    if not scenario or scenario == "all":
+        raise HTTPException(status_code=400, detail="scenario must be specified")
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "heatmap", scenario)
+    cached_bytes = await anyio.to_thread.run_sync(lambda: _redis.get_bytes(cache_key))
+    if cached_bytes:
+        return StreamingResponse(
+            iter([cached_bytes]),
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=900"},
+        )
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    png_bytes = await anyio.to_thread.run_sync(
+        lambda: HeatmapAnalyticsService.compute_heatmap_overlay(df, scenario)
+    )
+    if not png_bytes:
+        raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_bytes(cache_key, png_bytes))
+    return StreamingResponse(
+        iter([png_bytes]),
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=900"},
+    )
+
+
+@router.get("/fixations/histogram", response_model=FixationHistogramResponse)
+async def fixation_histogram(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "fixation_histogram", scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return FixationHistogramResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: FixationHistogramService.compute_histogram(df, scenario)
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return FixationHistogramResponse(**result_data)

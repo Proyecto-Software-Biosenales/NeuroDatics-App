@@ -5,9 +5,16 @@ import { AnalyticsApi } from "../api/analyticsApi"
 import type {
   AnalyticsParticipant,
   AnalyticsScenario,
-  PupilTimeseriesData,
-  PupilStatistics,
+  DistanceStatistics,
+  DistanceTimeseriesData,
+  FixationData,
+  FixationHistogramData,
   GazeAtData,
+  GazeStatistics,
+  GazeTimeseriesData,
+  PupilStatistics,
+  PupilTimeseriesData,
+  ScanpathData,
 } from "../types"
 
 export function useAnalyticsParticipants(projectId: string | null) {
@@ -164,4 +171,303 @@ export function useGazeAt(projectId: string | null, participantCode: string | nu
   }, [])
 
   return { data, loading, fetchGaze, clear }
+}
+
+export function useGazeTimeseries(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all"
+) {
+  const [data, setData] = useState<GazeTimeseriesData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    AnalyticsApi.getGazeTimeseries(projectId, participantCode, scenario)
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading gaze timeseries")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { data, loading, error }
+}
+
+export function useGazeStatistics(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all"
+) {
+  const [data, setData] = useState<GazeStatistics | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    AnalyticsApi.getGazeStatistics(projectId, participantCode, scenario)
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch(() => {
+        if (!cancelled) setData(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { data, loading }
+}
+
+export function useDistanceTimeseries(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all"
+) {
+  const [data, setData] = useState<DistanceTimeseriesData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    AnalyticsApi.getDistanceTimeseries(projectId, participantCode, scenario)
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading distance timeseries")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { data, loading, error }
+}
+
+export function useDistanceStatistics(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all"
+) {
+  const [data, setData] = useState<DistanceStatistics | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    AnalyticsApi.getDistanceStatistics(projectId, participantCode, scenario)
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch(() => {
+        if (!cancelled) setData(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { data, loading }
+}
+
+export function useScanpathData(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string
+) {
+  const [data, setData] = useState<ScanpathData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!projectId || !participantCode || !scenario || scenario === "all") {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    AnalyticsApi.getScanpath(projectId, participantCode, scenario)
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e: Error) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading scanpath data")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { data, loading, error }
+}
+
+export function useFixationData(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string
+) {
+  const [data, setData] = useState<FixationData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!projectId || !participantCode || !scenario || scenario === "all") {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    AnalyticsApi.getFixationData(projectId, participantCode, scenario)
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e: Error) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading fixation data")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { data, loading, error }
+}
+
+export function useHeatmapOverlay(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string
+) {
+  const [overlayUrl, setOverlayUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setOverlayUrl(null)
+    if (!projectId || !participantCode || !scenario || scenario === "all") return
+
+    let cancelled = false
+    let currentUrl: string | null = null
+    setLoading(true)
+    setError(null)
+
+    AnalyticsApi.getHeatmapOverlay(projectId, participantCode, scenario)
+      .then((blob) => {
+        if (cancelled) return
+        currentUrl = URL.createObjectURL(blob)
+        setOverlayUrl(currentUrl)
+      })
+      .catch((e: Error) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading heatmap")
+          setOverlayUrl(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+      if (currentUrl) URL.revokeObjectURL(currentUrl)
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { overlayUrl, loading, error }
+}
+
+export function useFixationHistogram(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all"
+) {
+  const [data, setData] = useState<FixationHistogramData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    AnalyticsApi.getFixationHistogram(projectId, participantCode, scenario)
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading histogram")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { data, loading, error }
 }

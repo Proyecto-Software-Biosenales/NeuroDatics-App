@@ -48,3 +48,21 @@ class AnalyticsRedisCache:
             self.client.set(key, json.dumps(data), ex=_ttl)
         except Exception:
             logger.warning("Redis write failed for key %s", key, exc_info=True)
+
+    def get_bytes(self, key: str) -> Optional[bytes]:
+        """Returns raw bytes or None. Silently returns None if Redis unavailable."""
+        try:
+            return self.client.get(key)
+        except Exception:
+            logger.warning("Redis read failed for key %s", key, exc_info=True)
+            return None
+
+    def set_bytes(self, key: str, data: bytes, ttl: int | None = None) -> None:
+        """Stores raw bytes. Silently skips if Redis unavailable."""
+        try:
+            from ....config.settings import settings
+
+            _ttl = ttl or getattr(settings, "analytics_redis_ttl_seconds", self.TTL_SECONDS)
+            self.client.set(key, data, ex=_ttl)
+        except Exception:
+            logger.warning("Redis write failed for key %s", key, exc_info=True)

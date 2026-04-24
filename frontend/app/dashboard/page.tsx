@@ -7,6 +7,11 @@ import { AnalyticsSidebar } from "@/features/analytics/components/AnalyticsSideb
 import { FiltersBar } from "@/features/analytics/components/FiltersBar"
 import { PlaceholderTab } from "@/features/analytics/components/PlaceholderTab"
 import { PupilDilationTab } from "@/features/analytics/components/PupilDilationTab"
+import { GazePointTab } from "@/features/analytics/components/GazePointTab"
+import { DeviceDistanceTab } from "@/features/analytics/components/DeviceDistanceTab"
+import { ScanpathTab } from "@/features/analytics/components/ScanpathTab"
+import { HeatmapTab } from "@/features/analytics/components/HeatmapTab"
+import { FixationHistogramTab } from "@/features/analytics/components/FixationHistogramTab"
 import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
@@ -17,7 +22,7 @@ type SensorSelection = "EyeTracker" | "EEG" | "GSR" | "Comparativas"
 type AnalyticsTabKey =
   | "pupil_dilation"
   | "gaze_point"
-  | "fixation_point"
+  | "fixation_histogram"
   | "heatmap"
   | "scanpath"
   | "device_distance"
@@ -25,9 +30,9 @@ type AnalyticsTabKey =
 const ANALYTICS_TABS: Array<{ key: AnalyticsTabKey; label: string }> = [
   { key: "pupil_dilation", label: "Dilatación pupilar" },
   { key: "gaze_point", label: "Gaze point" },
-  { key: "fixation_point", label: "Punto de fijación" },
+  { key: "fixation_histogram", label: "Histograma de fijación" },
   { key: "heatmap", label: "Mapa de calor" },
-  { key: "scanpath", label: "Scanpath" },
+  { key: "scanpath", label: "Mapa de recorridos" },
   { key: "device_distance", label: "Distancia dispositivo" },
 ]
 
@@ -144,6 +149,41 @@ export default function DashboardPage() {
 
                 {activeTab === "pupil_dilation" ? (
                   <PupilDilationTab
+                    key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
+                    projectId={selectedProjectId}
+                    participantCode={selectedParticipant}
+                    scenario={selectedScenario}
+                  />
+                ) : activeTab === "gaze_point" ? (
+                  <GazePointTab
+                    key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
+                    projectId={selectedProjectId}
+                    participantCode={selectedParticipant}
+                    scenario={selectedScenario}
+                  />
+                ) : activeTab === "device_distance" ? (
+                  <DeviceDistanceTab
+                    key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
+                    projectId={selectedProjectId}
+                    participantCode={selectedParticipant}
+                    scenario={selectedScenario}
+                  />
+                ) : activeTab === "scanpath" ? (
+                  <ScanpathTab
+                    key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
+                    projectId={selectedProjectId}
+                    participantCode={selectedParticipant}
+                    scenario={selectedScenario}
+                  />
+                ) : activeTab === "heatmap" ? (
+                  <HeatmapTab
+                    key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
+                    projectId={selectedProjectId}
+                    participantCode={selectedParticipant}
+                    scenario={selectedScenario}
+                  />
+                ) : activeTab === "fixation_histogram" ? (
+                  <FixationHistogramTab
                     key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}
