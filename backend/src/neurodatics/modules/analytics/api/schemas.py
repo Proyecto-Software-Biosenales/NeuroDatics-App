@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -81,6 +81,78 @@ class DistanceStatisticsResponse(BaseModel):
     std: float
     median: float
     baseline: float
+
+
+class GsrTimeseriesResponse(BaseModel):
+    time: List[float]
+    gsr: List[float]
+    gsr_smooth: List[float]
+
+
+class GsrStatisticsResponse(BaseModel):
+    mean: float
+    min: float
+    max: float
+    std: float
+    median: float
+    baseline: float
+    raw_mean: Optional[float] = None
+    raw_min: Optional[float] = None
+    raw_max: Optional[float] = None
+    raw_std: Optional[float] = None
+    raw_median: Optional[float] = None
+    raw_baseline: Optional[float] = None
+
+
+class EegTimeseriesResponse(BaseModel):
+    time: List[float]
+    channels: List[str]
+    available_channels: List[str]
+    sampling_rate_hz: float
+    raw: Dict[str, List[float]]
+    smooth: Dict[str, List[float]]
+
+
+class EegPsdResponse(BaseModel):
+    frequency: List[float]
+    channels: List[str]
+    available_channels: List[str]
+    sampling_rate_hz: float
+    use_db: bool
+    unit: str
+    power: Dict[str, List[float]]
+
+
+class ColorDomain(BaseModel):
+    min: float
+    max: float
+
+
+class EegSpectrogramResponse(BaseModel):
+    time: List[float]
+    frequency: List[float]
+    channels: List[str]
+    available_channels: List[str]
+    sampling_rate_hz: float
+    use_db: bool
+    normalize: str
+    unit: str
+    power: Dict[str, List[List[float]]]
+    color_domain: ColorDomain
+
+
+class EegTopographyResponse(BaseModel):
+    time: List[float]
+    channels: List[str]
+    available_channels: List[str]
+    sampling_rate_hz: float
+    unit: str
+    positions: Dict[str, List[float]]
+    power: Dict[str, List[float]]
+    color_domain: ColorDomain
+    window_s: float
+    overlap_ratio: float
+    remove_dc: bool
 
 
 class ScanpathObjective(BaseModel):

@@ -7,11 +7,17 @@ import type {
   AnalyticsScenario,
   DistanceStatistics,
   DistanceTimeseriesData,
+  EegPsdData,
+  EegSpectrogramData,
+  EegTopographyData,
+  EegTimeseriesData,
   FixationData,
   FixationHistogramData,
   GazeAtData,
   GazeStatistics,
   GazeTimeseriesData,
+  GsrStatistics,
+  GsrTimeseriesData,
   PupilStatistics,
   PupilTimeseriesData,
   ScanpathData,
@@ -313,6 +319,340 @@ export function useDistanceStatistics(
   }, [projectId, participantCode, scenario])
 
   return { data, loading }
+}
+
+export function useGsrTimeseries(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all"
+) {
+  const [data, setData] = useState<GsrTimeseriesData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    AnalyticsApi.getGsrTimeseries(projectId, participantCode, scenario)
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading GSR timeseries")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { data, loading, error }
+}
+
+export function useGsrStatistics(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all"
+) {
+  const [data, setData] = useState<GsrStatistics | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    AnalyticsApi.getGsrStatistics(projectId, participantCode, scenario)
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch(() => {
+        if (!cancelled) setData(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario])
+
+  return { data, loading }
+}
+
+export function useEegTimeseries(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all",
+  channels: string[] = [],
+  smoothWindowS: number = 0.2,
+  maxPoints: number = 5000
+) {
+  const [data, setData] = useState<EegTimeseriesData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const channelsKey = channels.join(",")
+  const canLoad = Boolean(projectId && participantCode)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) return
+
+    let cancelled = false
+    const requestedChannels = channelsKey ? channelsKey.split(",") : []
+
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      setLoading(true)
+      setError(null)
+    })
+
+    AnalyticsApi.getEegTimeseries(
+      projectId,
+      participantCode,
+      scenario,
+      requestedChannels,
+      smoothWindowS,
+      maxPoints
+    )
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading EEG timeseries")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario, channelsKey, smoothWindowS, maxPoints])
+
+  return {
+    data: canLoad ? data : null,
+    loading: canLoad ? loading : false,
+    error: canLoad ? error : null,
+  }
+}
+
+export function useEegPsd(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all",
+  channels: string[] = [],
+  maxFreqHz: number | null = null,
+  useDb: boolean = true,
+  maxPoints: number = 5000
+) {
+  const [data, setData] = useState<EegPsdData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const channelsKey = channels.join(",")
+  const canLoad = Boolean(projectId && participantCode)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) return
+
+    let cancelled = false
+    const requestedChannels = channelsKey ? channelsKey.split(",") : []
+
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      setLoading(true)
+      setError(null)
+    })
+
+    AnalyticsApi.getEegPsd(
+      projectId,
+      participantCode,
+      scenario,
+      requestedChannels,
+      maxFreqHz,
+      useDb,
+      maxPoints
+    )
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading EEG PSD")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario, channelsKey, maxFreqHz, useDb, maxPoints])
+
+  return {
+    data: canLoad ? data : null,
+    loading: canLoad ? loading : false,
+    error: canLoad ? error : null,
+  }
+}
+
+export function useEegSpectrogram(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all",
+  channels: string[] = [],
+  maxFreqHz: number | null = 25,
+  useDb: boolean = true,
+  normalize: string = "freq_demean",
+  maxTimeBins: number = 600,
+  maxFrequencyBins: number = 256
+) {
+  const [data, setData] = useState<EegSpectrogramData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const channelsKey = channels.join(",")
+  const canLoad = Boolean(projectId && participantCode)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) return
+
+    let cancelled = false
+    const requestedChannels = channelsKey ? channelsKey.split(",") : []
+
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      setLoading(true)
+      setError(null)
+    })
+
+    AnalyticsApi.getEegSpectrogram(
+      projectId,
+      participantCode,
+      scenario,
+      requestedChannels,
+      maxFreqHz,
+      useDb,
+      normalize,
+      maxTimeBins,
+      maxFrequencyBins
+    )
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading EEG spectrogram")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [
+    projectId,
+    participantCode,
+    scenario,
+    channelsKey,
+    maxFreqHz,
+    useDb,
+    normalize,
+    maxTimeBins,
+    maxFrequencyBins,
+  ])
+
+  return {
+    data: canLoad ? data : null,
+    loading: canLoad ? loading : false,
+    error: canLoad ? error : null,
+  }
+}
+
+export function useEegTopography(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all",
+  channels: string[] = [],
+  windowS: number = 2.0,
+  overlapRatio: number = 0.5,
+  removeDc: boolean = true,
+  maxFrames: number = 600
+) {
+  const [data, setData] = useState<EegTopographyData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const channelsKey = channels.join(",")
+  const canLoad = Boolean(projectId && participantCode)
+
+  useEffect(() => {
+    if (!projectId || !participantCode) return
+
+    let cancelled = false
+    const requestedChannels = channelsKey ? channelsKey.split(",") : []
+
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      setLoading(true)
+      setError(null)
+    })
+
+    AnalyticsApi.getEegTopography(
+      projectId,
+      participantCode,
+      scenario,
+      requestedChannels,
+      windowS,
+      overlapRatio,
+      removeDc,
+      maxFrames
+    )
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e.message || "Error loading EEG topography")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [
+    projectId,
+    participantCode,
+    scenario,
+    channelsKey,
+    windowS,
+    overlapRatio,
+    removeDc,
+    maxFrames,
+  ])
+
+  return {
+    data: canLoad ? data : null,
+    loading: canLoad ? loading : false,
+    error: canLoad ? error : null,
+  }
 }
 
 export function useScanpathData(
