@@ -77,6 +77,78 @@ export interface DistanceStatistics {
   baseline: number
 }
 
+export interface GsrTimeseriesData {
+  time: number[]
+  gsr: number[]
+  gsr_smooth: number[]
+}
+
+export interface GsrStatistics {
+  mean: number
+  min: number
+  max: number
+  std: number
+  median: number
+  baseline: number
+  raw_mean: number | null
+  raw_min: number | null
+  raw_max: number | null
+  raw_std: number | null
+  raw_median: number | null
+  raw_baseline: number | null
+}
+
+export interface EegTimeseriesData {
+  time: number[]
+  channels: string[]
+  available_channels: string[]
+  sampling_rate_hz: number
+  raw: Record<string, number[]>
+  smooth: Record<string, number[]>
+}
+
+export interface EegPsdData {
+  frequency: number[]
+  channels: string[]
+  available_channels: string[]
+  sampling_rate_hz: number
+  use_db: boolean
+  unit: string
+  power: Record<string, number[]>
+}
+
+export interface ColorDomain {
+  min: number
+  max: number
+}
+
+export interface EegSpectrogramData {
+  time: number[]
+  frequency: number[]
+  channels: string[]
+  available_channels: string[]
+  sampling_rate_hz: number
+  use_db: boolean
+  normalize: string
+  unit: string
+  power: Record<string, number[][]>
+  color_domain: ColorDomain
+}
+
+export interface EegTopographyData {
+  time: number[]
+  channels: string[]
+  available_channels: string[]
+  sampling_rate_hz: number
+  unit: string
+  positions: Record<string, number[]>
+  power: Record<string, number[]>
+  color_domain: ColorDomain
+  window_s: number
+  overlap_ratio: number
+  remove_dc: boolean
+}
+
 export interface ScanpathObjective {
   id: number
   cx: number            // normalized 0-1 (horizontal position)

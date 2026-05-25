@@ -4,11 +4,17 @@ import type {
   AnalyticsScenario,
   DistanceStatistics,
   DistanceTimeseriesData,
+  EegPsdData,
+  EegSpectrogramData,
+  EegTopographyData,
+  EegTimeseriesData,
   FixationData,
   FixationHistogramData,
   GazeAtData,
   GazeStatistics,
   GazeTimeseriesData,
+  GsrStatistics,
+  GsrTimeseriesData,
   PupilStatistics,
   PupilTimeseriesData,
   ScanpathData,
@@ -57,6 +63,112 @@ export const AnalyticsApi = {
   getDistanceStatistics: (projectId: string, participantCode: string, scenario: string = "all") => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
     return apiFetch<DistanceStatistics>(`/api/projects/${projectId}/analytics/statistics/distance?${params}`)
+  },
+
+  getGsrTimeseries: (projectId: string, participantCode: string, scenario: string = "all") => {
+    const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    return apiFetch<GsrTimeseriesData>(`/api/projects/${projectId}/analytics/timeseries/gsr?${params}`)
+  },
+
+  getGsrStatistics: (projectId: string, participantCode: string, scenario: string = "all") => {
+    const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    return apiFetch<GsrStatistics>(`/api/projects/${projectId}/analytics/statistics/gsr?${params}`)
+  },
+
+  getEegTimeseries: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    channels: string[] = [],
+    smoothWindowS: number = 0.2,
+    maxPoints: number = 5000
+  ) => {
+    const params = new URLSearchParams({
+      participant_code: participantCode,
+      scenario,
+      smooth_window_s: String(smoothWindowS),
+      max_points: String(maxPoints),
+    })
+    if (channels.length > 0) {
+      params.set("channels", channels.join(","))
+    }
+    return apiFetch<EegTimeseriesData>(`/api/projects/${projectId}/analytics/timeseries/eeg?${params}`)
+  },
+
+  getEegPsd: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    channels: string[] = [],
+    maxFreqHz: number | null = null,
+    useDb: boolean = true,
+    maxPoints: number = 5000
+  ) => {
+    const params = new URLSearchParams({
+      participant_code: participantCode,
+      scenario,
+      use_db: String(useDb),
+      max_points: String(maxPoints),
+    })
+    if (channels.length > 0) {
+      params.set("channels", channels.join(","))
+    }
+    if (maxFreqHz != null) {
+      params.set("max_freq_hz", String(maxFreqHz))
+    }
+    return apiFetch<EegPsdData>(`/api/projects/${projectId}/analytics/psd/eeg?${params}`)
+  },
+
+  getEegSpectrogram: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    channels: string[] = [],
+    maxFreqHz: number | null = 25,
+    useDb: boolean = true,
+    normalize: string = "freq_demean",
+    maxTimeBins: number = 600,
+    maxFrequencyBins: number = 256
+  ) => {
+    const params = new URLSearchParams({
+      participant_code: participantCode,
+      scenario,
+      use_db: String(useDb),
+      normalize,
+      max_time_bins: String(maxTimeBins),
+      max_frequency_bins: String(maxFrequencyBins),
+    })
+    if (channels.length > 0) {
+      params.set("channels", channels.join(","))
+    }
+    if (maxFreqHz != null) {
+      params.set("max_freq_hz", String(maxFreqHz))
+    }
+    return apiFetch<EegSpectrogramData>(`/api/projects/${projectId}/analytics/spectrogram/eeg?${params}`)
+  },
+
+  getEegTopography: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    channels: string[] = [],
+    windowS: number = 2.0,
+    overlapRatio: number = 0.5,
+    removeDc: boolean = true,
+    maxFrames: number = 600
+  ) => {
+    const params = new URLSearchParams({
+      participant_code: participantCode,
+      scenario,
+      window_s: String(windowS),
+      overlap_ratio: String(overlapRatio),
+      remove_dc: String(removeDc),
+      max_frames: String(maxFrames),
+    })
+    if (channels.length > 0) {
+      params.set("channels", channels.join(","))
+    }
+    return apiFetch<EegTopographyData>(`/api/projects/${projectId}/analytics/topography/eeg?${params}`)
   },
 
   getScanpath: (projectId: string, participantCode: string, scenario: string) => {

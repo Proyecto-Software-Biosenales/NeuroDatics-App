@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 import anyio
@@ -13,8 +13,10 @@ from ...participants.domain.entities import Participant
 from ...projects.domain.entities import Project
 from ...scenaries.domain.entities import Scenaries
 from ..application.services.analytics_service import (
+    EegAnalyticsService,
     FixationDataService,
     FixationHistogramService,
+    GsrAnalyticsService,
     HeatmapAnalyticsService,
     PupilAnalyticsService,
     ScanpathAnalyticsService,
@@ -24,11 +26,17 @@ from ..infrastructure.redis_cache import AnalyticsRedisCache
 from .schemas import (
     DistanceStatisticsResponse,
     DistanceTimeseriesResponse,
+    EegPsdResponse,
+    EegSpectrogramResponse,
+    EegTopographyResponse,
+    EegTimeseriesResponse,
     FixationDataResponse,
     FixationHistogramResponse,
     GazeAtResponse,
     GazeStatisticsResponse,
     GazeTimeseriesResponse,
+    GsrStatisticsResponse,
+    GsrTimeseriesResponse,
     ParticipantItem,
     PupilStatisticsResponse,
     PupilTimeseriesResponse,
@@ -356,6 +364,295 @@ async def distance_statistics(
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
     return DistanceStatisticsResponse(**result_data)
+
+
+@router.get("/timeseries/gsr", response_model=GsrTimeseriesResponse)
+async def gsr_timeseries(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "timeseries_gsr", scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return GsrTimeseriesResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: GsrAnalyticsService.compute_timeseries(df, scenario)
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return GsrTimeseriesResponse(**result_data)
+
+
+@router.get("/statistics/gsr", response_model=GsrStatisticsResponse)
+async def gsr_statistics(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    cache_key = _redis.build_key(project_id, participant_code, "statistics_gsr", scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return GsrStatisticsResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: GsrAnalyticsService.compute_statistics(df, scenario)
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return GsrStatisticsResponse(**result_data)
+
+
+@router.get("/timeseries/eeg", response_model=EegTimeseriesResponse)
+async def eeg_timeseries(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    channels: str = Query(default=""),
+    smooth_window_s: float = Query(default=0.2, ge=0.0, le=5.0),
+    max_points: int = Query(default=5000, ge=1, le=100000),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    requested_channels = [
+        channel.strip().lower()
+        for channel in channels.replace(",", " ").split()
+        if channel.strip()
+    ] or None
+    channels_key = ",".join(requested_channels) if requested_channels else "all"
+    cache_endpoint = f"timeseries_eeg:{channels_key}:{smooth_window_s}:{max_points}"
+    cache_key = _redis.build_key(project_id, participant_code, cache_endpoint, scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return EegTimeseriesResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: EegAnalyticsService.compute_timeseries(
+            df,
+            scenario=scenario,
+            channels=requested_channels,
+            smooth_window_s=smooth_window_s,
+            max_points=max_points,
+        )
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return EegTimeseriesResponse(**result_data)
+
+
+@router.get("/psd/eeg", response_model=EegPsdResponse)
+async def eeg_psd(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    channels: str = Query(default=""),
+    max_freq_hz: Optional[float] = Query(default=None, gt=0.0),
+    use_db: bool = Query(default=True),
+    max_points: int = Query(default=5000, ge=1, le=100000),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    requested_channels = [
+        channel.strip().lower()
+        for channel in channels.replace(",", " ").split()
+        if channel.strip()
+    ] or None
+    channels_key = ",".join(requested_channels) if requested_channels else "all"
+    max_freq_key = "auto" if max_freq_hz is None else f"{float(max_freq_hz):g}"
+    scale_key = "db" if use_db else "linear"
+    cache_endpoint = f"psd_eeg:{channels_key}:{max_freq_key}:{scale_key}:{max_points}"
+    cache_key = _redis.build_key(project_id, participant_code, cache_endpoint, scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return EegPsdResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: EegAnalyticsService.compute_psd(
+            df,
+            scenario=scenario,
+            channels=requested_channels,
+            max_freq_hz=max_freq_hz,
+            use_db=use_db,
+            max_points=max_points,
+        )
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return EegPsdResponse(**result_data)
+
+
+@router.get("/spectrogram/eeg", response_model=EegSpectrogramResponse)
+async def eeg_spectrogram(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    channels: str = Query(default=""),
+    max_freq_hz: Optional[float] = Query(default=25.0, gt=0.0),
+    use_db: bool = Query(default=True),
+    normalize: str = Query(
+        default="freq_demean",
+        pattern="^(none|freq_demean|freq_zscore)$",
+    ),
+    window_s: float = Query(default=1.5, gt=0.0, le=10.0),
+    overlap_ratio: float = Query(default=0.75, ge=0.0, lt=1.0),
+    smooth_sigma: float = Query(default=0.8, ge=0.0, le=5.0),
+    clip_low_percentile: float = Query(default=2.0, ge=0.0, le=100.0),
+    clip_high_percentile: float = Query(default=98.0, ge=0.0, le=100.0),
+    max_time_bins: int = Query(default=600, ge=1, le=5000),
+    max_frequency_bins: int = Query(default=256, ge=1, le=2048),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    requested_channels = [
+        channel.strip().lower()
+        for channel in channels.replace(",", " ").split()
+        if channel.strip()
+    ] or None
+    channels_key = ",".join(requested_channels) if requested_channels else "all"
+    max_freq_key = "auto" if max_freq_hz is None else f"{float(max_freq_hz):g}"
+    scale_key = "db" if use_db else "linear"
+    cache_endpoint = (
+        "spectrogram_eeg:"
+        f"{channels_key}:{max_freq_key}:{scale_key}:{normalize}:"
+        f"{window_s}:{overlap_ratio}:{smooth_sigma}:"
+        f"{clip_low_percentile}:{clip_high_percentile}:"
+        f"{max_time_bins}:{max_frequency_bins}"
+    )
+    cache_key = _redis.build_key(project_id, participant_code, cache_endpoint, scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return EegSpectrogramResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: EegAnalyticsService.compute_spectrogram(
+            df,
+            scenario=scenario,
+            channels=requested_channels,
+            max_freq_hz=max_freq_hz,
+            use_db=use_db,
+            normalize=normalize,
+            window_s=window_s,
+            overlap_ratio=overlap_ratio,
+            smooth_sigma=smooth_sigma,
+            clip_low_percentile=clip_low_percentile,
+            clip_high_percentile=clip_high_percentile,
+            max_time_bins=max_time_bins,
+            max_frequency_bins=max_frequency_bins,
+        )
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return EegSpectrogramResponse(**result_data)
+
+
+@router.get("/topography/eeg", response_model=EegTopographyResponse)
+async def eeg_topography(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    channels: str = Query(default=""),
+    window_s: float = Query(default=2.0, gt=0.0, le=10.0),
+    overlap_ratio: float = Query(default=0.5, ge=0.0, lt=1.0),
+    remove_dc: bool = Query(default=True),
+    max_frames: int = Query(default=600, ge=1, le=5000),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    requested_channels = [
+        channel.strip().lower()
+        for channel in channels.replace(",", " ").split()
+        if channel.strip()
+    ] or None
+    channels_key = ",".join(requested_channels) if requested_channels else "all"
+    dc_key = "dc_removed" if remove_dc else "raw"
+    cache_endpoint = (
+        "topography_eeg:"
+        f"{channels_key}:{window_s}:{overlap_ratio}:{dc_key}:{max_frames}"
+    )
+    cache_key = _redis.build_key(project_id, participant_code, cache_endpoint, scenario)
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return EegTopographyResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: EegAnalyticsService.compute_topography(
+            df,
+            scenario=scenario,
+            channels=requested_channels,
+            window_s=window_s,
+            overlap_ratio=overlap_ratio,
+            remove_dc=remove_dc,
+            max_frames=max_frames,
+        )
+    )
+
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
+    return EegTopographyResponse(**result_data)
 
 
 @router.get("/scanpath", response_model=ScanpathResponse)

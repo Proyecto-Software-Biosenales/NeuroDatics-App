@@ -33,13 +33,17 @@ export const ProjectSelect = ({
   return (
     <Combobox value={value} onValueChange={(val) => val && onChange(val)}>
       <ComboboxTrigger className="w-full flex items-center justify-between px-5 py-3.5 bg-background border border-input rounded-xl text-left text-foreground hover:border-ring hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200">
-        <ComboboxValue placeholder={placeholder} />
+        <ComboboxValue placeholder={placeholder}>
+          {(selectedValue) =>
+            projects.find((project) => project.id === selectedValue)?.name ?? placeholder
+          }
+        </ComboboxValue>
       </ComboboxTrigger>
 
       <ComboboxContent>
         <ComboboxList>
           {projects.map((project) => (
-            <ComboboxItem key={project.id} value={project.id} label={project.name}>
+            <ComboboxItem key={project.id} value={project.id}>
               <div className="flex flex-col gap-2 py-1">
                 <span className="font-medium text-foreground">{project.name}</span>
                 {project.sensors && project.sensors.length > 0 ? (
