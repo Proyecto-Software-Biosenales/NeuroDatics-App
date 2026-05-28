@@ -23,6 +23,8 @@ export interface scenaries {
 export interface AOI {
   id: string
   name: string
+  color: string
+  shapeType?: "rect" | "circle" | "polygon"
   x: number
   y: number
   width: number

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { AnalyticsApi } from "../api/analyticsApi"
 import type {
+  AoiMetricsData,
   AnalyticsParticipant,
   AnalyticsScenario,
   DistanceStatistics,
@@ -810,4 +811,48 @@ export function useFixationHistogram(
   }, [projectId, participantCode, scenario])
 
   return { data, loading, error }
+}
+
+export function useAoiMetrics(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string
+) {
+  const [data, setData] = useState<AoiMetricsData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const canLoad = Boolean(projectId && participantCode && scenario && scenario !== "all")
+
+  useEffect(() => {
+    if (!canLoad || !projectId || !participantCode) return
+
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const result = await AnalyticsApi.getAoiMetrics(projectId, participantCode, scenario)
+        if (!cancelled) setData(result)
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Error loading AOI metrics")
+          setData(null)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [canLoad, projectId, participantCode, scenario])
+
+  return {
+    data: canLoad ? data : null,
+    loading: canLoad ? loading : false,
+    error: canLoad ? error : null,
+  }
 }

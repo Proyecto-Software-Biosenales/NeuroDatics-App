@@ -21,6 +21,7 @@ import { CreateProjectStep4 } from "@/features/projects/create-project/CreatePro
 import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi"
 import type { Project, ProjectStatus, SensorType } from "@/features/projects/types"
 import type { ParticipantData, ProjectFormData, scenaries } from "@/features/projects/create-project/types"
+import { apiAoiToFormAoi, serializeAoisForComparison, serializeScenaryAois } from "@/features/projects/create-project/aoiUtils"
 
 interface EditProjectDialogProps {
   projectId: string
@@ -53,11 +54,6 @@ const toParticipantSex = (value: unknown): "male" | "female" | "other" | null =>
   if (value === "FEMALE") return "female"
   if (value === "OTHER") return "other"
   return null
-}
-
-const toNumber = (value: unknown, fallback = 0): number => {
-  if (typeof value === "number" && Number.isFinite(value)) return value
-  return fallback
 }
 
 const extractProjectNameAndId = (fullName: string): { name: string; id: string } => {
@@ -169,17 +165,7 @@ const parseScenaries = (project: ApiProjectDetail): scenaries[] => {
     type: String(s.type || "").toLowerCase() === "video" ? "video" : "image",
     fileId: s.file_id ?? null,
     imageUrl: s.file_id ? resolveScenarioImageUrl(filesById.get(s.file_id)) : null,
-    aois: (s.aois || []).map((a) => {
-      const shape = a.shape || {}
-      return {
-        id: a.id,
-        name: a.name,
-        x: toNumber((shape as Record<string, unknown>).x, 0),
-        y: toNumber((shape as Record<string, unknown>).y, 0),
-        width: toNumber((shape as Record<string, unknown>).width, 20),
-        height: toNumber((shape as Record<string, unknown>).height, 20),
-      }
-    }),
+    aois: (s.aois || []).map((a, index) => apiAoiToFormAoi(a, index)),
   }))
 }
 
@@ -345,6 +331,15 @@ export const EditProjectDialog = ({
     }))
   }
 
+  const updateScenaryAois = (scenaryId: string, aois: ProjectFormData["scenaries"][number]["aois"]) => {
+    setFormData((prev) => ({
+      ...prev,
+      scenaries: prev.scenaries.map((scenary) =>
+        scenary.id === scenaryId ? { ...scenary, aois } : scenary
+      ),
+    }))
+  }
+
   const hasValidParticipants = () => {
     if (formData.participants.length === 0) return false
     return formData.participants.every((p) => {
@@ -405,11 +400,20 @@ export const EditProjectDialog = ({
     )
   }
 
+  const aoisChanged = (): boolean => {
+    if (!originalFormDataRef.current) return true
+    return (
+      serializeAoisForComparison(originalFormDataRef.current.scenaries) !==
+      serializeAoisForComparison(formData.scenaries)
+    )
+  }
+
   const hasAnyChanges = (): boolean => {
     const shouldUpdateMetadata = metadataChanged()
     const shouldUpdateSensors = sensorsChanged()
     const shouldUpdateParticipants = participantsChanged()
-    return shouldUpdateMetadata || shouldUpdateSensors || shouldUpdateParticipants || hasProcessedFolderUpdate
+    const shouldUpdateAois = aoisChanged()
+    return shouldUpdateMetadata || shouldUpdateSensors || shouldUpdateParticipants || shouldUpdateAois || hasProcessedFolderUpdate
   }
 
   const processZipOnStep1 = async () => {
@@ -635,6 +639,7 @@ export const EditProjectDialog = ({
       const shouldUpdateMetadata = metadataChanged()
       const shouldUpdateSensors = sensorsChanged()
       const shouldUpdateParticipants = participantsChanged()
+      const shouldUpdateAois = aoisChanged()
       const shouldUploadFolder = hasProcessedFolderUpdate
 
       if (!hasAnyChanges()) {
@@ -679,6 +684,11 @@ export const EditProjectDialog = ({
         }
 
         await Promise.all(updates)
+      }
+
+      if (shouldUpdateAois) {
+        updateProgress("Actualizando areas de interes...")
+        await ProjectsApi.setAois(projectId, serializeScenaryAois(formData.scenaries))
       }
 
       const shouldFinalize = shouldUploadFolder
@@ -860,7 +870,12 @@ export const EditProjectDialog = ({
               <CreateProjectStep3 participants={formData.participants} onUpdateParticipant={updateParticipant} />
             )}
 
-            {currentStep === 4 && <CreateProjectStep4 scenaries={formData.scenaries} />}
+            {currentStep === 4 && (
+              <CreateProjectStep4
+                scenaries={formData.scenaries}
+                onScenaryAoisChange={updateScenaryAois}
+              />
+            )}
 
             {saveError && (
               <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">

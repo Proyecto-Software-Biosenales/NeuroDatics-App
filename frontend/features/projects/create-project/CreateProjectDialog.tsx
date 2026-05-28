@@ -45,6 +45,7 @@ export const CreateProjectDialog = ({
     updateFolderPath,
     toggleSensor,
     updateParticipant,
+    updateScenaryAois,
     canGoNext,
     nextStep,
     prevStep,
@@ -185,7 +186,10 @@ export const CreateProjectDialog = ({
           )}
 
           {currentStep === 4 && (
-            <CreateProjectStep4 scenaries={formData.scenaries} />
+            <CreateProjectStep4
+              scenaries={formData.scenaries}
+              onScenaryAoisChange={updateScenaryAois}
+            />
           )}
 
           {/* Mostrar error de guardado */}

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { ProjectFormData, SensorType, ParticipantData } from "./types";
 import type { Project, DetectedParticipant } from "@/features/projects/types";
 import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
+import { apiAoiToFormAoi, serializeScenaryAois } from "./aoiUtils";
 import { toast } from "sonner";
 
 const STEP1_LOADING_TOAST_ID = "create-project-step1-drive-sync";
@@ -93,7 +94,7 @@ const buildStep4ImageScenaries = (detail: ApiProjectDetail): ProjectFormData["sc
         type: "image" as const,
         fileId: scenary.file_id ?? null,
         imageUrl: resolveScenarioImageUrl(linkedFile),
-        aois: [],
+        aois: (scenary.aois || []).map((aoi, index) => apiAoiToFormAoi(aoi, index)),
       };
     });
 };
@@ -204,6 +205,15 @@ export const useCreateProjectWizard = (
     setFormData(prev => ({
       ...prev,
       participants: prev.participants.map(p => (p.id === id ? { ...p, [field]: value } : p)),
+    }));
+  };
+
+  const updateScenaryAois = (scenaryId: string, aois: ProjectFormData["scenaries"][number]["aois"]) => {
+    setFormData((prev) => ({
+      ...prev,
+      scenaries: prev.scenaries.map((scenary) =>
+        scenary.id === scenaryId ? { ...scenary, aois } : scenary
+      ),
     }));
   };
 
@@ -711,6 +721,8 @@ export const useCreateProjectWizard = (
         updates.push(ProjectsApi.setParticipants(draftProjectId, normalizedParticipants));
       }
 
+      updates.push(ProjectsApi.setAois(draftProjectId, serializeScenaryAois(formData.scenaries)));
+
       await Promise.all(updates);
 
       updateProgress("Finalizando configuración del proyecto...");
@@ -785,6 +797,7 @@ export const useCreateProjectWizard = (
     updateFolderPath,
     toggleSensor,
     updateParticipant,
+    updateScenaryAois,
     canGoNext,
     nextStep,
     prevStep,

@@ -65,12 +65,15 @@ class SQLscenariesRepository(scenariesRepository):
         stmt = select(Scenaries).where(Scenaries.project_id == project_id)
         result = await self.session.execute(stmt)
         scenaries_map = {sc.name: sc.id for sc in result.scalars().all()}
+        incoming_keys = set()
 
         for data in aois_data:
             scenary_name = data["scenaries_name"]
             scenary_id = scenaries_map.get(scenary_name)
             if not scenary_id:
                 continue
+
+            incoming_keys.add((scenary_id, data["name"]))
 
             stmt = select(AOI).where(
                 AOI.scenaries_id == scenary_id,
@@ -94,6 +97,16 @@ class SQLscenariesRepository(scenariesRepository):
                 self.session.add(aoi)
 
             records.append(aoi)
+
+        existing_stmt = (
+            select(AOI)
+            .join(Scenaries, AOI.scenaries_id == Scenaries.id)
+            .where(Scenaries.project_id == project_id)
+        )
+        existing_result = await self.session.execute(existing_stmt)
+        for existing_aoi in existing_result.scalars().all():
+            if (existing_aoi.scenaries_id, existing_aoi.name) not in incoming_keys:
+                await self.session.delete(existing_aoi)
 
         await self.session.commit()
         for aoi in records:

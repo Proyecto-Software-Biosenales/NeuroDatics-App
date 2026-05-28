@@ -204,3 +204,66 @@ export interface FixationHistogramData {
   min_duration_ms: number
   max_duration_ms: number
 }
+
+export interface AoiShape {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface AoiMetricItem {
+  id: string
+  name: string
+  color: string
+  shape_type: string
+  shape: AoiShape
+  fixation_count: number
+  total_dwell_time_ms: number
+  total_dwell_time_percent: number
+  avg_fixation_duration_ms: number
+  ttff_ms: number | null
+  hit_rate_percent: number
+  fixations_to_target: number | null
+  pupil_sample_count: number
+  avg_pupil_mm: number | null
+  pupil_delta_from_baseline_mm: number | null
+  pupil_delta_percent: number | null
+  distance_sample_count: number
+  avg_distance_cm: number | null
+  distance_delta_from_baseline_cm: number | null
+  distance_delta_percent: number | null
+}
+
+export interface AoiTransitionRow {
+  from_aoi: string
+  counts: Record<string, number>
+  total: number
+}
+
+export interface AoiEventItem {
+  id: string
+  label: string
+  metric: string
+  kind: string
+  value: number
+  unit: string
+  time_s: number | null
+  gx: number | null
+  gy: number | null
+  aoi_id: string | null
+  aoi_name: string | null
+  aoi_color: string | null
+}
+
+export interface AoiMetricsData {
+  scenario: string
+  scenario_file_id: string | null
+  aois: AoiMetricItem[]
+  transitions: AoiTransitionRow[]
+  events?: AoiEventItem[]
+  total_fixations: number
+  total_dwell_time_ms: number
+  observed_aoi_dwell_time_ms: number
+  observed_aoi_dwell_time_percent: number
+}

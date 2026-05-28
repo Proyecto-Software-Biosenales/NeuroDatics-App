@@ -11,7 +11,19 @@ import {
 } from "@/components/ui/Card"
 import { KpiCard } from "@/components/ui/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
-import { useFixationData, useHeatmapOverlay } from "../hooks/useAnalyticsData"
+import {
+  useAoiMetrics,
+  useFixationData,
+  useHeatmapOverlay,
+} from "../hooks/useAnalyticsData"
+import {
+  AoiContextPanel,
+  AoiLegend,
+  AoiOverlay,
+  AoiToggleButton,
+  getContainedImageBox,
+  type ContainedImageBox,
+} from "./AoiOverlay"
 
 interface HeatmapTabProps {
   projectId: string
@@ -26,6 +38,8 @@ export function HeatmapTab({
 }: HeatmapTabProps) {
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showPurple, setShowPurple] = useState(false)
+  const [showAois, setShowAois] = useState(true)
+  const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
@@ -38,17 +52,35 @@ export function HeatmapTab({
     participantCode,
     scenario
   )
+  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
+    projectId,
+    participantCode,
+    scenario
+  )
 
   const loading = fixLoading || heatmapLoading
+  const aois = aoiData?.aois ?? []
+
+  const computeLetterbox = useCallback(() => {
+    setLetterbox(getContainedImageBox(imageRef.current, imageContainerRef.current))
+  }, [])
 
   // Load scenario background image
   useEffect(() => {
-    setScenarioImageUrl(null)
     const fileId = fixData?.scenario_file_id
-    if (!fileId) return
 
     let cancelled = false
     let currentUrl: string | null = null
+
+    Promise.resolve().then(() => {
+      if (!cancelled) setScenarioImageUrl(null)
+    })
+
+    if (!fileId) {
+      return () => {
+        cancelled = true
+      }
+    }
 
     apiFetchBlob(`/api/projects/${projectId}/files/${fileId}/image`)
       .then((blob) => {
@@ -65,6 +97,20 @@ export function HeatmapTab({
       if (currentUrl) URL.revokeObjectURL(currentUrl)
     }
   }, [projectId, fixData?.scenario_file_id])
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => computeLetterbox())
+    const container = imageContainerRef.current
+    if (!container || typeof ResizeObserver === "undefined") {
+      return () => cancelAnimationFrame(frame)
+    }
+    const observer = new ResizeObserver(() => computeLetterbox())
+    observer.observe(container)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [computeLetterbox, scenarioImageUrl])
 
   if (scenario === "all") {
     return (
@@ -176,6 +222,7 @@ export function HeatmapTab({
                         src={scenarioImageUrl}
                         alt="Escenario"
                         className="max-h-[580px] w-full object-contain"
+                        onLoad={computeLetterbox}
                       />
                     )}
 
@@ -200,21 +247,34 @@ export function HeatmapTab({
                         }}
                       />
                     )}
+
+                    {showAois && (
+                      <AoiOverlay aois={aois} box={letterbox} />
+                    )}
                   </div>
 
                   {/* Controls bar */}
-                  <div className="mt-4 flex items-center justify-end gap-3 rounded-xl border border-border bg-muted/30 px-5 py-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowPurple((p) => !p)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                        showPurple
-                          ? "border-violet-500 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
-                          : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      Filtro violeta
-                    </button>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
+                    <AoiLegend aois={showAois ? aois : []} />
+                    <div className="ml-auto flex items-center gap-3">
+                      <AoiToggleButton
+                        enabled={showAois}
+                        onToggle={() => setShowAois((value) => !value)}
+                        disabled={aois.length === 0 || aoiLoading}
+                        count={aois.length}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPurple((p) => !p)}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          showPurple
+                            ? "border-violet-500 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        Filtro violeta
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -222,6 +282,16 @@ export function HeatmapTab({
           )}
         </CardContent>
       </Card>
+
+      {participantCode && scenario !== "all" ? (
+        <AoiContextPanel
+          data={aoiData}
+          loading={aoiLoading}
+          error={aoiError}
+          title="AOIs en mapa de calor"
+          description="Relaciona la densidad del mapa de calor con las areas delimitadas del escenario."
+        />
+      ) : null}
     </div>
   )
 }

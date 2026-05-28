@@ -77,6 +77,7 @@ async def update_aois(
     return [
         AOIResponse(
             id=a.id,
+            scenaries_id=a.scenaries_id,
             name=a.name,
             color=a.color,
             shape_type=a.shape_type,

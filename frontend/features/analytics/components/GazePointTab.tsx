@@ -42,10 +42,21 @@ import { KpiCard } from "@/components/ui/KpiCard"
 import { StatisticsTable } from "@/components/ui/StatisticsTable"
 import type { StatRow } from "@/components/ui/StatisticsTable"
 import {
+  useAoiMetrics,
   useGazeAt,
   useGazeStatistics,
   useGazeTimeseries,
 } from "../hooks/useAnalyticsData"
+import {
+  AoiContextPanel,
+  AoiLegend,
+  AoiOverlay,
+  AoiToggleButton,
+  findAoiAtPoint,
+  getContainedImageBox,
+  imagePointToContainerPercent,
+  type ContainedImageBox,
+} from "./AoiOverlay"
 
 type ViewMode = "both" | "x" | "y"
 
@@ -121,11 +132,13 @@ export function GazePointTab({
   const [viewMode, setViewMode] = useState<ViewMode>("both")
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
+  const [showAois, setShowAois] = useState(true)
   // Refs for letterbox-corrected gaze positioning
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   // Gaze position remapped to account for object-contain letterboxing
   const [gazeOffset, setGazeOffset] = useState<{ x: number; y: number } | null>(null)
+  const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
 
   const { data: timeseriesData, loading: timeseriesLoading } = useGazeTimeseries(
     projectId,
@@ -143,6 +156,16 @@ export function GazePointTab({
     fetchGaze,
     clear: clearGaze,
   } = useGazeAt(projectId, participantCode)
+  const aoiScenario = scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
+  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
+    projectId,
+    participantCode,
+    aoiScenario
+  )
+  const aois = aoiData?.aois ?? []
+  const gazeX = gazeData?.gx
+  const gazeY = gazeData?.gy
+  const currentAoi = findAoiAtPoint(aois, gazeX, gazeY)
 
   const chartData = useMemo<LinePoint[]>(() => {
     if (!timeseriesData) return []
@@ -243,42 +266,35 @@ export function GazePointTab({
    * land in the empty letterbox area rather than on the visible image content.
    */
   const computeGazeOffset = useCallback(() => {
-    const img = imageRef.current
-    const container = imageContainerRef.current
-    if (!img || !container || gazeData?.gx == null || gazeData?.gy == null) {
+    const box = getContainedImageBox(imageRef.current, imageContainerRef.current)
+    setLetterbox(box)
+
+    if (!box || gazeX == null || gazeY == null) {
       setGazeOffset(null)
       return
     }
 
-    const cW = container.clientWidth
-    const cH = container.clientHeight
-    const iW = img.naturalWidth
-    const iH = img.naturalHeight
-
-    if (!cW || !cH || !iW || !iH) {
-      setGazeOffset(null)
-      return
-    }
-
-    // Scale factor for object-contain: uniform scale that fits image inside container
-    const scale = Math.min(cW / iW, cH / iH)
-    const renderedW = iW * scale
-    const renderedH = iH * scale
-    // Letterbox offsets (may be 0 on one axis)
-    const offsetX = (cW - renderedW) / 2
-    const offsetY = (cH - renderedH) / 2
-
-    // Map from image-% to container-% through the letterbox transform
-    setGazeOffset({
-      x: ((offsetX + (gazeData.gx / 100) * renderedW) / cW) * 100,
-      y: ((offsetY + (gazeData.gy / 100) * renderedH) / cH) * 100,
-    })
-  }, [gazeData?.gx, gazeData?.gy])
+    setGazeOffset(imagePointToContainerPercent(box, gazeX, gazeY))
+  }, [gazeX, gazeY])
 
   // Recompute offset when gazeData changes (image may already be loaded)
   useEffect(() => {
     computeGazeOffset()
   }, [computeGazeOffset])
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => computeGazeOffset())
+    const container = imageContainerRef.current
+    if (!container || typeof ResizeObserver === "undefined") {
+      return () => cancelAnimationFrame(frame)
+    }
+    const observer = new ResizeObserver(() => computeGazeOffset())
+    observer.observe(container)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [computeGazeOffset, scenarioImageUrl])
 
   const handleKpiClick = (time: number | null) => {
     if (time == null) return
@@ -288,7 +304,6 @@ export function GazePointTab({
   }
 
   useEffect(() => {
-    setGazeOffset(null)
     if (!gazeData?.scenario_file_id) {
       return
     }
@@ -520,17 +535,25 @@ export function GazePointTab({
             </CardDescription>
           </div>
           {gazeData && (
-            <button
-              type="button"
-              onClick={() => {
-                clearGaze()
-                setSelectedTime(null)
-              }}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Limpiar selección
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <AoiToggleButton
+                enabled={showAois}
+                onToggle={() => setShowAois((value) => !value)}
+                disabled={aois.length === 0 || aoiLoading}
+                count={aois.length}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  clearGaze()
+                  setSelectedTime(null)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Limpiar selección
+              </button>
+            </div>
           )}
         </CardHeader>
 
@@ -635,6 +658,9 @@ export function GazePointTab({
                     className="max-h-[500px] w-full object-contain"
                     onLoad={computeGazeOffset}
                   />
+                  {showAois && (
+                    <AoiOverlay aois={aois} box={letterbox} />
+                  )}
                   {gazeOffset && (
                     <TooltipProvider>
                       <Tooltip>
@@ -669,6 +695,8 @@ export function GazePointTab({
             </div>
           ) : null}
 
+          {gazeData && showAois ? <AoiLegend aois={aois} /> : null}
+
           {/* Bottom callout - only when gaze data is loaded */}
           {gazeData && (
             <div className="flex items-center gap-3 rounded-xl border border-cyan-200 bg-cyan-50/60 px-4 py-3.5 dark:border-cyan-800/40 dark:bg-cyan-950/30">
@@ -679,6 +707,7 @@ export function GazePointTab({
                 <p className="text-base font-medium text-cyan-700 dark:text-cyan-400">Punto de atención</p>
                 <p className="text-sm text-cyan-600 dark:text-cyan-500">
                   El indicador aguamarina marca la ubicación exacta donde se registró la posición de gaze en el segundo {Math.round(gazeData.nearest_time_s)} de la visualización.
+                  {currentAoi ? ` Cae dentro del AOI "${currentAoi.name}".` : aois.length > 0 ? " No cae dentro de un AOI delimitado." : ""}
                 </p>
               </div>
             </div>
@@ -703,6 +732,16 @@ export function GazePointTab({
           />
         </CardContent>
       </Card>
+
+      {participantCode && scenario !== "all" ? (
+        <AoiContextPanel
+          data={aoiData}
+          loading={aoiLoading}
+          error={aoiError}
+          title="AOIs en gaze point"
+          description="Resume cuantas fijaciones y cuanto tiempo observado caen en cada area delimitada."
+        />
+      ) : null}
     </div>
   )
 }

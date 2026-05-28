@@ -32,6 +32,7 @@ class UpdateAOIsRequest(BaseModel):
 
 class AOIResponse(BaseModel):
     id: UUID
+    scenaries_id: UUID
     name: str
     color: str
     shape_type: str
