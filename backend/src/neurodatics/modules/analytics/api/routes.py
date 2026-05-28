@@ -7,12 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ....api.deps import get_current_user, get_db
 from ...participants.domain.entities import Participant
 from ...projects.domain.entities import Project
 from ...scenaries.domain.entities import Scenaries
 from ..application.services.analytics_service import (
+    AoiAnalyticsService,
     EegAnalyticsService,
     FixationDataService,
     FixationHistogramService,
@@ -24,6 +26,7 @@ from ..application.services.analytics_service import (
 from ..application.services.parquet_reader_service import ParquetReaderService
 from ..infrastructure.redis_cache import AnalyticsRedisCache
 from .schemas import (
+    AoiMetricsResponse,
     DistanceStatisticsResponse,
     DistanceTimeseriesResponse,
     EegPsdResponse,
@@ -57,6 +60,47 @@ async def _verify_ownership(db: AsyncSession, project_id: UUID, current_user: st
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+
+async def _resolve_scenary_for_analytics(
+    db: AsyncSession,
+    project_id: UUID,
+    scenario: str,
+    include_aois: bool = False,
+) -> Optional[Scenaries]:
+    from pathlib import Path as _Path
+
+    options = [selectinload(Scenaries.aois)] if include_aois else []
+    result = await db.execute(
+        select(Scenaries)
+        .options(*options)
+        .where(
+            Scenaries.project_id == project_id,
+            Scenaries.name == scenario,
+        )
+    )
+    scenary = result.scalar_one_or_none()
+    if scenary is not None:
+        return scenary
+
+    all_result = await db.execute(
+        select(Scenaries)
+        .options(*options)
+        .where(Scenaries.project_id == project_id)
+    )
+    all_scenarios = all_result.scalars().all()
+
+    def _norm(name: str) -> str:
+        return _Path(str(name).strip()).stem.lower().replace(" ", "")
+
+    target_stem = _norm(scenario)
+    for candidate in all_scenarios:
+        if candidate.file_id and str(candidate.file_id) == str(scenario):
+            return candidate
+        if _norm(candidate.name) == target_stem:
+            return candidate
+
+    return None
 
 
 @router.get("/participants", response_model=List[ParticipantItem])
@@ -857,3 +901,64 @@ async def fixation_histogram(
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
     return FixationHistogramResponse(**result_data)
+
+
+@router.get("/aois", response_model=AoiMetricsResponse)
+async def aoi_metrics(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    if not scenario or scenario == "all":
+        raise HTTPException(status_code=400, detail="scenario must be specified")
+
+    await _verify_ownership(db, project_id, current_user)
+
+    scenary = await _resolve_scenary_for_analytics(
+        db,
+        project_id,
+        scenario,
+        include_aois=True,
+    )
+    if not scenary:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+
+    scenario_file_id = str(scenary.file_id) if scenary.file_id else None
+    aois = list(scenary.aois or [])
+
+    if not aois:
+        return AoiMetricsResponse(
+            scenario=scenary.name,
+            scenario_file_id=scenario_file_id,
+            aois=[],
+            transitions=[],
+            events=[],
+            total_fixations=0,
+            total_dwell_time_ms=0.0,
+            observed_aoi_dwell_time_ms=0.0,
+            observed_aoi_dwell_time_percent=0.0,
+        )
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: AoiAnalyticsService.compute_metrics(df, scenario, aois)
+    )
+    if scenario != scenary.name and not result_data.get("events") and result_data.get("total_fixations", 0) == 0:
+        result_data = await anyio.to_thread.run_sync(
+            lambda: AoiAnalyticsService.compute_metrics(df, scenary.name, aois)
+        )
+
+    return AoiMetricsResponse(
+        scenario=scenary.name,
+        scenario_file_id=scenario_file_id,
+        **result_data,
+    )

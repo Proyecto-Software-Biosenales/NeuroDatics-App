@@ -11,7 +11,15 @@ import {
 } from "@/components/ui/Card"
 import { KpiCard } from "@/components/ui/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
-import { useScanpathData } from "../hooks/useAnalyticsData"
+import { useAoiMetrics, useScanpathData } from "../hooks/useAnalyticsData"
+import {
+  AoiContextPanel,
+  AoiLegend,
+  AoiOverlay,
+  AoiToggleButton,
+  getContainedImageBox,
+  type ContainedImageBox,
+} from "./AoiOverlay"
 
 interface ScanpathTabProps {
   projectId: string
@@ -25,59 +33,39 @@ export function ScanpathTab({
   scenario,
 }: ScanpathTabProps) {
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
+  const [showAois, setShowAois] = useState(true)
   
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
-  const [letterbox, setLetterbox] = useState<{
-    cW: number
-    cH: number
-    renderedW: number
-    renderedH: number
-    offsetX: number
-    offsetY: number
-  } | null>(null)
+  const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
   const [visibleCount, setVisibleCount] = useState<number | null>(null)
 
   const { data, loading, error } = useScanpathData(projectId, participantCode, scenario)
+  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
+    projectId,
+    participantCode,
+    scenario
+  )
+  const aois = aoiData?.aois ?? []
 
   const computeLetterbox = useCallback(() => {
-    const img = imageRef.current
-    const container = imageContainerRef.current
-    if (!img || !container) {
-      setLetterbox(null)
-      return
-    }
-    const cW = container.clientWidth
-    const cH = container.clientHeight
-    const iW = img.naturalWidth
-    const iH = img.naturalHeight
-    if (!cW || !cH || !iW || !iH) {
-      setLetterbox(null)
-      return
-    }
-    const scale = Math.min(cW / iW, cH / iH)
-    const renderedW = iW * scale
-    const renderedH = iH * scale
-    setLetterbox({
-      cW,
-      cH,
-      renderedW,
-      renderedH,
-      offsetX: (cW - renderedW) / 2,
-      offsetY: (cH - renderedH) / 2,
-    })
+    setLetterbox(getContainedImageBox(imageRef.current, imageContainerRef.current))
   }, [])
 
   // Image load / revocation
   useEffect(() => {
-    if (!data?.scenario_file_id) {
-      setScenarioImageUrl(null)
-      return
-    }
-
     let cancelled = false
     let currentUrl: string | null = null
+
+    if (!data?.scenario_file_id) {
+      Promise.resolve().then(() => {
+        if (!cancelled) setScenarioImageUrl(null)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
 
     apiFetchBlob(`/api/projects/${projectId}/files/${data.scenario_file_id}/image`)
       .then((blob) => {
@@ -104,7 +92,7 @@ export function ScanpathTab({
   // Reset slider to "show all" whenever data changes
   useEffect(() => {
     if (data?.n_objectives) {
-      setVisibleCount(data.n_objectives)
+      Promise.resolve().then(() => setVisibleCount(data.n_objectives))
     }
   }, [data?.n_objectives])
 
@@ -224,9 +212,12 @@ export function ScanpathTab({
                             onLoad={computeLetterbox}
                           />
                         )}
+                        {showAois && (
+                          <AoiOverlay aois={aois} box={letterbox} className="z-10" />
+                        )}
                         {letterbox && (
                           <svg
-                            className="pointer-events-none absolute inset-0"
+                            className="pointer-events-none absolute inset-0 z-20"
                             width="100%"
                             height="100%"
                             viewBox={`0 0 ${letterbox.cW} ${letterbox.cH}`}
@@ -294,6 +285,17 @@ export function ScanpathTab({
                           </svg>
                         )}
                       </div>
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
+                        <AoiLegend aois={showAois ? aois : []} />
+                        <div className="ml-auto flex items-center">
+                          <AoiToggleButton
+                            enabled={showAois}
+                            onToggle={() => setShowAois((value) => !value)}
+                            disabled={aois.length === 0 || aoiLoading}
+                            count={aois.length}
+                          />
+                        </div>
+                      </div>
                       {/* Playback slider */}
                       {data.objectives.length > 1 && (
                         <div className="mt-4 flex items-center gap-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
@@ -327,6 +329,16 @@ export function ScanpathTab({
           )}
         </CardContent>
       </Card>
+
+      {participantCode && scenario !== "all" ? (
+        <AoiContextPanel
+          data={aoiData}
+          loading={aoiLoading}
+          error={aoiError}
+          title="AOIs en mapa de recorridos"
+          description="Compara el orden de fijaciones del recorrido con las areas delimitadas."
+        />
+      ) : null}
     </div>
   )
 }

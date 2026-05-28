@@ -1,5 +1,6 @@
 import { apiFetch, apiFetchBlob } from "@/lib/api/apiFetch"
 import type {
+  AoiMetricsData,
   AnalyticsParticipant,
   AnalyticsScenario,
   DistanceStatistics,
@@ -189,5 +190,10 @@ export const AnalyticsApi = {
   getFixationHistogram: (projectId: string, participantCode: string, scenario: string = "all") => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
     return apiFetch<FixationHistogramData>(`/api/projects/${projectId}/analytics/fixations/histogram?${params}`)
+  },
+
+  getAoiMetrics: (projectId: string, participantCode: string, scenario: string) => {
+    const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    return apiFetch<AoiMetricsData>(`/api/projects/${projectId}/analytics/aois?${params}`)
   },
 }

@@ -14,6 +14,7 @@ import { GsrTab } from "@/features/analytics/components/GsrTab"
 import { ScanpathTab } from "@/features/analytics/components/ScanpathTab"
 import { HeatmapTab } from "@/features/analytics/components/HeatmapTab"
 import { FixationHistogramTab } from "@/features/analytics/components/FixationHistogramTab"
+import { AoiComparisonTab } from "@/features/analytics/components/AoiComparisonTab"
 import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
@@ -28,6 +29,7 @@ type AnalyticsTabKey =
   | "heatmap"
   | "scanpath"
   | "device_distance"
+  | "aoi_comparison"
 
 type EegTabKey = "timeseries" | "psd" | "spectrogram" | "topography"
 
@@ -38,6 +40,7 @@ const ANALYTICS_TABS: Array<{ key: AnalyticsTabKey; label: string }> = [
   { key: "heatmap", label: "Mapa de calor" },
   { key: "scanpath", label: "Mapa de recorridos" },
   { key: "device_distance", label: "Distancia dispositivo" },
+  { key: "aoi_comparison", label: "Comparativa AOIs" },
 ]
 
 const EEG_TABS: Array<{ key: EegTabKey; label: string }> = [
@@ -233,6 +236,13 @@ export default function DashboardPage() {
                   />
                 ) : activeTab === "fixation_histogram" ? (
                   <FixationHistogramTab
+                    key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
+                    projectId={selectedProjectId}
+                    participantCode={selectedParticipant}
+                    scenario={selectedScenario}
+                  />
+                ) : activeTab === "aoi_comparison" ? (
+                  <AoiComparisonTab
                     key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}

@@ -209,3 +209,59 @@ class FixationHistogramResponse(BaseModel):
     mean_duration_ms: float
     min_duration_ms: float
     max_duration_ms: float
+
+
+class AoiMetricItem(BaseModel):
+    id: str
+    name: str
+    color: str
+    shape_type: str
+    shape: Dict[str, float]
+    fixation_count: int
+    total_dwell_time_ms: float
+    total_dwell_time_percent: float
+    avg_fixation_duration_ms: float
+    ttff_ms: Optional[float] = None
+    hit_rate_percent: float
+    fixations_to_target: Optional[int] = None
+    pupil_sample_count: int = 0
+    avg_pupil_mm: Optional[float] = None
+    pupil_delta_from_baseline_mm: Optional[float] = None
+    pupil_delta_percent: Optional[float] = None
+    distance_sample_count: int = 0
+    avg_distance_cm: Optional[float] = None
+    distance_delta_from_baseline_cm: Optional[float] = None
+    distance_delta_percent: Optional[float] = None
+
+
+class AoiTransitionRow(BaseModel):
+    from_aoi: str
+    counts: Dict[str, int]
+    total: int
+
+
+class AoiEventItem(BaseModel):
+    id: str
+    label: str
+    metric: str
+    kind: str
+    value: float
+    unit: str
+    time_s: Optional[float] = None
+    gx: Optional[float] = None
+    gy: Optional[float] = None
+    aoi_id: Optional[str] = None
+    aoi_name: Optional[str] = None
+    aoi_color: Optional[str] = None
+
+
+class AoiMetricsResponse(BaseModel):
+    scenario: str
+    scenario_file_id: Optional[str] = None
+    aois: List[AoiMetricItem]
+    transitions: List[AoiTransitionRow]
+    events: List[AoiEventItem] = []
+    total_fixations: int
+    total_dwell_time_ms: float
+    observed_aoi_dwell_time_ms: float
+    observed_aoi_dwell_time_percent: float

@@ -26,10 +26,24 @@ export type ApiProjectParticipant = {
 
 export type ApiProjectAoi = {
   id: string;
+  scenaries_id?: string;
   name: string;
   color?: string;
   shape_type?: string;
   shape?: Record<string, unknown>;
+};
+
+export type ApiAoiPayload = {
+  scenaries_name: string;
+  name: string;
+  color: string;
+  shape_type: string;
+  shape: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 };
 
 export type ApiProjectScenary = {
@@ -163,7 +177,7 @@ export const ProjectsApi = {
       body: JSON.stringify({ scenaries }),
     }),
 
-  setAois: (projectId: string, aois: any[]) =>
+  setAois: (projectId: string, aois: ApiAoiPayload[]) =>
     apiFetch<void>(`/api/projects/${projectId}/aois`, {
       method: "PUT",
       body: JSON.stringify({ aois }),
