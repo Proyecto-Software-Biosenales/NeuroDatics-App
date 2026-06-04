@@ -242,6 +242,39 @@ class GoogleDriveClient:
         request = service.files().get_media(fileId=file_id)
         return request.execute(num_retries=max(0, int(settings.gdrive_request_retries)))
 
+    def download_file_to_path(
+        self,
+        file_id: str,
+        destination_path: str,
+        chunk_size: int = 8 * 1024 * 1024,
+    ) -> str:
+        """Stream file content from Google Drive into a local path."""
+        from googleapiclient.http import MediaIoBaseDownload
+
+        service = self._require_service()
+        destination = Path(destination_path)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temp_destination = destination.with_name(f"{destination.name}.part")
+
+        request = service.files().get_media(fileId=file_id)
+        try:
+            with temp_destination.open("wb") as fp:
+                downloader = MediaIoBaseDownload(fp, request, chunksize=chunk_size)
+                done = False
+                while not done:
+                    _, done = downloader.next_chunk(
+                        num_retries=max(0, int(settings.gdrive_request_retries))
+                    )
+            temp_destination.replace(destination)
+        except Exception:
+            try:
+                temp_destination.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
+
+        return str(destination)
+
 
 # Global instance
 gdrive_client = GoogleDriveClient()

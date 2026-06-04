@@ -214,7 +214,7 @@ async def gaze_at(
     await _verify_ownership(db, project_id, current_user)
 
     rounded_t = round(t_s, 1)
-    cache_key = _redis.build_key(project_id, participant_code, "gaze_at", str(rounded_t))
+    cache_key = _redis.build_key(project_id, participant_code, "gaze_at_v2", str(rounded_t))
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return GazeAtResponse(**cached)
@@ -236,6 +236,7 @@ async def gaze_at(
 
     scenario_name = gaze_data.get("scenario")
     scenario_file_id = None
+    scenario_type = None
     if scenario_name:
         # Tier 1: exact match
         result = await db.execute(
@@ -268,8 +269,10 @@ async def gaze_at(
                     )
                     break
 
-        if scenary and scenary.file_id:
-            scenario_file_id = str(scenary.file_id)
+        if scenary:
+            scenario_type = scenary.type
+            if scenary.file_id:
+                scenario_file_id = str(scenary.file_id)
         elif scenary is None:
             logger.warning(
                 "No scenario found for name=%r in project_id=%s",
@@ -277,9 +280,19 @@ async def gaze_at(
                 project_id,
             )
 
+    scenario_time_s = await anyio.to_thread.run_sync(
+        lambda: PupilAnalyticsService.compute_scenario_relative_time(
+            df,
+            scenario_name,
+            gaze_data.get("nearest_time_s"),
+        )
+    )
+
     response_data = {
         **gaze_data,
         "scenario_file_id": scenario_file_id,
+        "scenario_type": scenario_type,
+        "scenario_time_s": scenario_time_s,
     }
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data))

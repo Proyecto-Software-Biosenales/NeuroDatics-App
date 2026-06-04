@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -6,11 +6,13 @@ from typing import List, Optional, Tuple
 from uuid import UUID
 from datetime import datetime, timezone
 from collections import OrderedDict
+from pathlib import Path
 import asyncio
 import hashlib
 import io
 import logging
 import os
+import subprocess
 import time
 
 import anyio
@@ -48,6 +50,16 @@ _image_cache_download_locks: dict[str, asyncio.Lock] = {}
 
 # Persistent disk cache for images - survives in-memory eviction, cleared on container restart
 _IMAGE_DISK_CACHE_DIR = os.environ.get("IMAGE_CACHE_DIR", "/data/image_cache")
+_VIDEO_DISK_CACHE_DIR = os.environ.get("VIDEO_CACHE_DIR", "/data/video_cache")
+_VIDEO_FRAME_CACHE_DIR = os.environ.get("VIDEO_FRAME_CACHE_DIR", "/data/video_frame_cache")
+_VIDEO_FRAME_MIME_TYPE = "image/jpeg"
+_VIDEO_FRAME_TIME_DECIMALS = 1
+_FFMPEG_TIMEOUT_SECONDS = 45
+_video_preview_locks: dict[str, asyncio.Lock] = {}
+
+
+def _hashed_cache_id(cache_key: str) -> str:
+    return hashlib.sha1(cache_key.encode("utf-8")).hexdigest()
 
 
 def _disk_cache_path(file_id: UUID) -> "Path":
@@ -88,6 +100,29 @@ def _write_disk_cache(file_id: UUID, content: bytes, mime_type: str) -> None:
         mime_path.write_text(mime_type, encoding="utf-8")
     except OSError as exc:
         logger.warning("Failed to write image disk cache for %s: %s", file_id, exc)
+
+
+def _video_source_cache_path(project_file: ProjectFile, cache_key: str) -> Path:
+    suffix = Path(project_file.filename or "").suffix.lower() or ".video"
+    base = Path(_VIDEO_DISK_CACHE_DIR)
+    base.mkdir(parents=True, exist_ok=True)
+    return base / f"{_hashed_cache_id(cache_key)}{suffix}"
+
+
+def _video_frame_cache_path(cache_key: str, frame_time_s: float) -> Path:
+    base = Path(_VIDEO_FRAME_CACHE_DIR)
+    base.mkdir(parents=True, exist_ok=True)
+    frame_key = f"{cache_key}:{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}"
+    return base / f"{_hashed_cache_id(frame_key)}.jpg"
+
+
+def _read_video_frame_cache(frame_path: Path) -> Optional[bytes]:
+    try:
+        if frame_path.exists() and frame_path.stat().st_size > 0:
+            return frame_path.read_bytes()
+    except OSError:
+        pass
+    return None
 
 
 def _build_image_etag(cache_key: str) -> str:
@@ -153,6 +188,22 @@ async def _cleanup_image_download_lock(cache_key: str, lock: asyncio.Lock) -> No
             _image_cache_download_locks.pop(cache_key, None)
 
 
+async def _get_video_preview_lock(cache_key: str) -> asyncio.Lock:
+    async with _image_cache_lock:
+        lock = _video_preview_locks.get(cache_key)
+        if lock is None:
+            lock = asyncio.Lock()
+            _video_preview_locks[cache_key] = lock
+        return lock
+
+
+async def _cleanup_video_preview_lock(cache_key: str, lock: asyncio.Lock) -> None:
+    async with _image_cache_lock:
+        existing = _video_preview_locks.get(cache_key)
+        if existing is lock and not lock.locked():
+            _video_preview_locks.pop(cache_key, None)
+
+
 async def _build_isolated_drive_client(db: AsyncSession) -> Optional["GoogleDriveClient"]:
     """Create a fresh GoogleDriveClient without touching the global singleton."""
     repository = SystemIntegrationRepository(db)
@@ -171,15 +222,12 @@ async def _build_isolated_drive_client(db: AsyncSession) -> Optional["GoogleDriv
     return client
 
 
-@router.get("/{project_id}/files/{file_id}/image")
-async def get_project_file_image(
+async def _load_project_file(
     project_id: UUID,
     file_id: UUID,
-    request: Request,
-    current_user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Serve an image file from Google Drive through an authenticated backend proxy."""
+    current_user: str,
+    db: AsyncSession,
+) -> ProjectFile:
     stmt = (
         select(ProjectFile)
         .join(Project, ProjectFile.project_id == Project.id)
@@ -192,12 +240,36 @@ async def get_project_file_image(
     )
     result = await db.execute(stmt)
     project_file = result.scalar_one_or_none()
-
     if not project_file:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File not found"
         )
+    return project_file
+
+
+def _project_file_cache_key(project_file: ProjectFile) -> str:
+    updated_at_part = int(project_file.updated_at.timestamp()) if project_file.updated_at else 0
+    return f"{project_file.id}:{project_file.external_id}:{updated_at_part}"
+
+
+def _is_image_file(project_file: ProjectFile) -> bool:
+    return bool(project_file.mime_type and project_file.mime_type.startswith("image/"))
+
+
+def _is_video_file(project_file: ProjectFile) -> bool:
+    return bool(
+        (project_file.mime_type and project_file.mime_type.startswith("video/"))
+        or project_file.kind == "scenario_video"
+    )
+
+
+async def _serve_project_file_image(
+    project_file: ProjectFile,
+    request: Request,
+    db: AsyncSession,
+) -> Response:
+    """Serve an image ProjectFile through the existing authenticated cache path."""
 
     if not project_file.mime_type or not project_file.mime_type.startswith("image/"):
         raise HTTPException(
@@ -211,8 +283,7 @@ async def get_project_file_image(
             detail="File storage reference not found"
         )
 
-    updated_at_part = int(project_file.updated_at.timestamp()) if project_file.updated_at else 0
-    cache_key = f"{project_file.id}:{project_file.external_id}:{updated_at_part}"
+    cache_key = _project_file_cache_key(project_file)
     etag = _build_image_etag(cache_key)
 
     response_headers = {
@@ -296,6 +367,301 @@ async def get_project_file_image(
         media_type=project_file.mime_type,
         headers={**response_headers, "X-Image-Cache": "MISS"},
     )
+
+
+async def _compute_video_frame_time_s(
+    db: AsyncSession,
+    project_id: UUID,
+    participant_code: Optional[str],
+    scenario: Optional[str],
+    absolute_time_s: float,
+) -> float:
+    if not participant_code or not scenario or scenario == "all":
+        return max(0.0, absolute_time_s)
+
+    try:
+        from ...analytics.application.services.analytics_service import PupilAnalyticsService
+        from ...analytics.application.services.parquet_reader_service import ParquetReaderService
+
+        reader = ParquetReaderService(db)
+        df = await reader.read_from_cache_only(project_id, participant_code)
+        if df is None:
+            df = await reader.read(project_id, participant_code)
+        relative_time = await anyio.to_thread.run_sync(
+            lambda: PupilAnalyticsService.compute_scenario_relative_time(
+                df,
+                scenario,
+                absolute_time_s,
+            )
+        )
+        if relative_time is not None:
+            return max(0.0, float(relative_time))
+    except Exception as exc:
+        logger.warning(
+            "Falling back to absolute video preview time for project_id=%s scenario=%r: %s",
+            project_id,
+            scenario,
+            exc,
+        )
+
+    return max(0.0, absolute_time_s)
+
+
+async def _ensure_video_source_cached(
+    project_file: ProjectFile,
+    db: AsyncSession,
+    cache_key: str,
+) -> Path:
+    video_path = _video_source_cache_path(project_file, cache_key)
+    try:
+        if video_path.exists() and video_path.stat().st_size > 0:
+            return video_path
+    except OSError:
+        pass
+
+    drive_client = await _build_isolated_drive_client(db)
+    if not drive_client:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo configurar Google Drive para servir el video"
+        )
+
+    try:
+        await anyio.to_thread.run_sync(
+            drive_client.download_file_to_path,
+            project_file.external_id,
+            str(video_path),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo descargar el video desde Google Drive"
+        ) from exc
+
+    return video_path
+
+
+def _probe_video_duration_s(video_path: Path) -> Optional[float]:
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(video_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    try:
+        duration = float(result.stdout.strip())
+    except (TypeError, ValueError):
+        return None
+
+    if duration <= 0:
+        return None
+    return duration
+
+
+def _run_ffmpeg_frame_extract(video_path: Path, frame_path: Path, time_s: float) -> None:
+    temp_frame_path = frame_path.with_name(f"{frame_path.stem}.tmp{frame_path.suffix}")
+    try:
+        temp_frame_path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-ss",
+                f"{time_s:.3f}",
+                "-i",
+                str(video_path),
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale='min(1920,iw)':-2",
+                "-q:v",
+                "3",
+                "-y",
+                str(temp_frame_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=_FFMPEG_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError("FFmpeg is not installed in the backend container") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("FFmpeg timed out while generating the video frame") from exc
+
+    if result.returncode != 0:
+        message = result.stderr.strip() or "FFmpeg failed without stderr output"
+        raise RuntimeError(message)
+
+    if not temp_frame_path.exists() or temp_frame_path.stat().st_size == 0:
+        raise RuntimeError("FFmpeg did not produce a video frame")
+
+    temp_frame_path.replace(frame_path)
+
+
+def _extract_video_frame(video_path: Path, frame_path: Path, frame_time_s: float) -> bytes:
+    duration_s = _probe_video_duration_s(video_path)
+    safe_time_s = max(0.0, frame_time_s)
+    if duration_s is not None:
+        safe_time_s = min(safe_time_s, max(0.0, duration_s - 0.05))
+
+    try:
+        _run_ffmpeg_frame_extract(video_path, frame_path, safe_time_s)
+    except RuntimeError:
+        if safe_time_s <= 0:
+            raise
+        _run_ffmpeg_frame_extract(video_path, frame_path, 0.0)
+
+    return frame_path.read_bytes()
+
+
+@router.get("/{project_id}/files/{file_id}/preview")
+async def get_project_file_preview(
+    project_id: UUID,
+    file_id: UUID,
+    request: Request,
+    time_s: float = Query(default=0.0, ge=0.0, le=86400.0),
+    scenario: Optional[str] = Query(default=None),
+    participant_code: Optional[str] = Query(default=None),
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Serve an image preview for image files or a time-specific frame for videos."""
+    project_file = await _load_project_file(project_id, file_id, current_user, db)
+
+    if _is_image_file(project_file):
+        return await _serve_project_file_image(project_file, request, db)
+
+    if not _is_video_file(project_file):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Requested file is neither an image nor a video"
+        )
+
+    if not project_file.external_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File storage reference not found"
+        )
+
+    cache_key = _project_file_cache_key(project_file)
+    relative_time_s = await _compute_video_frame_time_s(
+        db,
+        project_id,
+        participant_code,
+        scenario,
+        time_s,
+    )
+    frame_time_s = round(max(0.0, relative_time_s), _VIDEO_FRAME_TIME_DECIMALS)
+    frame_path = _video_frame_cache_path(cache_key, frame_time_s)
+    frame_cache_key = f"{cache_key}:frame:{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}"
+    etag = _build_image_etag(frame_cache_key)
+    response_headers = {
+        "Cache-Control": "private, max-age=300, stale-while-revalidate=60",
+        "ETag": etag,
+    }
+
+    cached_frame = await anyio.to_thread.run_sync(lambda: _read_video_frame_cache(frame_path))
+    if cached_frame:
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+        return Response(
+            content=cached_frame,
+            media_type=_VIDEO_FRAME_MIME_TYPE,
+            headers={
+                **response_headers,
+                "X-Video-Frame-Cache": "DISK",
+                "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
+            },
+        )
+
+    preview_lock = await _get_video_preview_lock(cache_key)
+    try:
+        async with preview_lock:
+            cached_after_lock = await anyio.to_thread.run_sync(lambda: _read_video_frame_cache(frame_path))
+            if cached_after_lock:
+                if request.headers.get("if-none-match") == etag:
+                    return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+                return Response(
+                    content=cached_after_lock,
+                    media_type=_VIDEO_FRAME_MIME_TYPE,
+                    headers={
+                        **response_headers,
+                        "X-Video-Frame-Cache": "DISK",
+                        "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
+                    },
+                )
+
+            video_path = await _ensure_video_source_cached(project_file, db, cache_key)
+            try:
+                frame_content = await anyio.to_thread.run_sync(
+                    _extract_video_frame,
+                    video_path,
+                    frame_path,
+                    frame_time_s,
+                )
+            except RuntimeError as exc:
+                logger.warning(
+                    "Failed generating video preview for file_id=%s at %.3fs: %s",
+                    project_file.id,
+                    frame_time_s,
+                    exc,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="No se pudo generar el frame del video"
+                ) from exc
+    finally:
+        await _cleanup_video_preview_lock(cache_key, preview_lock)
+
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+
+    return Response(
+        content=frame_content,
+        media_type=_VIDEO_FRAME_MIME_TYPE,
+        headers={
+            **response_headers,
+            "X-Video-Frame-Cache": "MISS",
+            "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
+        },
+    )
+
+
+@router.get("/{project_id}/files/{file_id}/image")
+async def get_project_file_image(
+    project_id: UUID,
+    file_id: UUID,
+    request: Request,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Serve an image file from Google Drive through an authenticated backend proxy."""
+    project_file = await _load_project_file(project_id, file_id, current_user, db)
+    return await _serve_project_file_image(project_file, request, db)
 
 
 @router.post("/", response_model=ProjectResponse)

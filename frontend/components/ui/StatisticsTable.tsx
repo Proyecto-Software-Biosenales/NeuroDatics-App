@@ -5,6 +5,7 @@ export interface StatRow {
   serie: string
   count: number | null
   baseline: number | null
+  mean?: number | null
   std: number | null
   median: number | null
   min: number | null
@@ -19,6 +20,8 @@ interface StatisticsTableProps {
   loading?: boolean
   /** Unit suffix for numeric values. Defaults to " mm". */
   unit?: string
+  /** Highlights the active row when the summary is not the first row. */
+  activeSerie?: string
 }
 
 const fmt = (v: number | null, decimals = 4, suffix = " mm") =>
@@ -64,17 +67,19 @@ function SummaryCards({ row, loading, unit = " mm" }: { row?: StatRow; loading?:
 
   if (!row) return null
 
+  const suffix = row.serie.toUpperCase()
+  const meanValue = row.mean ?? row.median
   const items = [
     {
-      label: "MEDIA (PROMEDIO)",
-      value: fmt(row.median, 4, unit),
+      label: `MEDIA (${suffix})`,
+      value: fmt(meanValue ?? null, 4, unit),
       Icon: Activity,
       bg: "bg-indigo-50 dark:bg-indigo-950/40",
       iconColor: "text-indigo-500",
       valueColor: "text-foreground",
     },
     {
-      label: "MIN (PROMEDIO)",
+      label: `MIN (${suffix})`,
       value: fmt(row.min, 4, unit),
       Icon: TrendingDown,
       bg: "bg-cyan-50 dark:bg-cyan-950/40",
@@ -82,7 +87,7 @@ function SummaryCards({ row, loading, unit = " mm" }: { row?: StatRow; loading?:
       valueColor: "text-cyan-600 dark:text-cyan-400",
     },
     {
-      label: "MAX (PROMEDIO)",
+      label: `MAX (${suffix})`,
       value: fmt(row.max, 4, unit),
       Icon: TrendingUp,
       bg: "bg-rose-50 dark:bg-rose-950/40",
@@ -90,7 +95,7 @@ function SummaryCards({ row, loading, unit = " mm" }: { row?: StatRow; loading?:
       valueColor: "text-rose-600 dark:text-rose-400",
     },
     {
-      label: "PICO % (PROMEDIO)",
+      label: `PICO % (${suffix})`,
       value:
         row.peak != null
           ? `${row.peak >= 0 ? "+" : ""}${row.peak.toFixed(1)}%`
@@ -147,7 +152,7 @@ const TABLE_HEADERS = [
   "PICO %",
 ]
 
-export function StatisticsTable({ rows, summaryRow, loading, unit = " mm" }: StatisticsTableProps) {
+export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activeSerie }: StatisticsTableProps) {
   return (
     <div>
       <SummaryCards row={summaryRow} loading={loading} unit={unit} />
@@ -207,7 +212,7 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm" }: Sta
                     className={cn(
                       "border-b border-border/50 transition-colors hover:bg-muted/30",
                       index === rows.length - 1 && "border-b-0",
-                      index === 0 && "bg-muted/20"
+                      (activeSerie ? row.serie === activeSerie : index === 0) && "bg-muted/20"
                     )}
                   >
                     <td className="px-4 py-4">
@@ -239,7 +244,7 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm" }: Sta
                     </td>
 
                     <td className="px-4 py-4 text-right font-semibold text-foreground">
-                      {fmt(row.median, 4, unit)}
+                      {fmt(row.mean ?? row.median, 4, unit)}
                     </td>
 
                     <td className="px-4 py-4 text-right font-medium text-cyan-500 dark:text-cyan-400">

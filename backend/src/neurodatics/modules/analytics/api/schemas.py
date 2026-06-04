@@ -46,6 +46,8 @@ class GazeAtResponse(BaseModel):
     gx: Optional[float] = None
     gy: Optional[float] = None
     scenario_file_id: Optional[str] = None
+    scenario_type: Optional[str] = None
+    scenario_time_s: Optional[float] = None
 
 
 class GazeTimeseriesResponse(BaseModel):

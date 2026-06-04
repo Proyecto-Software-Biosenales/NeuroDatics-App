@@ -26,6 +26,9 @@ services:
         condition: service_healthy
     volumes:
       - parquet_cache:/data/parquet_cache
+      - image_cache:/data/image_cache
+      - video_cache:/data/video_cache
+      - video_frame_cache:/data/video_frame_cache
 
   worker:
     build:
@@ -51,3 +54,6 @@ services:
 
 volumes:
   parquet_cache:
+  image_cache:
+  video_cache:
+  video_frame_cache:

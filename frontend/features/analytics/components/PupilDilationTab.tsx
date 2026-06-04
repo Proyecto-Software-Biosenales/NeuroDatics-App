@@ -39,7 +39,6 @@ import type { StatRow } from "@/components/ui/StatisticsTable"
 import {
   useAoiMetrics,
   useGazeAt,
-  usePupilStatistics,
   usePupilTimeseries,
 } from "../hooks/useAnalyticsData"
 import {
@@ -63,9 +62,32 @@ interface PupilDilationTabProps {
 
 interface LinePoint {
   time: number
+  left: number
+  right: number
   smooth_left: number
   smooth_right: number
-  average: number
+}
+
+interface PupilSample {
+  time: number
+  value: number
+  rawValue: number
+}
+
+interface ActivePupilStats {
+  count: number
+  mean: number
+  min: number
+  max: number
+  std: number
+  median: number
+  baseline: number
+  raw_mean: number | null
+  raw_min: number | null
+  raw_max: number | null
+  raw_std: number | null
+  raw_median: number | null
+  raw_baseline: number | null
 }
 
 interface PupilTooltipPayloadEntry {
@@ -118,6 +140,120 @@ function isNoImageScenario(name: string | null): boolean {
   )
 }
 
+function isValidPupilValue(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+}
+
+function roundMetric(value: number): number {
+  return Number.isFinite(value) ? Math.round(value * 10000) / 10000 : 0
+}
+
+function percentile(sortedValues: number[], percentileValue: number): number {
+  if (sortedValues.length === 0) return 0
+  const position = (percentileValue / 100) * (sortedValues.length - 1)
+  const lower = Math.floor(position)
+  const upper = Math.ceil(position)
+  if (lower === upper) return sortedValues[lower]
+  const weight = position - lower
+  return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight
+}
+
+function robustBaseline(values: number[]): number {
+  const finiteValues = values.filter((value) => Number.isFinite(value))
+  if (finiteValues.length === 0) return 0
+  const sorted = [...finiteValues].sort((a, b) => a - b)
+  const low = percentile(sorted, 5)
+  const high = percentile(sorted, 20)
+  const baselineValues = finiteValues.filter((value) => value >= low && value <= high)
+  const source = baselineValues.length > 0 ? baselineValues : finiteValues
+  return source.reduce((sum, value) => sum + value, 0) / source.length
+}
+
+function computeStats(samples: PupilSample[]): ActivePupilStats | null {
+  const values = samples.map((sample) => sample.value).filter((value) => Number.isFinite(value))
+  if (values.length === 0) return null
+
+  const rawValues = samples.map((sample) => sample.rawValue).filter((value) => Number.isFinite(value))
+  const sorted = [...values].sort((a, b) => a - b)
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length
+  const varianceDivisor = values.length > 1 ? values.length - 1 : values.length
+  const std = Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / varianceDivisor)
+  const median = values.length % 2 === 0
+    ? (sorted[values.length / 2 - 1] + sorted[values.length / 2]) / 2
+    : sorted[Math.floor(values.length / 2)]
+
+  const rawSorted = [...rawValues].sort((a, b) => a - b)
+  const rawMean = rawValues.length > 0
+    ? rawValues.reduce((sum, value) => sum + value, 0) / rawValues.length
+    : null
+  const rawVarianceDivisor = rawValues.length > 1 ? rawValues.length - 1 : rawValues.length
+  const rawStd = rawValues.length > 0
+    ? Math.sqrt(rawValues.reduce((sum, value) => sum + (value - (rawMean ?? 0)) ** 2, 0) / rawVarianceDivisor)
+    : null
+  const rawMedian = rawValues.length > 0
+    ? rawValues.length % 2 === 0
+      ? (rawSorted[rawValues.length / 2 - 1] + rawSorted[rawValues.length / 2]) / 2
+      : rawSorted[Math.floor(rawValues.length / 2)]
+    : null
+
+  return {
+    count: values.length,
+    mean: roundMetric(mean),
+    min: roundMetric(sorted[0]),
+    max: roundMetric(sorted[sorted.length - 1]),
+    std: roundMetric(std),
+    median: roundMetric(median),
+    baseline: roundMetric(robustBaseline(values)),
+    raw_mean: rawMean != null ? roundMetric(rawMean) : null,
+    raw_min: rawValues.length > 0 ? roundMetric(rawSorted[0]) : null,
+    raw_max: rawValues.length > 0 ? roundMetric(rawSorted[rawSorted.length - 1]) : null,
+    raw_std: rawStd != null ? roundMetric(rawStd) : null,
+    raw_median: rawMedian != null ? roundMetric(rawMedian) : null,
+    raw_baseline: rawValues.length > 0 ? roundMetric(robustBaseline(rawValues)) : null,
+  }
+}
+
+function getSamplesForMode(chartData: LinePoint[], mode: ViewMode): PupilSample[] {
+  return chartData.flatMap((point) => {
+    const leftValid = isValidPupilValue(point.left) && isValidPupilValue(point.smooth_left)
+    const rightValid = isValidPupilValue(point.right) && isValidPupilValue(point.smooth_right)
+
+    if (mode === "left") {
+      return leftValid ? [{ time: point.time, value: point.smooth_left, rawValue: point.left }] : []
+    }
+
+    if (mode === "right") {
+      return rightValid ? [{ time: point.time, value: point.smooth_right, rawValue: point.right }] : []
+    }
+
+    if (leftValid && rightValid) {
+      return [{
+        time: point.time,
+        value: (point.smooth_left + point.smooth_right) / 2,
+        rawValue: (point.left + point.right) / 2,
+      }]
+    }
+
+    if (leftValid) {
+      return [{ time: point.time, value: point.smooth_left, rawValue: point.left }]
+    }
+
+    if (rightValid) {
+      return [{ time: point.time, value: point.smooth_right, rawValue: point.right }]
+    }
+
+    return []
+  })
+}
+
+function getExtremeSample(samples: PupilSample[], kind: "min" | "max"): PupilSample | null {
+  if (samples.length === 0) return null
+  return samples.reduce((best, sample) => {
+    if (kind === "min") return sample.value < best.value ? sample : best
+    return sample.value > best.value ? sample : best
+  }, samples[0])
+}
+
 export function PupilDilationTab({
   projectId,
   participantCode,
@@ -126,6 +262,8 @@ export function PupilDilationTab({
   const [viewMode, setViewMode] = useState<ViewMode>("both")
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
+  const [scenarioPreviewLoading, setScenarioPreviewLoading] = useState(false)
+  const [scenarioPreviewError, setScenarioPreviewError] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
   // Refs for letterbox-corrected gaze positioning
   const imageContainerRef = useRef<HTMLDivElement>(null)
@@ -139,37 +277,70 @@ export function PupilDilationTab({
     participantCode,
     scenario
   )
-  const { data: stats, loading: statsLoading } = usePupilStatistics(
-    projectId,
-    participantCode,
-    scenario
-  )
   const {
     data: gazeData,
     loading: gazeLoading,
     fetchGaze,
     clear: clearGaze,
   } = useGazeAt(projectId, participantCode)
-  const aoiScenario = scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
+  const isVideoScenario = String(gazeData?.scenario_type || "").toLowerCase() === "video"
+  const aoiScenario = isVideoScenario
+    ? "all"
+    : scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
   const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
     projectId,
     participantCode,
     aoiScenario
   )
   const aois = aoiData?.aois ?? []
+  const canUseAois = !isVideoScenario
+  const canShowAois = canUseAois && showAois
   const gazeX = gazeData?.gx
   const gazeY = gazeData?.gy
-  const currentAoi = findAoiAtPoint(aois, gazeX, gazeY)
+  const currentAoi = canUseAois ? findAoiAtPoint(aois, gazeX, gazeY) : null
+  let aoiStatusText = ""
+  if (canUseAois) {
+    if (currentAoi) {
+      aoiStatusText = ` Cae dentro del AOI "${currentAoi.name}".`
+    } else if (aois.length > 0) {
+      aoiStatusText = " No cae dentro de un AOI delimitado."
+    }
+  }
 
   const chartData = useMemo<LinePoint[]>(() => {
     if (!timeseriesData) return []
     return timeseriesData.time.map((time, index) => ({
       time,
-      smooth_left: timeseriesData.smooth_left[index],
-      smooth_right: timeseriesData.smooth_right[index],
-      average: timeseriesData.average[index],
+      left: timeseriesData.left[index] ?? 0,
+      right: timeseriesData.right[index] ?? 0,
+      smooth_left: timeseriesData.smooth_left[index] ?? 0,
+      smooth_right: timeseriesData.smooth_right[index] ?? 0,
     }))
   }, [timeseriesData])
+
+  const pupilModeData = useMemo(() => {
+    const both = getSamplesForMode(chartData, "both")
+    const left = getSamplesForMode(chartData, "left")
+    const right = getSamplesForMode(chartData, "right")
+    return {
+      both: { samples: both, stats: computeStats(both) },
+      left: { samples: left, stats: computeStats(left) },
+      right: { samples: right, stats: computeStats(right) },
+    }
+  }, [chartData])
+
+  const activeModeData = pupilModeData[viewMode]
+  const activeStats = activeModeData.stats
+  const activeModeLabel = viewMode === "both"
+    ? "ambas pupilas"
+    : viewMode === "left"
+      ? "pupila izquierda"
+      : "pupila derecha"
+  const activeSerie = viewMode === "both"
+    ? "Promedio"
+    : viewMode === "left"
+      ? "Izquierda"
+      : "Derecha"
 
   // Pin the XAxis domain to the full data range so ReferenceLine never causes zoom.
   const chartDomain = useMemo<[number, number] | ["dataMin", "dataMax"]>(() => {
@@ -178,93 +349,51 @@ export function PupilDilationTab({
   }, [chartData])
 
   const minTime = useMemo(() => {
-    if (chartData.length === 0) return null
-    let minVal = Infinity
-    let minT = chartData[0].time
-    for (const pt of chartData) {
-      const v = (pt.smooth_left + pt.smooth_right) / 2
-      if (v < minVal) { minVal = v; minT = pt.time }
-    }
-    return minT
-  }, [chartData])
+    return getExtremeSample(activeModeData.samples, "min")?.time ?? null
+  }, [activeModeData.samples])
 
   const maxTime = useMemo(() => {
-    if (chartData.length === 0) return null
-    let maxVal = -Infinity
-    let maxT = chartData[0].time
-    for (const pt of chartData) {
-      const v = (pt.smooth_left + pt.smooth_right) / 2
-      if (v > maxVal) { maxVal = v; maxT = pt.time }
-    }
-    return maxT
-  }, [chartData])
+    return getExtremeSample(activeModeData.samples, "max")?.time ?? null
+  }, [activeModeData.samples])
 
   const selectedValue = useMemo<number | null>(() => {
-    if (selectedTime == null || chartData.length === 0) return null
-    let nearest = chartData[0]
-    let minDiff = Math.abs(chartData[0].time - selectedTime)
-    for (const pt of chartData) {
-      const diff = Math.abs(pt.time - selectedTime)
-      if (diff < minDiff) { minDiff = diff; nearest = pt }
+    if (selectedTime == null || activeModeData.samples.length === 0) return null
+    let nearest = activeModeData.samples[0]
+    let minDiff = Math.abs(activeModeData.samples[0].time - selectedTime)
+    for (const sample of activeModeData.samples) {
+      const diff = Math.abs(sample.time - selectedTime)
+      if (diff < minDiff) { minDiff = diff; nearest = sample }
     }
-    return nearest.average
-  }, [selectedTime, chartData])
-
-  const eyeStats = useMemo(() => {
-    if (chartData.length === 0) return null
-    const compute = (values: number[]) => {
-      const f = values.filter(v => v != null && !Number.isNaN(v))
-      if (f.length === 0) return null
-      const n = f.length
-      const mean = f.reduce((a, b) => a + b, 0) / n
-      const std = Math.sqrt(f.reduce((a, b) => a + (b - mean) ** 2, 0) / n)
-      const sorted = [...f].sort((a, b) => a - b)
-      const median = n % 2 === 0
-        ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
-        : sorted[Math.floor(n / 2)]
-      return { count: n, std, median, min: sorted[0], max: sorted[n - 1] }
-    }
-    return {
-      left: compute(chartData.map(p => p.smooth_left)),
-      right: compute(chartData.map(p => p.smooth_right)),
-    }
-  }, [chartData])
+    return nearest.value
+  }, [selectedTime, activeModeData.samples])
 
   const tableRows = useMemo<StatRow[]>(() => {
-    const promedioRow: StatRow = {
-      serie: "Promedio",
-      count: chartData.length > 0 ? chartData.length : null,
-      baseline: stats?.baseline ?? null,
-      std: stats?.std ?? null,
-      median: stats?.median ?? null,
-      min: stats?.min ?? null,
-      max: stats?.max ?? null,
-      peak: (stats?.max != null && stats?.baseline != null && stats.baseline !== 0)
-        ? ((stats.max - stats.baseline) / Math.abs(stats.baseline)) * 100
-        : null,
-    }
-    const leftRow: StatRow = {
-      serie: "Izquierda",
-      count: eyeStats?.left?.count ?? null,
-      baseline: null,
-      std: eyeStats?.left?.std ?? null,
-      median: eyeStats?.left?.median ?? null,
-      min: eyeStats?.left?.min ?? null,
-      max: eyeStats?.left?.max ?? null,
-      peak: null,
-    }
-    const rightRow: StatRow = {
-      serie: "Derecha",
-      count: eyeStats?.right?.count ?? null,
-      baseline: null,
-      std: eyeStats?.right?.std ?? null,
-      median: eyeStats?.right?.median ?? null,
-      min: eyeStats?.right?.min ?? null,
-      max: eyeStats?.right?.max ?? null,
-      peak: null,
-    }
+    const toPeak = (rowStats: ActivePupilStats | null) =>
+      rowStats?.max != null && rowStats?.baseline != null && rowStats.baseline !== 0
+        ? ((rowStats.max - rowStats.baseline) / Math.abs(rowStats.baseline)) * 100
+        : null
+    const toRow = (serie: string, rowStats: ActivePupilStats | null): StatRow => ({
+      serie,
+      count: rowStats?.count ?? null,
+      baseline: rowStats?.baseline ?? null,
+      mean: rowStats?.mean ?? null,
+      std: rowStats?.std ?? null,
+      median: rowStats?.median ?? null,
+      min: rowStats?.min ?? null,
+      max: rowStats?.max ?? null,
+      peak: toPeak(rowStats),
+    })
+
+    const promedioRow = toRow("Promedio", pupilModeData.both.stats)
+    const leftRow = toRow("Izquierda", pupilModeData.left.stats)
+    const rightRow = toRow("Derecha", pupilModeData.right.stats)
     return [promedioRow, leftRow, rightRow]
-  }, [stats, eyeStats, chartData])
+  }, [pupilModeData])
+
+  const summaryRow = useMemo(
+    () => tableRows.find((row) => row.serie === activeSerie) ?? tableRows[0],
+    [activeSerie, tableRows]
+  )
 
   /**
    * Remaps gaze coordinates from "% of image" to "% of container".
@@ -313,20 +442,39 @@ export function PupilDilationTab({
 
   useEffect(() => {
     if (!gazeData?.scenario_file_id) {
+      setScenarioImageUrl(null)
+      setScenarioPreviewLoading(false)
+      setScenarioPreviewError(null)
       return
     }
 
     let cancelled = false
     let currentUrl: string | null = null
 
-    apiFetchBlob(`/api/projects/${projectId}/files/${gazeData.scenario_file_id}/image`)
+    setScenarioImageUrl(null)
+    setScenarioPreviewLoading(true)
+    setScenarioPreviewError(null)
+
+    const params = new URLSearchParams({
+      time_s: String(gazeData.nearest_time_s),
+    })
+    if (participantCode) params.set("participant_code", participantCode)
+    if (gazeData.scenario) params.set("scenario", gazeData.scenario)
+
+    apiFetchBlob(`/api/projects/${projectId}/files/${gazeData.scenario_file_id}/preview?${params}`)
       .then((blob) => {
         if (cancelled) return
         currentUrl = URL.createObjectURL(blob)
         setScenarioImageUrl(currentUrl)
       })
-      .catch(() => {
-        if (!cancelled) setScenarioImageUrl(null)
+      .catch((error) => {
+        if (!cancelled) {
+          setScenarioImageUrl(null)
+          setScenarioPreviewError(error?.message || "No se pudo cargar el estímulo visual")
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setScenarioPreviewLoading(false)
       })
 
     return () => {
@@ -335,7 +483,13 @@ export function PupilDilationTab({
         URL.revokeObjectURL(currentUrl)
       }
     }
-  }, [gazeData?.scenario_file_id, projectId])
+  }, [
+    gazeData?.nearest_time_s,
+    gazeData?.scenario,
+    gazeData?.scenario_file_id,
+    participantCode,
+    projectId,
+  ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChartClick = (state: any) => {
@@ -360,7 +514,7 @@ export function PupilDilationTab({
           <div>
             <CardTitle className="text-xl">Dilatación pupilar</CardTitle>
             <CardDescription>
-              Diámetro pupilar a lo largo del tiempo (mm), promedio de ambos ojos.
+              Diámetro pupilar a lo largo del tiempo (mm), {activeModeLabel}.
             </CardDescription>
           </div>
 
@@ -392,10 +546,10 @@ export function PupilDilationTab({
             {[
               {
                 label: "Media",
-                value: stats?.mean,
-                description: "Promedio ambas pupilas",
+                value: activeStats?.mean,
+                description: `Promedio ${activeModeLabel}`,
                 tooltip: "Promedio del diámetro pupilar en el intervalo visualizado",
-                tooltipExtra: stats?.raw_mean != null ? `Valor real: ${stats.raw_mean.toFixed(4)} mm` : undefined,
+                tooltipExtra: activeStats?.raw_mean != null ? `Valor real: ${activeStats.raw_mean.toFixed(4)} mm` : undefined,
                 Icon: Activity,
                 iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
                 iconColorClass: "text-indigo-500",
@@ -407,10 +561,10 @@ export function PupilDilationTab({
               },
               {
                 label: "Mínimo",
-                value: stats?.min,
+                value: activeStats?.min,
                 description: "Valor más bajo registrado",
                 tooltip: "Valor mínimo registrado en la señal suavizada",
-                tooltipExtra: stats?.raw_min != null ? `Valor real: ${stats.raw_min.toFixed(4)} mm` : undefined,
+                tooltipExtra: activeStats?.raw_min != null ? `Valor real: ${activeStats.raw_min.toFixed(4)} mm` : undefined,
                 Icon: TrendingDown,
                 iconBgClass: "bg-cyan-100 dark:bg-cyan-900/40",
                 iconColorClass: "text-cyan-500",
@@ -422,10 +576,10 @@ export function PupilDilationTab({
               },
               {
                 label: "Máximo",
-                value: stats?.max,
+                value: activeStats?.max,
                 description: "Pico de dilatación",
                 tooltip: "Valor máximo o pico de dilatación registrado",
-                tooltipExtra: stats?.raw_max != null ? `Valor real: ${stats.raw_max.toFixed(4)} mm` : undefined,
+                tooltipExtra: activeStats?.raw_max != null ? `Valor real: ${activeStats.raw_max.toFixed(4)} mm` : undefined,
                 Icon: TrendingUp,
                 iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
                 iconColorClass: "text-rose-500",
@@ -436,7 +590,7 @@ export function PupilDilationTab({
                 active: selectedTime === maxTime,
               },
             ].map((cardProps) => (
-              <KpiCard key={cardProps.label} loading={statsLoading} {...cardProps} />
+              <KpiCard key={cardProps.label} loading={timeseriesLoading} {...cardProps} />
             ))}
           </div>
 
@@ -469,8 +623,8 @@ export function PupilDilationTab({
                   wrapperStyle={{ paddingTop: "36px" }}
                 />
 
-                {typeof stats?.mean === "number" ? (
-                  <ReferenceLine y={stats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
+                {typeof activeStats?.mean === "number" ? (
+                  <ReferenceLine y={activeStats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
                 ) : null}
 
                 {selectedTime != null ? (
@@ -528,12 +682,14 @@ export function PupilDilationTab({
           </div>
           {gazeData && (
             <div className="flex shrink-0 items-center gap-2">
-              <AoiToggleButton
-                enabled={showAois}
-                onToggle={() => setShowAois((value) => !value)}
-                disabled={aois.length === 0 || aoiLoading}
-                count={aois.length}
-              />
+              {canUseAois ? (
+                <AoiToggleButton
+                  enabled={showAois}
+                  onToggle={() => setShowAois((value) => !value)}
+                  disabled={aois.length === 0 || aoiLoading}
+                  count={aois.length}
+                />
+              ) : null}
               <button
                 type="button"
                 onClick={() => { clearGaze(); setSelectedTime(null) }}
@@ -621,8 +777,8 @@ export function PupilDilationTab({
             <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
               <span className="text-sm font-medium text-foreground">
                 {isNoImageScenario(gazeData.scenario)
-                  ? "Pantalla de instrucción — no hay imagen de estímulo asociada a este escenario"
-                  : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene imagen de estímulo registrada`}
+                  ? "Pantalla de instrucción — no hay estímulo visual asociado a este escenario"
+                  : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene estímulo visual registrado`}
               </span>
               <span className="text-xs text-muted-foreground">
                 t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
@@ -630,7 +786,9 @@ export function PupilDilationTab({
             </div>
           ) : gazeData ? (
             <div className="overflow-hidden rounded-xl bg-card">
-              {scenarioImageUrl ? (
+              {scenarioPreviewLoading ? (
+                <div className="h-48 animate-pulse rounded-xl bg-muted" />
+              ) : scenarioImageUrl ? (
                 <div className="relative" ref={imageContainerRef}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -640,7 +798,7 @@ export function PupilDilationTab({
                     className="max-h-[500px] w-full object-contain"
                     onLoad={computeGazeOffset}
                   />
-                  {showAois && (
+                  {canShowAois && (
                     <AoiOverlay aois={aois} box={letterbox} />
                   )}
                   {gazeOffset && (
@@ -671,13 +829,15 @@ export function PupilDilationTab({
                 </div>
               ) : (
                 <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-                  No se pudo cargar la imagen del escenario.
+                  {isVideoScenario
+                    ? "No se pudo cargar el frame del video."
+                    : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
                 </div>
               )}
             </div>
           ) : null}
 
-          {gazeData && showAois ? <AoiLegend aois={aois} /> : null}
+          {gazeData && canShowAois ? <AoiLegend aois={aois} /> : null}
 
           {/* Bottom callout — only when gaze data is loaded */}
           {gazeData && (
@@ -691,7 +851,7 @@ export function PupilDilationTab({
                   {selectedValue != null
                     ? `El indicador aguamarina marca la ubicación exacta donde se registró la dilatación pupilar (${selectedValue.toFixed(2)} mm) en el segundo ${Math.round(gazeData.nearest_time_s)} de la visualización.`
                     : "El indicador aguamarina marca la ubicación exacta donde se registró la fijación en el instante seleccionado sobre el estímulo visual."}
-                  {currentAoi ? ` Cae dentro del AOI "${currentAoi.name}".` : aois.length > 0 ? " No cae dentro de un AOI delimitado." : ""}
+                  {aoiStatusText}
                 </p>
               </div>
             </div>
@@ -708,11 +868,16 @@ export function PupilDilationTab({
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
-          <StatisticsTable rows={tableRows} summaryRow={tableRows[0]} loading={statsLoading || !stats} />
+          <StatisticsTable
+            rows={tableRows}
+            summaryRow={summaryRow}
+            activeSerie={activeSerie}
+            loading={timeseriesLoading}
+          />
         </CardContent>
       </Card>
 
-      {participantCode && scenario !== "all" ? (
+      {participantCode && scenario !== "all" && canUseAois ? (
         <AoiContextPanel
           data={aoiData}
           loading={aoiLoading}

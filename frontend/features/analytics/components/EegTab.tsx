@@ -32,6 +32,7 @@ import {
 import { KpiCard } from "@/components/ui/KpiCard"
 import { cn } from "@/lib/utils"
 import { useEegPsd, useEegSpectrogram, useEegTimeseries, useEegTopography } from "../hooks/useAnalyticsData"
+import { StimulusFixationCard } from "./StimulusFixationCard"
 
 const EEG_CHANNELS = ["le", "f4", "c4", "p4", "p3", "c3", "f3"]
 const TOPOGRAPHY_CHANNELS = ["f3", "f4", "c3", "c4", "p3", "p4"]
@@ -345,6 +346,8 @@ function SpectrogramPanel({
   matrix,
   colorDomain,
   unit,
+  selectedTime,
+  onTimeSelect,
 }: {
   channel: string
   time: number[]
@@ -352,6 +355,8 @@ function SpectrogramPanel({
   matrix: number[][]
   colorDomain: { min: number; max: number }
   unit: string
+  selectedTime?: number | null
+  onTimeSelect?: (time: number) => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hover, setHover] = useState<SpectrogramHover | null>(null)
@@ -359,6 +364,10 @@ function SpectrogramPanel({
   const maxTime = time[time.length - 1] ?? 0
   const minFrequency = frequency[0] ?? 0
   const maxFrequency = frequency[frequency.length - 1] ?? 0
+  const selectedTimeRatio =
+    selectedTime != null && maxTime > minTime
+      ? Math.max(0, Math.min(1, (selectedTime - minTime) / (maxTime - minTime)))
+      : null
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -413,9 +422,9 @@ function SpectrogramPanel({
     }
   }, [colorDomain, matrix])
 
-  const handleMove = (event: MouseEvent<HTMLCanvasElement>) => {
+  const getPointFromEvent = (event: MouseEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    if (time.length === 0 || frequency.length === 0) return
+    if (time.length === 0 || frequency.length === 0) return null
 
     const x = event.clientX - rect.left
     const y = event.clientY - rect.top
@@ -428,17 +437,38 @@ function SpectrogramPanel({
     )
     const value = matrix[frequencyIndex]?.[timeIndex]
     if (typeof value !== "number" || !Number.isFinite(value)) {
-      setHover(null)
-      return
+      return null
     }
 
-    setHover({
+    return {
       x,
       y,
       time: time[timeIndex],
       frequency: frequency[frequencyIndex],
       value,
+    }
+  }
+
+  const handleMove = (event: MouseEvent<HTMLCanvasElement>) => {
+    const point = getPointFromEvent(event)
+    if (!point) {
+      setHover(null)
+      return
+    }
+
+    setHover({
+      x: point.x,
+      y: point.y,
+      time: point.time,
+      frequency: point.frequency,
+      value: point.value,
     })
+  }
+
+  const handleClick = (event: MouseEvent<HTMLCanvasElement>) => {
+    const point = getPointFromEvent(event)
+    if (!point) return
+    onTimeSelect?.(point.time)
   }
 
   return (
@@ -464,10 +494,17 @@ function SpectrogramPanel({
         <div className="relative h-64 overflow-hidden rounded-md bg-gray-950">
           <canvas
             ref={canvasRef}
-            className="h-full w-full"
+            className={cn("h-full w-full", onTimeSelect && "cursor-crosshair")}
             onMouseMove={handleMove}
             onMouseLeave={() => setHover(null)}
+            onClick={handleClick}
           />
+          {selectedTimeRatio != null ? (
+            <div
+              className="pointer-events-none absolute inset-y-0 w-px bg-cyan-300 shadow-[0_0_0_1px_rgba(8,145,178,0.25)]"
+              style={{ left: `${selectedTimeRatio * 100}%` }}
+            />
+          ) : null}
           {hover ? (
             <div
               className="pointer-events-none absolute z-10 min-w-40 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-lg"
@@ -1081,6 +1118,13 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
       .filter((row): row is SpectrogramStats => row != null)
   }, [spectrogramData])
 
+  const spectrogramPeak = useMemo(() => {
+    if (spectrogramStats.length === 0) return null
+    return spectrogramStats.reduce((best, row) =>
+      row.peakPower > best.peakPower ? row : best
+    )
+  }, [spectrogramStats])
+
   const topographyFrameIndex = useMemo(() => {
     const frameCount = topographyData?.time.length ?? 0
     if (frameCount === 0) return 0
@@ -1130,6 +1174,56 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   const visiblePsdChannels = psdData?.channels ?? []
   const visibleSpectrogramChannels = spectrogramData?.channels ?? []
   const availableTopographyChannels = topographyData?.available_channels ?? TOPOGRAPHY_CHANNELS
+
+  const selectedEegValue = useMemo(() => {
+    if (!selectedPoint || visibleChannels.length === 0) return null
+    const values = visibleChannels
+      .map((channel) => selectedPoint[`${channel}_smooth`])
+      .filter((value): value is number => Number.isFinite(value))
+    return values.length > 0 ? mean(values) : null
+  }, [selectedPoint, visibleChannels])
+
+  const timeExtremePoints = useMemo(() => {
+    let minPoint: { time: number; value: number } | null = null
+    let maxPoint: { time: number; value: number } | null = null
+
+    for (const point of chartData) {
+      for (const channel of visibleChannels) {
+        const value = point[`${channel}_smooth`]
+        if (!Number.isFinite(value)) continue
+        if (!minPoint || value < minPoint.value) {
+          minPoint = { time: point.time, value }
+        }
+        if (!maxPoint || value > maxPoint.value) {
+          maxPoint = { time: point.time, value }
+        }
+      }
+    }
+
+    return { minPoint, maxPoint }
+  }, [chartData, visibleChannels])
+
+  const spectrogramSelectedValue = useMemo(() => {
+    if (selectedTime == null || !spectrogramData || visibleSpectrogramChannels.length === 0) {
+      return null
+    }
+
+    let timeIndex = 0
+    let minDiff = Math.abs((spectrogramData.time[0] ?? 0) - selectedTime)
+    for (let index = 1; index < spectrogramData.time.length; index += 1) {
+      const diff = Math.abs(spectrogramData.time[index] - selectedTime)
+      if (diff < minDiff) {
+        minDiff = diff
+        timeIndex = index
+      }
+    }
+
+    const values = visibleSpectrogramChannels
+      .flatMap((channel) => (spectrogramData.power[channel] ?? []).map((row) => row[timeIndex]))
+      .filter((value): value is number => Number.isFinite(value))
+
+    return values.length > 0 ? Math.max(...values) : null
+  }, [selectedTime, spectrogramData, visibleSpectrogramChannels])
 
   const handleChannelToggle = (channel: string) => {
     if (!availableChannels.includes(channel)) return
@@ -1252,6 +1346,10 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
               description="Valor más bajo visible"
               Icon={TrendingDown}
               loading={timeseriesLoading}
+              onClick={timeExtremePoints.minPoint ? () => setSelectedTime(timeExtremePoints.minPoint?.time ?? null) : undefined}
+              active={selectedTime === timeExtremePoints.minPoint?.time}
+              hoverBgClass="hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
+              activeBgClass="bg-cyan-50 dark:bg-cyan-950/30"
               iconBgClass="bg-cyan-100 dark:bg-cyan-900/40"
               iconColorClass="text-cyan-600 dark:text-cyan-400"
               labelColorClass="text-cyan-700 dark:text-cyan-400"
@@ -1264,6 +1362,10 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
               description="Valor más alto visible"
               Icon={TrendingUp}
               loading={timeseriesLoading}
+              onClick={timeExtremePoints.maxPoint ? () => setSelectedTime(timeExtremePoints.maxPoint?.time ?? null) : undefined}
+              active={selectedTime === timeExtremePoints.maxPoint?.time}
+              hoverBgClass="hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              activeBgClass="bg-rose-50 dark:bg-rose-950/30"
               iconBgClass="bg-rose-100 dark:bg-rose-900/40"
               iconColorClass="text-rose-600 dark:text-rose-400"
               labelColorClass="text-rose-700 dark:text-rose-400"
@@ -1400,6 +1502,24 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           )}
         </CardContent>
       </Card>
+      ) : null}
+
+      {view === "timeseries" ? (
+        <StimulusFixationCard
+          projectId={projectId}
+          participantCode={participantCode}
+          scenario={scenario}
+          selectedTime={selectedTime}
+          selectedValue={selectedEegValue}
+          selectedValueLabel="EEG"
+          selectedValueSub="uV promedio"
+          selectedValueDecimals={4}
+          totalDurationS={chartData[chartData.length - 1]?.time ?? null}
+          description="Ubicación de la mirada del participante durante el instante seleccionado de la señal EEG."
+          emptyText="Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante"
+          metricDescription="la amplitud EEG promedio"
+          onClearSelection={() => setSelectedTime(null)}
+        />
       ) : null}
 
       {view === "timeseries" ? (
@@ -1645,6 +1765,10 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                 description="Mayor valor visible"
                 Icon={TrendingUp}
                 loading={spectrogramLoading}
+                onClick={spectrogramPeak ? () => setSelectedTime(spectrogramPeak.peakTime) : undefined}
+                active={selectedTime === spectrogramPeak?.peakTime}
+                hoverBgClass="hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                activeBgClass="bg-rose-50 dark:bg-rose-950/30"
                 iconBgClass="bg-rose-100 dark:bg-rose-900/40"
                 iconColorClass="text-rose-600 dark:text-rose-400"
                 labelColorClass="text-rose-700 dark:text-rose-400"
@@ -1726,6 +1850,8 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                       matrix={spectrogramData.power[channel] ?? []}
                       colorDomain={spectrogramData.color_domain}
                       unit={spectrogramData.unit}
+                      selectedTime={selectedTime}
+                      onTimeSelect={setSelectedTime}
                     />
                   ))}
                 </div>
@@ -1733,6 +1859,24 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
             )}
           </CardContent>
         </Card>
+      ) : null}
+
+      {view === "spectrogram" ? (
+        <StimulusFixationCard
+          projectId={projectId}
+          participantCode={participantCode}
+          scenario={scenario}
+          selectedTime={selectedTime}
+          selectedValue={spectrogramSelectedValue}
+          selectedValueLabel="POTENCIA"
+          selectedValueSub={spectrogramData?.unit ?? "potencia EEG"}
+          selectedValueDecimals={4}
+          totalDurationS={spectrogramData?.time[spectrogramData.time.length - 1] ?? null}
+          description="Ubicación de la mirada del participante durante el instante seleccionado del espectrograma."
+          emptyText="Haz clic en un espectrograma o en Potencia máxima para ver la mirada del participante"
+          metricDescription="la potencia EEG del espectrograma"
+          onClearSelection={() => setSelectedTime(null)}
+        />
       ) : null}
 
       {view === "spectrogram" ? (
@@ -1995,6 +2139,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           </CardContent>
         </Card>
       ) : null}
+
     </div>
   )
 }

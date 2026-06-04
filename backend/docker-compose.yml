@@ -10,3 +10,12 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    volumes:
+      - image_cache:/data/image_cache
+      - video_cache:/data/video_cache
+      - video_frame_cache:/data/video_frame_cache
+
+volumes:
+  image_cache:
+  video_cache:
+  video_frame_cache:
