@@ -40,6 +40,8 @@ export interface GazeAtData {
   gx: number | null
   gy: number | null
   scenario_file_id: string | null
+  scenario_type?: string | null
+  scenario_time_s?: number | null
 }
 
 export interface GazeTimeseriesData {

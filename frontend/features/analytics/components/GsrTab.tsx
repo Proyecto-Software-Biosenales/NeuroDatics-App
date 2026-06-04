@@ -36,6 +36,7 @@ import {
   useGsrStatistics,
   useGsrTimeseries,
 } from "../hooks/useAnalyticsData"
+import { StimulusFixationCard } from "./StimulusFixationCard"
 
 type SignalMode = "smooth" | "raw" | "both"
 
@@ -370,6 +371,22 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
           )}
         </CardContent>
       </Card>
+
+      <StimulusFixationCard
+        projectId={projectId}
+        participantCode={participantCode}
+        scenario={scenario}
+        selectedTime={selectedTime}
+        selectedValue={selectedPoint?.gsr_smooth ?? null}
+        selectedValueLabel="GSR"
+        selectedValueSub="µS suavizada"
+        selectedValueDecimals={4}
+        totalDurationS={chartData[chartData.length - 1]?.time ?? null}
+        description="Ubicación de la mirada del participante durante el instante seleccionado de respuesta galvánica."
+        emptyText="Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante"
+        metricDescription="la respuesta galvánica"
+        onClearSelection={() => setSelectedTime(null)}
+      />
 
       {selectedPoint ? (
         <Card>

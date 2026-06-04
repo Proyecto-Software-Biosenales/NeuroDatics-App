@@ -266,6 +266,53 @@ class PupilAnalyticsService:
         }
 
     @staticmethod
+    def compute_scenario_relative_time(
+        df: pd.DataFrame,
+        scenario: Optional[str],
+        absolute_time_s: Optional[float],
+    ) -> Optional[float]:
+        """Convert a global sample time to time elapsed within a scenario."""
+        if (
+            not scenario
+            or absolute_time_s is None
+            or "time" not in df.columns
+            or "scenario" not in df.columns
+            or df.empty
+        ):
+            return None
+
+        clean = df.dropna(subset=["time"])
+        if clean.empty:
+            return None
+
+        scenario_values = clean["scenario"].astype(str).str.strip()
+        target = str(scenario).strip()
+        subset = clean[scenario_values == target]
+
+        if subset.empty:
+            from pathlib import Path as _Path
+
+            def _norm(name: str) -> str:
+                return _Path(str(name).strip()).stem.lower().replace(" ", "")
+
+            target_stem = _norm(target)
+            subset = clean[scenario_values.map(_norm) == target_stem]
+
+        if subset.empty:
+            return None
+
+        times = pd.to_numeric(subset["time"], errors="coerce").dropna()
+        if times.empty:
+            return None
+
+        start_time = float(times.min())
+        if not np.isfinite(start_time):
+            return None
+
+        relative_time = max(0.0, float(absolute_time_s) - start_time)
+        return round(relative_time, 4)
+
+    @staticmethod
     def _clean_gaze(df: pd.DataFrame) -> pd.DataFrame:
         """Apply gaze cleaning pipeline matching the notebook clean_gaze():
         normalize to %, invalidate out-of-range/blinks/speed, interpolate, smooth."""
