@@ -806,15 +806,19 @@ export function PupilDilationTab({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div
-                            className="absolute -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
+                            className="absolute z-30 -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
                             style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
                           >
-                            <div className="h-8 w-8 rounded-full border-4 border-cyan-400 bg-cyan-400/20 shadow-lg" />
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-[0_4px_14px_rgba(15,23,42,0.3)]">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-950">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                              </span>
+                            </div>
                           </div>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="flex items-center gap-3 px-3 py-2.5">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-950">
-                            <Crosshair className="h-4 w-4 text-cyan-500" />
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-900">
+                            <Crosshair className="h-4 w-4 text-slate-800 dark:text-slate-100" />
                           </div>
                           <div>
                             <p className="text-sm font-semibold leading-none">Punto de atención</p>
@@ -841,16 +845,16 @@ export function PupilDilationTab({
 
           {/* Bottom callout — only when gaze data is loaded */}
           {gazeData && (
-            <div className="flex items-center gap-3 rounded-xl border border-cyan-200 bg-cyan-50/60 px-4 py-3.5 dark:border-cyan-800/40 dark:bg-cyan-950/30">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-600 dark:bg-cyan-600">
-                <Eye className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 dark:border-slate-800 dark:bg-slate-950/40">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 dark:bg-slate-100">
+                <Eye className="h-5 w-5 text-white dark:text-slate-950" />
               </div>
               <div>
-                <p className="text-base font-medium text-cyan-700 dark:text-cyan-400">Punto de atención</p>
-                <p className="text-sm text-cyan-600 dark:text-cyan-500">
+                <p className="text-base font-medium text-slate-900 dark:text-slate-100">Punto de atención</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">
                   {selectedValue != null
-                    ? `El indicador aguamarina marca la ubicación exacta donde se registró la dilatación pupilar (${selectedValue.toFixed(2)} mm) en el segundo ${Math.round(gazeData.nearest_time_s)} de la visualización.`
-                    : "El indicador aguamarina marca la ubicación exacta donde se registró la fijación en el instante seleccionado sobre el estímulo visual."}
+                    ? `El indicador de alto contraste marca la ubicación exacta donde se registró la dilatación pupilar (${selectedValue.toFixed(2)} mm) en el segundo ${Math.round(gazeData.nearest_time_s)} de la visualización.`
+                    : "El indicador de alto contraste marca la ubicación exacta donde se registró la fijación en el instante seleccionado sobre el estímulo visual."}
                   {aoiStatusText}
                 </p>
               </div>
