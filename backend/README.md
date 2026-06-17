@@ -2,162 +2,107 @@
 
 API backend para NeuroDatics, construida con FastAPI y PostgreSQL.
 
----
+## Importante: Docker Recomendado
 
-## Arranque Rápido (Docker Compose — recomendado)
+Para levantar la aplicacion completa no ejecutes Docker desde esta carpeta.
 
-Docker Compose levanta **PostgreSQL + el backend** en un solo comando. No necesitas instalar Postgres manualmente.
+Usa siempre el `docker-compose.yml` de la raiz del repositorio:
 
-### 1. Requisitos
+```powershell
+cd ..
+docker compose up -d --build
+```
 
-| Herramienta | Versión mínima |
-|---|---|
-| Docker Desktop | 20+ (con Compose v2 incluido) |
+O, si estas en cualquier otra carpeta, entra a la raiz del proyecto, donde estan `frontend/`, `backend/` y `docker-compose.yml`:
 
-### 2. Configurar `.env`
+```powershell
+cd C:\ruta\a\NeuroDatics-App
+docker compose up -d --build
+```
+
+El stack completo debe aparecer en Docker Desktop como `neurodatics` e incluir:
+
+- `frontend`
+- `backend`
+- `worker`
+- `db`
+- `redis`
+
+El puerto para abrir la app es el del servicio `frontend`: `3000:3000`.
+
+Si Docker Desktop muestra un grupo llamado solo `backend` con un contenedor `backend-1` y puerto `8000:8000`, se ejecuto el Compose antiguo/backend-only. Detenlo y vuelve a ejecutar Docker desde la raiz del proyecto.
+
+## Backend-Only Para Desarrollo Avanzado
+
+Solo si necesitas levantar el backend aislado, existe un archivo no recomendado para usuarios finales:
 
 ```powershell
 cd backend
-copy .env.example .env
+docker compose -f docker-compose.backend-only.yml up --build
 ```
 
-El `.env.example` ya tiene los valores por defecto para docker-compose. Si no necesitas Google OAuth ni Google Drive para desarrollo básico, puedes dejar esas variables vacías y el backend arrancará igual.
+Ese modo no levanta frontend, Postgres, Redis ni worker. Para uso normal de la app, no lo uses.
 
-> **Importante:** el `docker-compose.yml` inyecta automáticamente  
-> `DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/neurodatics`  
-> sobrescribiendo lo que tengas en `.env`. Así el contenedor del backend siempre apunta al servicio `db` interno.
+## Arranque Local Sin Docker Completo
 
-### 3. Levantar
-
-```powershell
-cd backend
-docker compose up --build
-```
-
-Esto:
-1. Construye la imagen del backend.
-2. Levanta un contenedor PostgreSQL (`db`) con un volumen persistente.
-3. Espera a que Postgres esté listo (healthcheck).
-4. Ejecuta `alembic upgrade head` — **crea y migra la base de datos automáticamente**.
-5. Arranca el servidor FastAPI en el puerto 8000.
-
-### 4. Verificar
-
-| Recurso | URL |
-|---|---|                                                                                                                   
-| Health check | http://localhost:8000/health |
-| Swagger UI | http://localhost:8000/docs |
-
-### 5. Detener
-
-```powershell
-# Ctrl+C para detener, luego:
-docker compose down
-# Para borrar también la base de datos (volumen):
-docker compose down -v
-```
-
-### 6. Reiniciar limpio (port ocupado u otro error)
-
-```powershell
-docker compose down
-docker compose up --build
-```
-
----
-
-## Arranque Local (venv, sin Docker)
-
-Solo si prefieres no usar Docker. Requiere tener PostgreSQL instalado y corriendo en tu máquina.
+Solo para desarrollo de codigo. Requiere tener PostgreSQL corriendo aparte.
 
 ```powershell
 cd backend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1          # bash: source .venv/bin/activate
+.\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -e .                       # instala deps desde pyproject.toml
+pip install -e .
 ```
 
-Edita `.env` y cambia `DATABASE_URL` a la variante local:
-```
+Edita `.env` y usa una URL local:
+
+```text
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/neurodatics
 ```
 
 Luego:
+
 ```powershell
-alembic upgrade head                   # crea/migra la base de datos
+alembic upgrade head
 python -m uvicorn neurodatics.main:app --reload --host 0.0.0.0 --port 8000 --app-dir src
 ```
 
----
+## Variables De Entorno
 
-## Variables de Entorno
-
-| Variable | Requerida | Descripción |
+| Variable | Requerida | Descripcion |
 |---|---|---|
-| `DATABASE_URL` | ✅ | URL de conexión PostgreSQL con driver `psycopg` (psycopg3) |
-| `AUTH_JWT_SECRET` | ✅ | Secreto para firmar tokens JWT |
-| `GOOGLE_OAUTH_CLIENT_ID` | Solo para login | Client ID de Google OAuth |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | Solo para login | Client Secret de Google OAuth |
-| `GOOGLE_OAUTH_REDIRECT_URI` | Solo para login | URI de redirección OAuth |
-| `GDRIVE_SERVICE_ACCOUNT_JSON` | Solo para Drive | JSON de cuenta de servicio |
-| `GDRIVE_FOLDER_ID` | Solo para Drive | ID carpeta raíz en Drive |
-| `DEBUG` | No | Activa logs verbose. Default: `false` |
+| `DATABASE_URL` | Si | URL PostgreSQL con driver `psycopg` |
+| `AUTH_JWT_SECRET` | Si | Secreto para firmar tokens JWT |
+| `GOOGLE_OAUTH_CLIENT_ID` | Login Google | Client ID de Google OAuth |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Login Google | Client Secret de Google OAuth |
+| `GOOGLE_OAUTH_REDIRECT_URI` | Login Google | URI de redireccion OAuth |
+| `GDRIVE_FOLDER_ID` | Drive | ID carpeta raiz en Drive |
+| `DEBUG` | No | Activa logs verbose |
 
-> **Driver obligatorio:** `DATABASE_URL` debe usar el esquema `postgresql+psycopg://`, **nunca** `postgresql+asyncpg://`.
-
-Detalle completo: [`../docs/ENVIRONMENT.md`](../docs/ENVIRONMENT.md)
-
----
+El driver obligatorio para PostgreSQL es `postgresql+psycopg://`.
 
 ## Migraciones
 
-Las migraciones corren **automáticamente** al iniciar el contenedor. Para crearlas manualmente en desarrollo local:
+Las migraciones corren automaticamente al iniciar el backend Docker del stack principal. Para correrlas manualmente:
 
 ```bash
-# Crear nueva migración
-alembic revision --autogenerate -m "descripcion"
-
-# Aplicar migraciones pendientes
 alembic upgrade head
 ```
-
----
 
 ## Endpoints Principales
 
 ### Auth
-- `POST /api/auth/google/authorize` — intercambia code OAuth por access token local
+
+- `POST /api/auth/google/authorize` - intercambia code OAuth por access token local.
 
 ### Proyectos
-- `POST /api/projects` — crear proyecto
-- `GET /api/projects` — listar proyectos
-- `GET /api/projects/{id}` — obtener proyecto
-- `PATCH /api/projects/{id}` — actualizar proyecto
-- `DELETE /api/projects/{id}` — eliminar proyecto
-- `POST /api/projects/{id}/files/experiment-zip` — subir ZIP
-- `PUT /api/projects/{id}/sensors` — actualizar sensores
-- `POST /api/projects/{id}/finalize` — finalizar proyecto
 
-### Participantes y Estímulos
-- `PUT /api/projects/{id}/participants` — actualizar participantes
-- `PUT /api/projects/{id}/scenaries` — actualizar estímulos
-- `PUT /api/projects/{id}/aois` — actualizar AOIs
-
----
-
-## Arquitectura
-
-```
-src/neurodatics/
-├── api/          # Rutas y middlewares
-├── config/       # Settings y seguridad
-├── infra/        # DB, storage, cache
-└── modules/      # Dominio por feature
-    ├── auth/
-    ├── projects/
-    ├── participants/
-    ├── scenaries/
-    ├── uploads/
-    └── integrations/
-```
+- `POST /api/projects` - crear proyecto.
+- `GET /api/projects` - listar proyectos.
+- `GET /api/projects/{id}` - obtener proyecto.
+- `PATCH /api/projects/{id}` - actualizar proyecto.
+- `DELETE /api/projects/{id}` - eliminar proyecto.
+- `POST /api/projects/{id}/files/experiment-zip` - subir ZIP.
+- `PUT /api/projects/{id}/sensors` - actualizar sensores.
+- `POST /api/projects/{id}/finalize` - finalizar proyecto.

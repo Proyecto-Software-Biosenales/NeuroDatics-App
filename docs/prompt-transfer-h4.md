@@ -74,7 +74,11 @@ from .entrypoint import start_worker_with_health_check
 start_worker_with_health_check()
 ```
 
-**Docker Compose** (`backend/docker-compose.yml`):
+**Docker Compose**:
+
+> Nota actual: el Compose recomendado esta en la raiz del repositorio (`docker-compose.yml`) y levanta `frontend`, `backend`, `worker`, `db` y `redis`. El archivo automatico `backend/docker-compose.yml` fue retirado para evitar que Docker Desktop cree solo un grupo `backend`.
+
+Referencia del patron backend/worker usado por el stack principal:
 
 ```yaml
 services:
@@ -86,7 +90,7 @@ services:
 
   backend:
     build: { context: ., dockerfile: Dockerfile }
-    ports: ["8000:8000"]
+    expose: ["8000"]
     environment:
       - REDIS_URL=redis://redis:6379
     depends_on:

@@ -19,7 +19,7 @@ NeuroDatics-App/
 ├── frontend/          ← Next.js 16 + TypeScript app
 ├── backend/           ← FastAPI + Python backend (DDD pattern)
 ├── .github/agents/    ← AI agent configuration files (Coder, Designer, Planner, etc.)
-├── docker-compose.yml ← Orchestrates PostgreSQL, Redis, backend, worker
+├── docker-compose.yml ← Orchestrates frontend, backend, worker, PostgreSQL, Redis
 ├── docs/
 └── README.md
 ```
@@ -154,7 +154,8 @@ Each module follows: `api/` → `application/` → `domain/` → `infrastructure
 ### Docker Compose Services
 | Service | Description |
 |---|---|
-| `postgres` | PostgreSQL database |
+| `frontend` | Next.js app, only published host port (`3000:3000`) |
+| `db` | PostgreSQL database |
 | `redis` | Redis for RQ job queue + analytics cache |
 | `backend` | FastAPI app (uvicorn) |
 | `worker` | RQ worker for async processing jobs |
@@ -165,13 +166,13 @@ Each module follows: `api/` → `application/` → `domain/` → `infrastructure
 - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
 - `NEXT_PUBLIC_DEV_ADMIN_EMAIL` / `_PASSWORD` / `_DISPLAY_NAME` (optional dev shortcuts)
 
-**Backend:** see `backend/.env.example` (includes DB URL, Google OAuth credentials, Drive config, Redis URL)
+**Docker Compose:** see root `.env.example`.
 
 ### Access Points
 - Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:8000`
-- Swagger: `http://localhost:8000/docs`
-- Health: `http://localhost:8000/health`
+- Backend API proxy: `http://localhost:3000/api`
+- Swagger: `http://localhost:3000/docs`
+- Health: backend healthcheck runs internally in Docker
 
 ---
 

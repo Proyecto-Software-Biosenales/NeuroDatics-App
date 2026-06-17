@@ -56,6 +56,8 @@ La primera vez Docker descargara imagenes, construira frontend/backend, creara l
 
 En Docker Desktop, la fila padre `neurodatics` puede mostrar `-` en la columna de puertos. Es normal para grupos de Compose. Expande el grupo y haz click en el puerto `3000:3000` del servicio `frontend`.
 
+Si solo aparece un grupo llamado `backend` con un contenedor `backend-1` y puerto `8000:8000`, se ejecuto Docker desde la carpeta incorrecta. Deten ese grupo y ejecuta `docker compose up -d --build` desde la raiz del repositorio, donde estan `frontend/`, `backend/` y `docker-compose.yml`.
+
 ### 5. Detener
 
 ```bash
