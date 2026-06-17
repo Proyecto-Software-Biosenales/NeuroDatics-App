@@ -398,6 +398,23 @@ Si cambias el puerto para login Google, tambien debes agregar las URLs con ese p
 
 Es normal en la fila padre `neurodatics`. Expande el grupo y abre el puerto del servicio `frontend`.
 
+### Solo Aparece Un Grupo Llamado "backend"
+
+Si Docker Desktop muestra un grupo llamado `backend`, un contenedor `backend-1` y el puerto `8000:8000`, se ejecuto Docker desde la carpeta incorrecta o con una configuracion backend-only.
+
+Para corregirlo:
+
+1. En Docker Desktop, detén y elimina el grupo `backend`.
+2. Abre una terminal en la carpeta principal `NeuroDatics-App`, no dentro de `backend`.
+3. Verifica que en esa carpeta existan `frontend`, `backend` y `docker-compose.yml`.
+4. Ejecuta:
+
+```bash
+docker compose up -d --build
+```
+
+El grupo correcto se llama `neurodatics` y debe mostrar los servicios `frontend`, `backend`, `worker`, `db` y `redis`.
+
 ### redirect_uri_mismatch En Google
 
 Esto significa que Google no reconoce la URL de retorno.
