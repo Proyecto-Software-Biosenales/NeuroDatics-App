@@ -36,6 +36,7 @@ import { StimulusFixationCard, StimulusPreviewSurface } from "./StimulusFixation
 
 const EEG_CHANNELS = ["le", "f4", "c4", "p4", "p3", "c3", "f3"]
 const TOPOGRAPHY_CHANNELS = ["f3", "f4", "c3", "c4", "p3", "p4"]
+const EMPTY_CHANNELS: string[] = []
 const CHANNEL_COLORS: Record<string, string> = {
   le: "#2563EB",
   f4: "#DC2626",
@@ -48,6 +49,14 @@ const CHANNEL_COLORS: Record<string, string> = {
 
 type SignalMode = "smooth" | "raw" | "both"
 type EegView = "timeseries" | "psd" | "spectrogram" | "topography"
+type TimeWindow = {
+  start: number | null
+  end: number | null
+}
+type TimeWindowDraft = {
+  start: string
+  end: string
+}
 
 interface EegTabProps {
   projectId: string
@@ -988,22 +997,178 @@ function readClickedTime(state: unknown): number | null {
   return Number.isFinite(candidate) ? candidate : null
 }
 
+function parseTimeWindowValue(value: string): number | null {
+  const trimmed = value.trim().replace(",", ".")
+  if (!trimmed) return null
+
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : Number.NaN
+}
+
+function formatWindowBound(value: number | null, fallback: string) {
+  return value == null ? fallback : `${value.toFixed(2)} s`
+}
+
+function validateTimeWindowDraft(draft: TimeWindowDraft): { window: TimeWindow | null; error: string | null } {
+  const start = parseTimeWindowValue(draft.start)
+  const end = parseTimeWindowValue(draft.end)
+
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return { window: null, error: "Usa valores numéricos válidos para la ventana temporal." }
+  }
+
+  if ((start != null && start < 0) || (end != null && end < 0)) {
+    return { window: null, error: "Los segundos deben ser mayores o iguales a 0." }
+  }
+
+  if (start != null && end != null && end <= start) {
+    return { window: null, error: "El segundo final debe ser mayor que el segundo inicial." }
+  }
+
+  return {
+    window: {
+      start: start == null ? null : Number(start.toFixed(4)),
+      end: end == null ? null : Number(end.toFixed(4)),
+    },
+    error: null,
+  }
+}
+
+function TimeWindowControls({
+  draftStart,
+  draftEnd,
+  appliedWindow,
+  error,
+  loading,
+  onDraftStartChange,
+  onDraftEndChange,
+  onApply,
+  onReset,
+}: {
+  draftStart: string
+  draftEnd: string
+  appliedWindow: TimeWindow
+  error: string | null
+  loading?: boolean
+  onDraftStartChange: (value: string) => void
+  onDraftEndChange: (value: string) => void
+  onApply: () => void
+  onReset: () => void
+}) {
+  const hasWindow = appliedWindow.start != null || appliedWindow.end != null
+
+  return (
+    <div className="mb-5 rounded-lg border border-border bg-muted/30 px-4 py-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="space-y-1">
+            <span className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Inicio
+            </span>
+            <input
+              type="number"
+              min={0}
+              step="0.1"
+              value={draftStart}
+              onChange={(event) => onDraftStartChange(event.target.value)}
+              placeholder="20"
+              className="h-9 w-28 rounded-md border border-border bg-background px-3 text-sm outline-none transition focus:border-foreground"
+            />
+          </label>
+
+          <label className="space-y-1">
+            <span className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Fin
+            </span>
+            <input
+              type="number"
+              min={0}
+              step="0.1"
+              value={draftEnd}
+              onChange={(event) => onDraftEndChange(event.target.value)}
+              placeholder="25"
+              className="h-9 w-28 rounded-md border border-border bg-background px-3 text-sm outline-none transition focus:border-foreground"
+            />
+          </label>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onApply}
+              disabled={loading}
+              className="h-9 rounded-md bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Aplicar
+            </button>
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={loading || !hasWindow}
+              className="h-9 rounded-md border border-border bg-background px-4 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Restablecer
+            </button>
+          </div>
+        </div>
+
+        <div className="text-sm text-muted-foreground">
+          <span className="font-semibold text-foreground">
+            {hasWindow ? "Ventana activa" : "Todo el experimento"}
+          </span>
+          {hasWindow ? (
+            <span>
+              {" "}
+              {formatWindowBound(appliedWindow.start, "inicio")} - {formatWindowBound(appliedWindow.end, "fin")}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      {error ? <p className="mt-2 text-sm font-medium text-destructive">{error}</p> : null}
+    </div>
+  )
+}
+
 export function EegTab({ projectId, participantCode, scenario, view }: EegTabProps) {
   const [selectedChannels, setSelectedChannels] = useState<string[]>(EEG_CHANNELS)
   const [signalMode, setSignalMode] = useState<SignalMode>("smooth")
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [selectedTopographyFrame, setSelectedTopographyFrame] = useState(0)
+  const [timeseriesWindowDraft, setTimeseriesWindowDraft] = useState<TimeWindowDraft>({ start: "", end: "" })
+  const [timeseriesWindow, setTimeseriesWindow] = useState<TimeWindow>({ start: null, end: null })
+  const [timeseriesWindowError, setTimeseriesWindowError] = useState<string | null>(null)
+  const [psdWindowDraft, setPsdWindowDraft] = useState<TimeWindowDraft>({ start: "", end: "" })
+  const [psdWindow, setPsdWindow] = useState<TimeWindow>({ start: null, end: null })
+  const [psdWindowError, setPsdWindowError] = useState<string | null>(null)
 
   const {
     data: timeseriesData,
     loading: timeseriesLoading,
     error: timeseriesError,
-  } = useEegTimeseries(projectId, participantCode, scenario, selectedChannels)
+  } = useEegTimeseries(
+    projectId,
+    participantCode,
+    scenario,
+    selectedChannels,
+    0.2,
+    5000,
+    timeseriesWindow.start,
+    timeseriesWindow.end
+  )
   const {
     data: psdData,
     loading: psdLoading,
     error: psdError,
-  } = useEegPsd(projectId, participantCode, scenario, selectedChannels)
+  } = useEegPsd(
+    projectId,
+    participantCode,
+    scenario,
+    selectedChannels,
+    null,
+    true,
+    5000,
+    psdWindow.start,
+    psdWindow.end
+  )
   const {
     data: spectrogramData,
     loading: spectrogramLoading,
@@ -1273,9 +1438,9 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     psdData?.available_channels ??
     spectrogramData?.available_channels ??
     EEG_CHANNELS
-  const visibleChannels = timeseriesData?.channels ?? []
-  const visiblePsdChannels = psdData?.channels ?? []
-  const visibleSpectrogramChannels = spectrogramData?.channels ?? []
+  const visibleChannels = timeseriesData?.channels ?? EMPTY_CHANNELS
+  const visiblePsdChannels = psdData?.channels ?? EMPTY_CHANNELS
+  const visibleSpectrogramChannels = spectrogramData?.channels ?? EMPTY_CHANNELS
   const availableTopographyChannels = topographyData?.available_channels ?? TOPOGRAPHY_CHANNELS
 
   const selectedEegValue = useMemo(() => {
@@ -1358,6 +1523,57 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     setSelectedTime(time)
   }
 
+  const handleApplyTimeseriesWindow = () => {
+    const start = parseTimeWindowValue(timeseriesWindowDraft.start)
+    const end = parseTimeWindowValue(timeseriesWindowDraft.end)
+
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      setTimeseriesWindowError("Usa valores numéricos válidos para la ventana temporal.")
+      return
+    }
+
+    if ((start != null && start < 0) || (end != null && end < 0)) {
+      setTimeseriesWindowError("Los segundos deben ser mayores o iguales a 0.")
+      return
+    }
+
+    if (start != null && end != null && end <= start) {
+      setTimeseriesWindowError("El segundo final debe ser mayor que el segundo inicial.")
+      return
+    }
+
+    setTimeseriesWindow({
+      start: start == null ? null : Number(start.toFixed(4)),
+      end: end == null ? null : Number(end.toFixed(4)),
+    })
+    setTimeseriesWindowError(null)
+    setSelectedTime(null)
+  }
+
+  const handleResetTimeseriesWindow = () => {
+    setTimeseriesWindowDraft({ start: "", end: "" })
+    setTimeseriesWindow({ start: null, end: null })
+    setTimeseriesWindowError(null)
+    setSelectedTime(null)
+  }
+
+  const handleApplyPsdWindow = () => {
+    const { window, error } = validateTimeWindowDraft(psdWindowDraft)
+    if (error || !window) {
+      setPsdWindowError(error)
+      return
+    }
+
+    setPsdWindow(window)
+    setPsdWindowError(null)
+  }
+
+  const handleResetPsdWindow = () => {
+    setPsdWindowDraft({ start: "", end: "" })
+    setPsdWindow({ start: null, end: null })
+    setPsdWindowError(null)
+  }
+
   const handleTopographyFrameChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSelectedTopographyFrame(Number(event.target.value))
   }
@@ -1403,6 +1619,24 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         </CardHeader>
 
         <CardContent>
+          <TimeWindowControls
+            draftStart={timeseriesWindowDraft.start}
+            draftEnd={timeseriesWindowDraft.end}
+            appliedWindow={timeseriesWindow}
+            error={timeseriesWindowError}
+            loading={timeseriesLoading}
+            onDraftStartChange={(value) => {
+              setTimeseriesWindowDraft((current) => ({ ...current, start: value }))
+              setTimeseriesWindowError(null)
+            }}
+            onDraftEndChange={(value) => {
+              setTimeseriesWindowDraft((current) => ({ ...current, end: value }))
+              setTimeseriesWindowError(null)
+            }}
+            onApply={handleApplyTimeseriesWindow}
+            onReset={handleResetTimeseriesWindow}
+          />
+
           <div className="mb-5 flex flex-wrap gap-2">
             {EEG_CHANNELS.map((channel) => {
               const isActive = selectedChannels.includes(channel)
@@ -1671,6 +1905,24 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           </div>
         </CardHeader>
         <CardContent>
+          <TimeWindowControls
+            draftStart={psdWindowDraft.start}
+            draftEnd={psdWindowDraft.end}
+            appliedWindow={psdWindow}
+            error={psdWindowError}
+            loading={psdLoading}
+            onDraftStartChange={(value) => {
+              setPsdWindowDraft((current) => ({ ...current, start: value }))
+              setPsdWindowError(null)
+            }}
+            onDraftEndChange={(value) => {
+              setPsdWindowDraft((current) => ({ ...current, end: value }))
+              setPsdWindowError(null)
+            }}
+            onApply={handleApplyPsdWindow}
+            onReset={handleResetPsdWindow}
+          />
+
           <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
             <KpiCard
               label="Frecuencia pico"
