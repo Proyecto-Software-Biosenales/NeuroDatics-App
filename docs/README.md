@@ -5,6 +5,7 @@ No es una plantilla generica: describe rutas, archivos, capas y flujos que exist
 
 ## Indice General
 
+0. [DOCKER_USER_GUIDE.md](./DOCKER_USER_GUIDE.md)
 1. [01-overview.md](./01-overview.md)
 2. [02-frontend-architecture.md](./02-frontend-architecture.md)
 3. [03-backend-architecture.md](./03-backend-architecture.md)
@@ -19,6 +20,13 @@ No es una plantilla generica: describe rutas, archivos, capas y flujos que exist
 ## Mapa De Lectura Recomendado
 
 - Si eres nuevo total:
+  1. [DOCKER_USER_GUIDE.md](./DOCKER_USER_GUIDE.md)
+  2. [01-overview.md](./01-overview.md)
+  3. [09-onboarding-guide.md](./09-onboarding-guide.md)
+  4. [08-file-map.md](./08-file-map.md)
+- Si eres usuario no tecnico y solo quieres ejecutar la app:
+  1. [DOCKER_USER_GUIDE.md](./DOCKER_USER_GUIDE.md)
+- Si eres contributor tecnico:
   1. [01-overview.md](./01-overview.md)
   2. [09-onboarding-guide.md](./09-onboarding-guide.md)
   3. [08-file-map.md](./08-file-map.md)
@@ -43,5 +51,5 @@ No es una plantilla generica: describe rutas, archivos, capas y flujos que exist
 ## Alcance Y Limites
 
 - Esta documentacion refleja el estado actual de la rama `projects-CRUD`.
-- Si hay comportamientos que dependen de infraestructura externa (Google OAuth, Google Drive, base inicial SQL no incluida), se explicita.
+- Si hay comportamientos que dependen de infraestructura externa (Google OAuth, Google Drive), se explicita.
 - Donde el codigo esta incompleto o ambiguo, se marca en [10-known-gaps-and-todos.md](./10-known-gaps-and-todos.md).

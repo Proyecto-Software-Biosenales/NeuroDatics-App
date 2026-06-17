@@ -92,11 +92,19 @@ Campos:
 Proposito:
 - Mapeo de usuario de app contra identidad Google.
 
+Fuente:
+- Migracion `017_create_app_users_table.py`.
+
 Uso detectado:
 - `modules/auth/api/routes.py` hace SELECT/UPDATE/INSERT en `app_users`.
 
-Importante:
-- No se encontro migracion de creacion de `app_users` en este repo.
+Campos relevantes:
+- `id`
+- `google_sub` (unique)
+- `email`
+- `full_name`
+- `picture_url`
+- `created_at`, `updated_at`
 
 ## Relaciones (Vista Simplificada)
 
@@ -119,8 +127,6 @@ erDiagram
 
 ## Ambiguedades O Riesgos De Modelo
 
-- `owner_id` en `projects` comenta referencia a `auth.users(id)`, pero backend usa `app_users` por SQL directo.
-- Falta evidencia de migracion inicial de tablas base en este repo.
-- Parte del modelo puede existir por bootstrap externo a Alembic local.
+- `owner_id` en `projects` representa un usuario de app, pero no tiene constraint FK explicita contra `app_users.id`.
 
 Ver implicaciones en [10-known-gaps-and-todos.md](./10-known-gaps-and-todos.md).
