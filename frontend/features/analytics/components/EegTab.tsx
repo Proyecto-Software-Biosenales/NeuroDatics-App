@@ -32,7 +32,7 @@ import {
 import { KpiCard } from "@/components/ui/KpiCard"
 import { cn } from "@/lib/utils"
 import { useEegPsd, useEegSpectrogram, useEegTimeseries, useEegTopography } from "../hooks/useAnalyticsData"
-import { StimulusFixationCard } from "./StimulusFixationCard"
+import { StimulusFixationCard, StimulusPreviewSurface } from "./StimulusFixationCard"
 
 const EEG_CHANNELS = ["le", "f4", "c4", "p4", "p3", "c3", "f3"]
 const TOPOGRAPHY_CHANNELS = ["f3", "f4", "c3", "c4", "p3", "p4"]
@@ -339,6 +339,14 @@ function interpolateTopographyValue(x: number, y: number, rows: TopographyFrameR
   }
 }
 
+function rotateTopographyPositionClockwise(x: number, y: number) {
+  // Backend layout points front of head toward +Y; this view turns the face toward +X.
+  return {
+    x: y,
+    y: -x,
+  }
+}
+
 function SpectrogramPanel({
   channel,
   time,
@@ -536,10 +544,12 @@ function TopographyPanel({
   rows,
   colorDomain,
   unit,
+  className,
 }: {
   rows: TopographyFrameRow[]
   colorDomain: { min: number; max: number }
   unit: string
+  className?: string
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hover, setHover] = useState<TopographyHover | null>(null)
@@ -602,22 +612,22 @@ function TopographyPanel({
       ctx.arc(center.x, center.y, radius, 0, Math.PI * 2)
       ctx.stroke()
 
-      const leftEar = toCanvas(-1, 0)
-      const rightEar = toCanvas(1, 0)
+      const topEar = toCanvas(0, 1)
+      const bottomEar = toCanvas(0, -1)
       ctx.beginPath()
-      ctx.ellipse(leftEar.x, leftEar.y, 0.08 * width, 0.15 * height, 0, 0, Math.PI * 2)
+      ctx.ellipse(topEar.x, topEar.y, 0.15 * width, 0.08 * height, 0, 0, Math.PI * 2)
       ctx.stroke()
       ctx.beginPath()
-      ctx.ellipse(rightEar.x, rightEar.y, 0.08 * width, 0.15 * height, 0, 0, Math.PI * 2)
+      ctx.ellipse(bottomEar.x, bottomEar.y, 0.15 * width, 0.08 * height, 0, 0, Math.PI * 2)
       ctx.stroke()
 
-      const noseTip = toCanvas(0, 1.08)
-      const noseLeft = toCanvas(-0.07, 0.92)
-      const noseRight = toCanvas(0.07, 0.92)
+      const noseTip = toCanvas(1.08, 0)
+      const noseTop = toCanvas(0.92, 0.07)
+      const noseBottom = toCanvas(0.92, -0.07)
       ctx.beginPath()
-      ctx.moveTo(noseLeft.x, noseLeft.y)
+      ctx.moveTo(noseTop.x, noseTop.y)
       ctx.lineTo(noseTip.x, noseTip.y)
-      ctx.lineTo(noseRight.x, noseRight.y)
+      ctx.lineTo(noseBottom.x, noseBottom.y)
       ctx.stroke()
 
       ctx.font = `${12 * dpr}px sans-serif`
@@ -669,7 +679,7 @@ function TopographyPanel({
   }
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[520px] overflow-hidden rounded-lg border border-border bg-muted/30">
+    <div className={cn("relative aspect-square w-full overflow-hidden", className)}>
       <canvas
         ref={canvasRef}
         className="h-full w-full"
@@ -695,6 +705,98 @@ function TopographyPanel({
           ) : null}
         </div>
       ) : null}
+    </div>
+  )
+}
+
+function TelevisionFrame({
+  projectId,
+  participantCode,
+  selectedTime,
+}: {
+  projectId: string
+  participantCode: string | null
+  selectedTime: number | null
+}) {
+  return (
+    <div className="relative mx-auto w-full max-w-[700px] px-4 pb-7 pt-7">
+      <svg
+        className="pointer-events-none absolute left-1/2 top-0 h-9 w-32 -translate-x-1/2 text-gray-900 dark:text-gray-100"
+        viewBox="0 0 112 40"
+        aria-hidden="true"
+      >
+        <path
+          d="M56 39 L35 4 M56 39 L77 4"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </svg>
+
+      <div className="relative rounded-md border-2 border-gray-900 bg-gray-950 p-2.5 shadow-sm dark:border-gray-100">
+        <div className="aspect-video overflow-hidden rounded-sm bg-gray-950">
+          <StimulusPreviewSurface
+            projectId={projectId}
+            participantCode={participantCode}
+            selectedTime={selectedTime}
+            emptyText="Sin ventana seleccionada."
+            className="min-h-0 text-xs"
+          />
+        </div>
+      </div>
+
+      <svg
+        className="pointer-events-none absolute bottom-0 left-1/2 h-7 w-40 -translate-x-1/2 text-gray-900 dark:text-gray-100"
+        viewBox="0 0 144 32"
+        aria-hidden="true"
+      >
+        <path
+          d="M48 1 L35 30 M96 1 L109 30 M31 30 H50 M94 30 H113"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </svg>
+    </div>
+  )
+}
+
+function TopographyScene({
+  rows,
+  colorDomain,
+  unit,
+  projectId,
+  participantCode,
+  selectedTime,
+}: {
+  rows: TopographyFrameRow[]
+  colorDomain: { min: number; max: number }
+  unit: string
+  projectId: string
+  participantCode: string | null
+  selectedTime: number | null
+}) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-muted/30 p-2 sm:p-3">
+      <div className="grid min-h-[360px] grid-cols-1 items-center gap-4 lg:h-[560px] lg:min-h-0 lg:grid-cols-[minmax(300px,0.46fr)_minmax(360px,0.54fr)] xl:h-[600px] 2xl:h-[620px]">
+        <div className="flex min-w-0 items-center justify-center">
+          <TopographyPanel
+            rows={rows}
+            colorDomain={colorDomain}
+            unit={unit}
+            className="max-w-[550px]"
+          />
+        </div>
+        <div className="flex min-w-0 items-center justify-center">
+          <TelevisionFrame
+            projectId={projectId}
+            participantCode={participantCode}
+            selectedTime={selectedTime}
+          />
+        </div>
+      </div>
     </div>
   )
 }
@@ -1139,11 +1241,12 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         const position = topographyData.positions[channel]
         const value = topographyData.power[channel]?.[topographyFrameIndex]
         if (!position || position.length < 2 || !Number.isFinite(value)) return null
+        const rotated = rotateTopographyPositionClockwise(position[0], position[1])
         return {
           channel,
           value: Number(value),
-          x: position[0],
-          y: position[1],
+          x: rotated.x,
+          y: rotated.y,
         }
       })
       .filter((row): row is TopographyFrameRow => row != null)
@@ -1924,7 +2027,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
               </div>
               <div>
                 <span className="block text-xs uppercase tracking-widest text-muted-foreground">Ventana</span>
-                <span className="font-semibold text-foreground">{(topographyData?.window_s ?? 2).toFixed(1)}s</span>
+                <span className="font-semibold text-foreground">{(topographyData?.window_s ?? 0.33).toFixed(2)}s</span>
               </div>
             </div>
           </CardHeader>
@@ -2004,7 +2107,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                 No hay datos suficientes para calcular la topografía EEG.
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,1fr)_360px]">
+              <div className="space-y-6">
                 <div className="space-y-5">
                   <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3 sm:flex-row sm:items-center">
                     <span className="w-24 text-xs text-muted-foreground">
@@ -2019,10 +2122,13 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                     </span>
                   </div>
 
-                  <TopographyPanel
+                  <TopographyScene
                     rows={topographyRows}
                     colorDomain={topographyData.color_domain}
                     unit={topographyData.unit}
+                    projectId={projectId}
+                    participantCode={participantCode}
+                    selectedTime={topographyStats.frameTime}
                   />
 
                   <div className="rounded-lg border border-border bg-card p-4">
@@ -2052,7 +2158,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                       Valores de la ventana temporal seleccionada.
                     </p>
                   </div>
-                  <div className="divide-y divide-border/60">
+                  <div className="grid grid-cols-1 divide-y divide-border/60 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-3">
                     {topographyRows.map((row) => (
                       <div key={row.channel} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                         <div className="flex items-center gap-2">

@@ -2,210 +2,92 @@
 
 Plataforma para analisis de biosenales aplicada a neuromarketing.
 
-## Quick Start
+## Inicio Rapido Con Docker
 
-The recommended setup runs the **backend (FastAPI + PostgreSQL) in Docker** and the **frontend (Next.js) locally**. This gives you reliable hot reload on the frontend without Docker file-watch issues on Windows.
+El modo recomendado levanta toda la aplicacion con Docker Compose:
 
-### Requirements
+- Frontend Next.js
+- Backend FastAPI
+- PostgreSQL
+- Redis
+- Worker RQ
 
-| Tool           | Minimum version         |
-| -------------- | ----------------------- |
-| Docker Desktop | 20+ (with Compose v2)   |
-| Node.js        | 20+                     |
-| npm            | 10+                     |
+Solo el frontend publica un puerto en tu computador. En Docker Desktop, expande el grupo `neurodatics` y haz click en el puerto `3000:3000` del servicio `frontend`.
 
-### 1. Clone
+### Requisitos
 
-```bash
-git clone https://github.com/Proyecto-Software-Biosenales/NeuroDatics-App.git
-cd NeuroDatics-App
-```
+| Herramienta | Version |
+| --- | --- |
+| Docker Desktop | 20+ con Docker Compose |
+| Git | Cualquier version reciente |
 
-### 2. Configure environment files
+No necesitas instalar Node.js, Python, PostgreSQL ni Redis para usar la app con Docker.
 
-```bash
-# Backend
-cp backend/.env.example backend/.env
-
-# Frontend
-cp frontend/.env.example frontend/.env.local
-```
-
-> Google OAuth and Drive variables can be left empty for local development — the dev-admin login bypass works without them.
-
-### 3. Start the backend
-
-```bash
-docker compose up --build
-```
-
-This starts PostgreSQL and FastAPI. Migrations run automatically on startup.
-
-### 4. Start the frontend
-
-In a separate terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 5. Access
-
-| Resource     | URL                          |
-| ------------ | ---------------------------- |
-| Frontend     | http://localhost:3000        |
-| Backend API  | http://localhost:8000        |
-| Swagger UI   | http://localhost:8000/docs   |
-| Health check | http://localhost:8000/health |
-
-### 6. Stop the backend
-
-```bash
-# Stop services
-docker compose down
-
-# Stop and delete the database volume (clean reset)
-docker compose down -v
-```
-
----
-
-## Environment Variables
-
-- **Frontend**: `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
-- **Frontend optional**: `NEXT_PUBLIC_DEV_ADMIN_EMAIL`, `NEXT_PUBLIC_DEV_ADMIN_PASSWORD`, `NEXT_PUBLIC_DEV_ADMIN_DISPLAY_NAME`
-- **Backend**: see `backend/.env.example`
-
-Full reference: [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)
-
----
-
-## Project Structure
-
-- `frontend/` — Next.js App Router UI, features by domain.
-- `backend/` — FastAPI modular API (api, application, domain, infrastructure).
-- `docs/` — Technical and functional documentation.
-- `docker-compose.yml` — Docker Compose for backend + database.
-
-## Documentation
-
-- Overview: [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md)
-- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- Environment: [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)
-- Auth: [docs/AUTH_SUPABASE.md](docs/AUTH_SUPABASE.md)
-- Backend details: [backend/README.md](backend/README.md)
-- Frontend details: [frontend/README.md](frontend/README.md)
-
-Plataforma para analisis de biosenales aplicada a neuromarketing.
-
-## Quick Start (Docker — recommended)
-
-One command starts the full stack: PostgreSQL + Backend (FastAPI) + Frontend (Next.js).
-
-cd backend
-cd ..
-docker compose down -v
-docker compose up --build
-
-### 1. Prerequisites
-
-| Tool           | Minimum version                      |
-| -------------- | ------------------------------------ |
-| Docker Desktop | 20+ (with Compose v2)                |
-| Git            | Any                                  |
-
-### 2. Clone and configure
+### 1. Clonar
 
 ```bash
 git clone https://github.com/Proyecto-Software-Biosenales/NeuroDatics-App.git
 cd NeuroDatics-App
 ```
 
-Create the required environment files from the provided examples:
-
-```bash
-# Backend
-cp backend/.env.example backend/.env
-
-# Frontend
-cp frontend/.env.example frontend/.env.local
-```
-
-> The defaults work out of the box for local development. Google OAuth and Drive variables can be left empty — the dev-admin login bypass works without them.
-
-### 3. Start
+### 2. Levantar
 
 ```bash
 docker compose up --build
 ```
 
-This will:
-1. Start a PostgreSQL 16 database.
-2. Build and start the FastAPI backend (runs migrations automatically).
-3. Build and start the Next.js frontend.
+La primera vez Docker descargara imagenes, construira el frontend/backend, creara la base de datos y ejecutara migraciones automaticamente.
 
-### 4. Access
+### 3. Abrir
 
-| Resource     | URL                          |
-| ------------ | ---------------------------- |
-| Frontend     | http://localhost:3000        |
-| Backend API  | http://localhost:8000        |
-| Swagger UI   | http://localhost:8000/docs   |
-| Health check | http://localhost:8000/health |
+| Recurso | URL |
+| --- | --- |
+| Aplicacion | http://localhost:3000 |
+| API por proxy | http://localhost:3000/api |
+| Swagger UI | http://localhost:3000/docs |
 
-### 5. Stop
+En Docker Desktop la fila padre `neurodatics` puede mostrar `-` en la columna de puertos. Es normal para grupos de Compose. Expande la fila y abre el puerto `3000:3000` del contenedor `frontend`.
+
+### 4. Detener
 
 ```bash
-# Stop all services
 docker compose down
+```
 
-# Stop and delete database volume (clean reset)
+Para borrar tambien los datos locales de la base de datos y caches:
+
+```bash
 docker compose down -v
 ```
 
----
+## Configuracion
 
-## Alternative: Local Development (without Docker)
+Los valores por defecto funcionan para desarrollo local con Docker. Si necesitas Google OAuth o Google Drive, define las variables antes de reconstruir:
 
-### Backend
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+- `GDRIVE_FOLDER_ID`
+- `GDRIVE_REFRESH_TOKEN`
 
-See [backend/README.md](backend/README.md) for detailed instructions on running the backend locally with a virtual environment.
+El backend no publica puerto al host en el modo Docker principal. El frontend enruta `/api/*`, `/docs`, `/openapi.json` y `/redoc` hacia el backend dentro de la red Docker.
 
-### Frontend
+## Desarrollo Local Sin Docker Completo
+
+Solo para desarrollo de codigo:
 
 ```bash
 cd frontend
-cp .env.example .env.local   # then edit values as needed
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-See [frontend/README.md](frontend/README.md) for more details.
+El frontend local usa `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`, por lo que en ese modo necesitas levantar el backend aparte.
 
----
+## Estructura
 
-## Environment Variables
-
-Summary:
-
-- **Frontend**: `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
-- **Frontend optional**: `NEXT_PUBLIC_DEV_ADMIN_EMAIL`, `NEXT_PUBLIC_DEV_ADMIN_PASSWORD`, `NEXT_PUBLIC_DEV_ADMIN_DISPLAY_NAME`
-- **Backend**: see `backend/.env.example`
-
-Full reference: [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)
-
-## Project Structure
-
-- `frontend/` — Next.js App Router UI, features by domain.
-- `backend/` — FastAPI modular API (api, application, domain, infrastructure).
-- `docs/` — Technical and functional documentation.
-- `docker-compose.yml` — Full-stack Docker Compose (db + backend + frontend).
-
-## Documentation
-
-- Overview: [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md)
-- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- Environment: [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)
-- Auth: [docs/AUTH_SUPABASE.md](docs/AUTH_SUPABASE.md)
+- `frontend/` - UI Next.js App Router.
+- `backend/` - API FastAPI con PostgreSQL, Redis y worker.
+- `docs/` - documentacion tecnica del proyecto.
+- `docker-compose.yml` - stack Docker recomendado.

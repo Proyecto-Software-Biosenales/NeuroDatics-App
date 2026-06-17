@@ -71,28 +71,18 @@ function formatMetricValue(value: number | null | undefined, decimals: number) {
   return value.toFixed(decimals)
 }
 
-export function StimulusFixationCard({
+function useStimulusPreview({
   projectId,
   participantCode,
-  scenario,
   selectedTime,
-  selectedValue = null,
-  selectedValueLabel = "VALOR",
-  selectedValueSub = "valor seleccionado",
-  selectedValueDecimals = 2,
-  totalDurationS = null,
-  title = "Punto de fijación sobre estímulo visual",
-  description = "Ubicación de la mirada del participante durante el estímulo visual.",
-  emptyText = "Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante",
-  metricDescription = "la métrica seleccionada",
-  onClearSelection,
-  canClearSelection = true,
-  enableAois = true,
-}: StimulusFixationCardProps) {
+}: {
+  projectId: string
+  participantCode: string | null
+  selectedTime: number | null
+}) {
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [scenarioPreviewLoading, setScenarioPreviewLoading] = useState(false)
   const [scenarioPreviewError, setScenarioPreviewError] = useState<string | null>(null)
-  const [showAois, setShowAois] = useState(true)
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const [gazeOffset, setGazeOffset] = useState<{ x: number; y: number } | null>(null)
@@ -114,30 +104,8 @@ export function StimulusFixationCard({
   }, [clearGaze, fetchGaze, participantCode, selectedTime])
 
   const isVideoScenario = String(gazeData?.scenario_type || "").toLowerCase() === "video"
-  const canUseAois = enableAois && !isVideoScenario
-  const canShowAois = canUseAois && showAois
-  const aoiScenario = canUseAois
-    ? scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
-    : "all"
-  const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
-    projectId,
-    participantCode,
-    aoiScenario
-  )
-  const aois = aoiData?.aois ?? []
   const gazeX = gazeData?.gx
   const gazeY = gazeData?.gy
-  const currentAoi = canUseAois ? findAoiAtPoint(aois, gazeX, gazeY) : null
-  const metricValueText = formatMetricValue(selectedValue, selectedValueDecimals)
-
-  let aoiStatusText = ""
-  if (canUseAois) {
-    if (currentAoi) {
-      aoiStatusText = ` Cae dentro del AOI "${currentAoi.name}".`
-    } else if (aois.length > 0) {
-      aoiStatusText = " No cae dentro de un AOI delimitado."
-    }
-  }
 
   const computeGazeOffset = useCallback(() => {
     const box = getContainedImageBox(imageRef.current, imageContainerRef.current)
@@ -170,19 +138,27 @@ export function StimulusFixationCard({
   }, [computeGazeOffset, scenarioImageUrl])
 
   useEffect(() => {
-    if (!gazeData?.scenario_file_id) {
-      setScenarioImageUrl(null)
-      setScenarioPreviewLoading(false)
-      setScenarioPreviewError(null)
-      return
-    }
-
     let cancelled = false
     let currentUrl: string | null = null
 
-    setScenarioImageUrl(null)
-    setScenarioPreviewLoading(true)
-    setScenarioPreviewError(null)
+    if (!gazeData?.scenario_file_id) {
+      Promise.resolve().then(() => {
+        if (cancelled) return
+        setScenarioImageUrl(null)
+        setScenarioPreviewLoading(false)
+        setScenarioPreviewError(null)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      setScenarioImageUrl(null)
+      setScenarioPreviewLoading(true)
+      setScenarioPreviewError(null)
+    })
 
     const params = new URLSearchParams({
       time_s: String(gazeData.nearest_time_s),
@@ -219,6 +195,319 @@ export function StimulusFixationCard({
     participantCode,
     projectId,
   ])
+
+  return {
+    scenarioImageUrl,
+    scenarioPreviewLoading,
+    scenarioPreviewError,
+    imageContainerRef,
+    imageRef,
+    gazeOffset,
+    letterbox,
+    gazeData,
+    gazeLoading,
+    clearGaze,
+    computeGazeOffset,
+    isVideoScenario,
+    gazeX,
+    gazeY,
+  }
+}
+
+export function StimulusPreviewScreen({
+  projectId,
+  participantCode,
+  selectedTime,
+  title = "Pantalla observada",
+  description = "Estímulo visual en el instante seleccionado.",
+  emptyText = "Selecciona una ventana para ver el estímulo observado.",
+  className,
+}: {
+  projectId: string
+  participantCode: string | null
+  selectedTime: number | null
+  title?: string
+  description?: string
+  emptyText?: string
+  className?: string
+}) {
+  const {
+    scenarioImageUrl,
+    scenarioPreviewLoading,
+    scenarioPreviewError,
+    imageContainerRef,
+    imageRef,
+    gazeOffset,
+    gazeData,
+    gazeLoading,
+    computeGazeOffset,
+    isVideoScenario,
+  } = useStimulusPreview({ projectId, participantCode, selectedTime })
+  const hasSelection = selectedTime != null && Boolean(participantCode)
+
+  return (
+    <div className={cn("overflow-hidden rounded-lg border border-border bg-card", className)}>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-foreground">{title}</p>
+            {gazeData?.scenario ? (
+              <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">{gazeData.scenario}</span>
+              </span>
+            ) : null}
+          </div>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+        {gazeData ? (
+          <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+            t = {gazeData.nearest_time_s.toFixed(2)}s
+          </span>
+        ) : null}
+      </div>
+
+      {!hasSelection ? (
+        <div className="flex min-h-[260px] items-center justify-center bg-muted/30 px-6 text-center text-sm text-muted-foreground">
+          {emptyText}
+        </div>
+      ) : gazeLoading ? (
+        <div className="min-h-[260px] animate-pulse bg-muted" />
+      ) : !gazeData ? (
+        <div className="flex min-h-[260px] items-center justify-center bg-muted/30 px-6 text-center text-sm text-muted-foreground">
+          No se pudo ubicar la mirada para este instante.
+        </div>
+      ) : !gazeData.scenario_file_id ? (
+        <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 bg-muted/30 px-6 text-center">
+          <span className="text-sm font-medium text-foreground">
+            {isNoImageScenario(gazeData.scenario)
+              ? "Pantalla de instrucción - no hay estímulo visual asociado a este escenario"
+              : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene estímulo visual registrado`}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            Posición de mirada: ({gazeData.gx?.toFixed(1) ?? "—"}, {gazeData.gy?.toFixed(1) ?? "—"})
+          </span>
+        </div>
+      ) : scenarioPreviewLoading ? (
+        <div className="min-h-[260px] animate-pulse bg-muted" />
+      ) : scenarioImageUrl ? (
+        <div
+          className="relative flex min-h-[260px] items-center justify-center bg-gray-950"
+          ref={imageContainerRef}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={imageRef}
+            src={scenarioImageUrl}
+            alt="Escenario"
+            className="max-h-[380px] w-full object-contain"
+            onLoad={computeGazeOffset}
+          />
+          {gazeOffset ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="absolute -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
+                    style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
+                  >
+                    <div className="h-7 w-7 rounded-full border-4 border-cyan-400 bg-cyan-400/20 shadow-lg" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-950">
+                    <Crosshair className="h-4 w-4 text-cyan-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold leading-none">Punto de atención</p>
+                    <p className="mt-1 text-xs leading-none text-muted-foreground">
+                      ({gazeData.gx?.toFixed(0)}, {gazeData.gy?.toFixed(0)})
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
+        </div>
+      ) : (
+        <div className="flex min-h-[260px] items-center justify-center bg-muted/30 px-6 text-center text-sm text-muted-foreground">
+          {isVideoScenario
+            ? "No se pudo cargar el frame del video."
+            : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function StimulusPreviewSurface({
+  projectId,
+  participantCode,
+  selectedTime,
+  emptyText = "Selecciona una ventana para ver el estímulo observado.",
+  className,
+}: {
+  projectId: string
+  participantCode: string | null
+  selectedTime: number | null
+  emptyText?: string
+  className?: string
+}) {
+  const {
+    scenarioImageUrl,
+    scenarioPreviewLoading,
+    scenarioPreviewError,
+    imageContainerRef,
+    imageRef,
+    gazeOffset,
+    gazeData,
+    gazeLoading,
+    computeGazeOffset,
+    isVideoScenario,
+  } = useStimulusPreview({ projectId, participantCode, selectedTime })
+  const hasSelection = selectedTime != null && Boolean(participantCode)
+  const surfaceClassName = cn(
+    "relative flex h-full min-h-[180px] w-full items-center justify-center overflow-hidden bg-gray-950 px-4 text-center text-sm text-gray-300",
+    className
+  )
+
+  if (!hasSelection) {
+    return <div className={surfaceClassName}>{emptyText}</div>
+  }
+
+  if (gazeLoading) {
+    return <div className={cn(surfaceClassName, "animate-pulse bg-muted px-0")} />
+  }
+
+  if (!gazeData) {
+    return <div className={surfaceClassName}>No se pudo ubicar la mirada para este instante.</div>
+  }
+
+  if (!gazeData.scenario_file_id) {
+    return (
+      <div className={cn(surfaceClassName, "flex-col gap-2")}>
+        <span className="font-medium text-gray-100">
+          {isNoImageScenario(gazeData.scenario)
+            ? "Pantalla de instrucción"
+            : `Sin estímulo visual para "${gazeData.scenario ?? "escenario"}"`}
+        </span>
+        <span className="text-xs text-gray-400">
+          Mirada: ({gazeData.gx?.toFixed(1) ?? "—"}, {gazeData.gy?.toFixed(1) ?? "—"})
+        </span>
+      </div>
+    )
+  }
+
+  if (scenarioPreviewLoading) {
+    return <div className={cn(surfaceClassName, "animate-pulse bg-muted px-0")} />
+  }
+
+  if (!scenarioImageUrl) {
+    return (
+      <div className={surfaceClassName}>
+        {isVideoScenario
+          ? "No se pudo cargar el frame del video."
+          : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn(surfaceClassName, "p-0")} ref={imageContainerRef}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={imageRef}
+        src={scenarioImageUrl}
+        alt="Escenario"
+        className="h-full w-full object-contain"
+        onLoad={computeGazeOffset}
+      />
+      {gazeOffset ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className="absolute -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
+                style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
+              >
+                <div className="h-6 w-6 rounded-full border-[3px] border-cyan-400 bg-cyan-400/20 shadow-lg" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="flex items-center gap-3 px-3 py-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-950">
+                <Crosshair className="h-4 w-4 text-cyan-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold leading-none">Punto de atención</p>
+                <p className="mt-1 text-xs leading-none text-muted-foreground">
+                  ({gazeData.gx?.toFixed(0)}, {gazeData.gy?.toFixed(0)})
+                </p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : null}
+    </div>
+  )
+}
+
+export function StimulusFixationCard({
+  projectId,
+  participantCode,
+  scenario,
+  selectedTime,
+  selectedValue = null,
+  selectedValueLabel = "VALOR",
+  selectedValueSub = "valor seleccionado",
+  selectedValueDecimals = 2,
+  totalDurationS = null,
+  title = "Punto de fijación sobre estímulo visual",
+  description = "Ubicación de la mirada del participante durante el estímulo visual.",
+  emptyText = "Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante",
+  metricDescription = "la métrica seleccionada",
+  onClearSelection,
+  canClearSelection = true,
+  enableAois = true,
+}: StimulusFixationCardProps) {
+  const [showAois, setShowAois] = useState(true)
+  const {
+    scenarioImageUrl,
+    scenarioPreviewLoading,
+    scenarioPreviewError,
+    imageContainerRef,
+    imageRef,
+    gazeOffset,
+    letterbox,
+    gazeData,
+    gazeLoading,
+    clearGaze,
+    computeGazeOffset,
+    isVideoScenario,
+    gazeX,
+    gazeY,
+  } = useStimulusPreview({ projectId, participantCode, selectedTime })
+  const canUseAois = enableAois && !isVideoScenario
+  const canShowAois = canUseAois && showAois
+  const aoiScenario = canUseAois
+    ? scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
+    : "all"
+  const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
+    projectId,
+    participantCode,
+    aoiScenario
+  )
+  const aois = aoiData?.aois ?? []
+  const currentAoi = canUseAois ? findAoiAtPoint(aois, gazeX, gazeY) : null
+  const metricValueText = formatMetricValue(selectedValue, selectedValueDecimals)
+
+  let aoiStatusText = ""
+  if (canUseAois) {
+    if (currentAoi) {
+      aoiStatusText = ` Cae dentro del AOI "${currentAoi.name}".`
+    } else if (aois.length > 0) {
+      aoiStatusText = " No cae dentro de un AOI delimitado."
+    }
+  }
 
   const clearSelection = () => {
     clearGaze()

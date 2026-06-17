@@ -153,10 +153,10 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     channels: string[] = [],
-    windowS: number = 2.0,
-    overlapRatio: number = 0.5,
+    windowS: number = 0.33,
+    overlapRatio: number = 0,
     removeDc: boolean = true,
-    maxFrames: number = 600
+    maxFrames: number = 5000
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
