@@ -43,6 +43,7 @@ export type ApiAoiPayload = {
     y: number;
     width: number;
     height: number;
+    points?: Array<{ x: number; y: number }>;
   };
 };
 

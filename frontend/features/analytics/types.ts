@@ -212,6 +212,7 @@ export interface AoiShape {
   y: number
   width: number
   height: number
+  points?: Array<{ x: number; y: number }>
 }
 
 export interface AoiMetricItem {

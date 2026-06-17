@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ProjectsApi, type ApiProjectAoi, type ApiProjectDetail, type ApiProjectFile } from "@/features/projects/api/projectsApi"
-import { apiAoiToFormAoi } from "@/features/projects/create-project/aoiUtils"
+import { apiAoiToFormAoi, normalizeAoiPoints } from "@/features/projects/create-project/aoiUtils"
 
 interface ViewProjectDialogProps {
   projectId: string
@@ -511,18 +511,52 @@ const ScenarioPreviewImage = ({
               const y = letterbox.offsetY + (aoi.y / 100) * letterbox.renderedH
               const width = (aoi.width / 100) * letterbox.renderedW
               const height = (aoi.height / 100) * letterbox.renderedH
+              const points = normalizeAoiPoints(aoi.points)
+              const isPolygon = aoi.shapeType === "polygon" && points.length >= 3
+              const svgPoints = points.map((point) => ({
+                x: letterbox.offsetX + (point.x / 100) * letterbox.renderedW,
+                y: letterbox.offsetY + (point.y / 100) * letterbox.renderedH,
+              }))
+              const midpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
+                x: (a.x + b.x) / 2,
+                y: (a.y + b.y) / 2,
+              })
+              const smoothPath = isPolygon
+                ? (() => {
+                    const start = midpoint(svgPoints[svgPoints.length - 1], svgPoints[0])
+                    const commands = [`M ${start.x.toFixed(2)} ${start.y.toFixed(2)}`]
+                    for (let index = 0; index < svgPoints.length; index += 1) {
+                      const current = svgPoints[index]
+                      const next = svgPoints[(index + 1) % svgPoints.length]
+                      const end = midpoint(current, next)
+                      commands.push(`Q ${current.x.toFixed(2)} ${current.y.toFixed(2)} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`)
+                    }
+                    commands.push("Z")
+                    return commands.join(" ")
+                  })()
+                : ""
               return (
                 <g key={aoi.id}>
-                  <rect
-                    x={x}
-                    y={y}
-                    width={width}
-                    height={height}
-                    fill={`${aoi.color}14`}
-                    stroke={aoi.color}
-                    strokeWidth={2.5}
-                    vectorEffect="non-scaling-stroke"
-                  />
+                  {isPolygon ? (
+                    <path
+                      d={smoothPath}
+                      fill={`${aoi.color}14`}
+                      stroke={aoi.color}
+                      strokeWidth={2.5}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ) : (
+                    <rect
+                      x={x}
+                      y={y}
+                      width={width}
+                      height={height}
+                      fill={`${aoi.color}14`}
+                      stroke={aoi.color}
+                      strokeWidth={2.5}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  )}
                   <text
                     x={x + 8}
                     y={Math.max(y - 8, 16)}
