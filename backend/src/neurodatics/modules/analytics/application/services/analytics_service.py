@@ -1510,7 +1510,7 @@ class FixationDataService:
 
 
 class AoiAnalyticsService:
-    """Computes fixation metrics inside persisted rectangular or polygonal AOIs."""
+    """Computes fixation metrics inside persisted rectangular, circular, or polygonal AOIs."""
 
     @staticmethod
     def _rect_from_aoi(aoi: object) -> dict:
@@ -1575,8 +1575,8 @@ class AoiAnalyticsService:
         shape_type = str(getattr(aoi, "shape_type", "rect")).lower()
         points = cls._points_from_shape(shape)
         if shape_type == "polygon" and len(points) >= 3:
-            return {**cls._bounds_from_points(points), "points": points}
-        return rect
+            return {**cls._bounds_from_points(points), "type": "polygon", "points": points}
+        return {**rect, "type": "circle" if shape_type == "circle" else "rect"}
 
     @staticmethod
     def _contains(shape: dict, x_norm: float, y_norm: float) -> bool:
@@ -1586,6 +1586,15 @@ class AoiAnalyticsService:
         y1 = (shape["y"] + shape["height"]) / 100.0
         if not (x0 <= x_norm <= x1 and y0 <= y_norm <= y1):
             return False
+
+        if shape.get("type") == "circle":
+            rx = (x1 - x0) / 2.0
+            ry = (y1 - y0) / 2.0
+            if rx <= 0.0 or ry <= 0.0:
+                return False
+            cx = x0 + rx
+            cy = y0 + ry
+            return (((x_norm - cx) ** 2) / (rx ** 2)) + (((y_norm - cy) ** 2) / (ry ** 2)) <= 1.0
 
         points = shape.get("points")
         if not isinstance(points, list) or len(points) < 3:

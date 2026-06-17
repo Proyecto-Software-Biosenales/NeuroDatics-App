@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Loader2, Palette, Trash2 } from "lucide-react"
+import { Circle as CircleIcon, Loader2, Palette, PenLine, Square, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -34,6 +34,13 @@ const DRAFT_POINT_MIN_DISTANCE_PERCENT = 0.85
 const POLYGON_SIMPLIFY_TOLERANCE_PERCENT = 0.55
 const POLYGON_SMOOTHING_PASSES = 2
 type ResizeHandle = "nw" | "ne" | "sw" | "se"
+type AoiDrawMode = NonNullable<AOI["shapeType"]>
+
+const AOI_DRAW_MODES = [
+  { value: "polygon" as const, label: "Silueta", title: "Dibujar silueta fiel", Icon: PenLine },
+  { value: "rect" as const, label: "Rectángulo", title: "Dibujar rectángulo", Icon: Square },
+  { value: "circle" as const, label: "Círculo", title: "Dibujar círculo", Icon: CircleIcon },
+]
 
 const clampPercent = (value: number) => Math.max(0, Math.min(100, value))
 const distanceBetweenPoints = (a: { x: number; y: number }, b: { x: number; y: number }) => (
@@ -174,6 +181,41 @@ const resizeAoiFromHandle = (initial: AOI, handle: ResizeHandle, current: { x: n
   })
 }
 
+const geometricBoundsFromDrag = (
+  start: { x: number; y: number },
+  current: { x: number; y: number },
+  shapeType: AoiDrawMode,
+  letterbox: Letterbox
+) => {
+  if (shapeType === "circle") {
+    const startXpx = (start.x / 100) * letterbox.renderedW
+    const startYpx = (start.y / 100) * letterbox.renderedH
+    const dxPx = ((current.x - start.x) / 100) * letterbox.renderedW
+    const dyPx = ((current.y - start.y) / 100) * letterbox.renderedH
+    const signX = dxPx >= 0 ? 1 : -1
+    const signY = dyPx >= 0 ? 1 : -1
+    const maxSideX = signX > 0 ? letterbox.renderedW - startXpx : startXpx
+    const maxSideY = signY > 0 ? letterbox.renderedH - startYpx : startYpx
+    const sidePx = Math.max(0, Math.min(Math.max(Math.abs(dxPx), Math.abs(dyPx)), maxSideX, maxSideY))
+    const endX = ((startXpx + signX * sidePx) / letterbox.renderedW) * 100
+    const endY = ((startYpx + signY * sidePx) / letterbox.renderedH) * 100
+
+    return {
+      x: clampPercent(Math.min(start.x, endX)),
+      y: clampPercent(Math.min(start.y, endY)),
+      width: Math.abs(endX - start.x),
+      height: Math.abs(endY - start.y),
+    }
+  }
+
+  return {
+    x: clampPercent(Math.min(start.x, current.x)),
+    y: clampPercent(Math.min(start.y, current.y)),
+    width: Math.abs(current.x - start.x),
+    height: Math.abs(current.y - start.y),
+  }
+}
+
 export function AoiEditor({
   projectId,
   fileId,
@@ -193,6 +235,7 @@ export function AoiEditor({
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
   const [selectedAoiId, setSelectedAoiId] = useState<string | null>(null)
   const [activeAoiColor, setActiveAoiColor] = useState(AOI_COLORS[0])
+  const [drawMode, setDrawMode] = useState<AoiDrawMode>("polygon")
   const [resizeState, setResizeState] = useState<{
     aoiId: string
     handle: ResizeHandle
@@ -373,16 +416,17 @@ export function AoiEditor({
     event.currentTarget.setPointerCapture(event.pointerId)
     setSelectedAoiId(null)
     setDragStart(start)
+    const isPolygonMode = drawMode === "polygon"
     setDraftRect({
       id: "draft",
       name: "",
       color: activeAoiColor,
-      shapeType: "polygon",
+      shapeType: drawMode,
       x: start.x,
       y: start.y,
       width: 0,
       height: 0,
-      points: [start],
+      points: isPolygonMode ? [start] : undefined,
     })
   }
 
@@ -411,7 +455,7 @@ export function AoiEditor({
 
     if (!dragStart || !draftRect) return
     const current = pointToPercent(event.clientX, event.clientY)
-    if (!current) return
+    if (!current || !letterbox) return
 
     if (draftRect.shapeType === "polygon") {
       const points = draftRect.points || []
@@ -430,10 +474,8 @@ export function AoiEditor({
 
     setDraftRect({
       ...draftRect,
-      x: Math.min(dragStart.x, current.x),
-      y: Math.min(dragStart.y, current.y),
-      width: Math.abs(current.x - dragStart.x),
-      height: Math.abs(current.y - dragStart.y),
+      ...geometricBoundsFromDrag(dragStart, current, draftRect.shapeType || "rect", letterbox),
+      points: undefined,
     })
   }
 
@@ -453,20 +495,30 @@ export function AoiEditor({
       return
     }
 
-    const points = simplifyAoiPoints(draftRect.points || [])
-    const normalized = normalizeAoiRect({
-      ...draftRect,
-      shapeType: "polygon",
-      points,
-      ...getAoiBoundsFromPoints(points),
-    })
-    if (normalized.width >= MIN_AOI_PERCENT && normalized.height >= MIN_AOI_PERCENT) {
+    const normalized = draftRect.shapeType === "polygon"
+      ? (() => {
+          const points = simplifyAoiPoints(draftRect.points || [])
+          if (points.length < MIN_POLYGON_POINTS) return null
+          return normalizeAoiRect({
+            ...draftRect,
+            shapeType: "polygon",
+            points,
+            ...getAoiBoundsFromPoints(points),
+          })
+        })()
+      : normalizeAoiRect({
+          ...draftRect,
+          shapeType: draftRect.shapeType === "circle" ? "circle" : "rect",
+          points: undefined,
+        })
+
+    if (normalized && normalized.width >= MIN_AOI_PERCENT && normalized.height >= MIN_AOI_PERCENT) {
       const nextAoi: AOI = {
         ...normalized,
         id: `aoi-${Date.now()}-${normalizedAois.length}`,
         name: `AOI ${normalizedAois.length + 1}`,
       }
-      if (isPolygonAoi(nextAoi)) {
+      if (nextAoi.shapeType !== "polygon" || isPolygonAoi(nextAoi)) {
         onAoisChange([...normalizedAois, nextAoi])
         setSelectedAoiId(nextAoi.id)
       }
@@ -550,7 +602,31 @@ export function AoiEditor({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1">
+            {AOI_DRAW_MODES.map((mode) => {
+              const ModeIcon = mode.Icon
+              return (
+                <button
+                  key={mode.value}
+                  type="button"
+                  title={mode.title}
+                  aria-label={mode.title}
+                  onClick={() => setDrawMode(mode.value)}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded px-2 text-xs font-semibold transition-colors",
+                    drawMode === mode.value
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <ModeIcon className="h-4 w-4" />
+                  <span>{mode.label}</span>
+                </button>
+              )
+            })}
+          </div>
+
           {AOI_COLORS.map((color) => (
             <button
               key={color}
@@ -643,6 +719,7 @@ export function AoiEditor({
                     const polygonSvgPoints = pointsToSvgPoints(polygonPoints)
                     const smoothPath = pointsToSmoothPath(polygonPoints)
                     const isPolygon = aoi.shapeType === "polygon" && polygonPoints.length > 0
+                    const isCircle = aoi.shapeType === "circle"
                     return (
                       <g key={aoi.id}>
                         {isPolygon ? (
@@ -685,6 +762,25 @@ export function AoiEditor({
                               }}
                             />
                           )
+                        ) : isCircle ? (
+                          <ellipse
+                            cx={props.x + props.width / 2}
+                            cy={props.y + props.height / 2}
+                            rx={props.width / 2}
+                            ry={props.height / 2}
+                            fill={isDraft || isSelected ? `${aoi.color}22` : "transparent"}
+                            stroke={aoi.color}
+                            strokeWidth={isDraft || isSelected ? 2.5 : 3}
+                            strokeDasharray={isDraft ? "6 5" : undefined}
+                            vectorEffect="non-scaling-stroke"
+                            pointerEvents={isDraft ? "none" : "auto"}
+                            className={isDraft ? undefined : "cursor-pointer"}
+                            onPointerDown={(event) => {
+                              if (isDraft) return
+                              event.stopPropagation()
+                              setSelectedAoiId(aoi.id)
+                            }}
+                          />
                         ) : (
                           <rect
                             {...props}
@@ -780,7 +876,7 @@ export function AoiEditor({
           {selectedAoi ? (
             <span className="text-xs text-muted-foreground">
               {isPolygonAoi(selectedAoi) ? "Arrastra los puntos de " : "Arrastra las esquinas de "}
-              <span className="font-semibold">{selectedAoi.name}</span> para ajustar su tamano.
+              <span className="font-semibold">{selectedAoi.name}</span> para ajustar su tamaño.
             </span>
           ) : null}
         </div>
@@ -836,6 +932,7 @@ export function AoiEditor({
                 />
 
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {aoi.shapeType === "polygon" ? "Silueta" : aoi.shapeType === "circle" ? "Círculo" : "Rectángulo"} ·{" "}
                   {aoi.x.toFixed(1)}%, {aoi.y.toFixed(1)}% - {aoi.width.toFixed(1)}% x {aoi.height.toFixed(1)}%
                 </span>
 

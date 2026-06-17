@@ -82,6 +82,16 @@ function isPointInPolygon(points: Array<{ x: number; y: number }>, x: number, y:
   return inside
 }
 
+function isPointInEllipse(aoi: AoiMetricItem, x: number, y: number) {
+  const rx = aoi.shape.width / 2
+  const ry = aoi.shape.height / 2
+  if (rx <= 0 || ry <= 0) return false
+
+  const cx = aoi.shape.x + rx
+  const cy = aoi.shape.y + ry
+  return (((x - cx) ** 2) / (rx ** 2)) + (((y - cy) ** 2) / (ry ** 2)) <= 1
+}
+
 export function findAoiAtPoint(
   aois: AoiMetricItem[] | undefined,
   xPercent: number | null | undefined,
@@ -92,6 +102,10 @@ export function findAoiAtPoint(
     const points = normalizedShapePoints(aoi)
     if (aoi.shape_type === "polygon" && points.length >= 3) {
       return isPointInPolygon(points, xPercent, yPercent)
+    }
+
+    if (aoi.shape_type === "circle") {
+      return isPointInEllipse(aoi, xPercent, yPercent)
     }
 
     return (
@@ -164,11 +178,24 @@ export function AoiOverlay({
         const rect = rectProps(aoi, box)
         const points = normalizedShapePoints(aoi)
         const isPolygon = aoi.shape_type === "polygon" && points.length >= 3
+        const isCircle = aoi.shape_type === "circle"
         return (
           <g key={aoi.id}>
             {isPolygon ? (
               <path
                 d={polygonSmoothPath(aoi, box)}
+                fill={fill ? aoi.color : "transparent"}
+                fillOpacity={fill ? 0.1 : 0}
+                stroke={aoi.color}
+                strokeWidth={3}
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : isCircle ? (
+              <ellipse
+                cx={rect.x + rect.width / 2}
+                cy={rect.y + rect.height / 2}
+                rx={rect.width / 2}
+                ry={rect.height / 2}
                 fill={fill ? aoi.color : "transparent"}
                 fillOpacity={fill ? 0.1 : 0}
                 stroke={aoi.color}

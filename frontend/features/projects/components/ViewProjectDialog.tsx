@@ -513,6 +513,7 @@ const ScenarioPreviewImage = ({
               const height = (aoi.height / 100) * letterbox.renderedH
               const points = normalizeAoiPoints(aoi.points)
               const isPolygon = aoi.shapeType === "polygon" && points.length >= 3
+              const isCircle = aoi.shapeType === "circle"
               const svgPoints = points.map((point) => ({
                 x: letterbox.offsetX + (point.x / 100) * letterbox.renderedW,
                 y: letterbox.offsetY + (point.y / 100) * letterbox.renderedH,
@@ -540,6 +541,17 @@ const ScenarioPreviewImage = ({
                   {isPolygon ? (
                     <path
                       d={smoothPath}
+                      fill={`${aoi.color}14`}
+                      stroke={aoi.color}
+                      strokeWidth={2.5}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ) : isCircle ? (
+                    <ellipse
+                      cx={x + width / 2}
+                      cy={y + height / 2}
+                      rx={width / 2}
+                      ry={height / 2}
                       fill={`${aoi.color}14`}
                       stroke={aoi.color}
                       strokeWidth={2.5}
