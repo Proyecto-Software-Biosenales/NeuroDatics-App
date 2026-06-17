@@ -2,43 +2,51 @@
 
 Plataforma para analisis de biosenales aplicada a neuromarketing.
 
+## Guia Principal
+
+Si estas instalando la app por primera vez o no tienes experiencia tecnica, usa la guia paso a paso:
+
+[Guia Docker para usuarios principiantes](./docs/DOCKER_USER_GUIDE.md)
+
+Esa guia explica como instalar Docker Desktop, descargar el proyecto, configurar Google OAuth, abrir la app desde Docker Desktop y resolver errores comunes.
+
 ## Inicio Rapido Con Docker
 
-El modo recomendado levanta toda la aplicacion con Docker Compose:
+Este es el camino corto para usuarios que ya tienen Docker Desktop y Git instalados.
 
-- Frontend Next.js
-- Backend FastAPI
-- PostgreSQL
-- Redis
-- Worker RQ
-
-Solo el frontend publica un puerto en tu computador. En Docker Desktop, expande el grupo `neurodatics` y haz click en el puerto `3000:3000` del servicio `frontend`.
-
-### Requisitos
-
-| Herramienta | Version |
-| --- | --- |
-| Docker Desktop | 20+ con Docker Compose |
-| Git | Cualquier version reciente |
-
-No necesitas instalar Node.js, Python, PostgreSQL ni Redis para usar la app con Docker.
-
-### 1. Clonar
+### 1. Clonar el proyecto
 
 ```bash
 git clone https://github.com/Proyecto-Software-Biosenales/NeuroDatics-App.git
 cd NeuroDatics-App
 ```
 
-### 2. Levantar
+### 2. Crear configuracion local
 
 ```bash
-docker compose up --build
+cp .env.example .env
 ```
 
-La primera vez Docker descargara imagenes, construira el frontend/backend, creara la base de datos y ejecutara migraciones automaticamente.
+Edita `.env` y completa al menos estas variables si quieres usar login real:
 
-### 3. Abrir
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+
+Para usar ingestion de proyectos con Google Drive, configura tambien:
+
+- `GDRIVE_FOLDER_ID` si quieres una carpeta raiz especifica.
+- La conexion OAuth de Drive desde `http://localhost:3000/api/integrations/google-drive/authorize` cuando el stack ya este corriendo.
+
+### 3. Levantar toda la app
+
+```bash
+docker compose up -d --build
+```
+
+La primera vez Docker descargara imagenes, construira frontend/backend, creara la base de datos y ejecutara migraciones automaticamente.
+
+### 4. Abrir
 
 | Recurso | URL |
 | --- | --- |
@@ -46,31 +54,37 @@ La primera vez Docker descargara imagenes, construira el frontend/backend, crear
 | API por proxy | http://localhost:3000/api |
 | Swagger UI | http://localhost:3000/docs |
 
-En Docker Desktop la fila padre `neurodatics` puede mostrar `-` en la columna de puertos. Es normal para grupos de Compose. Expande la fila y abre el puerto `3000:3000` del contenedor `frontend`.
+En Docker Desktop, la fila padre `neurodatics` puede mostrar `-` en la columna de puertos. Es normal para grupos de Compose. Expande el grupo y haz click en el puerto `3000:3000` del servicio `frontend`.
 
-### 4. Detener
+### 5. Detener
 
 ```bash
 docker compose down
 ```
 
-Para borrar tambien los datos locales de la base de datos y caches:
+Para borrar tambien base de datos, usuarios locales, cache y volumenes:
 
 ```bash
 docker compose down -v
 ```
 
-## Configuracion
+## Que Incluye Docker
 
-Los valores por defecto funcionan para desarrollo local con Docker. Si necesitas Google OAuth o Google Drive, define las variables antes de reconstruir:
+- Frontend Next.js.
+- Backend FastAPI.
+- PostgreSQL.
+- Redis.
+- Worker RQ.
 
-- `GOOGLE_OAUTH_CLIENT_ID`
-- `GOOGLE_OAUTH_CLIENT_SECRET`
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
-- `GDRIVE_FOLDER_ID`
-- `GDRIVE_REFRESH_TOKEN`
+No necesitas instalar Node.js, Python, PostgreSQL ni Redis para usar la app con Docker.
 
-El backend no publica puerto al host en el modo Docker principal. El frontend enruta `/api/*`, `/docs`, `/openapi.json` y `/redoc` hacia el backend dentro de la red Docker.
+## Auth Y Google Drive
+
+- El login real usa Google OAuth.
+- El backend emite `access_token` y `expires_in`.
+- No hay refresh token publico en el contrato actual.
+- El login `DEV_ADMIN` es solo una ayuda local de frontend y no reemplaza Google OAuth para usar la API protegida.
+- El backend no publica el puerto `8000` al host en el modo Docker principal. El frontend enruta `/api/*`, `/docs`, `/openapi.json` y `/redoc` hacia el backend dentro de Docker.
 
 ## Desarrollo Local Sin Docker Completo
 
@@ -89,5 +103,5 @@ El frontend local usa `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`, por lo q
 
 - `frontend/` - UI Next.js App Router.
 - `backend/` - API FastAPI con PostgreSQL, Redis y worker.
-- `docs/` - documentacion tecnica del proyecto.
+- `docs/` - documentacion tecnica y guias de uso.
 - `docker-compose.yml` - stack Docker recomendado.

@@ -68,8 +68,8 @@ Objetivo del bloque:
 - DB guarda metadata de archivos.
 - Binarios viven en Drive.
 
-5. Tablas base no completas en migraciones:
-- `app_users` se usa pero no aparece creada en migraciones actuales.
+5. Auth:
+- `app_users` se crea por migracion Alembic y el login real depende de Google OAuth.
 
 ## Recomendaciones Practicas Para Contribuir
 

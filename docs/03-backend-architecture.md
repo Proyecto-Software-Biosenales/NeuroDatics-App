@@ -117,7 +117,7 @@ Optimizacion real reciente:
 ## Inconsistencias O Huecos Visibles
 
 - En `projects/api/routes.py` existe `register_project_routes(app): pass` sin uso.
-- `app_users` se usa por SQL directo en auth pero no aparece en migraciones del repo.
+- `app_users` se usa por SQL directo en auth y se crea por migracion Alembic `017_create_app_users_table.py`.
 - `backend/README.md` mezcla comandos y partes desalineadas con estado real.
 
 Ver detalle en [10-known-gaps-and-todos.md](./10-known-gaps-and-todos.md).

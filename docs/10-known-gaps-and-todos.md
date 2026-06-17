@@ -2,19 +2,7 @@
 
 Este documento enumera hallazgos concretos al leer codigo real.
 
-## 1) Tabla app_users No Visible En Migraciones Del Repo
-
-Estado actual:
-- `modules/auth/api/routes.py` hace SQL directo sobre `app_users`.
-- No se encontro migracion Alembic en `backend/migrations/versions` que cree esa tabla.
-
-Riesgo:
-- Ambientes nuevos pueden fallar auth aun con migraciones al dia.
-
-Accion sugerida:
-- Agregar migracion explicita de `app_users` o documentar dependencia externa obligatoria.
-
-## 2) startup_event Sin Implementacion
+## 1) startup_event Sin Implementacion
 
 Archivo:
 - `backend/src/neurodatics/main.py`
@@ -28,7 +16,7 @@ Riesgo:
 Accion sugerida:
 - O implementar chequeo minimo de conectividad, o eliminar handler vacio.
 
-## 3) Placeholder Sin Uso En Rutas De Projects
+## 2) Placeholder Sin Uso En Rutas De Projects
 
 Archivo:
 - `backend/src/neurodatics/modules/projects/api/routes.py`
@@ -42,7 +30,7 @@ Riesgo:
 Accion sugerida:
 - Eliminar funcion placeholder o implementarla y usarla consistentemente.
 
-## 4) Filtro De Estado En UI No Incluye Draft
+## 3) Filtro De Estado En UI No Incluye Draft
 
 Archivo:
 - `frontend/app/proyectos/page.tsx`
@@ -57,7 +45,7 @@ Riesgo:
 Accion sugerida:
 - agregar filtro draft o normalizar comportamiento esperado.
 
-## 5) Doble Metodo Frontend Para El Mismo Delete
+## 4) Doble Metodo Frontend Para El Mismo Delete
 
 Archivo:
 - `frontend/features/projects/api/projectsApi.ts`
@@ -71,7 +59,7 @@ Riesgo:
 Accion sugerida:
 - dejar uno solo y refactorizar llamadas.
 
-## 6) Inconsistencia De Documentacion Sobre Supabase
+## 5) Inconsistencia De Documentacion Sobre Supabase
 
 Estado:
 - Instrucciones antiguas mencionan cliente Supabase en path que no existe.
@@ -83,7 +71,7 @@ Riesgo:
 Accion sugerida:
 - alinear docs antiguas con estado actual.
 
-## 7) backend/README.md Con Bloques Mezclados
+## 6) backend/README.md Con Bloques Mezclados
 
 Estado:
 - Tiene comandos y secciones mezcladas (venv, docker, markdown desalineado).
@@ -94,7 +82,7 @@ Riesgo:
 Accion sugerida:
 - limpieza de README backend y separar rutas de setup oficiales.
 
-## 8) Cache En Memoria No Distribuida
+## 7) Cache En Memoria No Distribuida
 
 Estado:
 - Cache de imagenes en backend vive en memoria de proceso.
@@ -105,7 +93,7 @@ Riesgo:
 Accion sugerida:
 - si escala horizontal, evaluar cache distribuida (Redis) o CDN.
 
-## 9) Validacion De Tamano ZIP Duplicada Y No Alineada
+## 8) Validacion De Tamano ZIP Duplicada Y No Alineada
 
 Estado:
 - Frontend valida 100MB en Step1.
@@ -117,7 +105,7 @@ Riesgo:
 Accion sugerida:
 - unificar limite y exponerlo desde backend/config.
 
-## 10) Historial Reciente De Estado Draft (013/014)
+## 9) Historial Reciente De Estado Draft (013/014)
 
 Estado:
 - Migracion 013 removio draft.
@@ -128,3 +116,7 @@ Riesgo:
 
 Accion sugerida:
 - validar estado final de constraints al desplegar.
+
+## Resuelto Recientemente
+
+- `app_users` ya tiene migracion Alembic explicita: `017_create_app_users_table.py`.

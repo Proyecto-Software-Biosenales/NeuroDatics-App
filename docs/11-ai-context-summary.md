@@ -37,7 +37,7 @@ The application is a **monorepo** with two primary workspaces:
 |---|---|
 | FastAPI | Async, uvicorn, all routes under `/api` prefix |
 | SQLAlchemy async | `AsyncSession`, `AsyncEngine`, session factory in `infra/db/session.py` |
-| Alembic | Incremental migrations in `backend/migrations/versions/` (000–016) |
+| Alembic | Incremental migrations in `backend/migrations/versions/` (000-017) |
 | PostgreSQL | Primary database for all business state |
 | Google Drive API | File/folder storage via `googleapiclient`, OAuth credentials stored in DB |
 | Redis + RQ | Worker queue infrastructure (scaffolded, not yet decoupled from sync flow) |
@@ -47,7 +47,7 @@ The application is a **monorepo** with two primary workspaces:
 ### Infrastructure
 | Component | Notes |
 |---|---|
-| Docker Compose | `docker-compose.yml` at repo root and `backend/docker-compose.yml`; services: `backend`, `worker`, `redis` |
+| Docker Compose | `docker-compose.yml` at repo root; services: `frontend`, `backend`, `worker`, `db`, `redis` |
 | Redis | `redis://redis:6379`, used by RQ worker |
 | Worker healthcheck | HTTP on port 8001, implemented with `python urllib` (not curl) |
 
@@ -95,7 +95,7 @@ NeuroDatics-App/
 │   │       ├── tasks/
 │   │       ├── pipelines/
 │   │       └── __main__.py
-│   ├── migrations/versions/      # Alembic migrations 000–016
+│   ├── migrations/versions/      # Alembic migrations 000-017
 │   └── data/auth_users.json      # Local user store fallback
 │
 └── docs/                         # Project documentation
@@ -207,7 +207,7 @@ Tracks background processing job state (RQ integration, currently stubs).
 | `started_at`, `completed_at` | Timestamps |
 
 #### `app_users` (table: `app_users`)
-User identity table mapping Google accounts to internal users. **Used by `modules/auth/api/routes.py` via raw SQL but has no corresponding Alembic migration in this repo** — a known gap.
+User identity table mapping Google accounts to internal users. Created by Alembic migration `017_create_app_users_table.py` and used by `modules/auth/api/routes.py` via raw SQL.
 
 ---
 
@@ -415,6 +415,7 @@ Defined in `modules/projects/domain/entities.py` (`JobStatus` enum) and persiste
 | 014 | Restore draft project status |
 | 015 | Add `processed_parquet` kind |
 | 016 | Create `processing_jobs` table |
+| 017 | Create `app_users` table |
 
 ---
 
@@ -475,15 +476,14 @@ Defined in `modules/projects/domain/entities.py` (`JobStatus` enum) and persiste
 
 ## 14. Known Gaps and Technical Debt
 
-1. **`app_users` table has no Alembic migration** — auth module uses raw SQL on this table; new environments may fail auth even with all migrations applied.
-2. **`startup_event` in `main.py` is `pass`** — no DB connectivity check or bootstrap on startup.
-3. **Worker is not decoupled** — ZIP processing runs synchronously in the HTTP request; RQ worker tasks are stubs.
-4. **`processing/domain/entities.py` is a placeholder** — contains `class Job: pass`; actual `ProcessingJob` entity is defined in `projects/domain/entities.py`.
-5. **In-memory caches are not distributed** — blob cache and `DriveUploadProgressRegistry` live in a single process; do not work correctly with multiple backend replicas.
-6. **Two duplicate OAuth callback routes** — `/authorize` and `/auth/callback` both mount the same `AuthCallback` component.
-7. **Two identical delete methods in `projectsApi.ts`** — `remove()` and `delete()` both call `DELETE /api/projects/{id}`.
-8. **Draft filter missing in UI** — `/proyectos` page only shows `all \| active \| archived` filter buttons; `draft` projects are hidden unless "all" is selected.
-9. **`register_project_routes(app): pass`** — placeholder function in `projects/api/routes.py` adds noise.
+1. **`startup_event` in `main.py` is `pass`** — no DB connectivity check or bootstrap on startup.
+2. **Worker is not decoupled** — ZIP processing runs synchronously in the HTTP request; RQ worker tasks are stubs.
+3. **`processing/domain/entities.py` is a placeholder** — contains `class Job: pass`; actual `ProcessingJob` entity is defined in `projects/domain/entities.py`.
+4. **In-memory caches are not distributed** — blob cache and `DriveUploadProgressRegistry` live in a single process; do not work correctly with multiple backend replicas.
+5. **Two duplicate OAuth callback routes** — `/authorize` and `/auth/callback` both mount the same `AuthCallback` component.
+6. **Two identical delete methods in `projectsApi.ts`** — `remove()` and `delete()` both call `DELETE /api/projects/{id}`.
+7. **Draft filter missing in UI** — `/proyectos` page only shows `all \| active \| archived` filter buttons; `draft` projects are hidden unless "all" is selected.
+8. **`register_project_routes(app): pass`** — placeholder function in `projects/api/routes.py` adds noise.
 
 ---
 
