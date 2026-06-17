@@ -56,18 +56,51 @@ export function imagePointToContainerPercent(
   }
 }
 
+function normalizedShapePoints(aoi: AoiMetricItem) {
+  const points = aoi.shape.points || []
+  return points.filter((point) => (
+    Number.isFinite(point.x) &&
+    Number.isFinite(point.y) &&
+    point.x >= 0 &&
+    point.x <= 100 &&
+    point.y >= 0 &&
+    point.y <= 100
+  ))
+}
+
+function isPointInPolygon(points: Array<{ x: number; y: number }>, x: number, y: number) {
+  let inside = false
+
+  for (let i = 0, j = points.length - 1; i < points.length; j = i, i += 1) {
+    const pi = points[i]
+    const pj = points[j]
+    const intersects = ((pi.y > y) !== (pj.y > y)) &&
+      (x < ((pj.x - pi.x) * (y - pi.y)) / ((pj.y - pi.y) || Number.EPSILON) + pi.x)
+    if (intersects) inside = !inside
+  }
+
+  return inside
+}
+
 export function findAoiAtPoint(
   aois: AoiMetricItem[] | undefined,
   xPercent: number | null | undefined,
   yPercent: number | null | undefined
 ) {
   if (!aois?.length || xPercent == null || yPercent == null) return null
-  return aois.find((aoi) => (
-    xPercent >= aoi.shape.x &&
-    xPercent <= aoi.shape.x + aoi.shape.width &&
-    yPercent >= aoi.shape.y &&
-    yPercent <= aoi.shape.y + aoi.shape.height
-  )) ?? null
+  return aois.find((aoi) => {
+    const points = normalizedShapePoints(aoi)
+    if (aoi.shape_type === "polygon" && points.length >= 3) {
+      return isPointInPolygon(points, xPercent, yPercent)
+    }
+
+    return (
+      xPercent >= aoi.shape.x &&
+      xPercent <= aoi.shape.x + aoi.shape.width &&
+      yPercent >= aoi.shape.y &&
+      yPercent <= aoi.shape.y + aoi.shape.height
+    )
+  }) ?? null
 }
 
 function rectProps(aoi: AoiMetricItem, box: ContainedImageBox) {
@@ -77,6 +110,32 @@ function rectProps(aoi: AoiMetricItem, box: ContainedImageBox) {
     width: (aoi.shape.width / 100) * box.renderedW,
     height: (aoi.shape.height / 100) * box.renderedH,
   }
+}
+
+function polygonSmoothPath(aoi: AoiMetricItem, box: ContainedImageBox) {
+  const points = normalizedShapePoints(aoi).map((point) => ({
+    x: box.offsetX + (point.x / 100) * box.renderedW,
+    y: box.offsetY + (point.y / 100) * box.renderedH,
+  }))
+
+  if (points.length < 3) return ""
+
+  const midpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  })
+  const start = midpoint(points[points.length - 1], points[0])
+  const commands = [`M ${start.x.toFixed(2)} ${start.y.toFixed(2)}`]
+
+  for (let index = 0; index < points.length; index += 1) {
+    const current = points[index]
+    const next = points[(index + 1) % points.length]
+    const end = midpoint(current, next)
+    commands.push(`Q ${current.x.toFixed(2)} ${current.y.toFixed(2)} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`)
+  }
+
+  commands.push("Z")
+  return commands.join(" ")
 }
 
 export function AoiOverlay({
@@ -103,16 +162,29 @@ export function AoiOverlay({
     >
       {aois.map((aoi) => {
         const rect = rectProps(aoi, box)
+        const points = normalizedShapePoints(aoi)
+        const isPolygon = aoi.shape_type === "polygon" && points.length >= 3
         return (
           <g key={aoi.id}>
-            <rect
-              {...rect}
-              fill={fill ? aoi.color : "transparent"}
-              fillOpacity={fill ? 0.1 : 0}
-              stroke={aoi.color}
-              strokeWidth={3}
-              vectorEffect="non-scaling-stroke"
-            />
+            {isPolygon ? (
+              <path
+                d={polygonSmoothPath(aoi, box)}
+                fill={fill ? aoi.color : "transparent"}
+                fillOpacity={fill ? 0.1 : 0}
+                stroke={aoi.color}
+                strokeWidth={3}
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : (
+              <rect
+                {...rect}
+                fill={fill ? aoi.color : "transparent"}
+                fillOpacity={fill ? 0.1 : 0}
+                stroke={aoi.color}
+                strokeWidth={3}
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             {showLabels ? (
               <text
                 x={rect.x + 8}

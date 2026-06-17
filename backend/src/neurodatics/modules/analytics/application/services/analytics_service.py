@@ -1510,7 +1510,7 @@ class FixationDataService:
 
 
 class AoiAnalyticsService:
-    """Computes fixation metrics inside persisted rectangular AOIs."""
+    """Computes fixation metrics inside persisted rectangular or polygonal AOIs."""
 
     @staticmethod
     def _rect_from_aoi(aoi: object) -> dict:
@@ -1531,12 +1531,89 @@ class AoiAnalyticsService:
         return {"x": x, "y": y, "width": width, "height": height}
 
     @staticmethod
-    def _contains(rect: dict, x_norm: float, y_norm: float) -> bool:
-        x0 = rect["x"] / 100.0
-        y0 = rect["y"] / 100.0
-        x1 = (rect["x"] + rect["width"]) / 100.0
-        y1 = (rect["y"] + rect["height"]) / 100.0
-        return x0 <= x_norm <= x1 and y0 <= y_norm <= y1
+    def _points_from_shape(shape: object) -> list[dict]:
+        if not isinstance(shape, dict) or not isinstance(shape.get("points"), list):
+            return []
+
+        points = []
+        for raw_point in shape["points"]:
+            if not isinstance(raw_point, dict):
+                continue
+            try:
+                x = float(raw_point.get("x"))
+                y = float(raw_point.get("y"))
+            except (TypeError, ValueError):
+                continue
+            if not np.isfinite(x) or not np.isfinite(y):
+                continue
+            points.append({
+                "x": float(np.clip(x, 0.0, 100.0)),
+                "y": float(np.clip(y, 0.0, 100.0)),
+            })
+
+        return points
+
+    @staticmethod
+    def _bounds_from_points(points: list[dict]) -> dict:
+        xs = [point["x"] for point in points]
+        ys = [point["y"] for point in points]
+        x = float(np.clip(min(xs), 0.0, 100.0))
+        y = float(np.clip(min(ys), 0.0, 100.0))
+        max_x = float(np.clip(max(xs), 0.0, 100.0))
+        max_y = float(np.clip(max(ys), 0.0, 100.0))
+        return {
+            "x": x,
+            "y": y,
+            "width": float(np.clip(max_x - x, 0.0, 100.0 - x)),
+            "height": float(np.clip(max_y - y, 0.0, 100.0 - y)),
+        }
+
+    @classmethod
+    def _shape_from_aoi(cls, aoi: object) -> dict:
+        shape = getattr(aoi, "shape", None) or {}
+        rect = cls._rect_from_aoi(aoi)
+        shape_type = str(getattr(aoi, "shape_type", "rect")).lower()
+        points = cls._points_from_shape(shape)
+        if shape_type == "polygon" and len(points) >= 3:
+            return {**cls._bounds_from_points(points), "points": points}
+        return rect
+
+    @staticmethod
+    def _contains(shape: dict, x_norm: float, y_norm: float) -> bool:
+        x0 = shape["x"] / 100.0
+        y0 = shape["y"] / 100.0
+        x1 = (shape["x"] + shape["width"]) / 100.0
+        y1 = (shape["y"] + shape["height"]) / 100.0
+        if not (x0 <= x_norm <= x1 and y0 <= y_norm <= y1):
+            return False
+
+        points = shape.get("points")
+        if not isinstance(points, list) or len(points) < 3:
+            return True
+
+        x_pct = x_norm * 100.0
+        y_pct = y_norm * 100.0
+        inside = False
+        j = len(points) - 1
+        for i, current in enumerate(points):
+            previous = points[j]
+            current_y = current["y"]
+            previous_y = previous["y"]
+            intersects = (
+                (current_y > y_pct) != (previous_y > y_pct)
+                and x_pct
+                < (
+                    (previous["x"] - current["x"]) *
+                    (y_pct - current_y) /
+                    ((previous_y - current_y) or np.finfo(float).eps) +
+                    current["x"]
+                )
+            )
+            if intersects:
+                inside = not inside
+            j = i
+
+        return inside
 
     @staticmethod
     def _nanmean_pair(left: pd.Series, right: pd.Series) -> np.ndarray:
@@ -1604,10 +1681,11 @@ class AoiAnalyticsService:
 
         return sample_df, pupil_baseline, distance_baseline
 
-    @staticmethod
-    def _sample_metrics_for_rect(
+    @classmethod
+    def _sample_metrics_for_shape(
+        cls,
         sample_df: pd.DataFrame,
-        rect: dict,
+        shape: dict,
         pupil_baseline: Optional[float],
         distance_baseline: Optional[float],
     ) -> dict:
@@ -1626,19 +1704,19 @@ class AoiAnalyticsService:
 
         gx = sample_df["gx_clean"].to_numpy(dtype=float)
         gy = sample_df["gy_clean"].to_numpy(dtype=float)
-        in_rect = (
-            np.isfinite(gx) &
-            np.isfinite(gy) &
-            (gx >= rect["x"]) &
-            (gx <= rect["x"] + rect["width"]) &
-            (gy >= rect["y"]) &
-            (gy <= rect["y"] + rect["height"])
+        valid_mask = np.isfinite(gx) & np.isfinite(gy)
+        in_shape = np.array(
+            [
+                bool(valid) and cls._contains(shape, x / 100.0, y / 100.0)
+                for x, y, valid in zip(gx, gy, valid_mask)
+            ],
+            dtype=bool,
         )
 
         metrics = dict(empty)
 
         if "pupil_avg_mm" in sample_df.columns:
-            pupil_values = sample_df.loc[in_rect, "pupil_avg_mm"].to_numpy(dtype=float)
+            pupil_values = sample_df.loc[in_shape, "pupil_avg_mm"].to_numpy(dtype=float)
             pupil_values = pupil_values[np.isfinite(pupil_values)]
             metrics["pupil_sample_count"] = int(pupil_values.size)
             if pupil_values.size:
@@ -1661,7 +1739,7 @@ class AoiAnalyticsService:
                 )
 
         if "distance_cm" in sample_df.columns:
-            distance_values = sample_df.loc[in_rect, "distance_cm"].to_numpy(dtype=float)
+            distance_values = sample_df.loc[in_shape, "distance_cm"].to_numpy(dtype=float)
             distance_values = distance_values[np.isfinite(distance_values)]
             metrics["distance_sample_count"] = int(distance_values.size)
             if distance_values.size:
@@ -1765,13 +1843,13 @@ class AoiAnalyticsService:
 
         aoi_defs = []
         for aoi in ordered_aois:
-            rect = cls._rect_from_aoi(aoi)
+            shape = cls._shape_from_aoi(aoi)
             aoi_defs.append({
                 "id": str(getattr(aoi, "id")),
                 "name": str(getattr(aoi, "name", "")),
                 "color": str(getattr(aoi, "color", "#3B82F6")),
                 "shape_type": str(getattr(aoi, "shape_type", "rect")),
-                "shape": rect,
+                "shape": shape,
             })
 
         metrics = []
@@ -1836,7 +1914,7 @@ class AoiAnalyticsService:
                     2,
                 ),
                 "fixations_to_target": int(first_index + 1) if first_index is not None else None,
-                **cls._sample_metrics_for_rect(
+                **cls._sample_metrics_for_shape(
                     sample_df,
                     aoi_def["shape"],
                     pupil_baseline,

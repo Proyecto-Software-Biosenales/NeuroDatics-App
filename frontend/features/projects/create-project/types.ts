@@ -29,6 +29,7 @@ export interface AOI {
   y: number
   width: number
   height: number
+  points?: Array<{ x: number; y: number }>
 }
 
 export interface ProjectFormData {
