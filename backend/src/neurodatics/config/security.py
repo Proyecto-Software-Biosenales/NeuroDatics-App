@@ -36,14 +36,6 @@ def create_access_token(subject: str, email: Optional[str], name: Optional[str])
     )
 
 
-def create_refresh_token(subject: str) -> str:
-    return _encode_token(
-        subject=subject,
-        token_type="refresh",
-        expires_minutes=settings.auth_refresh_token_exp_minutes,
-    )
-
-
 async def verify_jwt_token(token: str, expected_type: str = "access") -> Dict[str, Any]:
     """Verify locally issued JWT token."""
     try:

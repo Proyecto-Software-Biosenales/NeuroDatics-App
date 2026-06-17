@@ -127,8 +127,7 @@ alembic upgrade head
 ## Endpoints Principales
 
 ### Auth
-- `POST /api/auth/google/authorize` — intercambia code OAuth por tokens locales
-- `POST /api/auth/refresh` — renueva access token
+- `POST /api/auth/google/authorize` — intercambia code OAuth por access token local
 
 ### Proyectos
 - `POST /api/projects` — crear proyecto

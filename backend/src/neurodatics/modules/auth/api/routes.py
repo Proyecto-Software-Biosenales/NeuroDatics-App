@@ -7,10 +7,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....api.deps import get_db
-from ....config.security import create_access_token, create_refresh_token, verify_jwt_token
+from ....config.security import create_access_token
 from ....config.settings import settings
 from ..infrastructure.user_store import auth_user_store
-from .schemas import GoogleAuthorizeRequest, GoogleAuthorizeResponse, AuthUserResponse, RefreshTokenRequest, RefreshTokenResponse
+from .schemas import GoogleAuthorizeRequest, GoogleAuthorizeResponse, AuthUserResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -176,11 +176,9 @@ async def authorize_google(
         email=stored_user.email,
         name=stored_user.name,
     )
-    refresh_token = create_refresh_token(subject=stored_user.id)
 
     return GoogleAuthorizeResponse(
         access_token=access_token,
-        refresh_token=refresh_token,
         token_type="Bearer",
         expires_in=settings.auth_access_token_exp_minutes * 60,
         user=AuthUserResponse(
@@ -188,32 +186,4 @@ async def authorize_google(
             email=stored_user.email,
             name=stored_user.name,
         ),
-    )
-
-
-@router.post("/refresh", response_model=RefreshTokenResponse)
-async def refresh_access_token(request: RefreshTokenRequest):
-    """Exchange refresh_token for a new access_token"""
-    payload = await verify_jwt_token(request.refresh_token, expected_type="refresh")
-    user_id = payload.get("sub")
-    
-    # Retrieve user to get email and name for the new access token
-    stored_user = auth_user_store.get_user(user_id)
-    if not stored_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token: user not found",
-        )
-    
-    # Generate new access token
-    access_token = create_access_token(
-        subject=stored_user.id,
-        email=stored_user.email,
-        name=stored_user.name,
-    )
-    
-    return RefreshTokenResponse(
-        access_token=access_token,
-        token_type="Bearer",
-        expires_in=settings.auth_access_token_exp_minutes * 60,
     )

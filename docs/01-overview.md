@@ -27,7 +27,7 @@ En el estado actual del repositorio, el caso mas consolidado es la gestion de pr
 - FastAPI.
 - SQLAlchemy async.
 - Alembic (migraciones incrementales).
-- JWT local para auth (access + refresh).
+- JWT local para auth con access token.
 - Integracion Google OAuth y Google Drive.
 
 ### Base De Datos Y Storage

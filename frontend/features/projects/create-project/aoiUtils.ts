@@ -5,7 +5,8 @@ export const AOI_COLORS = [
   "#14B8A6",
   "#EF4444",
   "#F59E0B",
-  "#8B5CF6",  
+  "#8B5CF6", 
+  "#ff1576", 
 ]
 
 type ApiAoiLike = {

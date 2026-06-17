@@ -81,7 +81,6 @@ export function isAccessTokenExpired(): boolean {
 
   const expiresAt = new Date(session.session.expiresAt).getTime()
   const now = Date.now()
-  const timeBuffer = 30 * 1000 // 30 segundos de buffer para refrescar antes de la expiración real
 
-  return now >= expiresAt - timeBuffer
+  return now >= expiresAt
 }

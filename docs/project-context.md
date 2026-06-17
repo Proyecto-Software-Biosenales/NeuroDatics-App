@@ -36,7 +36,7 @@ Self-hosted Docker on researcher's PC (similar to n8n). Single replica. Docker v
 - **Language:** TypeScript 5.x
 - **Styling:** Tailwind CSS v4 + shadcn/ui + Radix UI
 - **Charts:** Recharts 3.x
-- **Auth:** Google OAuth (tokens in localStorage, auto-refresh)
+- **Auth:** Google OAuth (access token in localStorage, 2-week expiration)
 - **File packaging:** JSZip 3.10.1 (client-side folder → ZIP)
 
 ### App Routes

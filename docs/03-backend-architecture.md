@@ -71,7 +71,7 @@ Notas de arquitectura:
 
 Archivo: `config/security.py`
 
-- Emite JWT access/refresh locales.
+- Emite JWT access local.
 - Verifica `iss`, `exp`, firma y tipo (`typ`).
 - `get_current_user_id` extrae `sub` desde bearer token.
 

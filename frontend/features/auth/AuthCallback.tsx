@@ -7,7 +7,6 @@ import { writeStoredAuthSession } from '@/lib/auth/sessionStore'
 
 interface GoogleAuthorizeResponse {
   access_token: string
-  refresh_token: string
   token_type: string
   expires_in: number
   user: {
@@ -76,7 +75,6 @@ export function AuthCallback() {
           },
           session: {
             accessToken: data.access_token,
-            refreshToken: data.refresh_token,
             tokenType: data.token_type,
             expiresAt,
           },
