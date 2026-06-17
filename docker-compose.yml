@@ -1,59 +1,155 @@
+name: neurodatics
+
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-neurodatics}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
 
   backend:
+    image: neurodatics-backend:local
     build:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./backend/.env
     environment:
-      - REDIS_URL=redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/neurodatics}
+      REDIS_URL: redis://redis:6379
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-neurodatics-local-development-secret-change-me}
+      AUTH_JWT_ALGORITHM: ${AUTH_JWT_ALGORITHM:-HS256}
+      AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER:-neurodatics-backend}
+      AUTH_ACCESS_TOKEN_EXP_MINUTES: ${AUTH_ACCESS_TOKEN_EXP_MINUTES:-60}
+      AUTH_REFRESH_TOKEN_EXP_MINUTES: ${AUTH_REFRESH_TOKEN_EXP_MINUTES:-43200}
+      AUTH_USER_STORE_PATH: /data/auth_users.json
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3000/authorize}
+      GOOGLE_DRIVE_OAUTH_REDIRECT_URI: ${GOOGLE_DRIVE_OAUTH_REDIRECT_URI:-http://localhost:3000/api/integrations/google-drive/callback}
+      GOOGLE_OAUTH_TOKEN_URL: ${GOOGLE_OAUTH_TOKEN_URL:-https://oauth2.googleapis.com/token}
+      GOOGLE_OAUTH_USERINFO_URL: ${GOOGLE_OAUTH_USERINFO_URL:-https://openidconnect.googleapis.com/v1/userinfo}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      GDRIVE_SERVICE_ACCOUNT_JSON: ${GDRIVE_SERVICE_ACCOUNT_JSON:-}
+      GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID:-}
+      GDRIVE_REFRESH_TOKEN: ${GDRIVE_REFRESH_TOKEN:-}
+      GDRIVE_HTTP_TIMEOUT_SECONDS: ${GDRIVE_HTTP_TIMEOUT_SECONDS:-300}
+      GDRIVE_REQUEST_RETRIES: ${GDRIVE_REQUEST_RETRIES:-5}
+      PARQUET_CACHE_DIR: /data/parquet_cache
+      IMAGE_CACHE_DIR: /data/image_cache
+      VIDEO_CACHE_DIR: /data/video_cache
+      VIDEO_FRAME_CACHE_DIR: /data/video_frame_cache
+      APP_NAME: ${APP_NAME:-NeuroDatics API}
+      DEBUG: ${DEBUG:-false}
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - parquet_cache:/data/parquet_cache
-      - image_cache:/data/image_cache
-      - video_cache:/data/video_cache
-      - video_frame_cache:/data/video_frame_cache
+      - neurodatics_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: neurodatics-backend:local
     restart: unless-stopped
     command: python -m neurodatics.workers
-    env_file:
-      - ./backend/.env
     environment:
-      - REDIS_URL=redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/neurodatics}
+      REDIS_URL: redis://redis:6379
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-neurodatics-local-development-secret-change-me}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3000/authorize}
+      GOOGLE_DRIVE_OAUTH_REDIRECT_URI: ${GOOGLE_DRIVE_OAUTH_REDIRECT_URI:-http://localhost:3000/api/integrations/google-drive/callback}
+      GOOGLE_OAUTH_TOKEN_URL: ${GOOGLE_OAUTH_TOKEN_URL:-https://oauth2.googleapis.com/token}
+      GOOGLE_OAUTH_USERINFO_URL: ${GOOGLE_OAUTH_USERINFO_URL:-https://openidconnect.googleapis.com/v1/userinfo}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
+      GDRIVE_SERVICE_ACCOUNT_JSON: ${GDRIVE_SERVICE_ACCOUNT_JSON:-}
+      GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID:-}
+      GDRIVE_REFRESH_TOKEN: ${GDRIVE_REFRESH_TOKEN:-}
+      GDRIVE_HTTP_TIMEOUT_SECONDS: ${GDRIVE_HTTP_TIMEOUT_SECONDS:-300}
+      GDRIVE_REQUEST_RETRIES: ${GDRIVE_REQUEST_RETRIES:-5}
+      PARQUET_CACHE_DIR: /data/parquet_cache
+      APP_NAME: ${APP_NAME:-NeuroDatics API}
+      DEBUG: ${DEBUG:-false}
     depends_on:
+      backend:
+        condition: service_healthy
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - parquet_cache:/data/parquet_cache
+      - neurodatics_data:/data
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health/worker')\""]
       interval: 15s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    image: neurodatics-frontend:local
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+        NEXT_PUBLIC_DEV_ADMIN_EMAIL: ${NEXT_PUBLIC_DEV_ADMIN_EMAIL:-}
+        NEXT_PUBLIC_DEV_ADMIN_PASSWORD: ${NEXT_PUBLIC_DEV_ADMIN_PASSWORD:-}
+        NEXT_PUBLIC_DEV_ADMIN_DISPLAY_NAME: ${NEXT_PUBLIC_DEV_ADMIN_DISPLAY_NAME:-Administrador NeuroDatics}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+      NEXT_PUBLIC_DEV_ADMIN_EMAIL: ${NEXT_PUBLIC_DEV_ADMIN_EMAIL:-}
+      NEXT_PUBLIC_DEV_ADMIN_PASSWORD: ${NEXT_PUBLIC_DEV_ADMIN_PASSWORD:-}
+      NEXT_PUBLIC_DEV_ADMIN_DISPLAY_NAME: ${NEXT_PUBLIC_DEV_ADMIN_DISPLAY_NAME:-Administrador NeuroDatics}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
-  parquet_cache:
-  image_cache:
-  video_cache:
-  video_frame_cache:
+  postgres_data:
+  redis_data:
+  neurodatics_data:
