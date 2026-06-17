@@ -6,7 +6,7 @@ Base path comun: `/api`
 
 ### POST /api/auth/google/authorize
 
-- Proposito: intercambiar `code` de Google por tokens JWT locales.
+- Proposito: intercambiar `code` de Google por un JWT local.
 - Implementacion: `backend/src/neurodatics/modules/auth/api/routes.py`
 - Request ejemplo:
 
@@ -19,25 +19,12 @@ Base path comun: `/api`
 
 - Response (resumen):
   - `access_token`
-  - `refresh_token`
   - `expires_in`
   - `user`
 
 Errores comunes:
 - 400 si code invalido o userinfo falla.
 - 500 si faltan variables OAuth en backend.
-
-### POST /api/auth/refresh
-
-- Proposito: renovar access token.
-- Implementacion: `modules/auth/api/routes.py`
-- Request:
-
-```json
-{
-  "refresh_token": "..."
-}
-```
 
 ## Projects - Core CRUD
 

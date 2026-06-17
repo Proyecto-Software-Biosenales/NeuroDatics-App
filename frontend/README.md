@@ -45,8 +45,8 @@ npm run format
 
 - Login principal: Google OAuth.
 - Callback de autorizacion: /authorize.
-- El frontend guarda accessToken y refreshToken en localStorage.
-- El wrapper de API renueva automaticamente access tokens expirados con POST /api/auth/refresh.
+- El frontend guarda accessToken y expiresAt en localStorage.
+- El access token dura 2 semanas; al expirar, el wrapper de API limpia la sesion y redirige a login.
 
 ## Estructura Principal
 

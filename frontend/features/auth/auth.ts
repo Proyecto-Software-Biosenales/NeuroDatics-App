@@ -14,7 +14,6 @@ export interface LocalDevAdminSession {
 
 export interface AuthSession {
   accessToken: string
-  refreshToken: string
   tokenType: string
   expiresAt: string | null
 }

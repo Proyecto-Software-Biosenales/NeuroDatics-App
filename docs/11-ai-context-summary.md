@@ -67,7 +67,7 @@ NeuroDatics-App/
 │   │   └── home/
 │   ├── hooks/                    # Global hooks (minimal)
 │   └── lib/                      # Infrastructure (api client, auth, providers)
-│       ├── api/apiFetch.ts       # HTTP client with JWT + auto-refresh
+│       ├── api/apiFetch.ts       # HTTP client with JWT session handling
 │       ├── auth/                 # Session store + token management
 │       └── providers/            # AuthProvider (React context)
 │
@@ -238,8 +238,8 @@ Every module under `backend/src/neurodatics/modules/<name>/` follows:
 - `scenaries_router` — `/api/projects/{id}/scenaries`
 
 ### Auth & Security
-- **Flow**: Google OAuth code exchange → `POST /api/auth/google/authorize` → local JWT issued.
-- **JWT**: Access token (60 min, default) + Refresh token (30 days default). Signed with HS256, validated for `iss`, `exp`, `typ`.
+- **Flow**: Google OAuth code exchange → `POST /api/auth/google/authorize` → local access JWT issued.
+- **JWT**: Access token (14 days default). Signed with HS256, validated for `iss`, `exp`, `typ`.
 - **Middleware**: `get_current_user_id` extracts `sub` from Bearer token. Used by authenticated routes via `api/deps.py`.
 
 ---
@@ -262,7 +262,7 @@ Every module under `backend/src/neurodatics/modules/<name>/` follows:
 
 ### HTTP Client (`frontend/lib/api/apiFetch.ts`)
 - Attaches Bearer token from `sessionStore`.
-- Auto-refreshes via `POST /api/auth/refresh` on 401.
+- Clears the stored session and redirects to login when the access token expires or the backend returns 401.
 - `apiUploadFormWithProgress`: multipart upload with `XMLHttpRequest` for real-time progress.
 - `apiFetchBlob`: authenticated blob download with in-memory cache and in-flight deduplication (used for scenario images).
 
@@ -423,8 +423,7 @@ Defined in `modules/projects/domain/entities.py` (`JobStatus` enum) and persiste
 ### Auth
 | Method | Path | Description |
 |---|---|---|
-| POST | `/api/auth/google/authorize` | Exchange Google OAuth code for local JWT tokens |
-| POST | `/api/auth/refresh` | Refresh access token using refresh token |
+| POST | `/api/auth/google/authorize` | Exchange Google OAuth code for local access JWT |
 
 ### Projects
 | Method | Path | Description |

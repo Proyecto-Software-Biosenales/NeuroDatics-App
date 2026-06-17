@@ -23,7 +23,7 @@ Este mapa no lista todo el repo: prioriza archivos clave para entender y modific
 | `frontend/features/projects/components/ViewProjectDialog.tsx` | Vista detalle de proyecto | ProjectsGrid | ProjectsApi | Ver proyecto |
 | `frontend/features/projects/components/DeleteProjectDialog.tsx` | Confirmacion doble de borrado | ProjectsGrid | callback delete | Eliminar proyecto |
 | `frontend/features/projects/create-project/CreateProjectStep4.tsx` | Preview de escenarios imagen + AOIs | Create/Edit dialogs | ProjectsApi.fetchScenarioImage | Paso 4 |
-| `frontend/lib/api/apiFetch.ts` | Cliente HTTP base + refresh token + upload + blob cache | todo API client | sessionStore | Todas las llamadas backend |
+| `frontend/lib/api/apiFetch.ts` | Cliente HTTP base + access token + upload + blob cache | todo API client | sessionStore | Todas las llamadas backend |
 
 ## Backend - Wiring General
 

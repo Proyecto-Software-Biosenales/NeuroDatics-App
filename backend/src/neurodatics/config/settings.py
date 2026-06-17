@@ -23,8 +23,7 @@ class Settings(BaseSettings):
     auth_jwt_secret: str = "change-me-in-production"
     auth_jwt_algorithm: str = "HS256"
     auth_jwt_issuer: str = "neurodatics-backend"
-    auth_access_token_exp_minutes: int = 60
-    auth_refresh_token_exp_minutes: int = 43200
+    auth_access_token_exp_minutes: int = 14 * 24 * 60
     auth_user_store_path: str = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "auth_users.json")
     
     # Google Drive

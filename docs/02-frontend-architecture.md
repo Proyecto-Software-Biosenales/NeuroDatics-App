@@ -62,7 +62,7 @@ Archivo: `frontend/lib/api/apiFetch.ts`
 
 Responsabilidades:
 - Adjuntar bearer token desde `sessionStore`.
-- Refrescar token con `/api/auth/refresh` ante expiracion/401.
+- Cerrar sesion y redirigir a login si el access token expira o el backend responde 401.
 - Manejo de timeout.
 - Upload multipart con progreso (`XMLHttpRequest`) para ZIP.
 - Descarga blob para imagenes de escenarios.
@@ -112,8 +112,8 @@ Archivos clave:
 
 Flujo:
 1. OAuth retorna a `/authorize` o `/auth/callback`.
-2. `AuthCallback` intercambia `code` por tokens locales en backend.
-3. Guarda `accessToken` + `refreshToken` en `localStorage`.
+2. `AuthCallback` intercambia `code` por access token local en backend.
+3. Guarda `accessToken` y `expiresAt` en `localStorage`.
 4. `AuthProvider` expone `currentUser` y `session`.
 5. `AuthGuard` protege rutas privadas.
 
