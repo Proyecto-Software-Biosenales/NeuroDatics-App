@@ -62,6 +62,17 @@ async def _verify_ownership(db: AsyncSession, project_id: UUID, current_user: st
     return project
 
 
+def _validate_time_window(start_time_s: Optional[float], end_time_s: Optional[float]) -> None:
+    if start_time_s is not None and end_time_s is not None and end_time_s <= start_time_s:
+        raise HTTPException(status_code=400, detail="end_time_s must be greater than start_time_s")
+
+
+def _time_window_key(start_time_s: Optional[float], end_time_s: Optional[float]) -> str:
+    start_key = "start:auto" if start_time_s is None else f"start:{float(start_time_s):g}"
+    end_key = "end:auto" if end_time_s is None else f"end:{float(end_time_s):g}"
+    return f"{start_key}:{end_key}"
+
+
 async def _resolve_scenary_for_analytics(
     db: AsyncSession,
     project_id: UUID,
@@ -493,10 +504,13 @@ async def eeg_timeseries(
     channels: str = Query(default=""),
     smooth_window_s: float = Query(default=0.2, ge=0.0, le=5.0),
     max_points: int = Query(default=5000, ge=1, le=100000),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
     requested_channels = [
         channel.strip().lower()
@@ -504,7 +518,8 @@ async def eeg_timeseries(
         if channel.strip()
     ] or None
     channels_key = ",".join(requested_channels) if requested_channels else "all"
-    cache_endpoint = f"timeseries_eeg:{channels_key}:{smooth_window_s}:{max_points}"
+    time_window_key = _time_window_key(start_time_s, end_time_s)
+    cache_endpoint = f"timeseries_eeg:{channels_key}:{smooth_window_s}:{max_points}:{time_window_key}"
     cache_key = _redis.build_key(project_id, participant_code, cache_endpoint, scenario)
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
@@ -525,6 +540,8 @@ async def eeg_timeseries(
             channels=requested_channels,
             smooth_window_s=smooth_window_s,
             max_points=max_points,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
         )
     )
 
@@ -541,10 +558,13 @@ async def eeg_psd(
     max_freq_hz: Optional[float] = Query(default=None, gt=0.0),
     use_db: bool = Query(default=True),
     max_points: int = Query(default=5000, ge=1, le=100000),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
     requested_channels = [
         channel.strip().lower()
@@ -554,7 +574,8 @@ async def eeg_psd(
     channels_key = ",".join(requested_channels) if requested_channels else "all"
     max_freq_key = "auto" if max_freq_hz is None else f"{float(max_freq_hz):g}"
     scale_key = "db" if use_db else "linear"
-    cache_endpoint = f"psd_eeg:{channels_key}:{max_freq_key}:{scale_key}:{max_points}"
+    time_window_key = _time_window_key(start_time_s, end_time_s)
+    cache_endpoint = f"psd_eeg:{channels_key}:{max_freq_key}:{scale_key}:{max_points}:{time_window_key}"
     cache_key = _redis.build_key(project_id, participant_code, cache_endpoint, scenario)
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
@@ -576,6 +597,8 @@ async def eeg_psd(
             max_freq_hz=max_freq_hz,
             use_db=use_db,
             max_points=max_points,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
         )
     )
 

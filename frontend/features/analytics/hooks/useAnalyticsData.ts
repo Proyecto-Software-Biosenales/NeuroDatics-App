@@ -399,7 +399,9 @@ export function useEegTimeseries(
   scenario: string = "all",
   channels: string[] = [],
   smoothWindowS: number = 0.2,
-  maxPoints: number = 5000
+  maxPoints: number = 5000,
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<EegTimeseriesData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -425,7 +427,9 @@ export function useEegTimeseries(
       scenario,
       requestedChannels,
       smoothWindowS,
-      maxPoints
+      maxPoints,
+      startTimeS,
+      endTimeS
     )
       .then((result) => {
         if (!cancelled) setData(result)
@@ -442,7 +446,7 @@ export function useEegTimeseries(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario, channelsKey, smoothWindowS, maxPoints])
+  }, [projectId, participantCode, scenario, channelsKey, smoothWindowS, maxPoints, startTimeS, endTimeS])
 
   return {
     data: canLoad ? data : null,
@@ -458,7 +462,9 @@ export function useEegPsd(
   channels: string[] = [],
   maxFreqHz: number | null = null,
   useDb: boolean = true,
-  maxPoints: number = 5000
+  maxPoints: number = 5000,
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<EegPsdData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -485,7 +491,9 @@ export function useEegPsd(
       requestedChannels,
       maxFreqHz,
       useDb,
-      maxPoints
+      maxPoints,
+      startTimeS,
+      endTimeS
     )
       .then((result) => {
         if (!cancelled) setData(result)
@@ -502,7 +510,7 @@ export function useEegPsd(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario, channelsKey, maxFreqHz, useDb, maxPoints])
+  }, [projectId, participantCode, scenario, channelsKey, maxFreqHz, useDb, maxPoints, startTimeS, endTimeS])
 
   return {
     data: canLoad ? data : null,

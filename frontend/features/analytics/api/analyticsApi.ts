@@ -82,7 +82,9 @@ export const AnalyticsApi = {
     scenario: string = "all",
     channels: string[] = [],
     smoothWindowS: number = 0.2,
-    maxPoints: number = 5000
+    maxPoints: number = 5000,
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -92,6 +94,12 @@ export const AnalyticsApi = {
     })
     if (channels.length > 0) {
       params.set("channels", channels.join(","))
+    }
+    if (startTimeS != null) {
+      params.set("start_time_s", String(startTimeS))
+    }
+    if (endTimeS != null) {
+      params.set("end_time_s", String(endTimeS))
     }
     return apiFetch<EegTimeseriesData>(`/api/projects/${projectId}/analytics/timeseries/eeg?${params}`)
   },
@@ -103,7 +111,9 @@ export const AnalyticsApi = {
     channels: string[] = [],
     maxFreqHz: number | null = null,
     useDb: boolean = true,
-    maxPoints: number = 5000
+    maxPoints: number = 5000,
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -116,6 +126,12 @@ export const AnalyticsApi = {
     }
     if (maxFreqHz != null) {
       params.set("max_freq_hz", String(maxFreqHz))
+    }
+    if (startTimeS != null) {
+      params.set("start_time_s", String(startTimeS))
+    }
+    if (endTimeS != null) {
+      params.set("end_time_s", String(endTimeS))
     }
     return apiFetch<EegPsdData>(`/api/projects/${projectId}/analytics/psd/eeg?${params}`)
   },

@@ -709,6 +709,24 @@ class EegAnalyticsService:
     def _safe_matrix(cls, values: np.ndarray) -> list:
         return [cls._safe_list(row) for row in values]
 
+    @staticmethod
+    def _filter_time_window(
+        df: pd.DataFrame,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> pd.DataFrame:
+        if "time" not in df.columns or (start_time_s is None and end_time_s is None):
+            return df
+
+        time_values = pd.to_numeric(df["time"], errors="coerce")
+        mask = time_values.notna()
+        if start_time_s is not None:
+            mask &= time_values >= float(start_time_s)
+        if end_time_s is not None:
+            mask &= time_values <= float(end_time_s)
+
+        return df.loc[mask]
+
     @classmethod
     def compute_timeseries(
         cls,
@@ -717,6 +735,8 @@ class EegAnalyticsService:
         channels: Optional[Iterable[str]] = None,
         smooth_window_s: float = 0.2,
         max_points: int = 5000,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
     ) -> dict:
         """Compute raw and smoothed EEG channel traces, aligned to the original time axis."""
         available_channels = [channel for channel in EEG_CHANNELS if channel in df.columns]
@@ -730,6 +750,8 @@ class EegAnalyticsService:
 
         if "time" not in df.columns:
             return cls._empty(available_channels)
+
+        df = cls._filter_time_window(df, start_time_s, end_time_s)
 
         clean = df[["time"] + selected_channels].copy()
         clean["time"] = pd.to_numeric(clean["time"], errors="coerce")
@@ -780,6 +802,8 @@ class EegAnalyticsService:
         max_freq_hz: Optional[float] = None,
         use_db: bool = True,
         max_points: int = 5000,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
     ) -> dict:
         """Compute EEG power spectral density per channel using Welch's method."""
         available_channels = [channel for channel in EEG_CHANNELS if channel in df.columns]
@@ -793,6 +817,8 @@ class EegAnalyticsService:
 
         if "time" not in df.columns:
             return cls._empty_psd(available_channels, use_db)
+
+        df = cls._filter_time_window(df, start_time_s, end_time_s)
 
         clean = df[["time"] + selected_channels].copy()
         clean["time"] = pd.to_numeric(clean["time"], errors="coerce")
