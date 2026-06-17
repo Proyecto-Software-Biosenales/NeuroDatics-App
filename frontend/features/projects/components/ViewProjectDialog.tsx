@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Activity,
   ChevronDown,
   ChevronRight,
-  Image,
+  Image as ImageIcon,
   Loader2,
   Users,
   Video,
@@ -19,7 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ProjectsApi, type ApiProjectDetail, type ApiProjectFile } from "@/features/projects/api/projectsApi"
+import { ProjectsApi, type ApiProjectAoi, type ApiProjectDetail, type ApiProjectFile } from "@/features/projects/api/projectsApi"
+import { apiAoiToFormAoi } from "@/features/projects/create-project/aoiUtils"
 
 interface ViewProjectDialogProps {
   projectId: string
@@ -137,7 +138,7 @@ export const ViewProjectDialog = ({
 
   const participants = projectDetail?.participants || []
   const sensors = projectDetail?.sensors || []
-  const scenaries = projectDetail?.scenaries || []
+  const scenaries = useMemo(() => projectDetail?.scenaries ?? [], [projectDetail?.scenaries])
   const filesById = useMemo(() => {
     const map = new Map<string, ApiProjectFile>()
     for (const file of projectDetail?.files || []) {
@@ -162,7 +163,7 @@ export const ViewProjectDialog = ({
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-x-hidden overflow-y-auto p-0">
         <DialogHeader className="border-b border-border px-6 pt-6 pb-4">
           <DialogTitle className="truncate text-2xl font-semibold text-foreground">
-            Ver proyecto
+            Ver proyecto: {projectName}
           </DialogTitle>
         </DialogHeader>
 
@@ -314,6 +315,7 @@ export const ViewProjectDialog = ({
                                   fileId={scenary.file_id}
                                   fallbackUrl={scenary.file_id ? resolveScenarioImageUrl(filesById.get(scenary.file_id)) : null}
                                   alt={scenary.name}
+                                  aois={scenary.aois ?? []}
                                 />
                               </div>
                             )}
@@ -334,33 +336,93 @@ export const ViewProjectDialog = ({
   )
 }
 
+type PreviewLetterbox = {
+  cW: number
+  cH: number
+  renderedW: number
+  renderedH: number
+  offsetX: number
+  offsetY: number
+}
+
 const ScenarioPreviewImage = ({
   projectId,
   fileId,
   fallbackUrl,
   alt,
+  aois = [],
 }: {
   projectId?: string
   fileId?: string | null
   fallbackUrl?: string | null
   alt: string
+  aois?: ApiProjectAoi[]
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
   const hasAnySource = Boolean((projectId && fileId) || fallbackUrl)
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [currentSrc, setCurrentSrc] = useState<string | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [isLoading, setIsLoading] = useState(hasAnySource)
+  const [letterbox, setLetterbox] = useState<PreviewLetterbox | null>(null)
+  const normalizedAois = useMemo(() => aois.map((aoi, index) => apiAoiToFormAoi(aoi, index)), [aois])
+
+  const computeLetterbox = useCallback(() => {
+    const img = imageRef.current
+    const container = containerRef.current
+    if (!img || !container) {
+      setLetterbox(null)
+      return
+    }
+
+    const cW = container.clientWidth
+    const cH = container.clientHeight
+    const iW = img.naturalWidth
+    const iH = img.naturalHeight
+    if (!cW || !cH || !iW || !iH) {
+      setLetterbox(null)
+      return
+    }
+
+    const scale = Math.min(cW / iW, cH / iH)
+    const renderedW = iW * scale
+    const renderedH = iH * scale
+    setLetterbox({
+      cW,
+      cH,
+      renderedW,
+      renderedH,
+      offsetX: (cW - renderedW) / 2,
+      offsetY: (cH - renderedH) / 2,
+    })
+  }, [])
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => computeLetterbox())
+    const container = containerRef.current
+    if (!container || typeof ResizeObserver === "undefined") {
+      return () => cancelAnimationFrame(frame)
+    }
+
+    const observer = new ResizeObserver(() => computeLetterbox())
+    observer.observe(container)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [computeLetterbox, currentSrc])
 
   useEffect(() => {
     let cancelled = false
     let objectUrl: string | null = null
 
-    setBlobUrl(null)
-    setCurrentSrc(null)
-    setLoadError(false)
-    setIsLoading(hasAnySource)
-
     const load = async () => {
+      setBlobUrl(null)
+      setCurrentSrc(null)
+      setLoadError(false)
+      setIsLoading(hasAnySource)
+
       if (!projectId || !fileId) {
         if (fallbackUrl) {
           setCurrentSrc(fallbackUrl)
@@ -400,14 +462,14 @@ const ScenarioPreviewImage = ({
   const finalSrc = currentSrc
   if (loadError || (!finalSrc && !isLoading)) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-        <Image className="h-4 w-4" />
+      <div ref={containerRef} className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+        <ImageIcon className="h-4 w-4" />
       </div>
     )
   }
 
   return (
-    <>
+    <div ref={containerRef} className="absolute inset-0">
       {isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/80 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -415,12 +477,16 @@ const ScenarioPreviewImage = ({
       )}
       {finalSrc && (
         <img
+          ref={imageRef}
           src={finalSrc}
           alt={alt}
           className={`h-full w-full object-contain transition-opacity ${isLoading ? "opacity-0" : "opacity-100"}`}
           loading="lazy"
           referrerPolicy="no-referrer"
-          onLoad={() => setIsLoading(false)}
+          onLoad={() => {
+            setIsLoading(false)
+            computeLetterbox()
+          }}
           onError={() => {
             if (blobUrl && fallbackUrl && finalSrc === blobUrl) {
               setCurrentSrc(fallbackUrl)
@@ -432,6 +498,62 @@ const ScenarioPreviewImage = ({
           }}
         />
       )}
-    </>
+      {letterbox && normalizedAois.length > 0 ? (
+        <>
+          <svg
+            className="pointer-events-none absolute inset-0"
+            width="100%"
+            height="100%"
+            viewBox={`0 0 ${letterbox.cW} ${letterbox.cH}`}
+          >
+            {normalizedAois.map((aoi) => {
+              const x = letterbox.offsetX + (aoi.x / 100) * letterbox.renderedW
+              const y = letterbox.offsetY + (aoi.y / 100) * letterbox.renderedH
+              const width = (aoi.width / 100) * letterbox.renderedW
+              const height = (aoi.height / 100) * letterbox.renderedH
+              return (
+                <g key={aoi.id}>
+                  <rect
+                    x={x}
+                    y={y}
+                    width={width}
+                    height={height}
+                    fill={`${aoi.color}14`}
+                    stroke={aoi.color}
+                    strokeWidth={2.5}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <text
+                    x={x + 8}
+                    y={Math.max(y - 8, 16)}
+                    fill={aoi.color}
+                    fontSize="12"
+                    fontWeight="700"
+                    style={{
+                      paintOrder: "stroke",
+                      stroke: "white",
+                      strokeWidth: 3,
+                    }}
+                  >
+                    {aoi.name}
+                  </text>
+                </g>
+              )
+            })}
+          </svg>
+          <div className="absolute bottom-3 left-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2 rounded-lg border border-border bg-background/90 px-3 py-2 shadow-sm backdrop-blur">
+            {normalizedAois.map((aoi) => (
+              <span key={aoi.id} className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: aoi.color }}
+                />
+                {aoi.name}
+              </span>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
   )
 }

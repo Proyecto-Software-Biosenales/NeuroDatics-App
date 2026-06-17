@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Loader2, Trash2 } from "lucide-react"
+import { Loader2, Palette, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -28,6 +28,34 @@ interface AoiEditorProps {
 }
 
 const MIN_AOI_PERCENT = 1
+type ResizeHandle = "nw" | "ne" | "sw" | "se"
+
+const clampPercent = (value: number) => Math.max(0, Math.min(100, value))
+
+const resizeAoiFromHandle = (initial: AOI, handle: ResizeHandle, current: { x: number; y: number }) => {
+  let left = initial.x
+  let top = initial.y
+  let right = initial.x + initial.width
+  let bottom = initial.y + initial.height
+
+  if (handle.includes("w")) left = current.x
+  if (handle.includes("e")) right = current.x
+  if (handle.includes("n")) top = current.y
+  if (handle.includes("s")) bottom = current.y
+
+  const x = clampPercent(Math.min(left, right))
+  const y = clampPercent(Math.min(top, bottom))
+  const width = Math.max(MIN_AOI_PERCENT, Math.abs(right - left))
+  const height = Math.max(MIN_AOI_PERCENT, Math.abs(bottom - top))
+
+  return normalizeAoiRect({
+    ...initial,
+    x,
+    y,
+    width,
+    height,
+  })
+}
 
 export function AoiEditor({
   projectId,
@@ -38,6 +66,7 @@ export function AoiEditor({
   onAoisChange,
 }: AoiEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const interactionRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [isLoadingImage, setIsLoadingImage] = useState(Boolean((projectId && fileId) || fallbackUrl))
@@ -45,6 +74,12 @@ export function AoiEditor({
   const [letterbox, setLetterbox] = useState<Letterbox | null>(null)
   const [draftRect, setDraftRect] = useState<AOI | null>(null)
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
+  const [selectedAoiId, setSelectedAoiId] = useState<string | null>(null)
+  const [resizeState, setResizeState] = useState<{
+    aoiId: string
+    handle: ResizeHandle
+    initial: AOI
+  } | null>(null)
 
   const normalizedAois = useMemo(() => aois.map(normalizeAoiRect), [aois])
 
@@ -165,6 +200,7 @@ export function AoiEditor({
     if (!start) return
 
     event.currentTarget.setPointerCapture(event.pointerId)
+    setSelectedAoiId(null)
     setDragStart(start)
     setDraftRect({
       id: "draft",
@@ -179,6 +215,13 @@ export function AoiEditor({
   }
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (resizeState) {
+      const current = pointToPercent(event.clientX, event.clientY)
+      if (!current) return
+      updateAoi(resizeState.aoiId, resizeAoiFromHandle(resizeState.initial, resizeState.handle, current))
+      return
+    }
+
     if (!dragStart || !draftRect) return
     const current = pointToPercent(event.clientX, event.clientY)
     if (!current) return
@@ -193,6 +236,11 @@ export function AoiEditor({
   }
 
   const finishDraft = () => {
+    if (resizeState) {
+      setResizeState(null)
+      return
+    }
+
     if (!draftRect) {
       setDragStart(null)
       return
@@ -206,6 +254,7 @@ export function AoiEditor({
         name: `AOI ${normalizedAois.length + 1}`,
       }
       onAoisChange([...normalizedAois, nextAoi])
+      setSelectedAoiId(nextAoi.id)
     }
 
     setDraftRect(null)
@@ -222,9 +271,36 @@ export function AoiEditor({
 
   const removeAoi = (aoiId: string) => {
     onAoisChange(normalizedAois.filter((aoi) => aoi.id !== aoiId))
+    if (selectedAoiId === aoiId) setSelectedAoiId(null)
   }
 
   const renderedAois = draftRect ? [...normalizedAois, normalizeAoiRect(draftRect)] : normalizedAois
+  const selectedAoi = normalizedAois.find((aoi) => aoi.id === selectedAoiId) ?? null
+
+  const startResize = (
+    event: React.PointerEvent<SVGRectElement>,
+    aoi: AOI,
+    handle: ResizeHandle
+  ) => {
+    event.stopPropagation()
+    if (!letterbox || !imageUrl || isLoadingImage) return
+    interactionRef.current?.setPointerCapture(event.pointerId)
+    setSelectedAoiId(aoi.id)
+    setResizeState({
+      aoiId: aoi.id,
+      handle,
+      initial: normalizeAoiRect(aoi),
+    })
+    setDraftRect(null)
+    setDragStart(null)
+  }
+
+  const handlePoints = (props: { x: number; y: number; width: number; height: number }) => [
+    { key: "nw" as const, x: props.x, y: props.y, cursor: "nwse-resize" },
+    { key: "ne" as const, x: props.x + props.width, y: props.y, cursor: "nesw-resize" },
+    { key: "sw" as const, x: props.x, y: props.y + props.height, cursor: "nesw-resize" },
+    { key: "se" as const, x: props.x + props.width, y: props.y + props.height, cursor: "nwse-resize" },
+  ]
 
   return (
     <div className="space-y-4">
@@ -264,6 +340,7 @@ export function AoiEditor({
             />
 
             <div
+              ref={interactionRef}
               className="absolute inset-0 cursor-crosshair touch-none"
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
@@ -275,7 +352,7 @@ export function AoiEditor({
             >
               {letterbox && (
                 <svg
-                  className="pointer-events-none absolute inset-0"
+                  className="absolute inset-0"
                   width="100%"
                   height="100%"
                   viewBox={`0 0 ${letterbox.cW} ${letterbox.cH}`}
@@ -284,15 +361,23 @@ export function AoiEditor({
                     const props = rectToSvgProps(aoi)
                     if (!props) return null
                     const isDraft = aoi.id === "draft"
+                    const isSelected = selectedAoiId === aoi.id
                     return (
                       <g key={aoi.id}>
                         <rect
                           {...props}
-                          fill={isDraft ? `${aoi.color}22` : "transparent"}
+                          fill={isDraft || isSelected ? `${aoi.color}22` : "transparent"}
                           stroke={aoi.color}
-                          strokeWidth={isDraft ? 2 : 3}
+                          strokeWidth={isDraft || isSelected ? 2.5 : 3}
                           strokeDasharray={isDraft ? "6 5" : undefined}
                           vectorEffect="non-scaling-stroke"
+                          pointerEvents={isDraft ? "none" : "auto"}
+                          className={isDraft ? undefined : "cursor-pointer"}
+                          onPointerDown={(event) => {
+                            if (isDraft) return
+                            event.stopPropagation()
+                            setSelectedAoiId(aoi.id)
+                          }}
                         />
                         {!isDraft && (
                           <text
@@ -310,6 +395,27 @@ export function AoiEditor({
                             {aoi.name}
                           </text>
                         )}
+                        {!isDraft && isSelected && (
+                          <>
+                            {handlePoints(props).map((handle) => (
+                              <rect
+                                key={handle.key}
+                                x={handle.x - 5}
+                                y={handle.y - 5}
+                                width={10}
+                                height={10}
+                                rx={2}
+                                fill="white"
+                                stroke={aoi.color}
+                                strokeWidth={2}
+                                vectorEffect="non-scaling-stroke"
+                                pointerEvents="auto"
+                                style={{ cursor: handle.cursor }}
+                                onPointerDown={(event) => startResize(event, aoi, handle.key)}
+                              />
+                            ))}
+                          </>
+                        )}
                       </g>
                     )
                   })}
@@ -325,6 +431,11 @@ export function AoiEditor({
           <h4 className="text-sm font-semibold text-foreground">
             AOIs creadas ({normalizedAois.length})
           </h4>
+          {selectedAoi ? (
+            <span className="text-xs text-muted-foreground">
+              Arrastra las esquinas de <span className="font-semibold">{selectedAoi.name}</span> para ajustar su tamano.
+            </span>
+          ) : null}
         </div>
 
         {normalizedAois.length === 0 ? (
@@ -334,7 +445,11 @@ export function AoiEditor({
             {normalizedAois.map((aoi, index) => (
               <div
                 key={aoi.id}
-                className="flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-3 sm:flex-row sm:items-center"
+                onClick={() => setSelectedAoiId(aoi.id)}
+                className={cn(
+                  "flex flex-col gap-3 rounded-lg border bg-muted/40 p-3 sm:flex-row sm:items-center",
+                  selectedAoiId === aoi.id ? "border-foreground/40 ring-2 ring-foreground/10" : "border-border"
+                )}
               >
                 <div className="flex items-center gap-2">
                   {AOI_COLORS.map((color) => (
@@ -351,6 +466,19 @@ export function AoiEditor({
                       style={{ backgroundColor: color }}
                     />
                   ))}
+                  <label
+                    className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-border bg-background text-muted-foreground hover:text-foreground"
+                    title="Elegir color personalizado"
+                    aria-label="Elegir color personalizado"
+                  >
+                    <Palette className="h-4 w-4" />
+                    <input
+                      type="color"
+                      value={aoi.color}
+                      onChange={(event) => updateAoi(aoi.id, { color: event.target.value })}
+                      className="absolute inset-0 cursor-pointer opacity-0"
+                    />
+                  </label>
                 </div>
 
                 <Input
