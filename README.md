@@ -31,7 +31,9 @@ Edita `.env` y completa al menos estas variables si quieres usar login real:
 
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` si quieres sobrescribir el client ID usado por el frontend. Si queda vacio, Docker Compose usa `GOOGLE_OAUTH_CLIENT_ID`.
+
+Docker Compose lee el archivo `.env` de la raiz del proyecto. No usa `frontend/.env.local` cuando construye desde el `docker-compose.yml` principal. Si cambias variables `NEXT_PUBLIC_*`, vuelve a levantar con `docker compose up -d --build` para reconstruir el frontend.
 
 Para usar ingestion de proyectos con Google Drive, configura tambien:
 

@@ -213,12 +213,25 @@ class FixationHistogramResponse(BaseModel):
     max_duration_ms: float
 
 
+class AoiPoint(BaseModel):
+    x: float
+    y: float
+
+
+class AoiShape(BaseModel):
+    x: float
+    y: float
+    width: float
+    height: float
+    points: Optional[List[AoiPoint]] = None
+
+
 class AoiMetricItem(BaseModel):
     id: str
     name: str
     color: str
     shape_type: str
-    shape: Dict[str, float]
+    shape: AoiShape
     fixation_count: int
     total_dwell_time_ms: float
     total_dwell_time_percent: float
