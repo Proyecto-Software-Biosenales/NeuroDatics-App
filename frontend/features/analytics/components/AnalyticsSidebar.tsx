@@ -77,7 +77,7 @@ export function AnalyticsSidebar({
           onSelectSensor(sensor.key)
         }}
         className={cn(
-          "flex items-center rounded-lg text-left text-sm",
+          "flex min-w-0 items-center overflow-hidden rounded-lg text-left text-sm",
           collapsed ? "h-10 w-10 justify-center p-0" : "w-full gap-2 px-3 py-2",
           isActive
             ? "bg-foreground text-background"
@@ -87,7 +87,7 @@ export function AnalyticsSidebar({
         title={sensor.label}
       >
         <sensor.Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-[18px] w-[18px]")} />
-        {!collapsed ? <span>{sensor.label}</span> : null}
+        {!collapsed ? <span className="min-w-0 flex-1 truncate">{sensor.label}</span> : null}
       </button>
     )
   }
@@ -106,7 +106,7 @@ export function AnalyticsSidebar({
   }, [selectedProject])
 
   return (
-    <aside className={cn("flex h-full flex-col border-r border-border bg-card", collapsed ? "w-14" : "w-60")}>
+    <aside className={cn("flex h-full shrink-0 flex-col border-r border-border bg-card", collapsed ? "w-14" : "w-64")}>
       <div className={cn(
         "flex items-center border-b border-border py-2",
         collapsed ? "justify-center px-2" : "justify-between px-3"
@@ -151,18 +151,18 @@ export function AnalyticsSidebar({
                       type="button"
                       onClick={() => onSelectProject(project.id)}
                       className={cn(
-                        "flex-1 rounded-lg px-2 py-1.5 text-left text-sm font-medium",
+                        "min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left text-sm font-medium",
                         selectedProject?.id === project.id
                           ? "text-foreground"
                           : "text-muted-foreground hover:bg-muted"
                       )}
                     >
-                      {project.name}
+                      <span className="block truncate">{project.name}</span>
                     </button>
                   </div>
 
                   {isExpanded ? (
-                    <div className="ml-6 space-y-1">
+                    <div className="space-y-1 pl-6">
                       {sensorItems.map((sensor) => renderSensorItem(project.id, sensor))}
                       {renderSensorItem(project.id, ALWAYS_SENSOR)}
                     </div>
@@ -178,12 +178,12 @@ export function AnalyticsSidebar({
         <button
           type="button"
           className={cn(
-            "flex items-center rounded-lg text-sm text-muted-foreground hover:bg-muted",
+            "flex min-w-0 items-center rounded-lg text-sm text-muted-foreground hover:bg-muted",
             collapsed ? "h-10 w-10 justify-center p-0" : "w-full gap-2 px-3 py-2"
           )}
         >
           <Settings className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-4 w-4")} />
-          {!collapsed ? <span>Configuración</span> : null}
+          {!collapsed ? <span className="min-w-0 flex-1 truncate">Configuración</span> : null}
         </button>
       </div>
     </aside>
