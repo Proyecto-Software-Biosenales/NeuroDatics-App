@@ -51,6 +51,14 @@ import {
   imagePointToContainerPercent,
   type ContainedImageBox,
 } from "./AoiOverlay"
+import {
+  EMPTY_TIME_WINDOW,
+  EMPTY_TIME_WINDOW_DRAFT,
+  TimeWindowControls,
+  validateTimeWindowDraft,
+  type TimeWindow,
+  type TimeWindowDraft,
+} from "./TimeWindowControls"
 
 type ViewMode = "both" | "left" | "right"
 
@@ -265,6 +273,9 @@ export function PupilDilationTab({
   const [scenarioPreviewLoading, setScenarioPreviewLoading] = useState(false)
   const [scenarioPreviewError, setScenarioPreviewError] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
+  const [timeWindowDraft, setTimeWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
+  const [timeWindowError, setTimeWindowError] = useState<string | null>(null)
   // Refs for letterbox-corrected gaze positioning
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
@@ -275,7 +286,9 @@ export function PupilDilationTab({
   const { data: timeseriesData, loading: timeseriesLoading } = usePupilTimeseries(
     projectId,
     participantCode,
-    scenario
+    scenario,
+    timeWindow.start,
+    timeWindow.end
   )
   const {
     data: gazeData,
@@ -441,19 +454,28 @@ export function PupilDilationTab({
   }
 
   useEffect(() => {
+    let cancelled = false
+
     if (!gazeData?.scenario_file_id) {
-      setScenarioImageUrl(null)
-      setScenarioPreviewLoading(false)
-      setScenarioPreviewError(null)
-      return
+      queueMicrotask(() => {
+        if (cancelled) return
+        setScenarioImageUrl(null)
+        setScenarioPreviewLoading(false)
+        setScenarioPreviewError(null)
+      })
+      return () => {
+        cancelled = true
+      }
     }
 
-    let cancelled = false
     let currentUrl: string | null = null
 
-    setScenarioImageUrl(null)
-    setScenarioPreviewLoading(true)
-    setScenarioPreviewError(null)
+    queueMicrotask(() => {
+      if (cancelled) return
+      setScenarioImageUrl(null)
+      setScenarioPreviewLoading(true)
+      setScenarioPreviewError(null)
+    })
 
     const params = new URLSearchParams({
       time_s: String(gazeData.nearest_time_s),
@@ -507,6 +529,27 @@ export function PupilDilationTab({
     fetchGaze(time)
   }
 
+  const handleApplyTimeWindow = () => {
+    const { window, error } = validateTimeWindowDraft(timeWindowDraft)
+    if (error || !window) {
+      setTimeWindowError(error)
+      return
+    }
+
+    setTimeWindow(window)
+    setTimeWindowError(null)
+    setSelectedTime(null)
+    clearGaze()
+  }
+
+  const handleResetTimeWindow = () => {
+    setTimeWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
+    setTimeWindow(EMPTY_TIME_WINDOW)
+    setTimeWindowError(null)
+    setSelectedTime(null)
+    clearGaze()
+  }
+
   return (
     <div className="space-y-6 py-6">
       <Card>
@@ -542,6 +585,22 @@ export function PupilDilationTab({
         </CardHeader>
 
         <CardContent>
+          <TimeWindowControls
+            draftStart={timeWindowDraft.start}
+            draftEnd={timeWindowDraft.end}
+            appliedWindow={timeWindow}
+            error={timeWindowError}
+            loading={timeseriesLoading}
+            onDraftStartChange={(value) =>
+              setTimeWindowDraft((current) => ({ ...current, start: value }))
+            }
+            onDraftEndChange={(value) =>
+              setTimeWindowDraft((current) => ({ ...current, end: value }))
+            }
+            onApply={handleApplyTimeWindow}
+            onReset={handleResetTimeWindow}
+          />
+
           <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
             {[
               {

@@ -37,6 +37,14 @@ import {
   useGsrTimeseries,
 } from "../hooks/useAnalyticsData"
 import { StimulusFixationCard } from "./StimulusFixationCard"
+import {
+  EMPTY_TIME_WINDOW,
+  EMPTY_TIME_WINDOW_DRAFT,
+  TimeWindowControls,
+  validateTimeWindowDraft,
+  type TimeWindow,
+  type TimeWindowDraft,
+} from "./TimeWindowControls"
 
 type SignalMode = "smooth" | "raw" | "both"
 
@@ -102,16 +110,23 @@ function readClickedTime(state: unknown): number | null {
 export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
   const [signalMode, setSignalMode] = useState<SignalMode>("smooth")
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
+  const [timeWindowDraft, setTimeWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
+  const [timeWindowError, setTimeWindowError] = useState<string | null>(null)
 
   const { data: timeseriesData, loading: timeseriesLoading } = useGsrTimeseries(
     projectId,
     participantCode,
-    scenario
+    scenario,
+    timeWindow.start,
+    timeWindow.end
   )
   const { data: stats, loading: statsLoading } = useGsrStatistics(
     projectId,
     participantCode,
-    scenario
+    scenario,
+    timeWindow.start,
+    timeWindow.end
   )
 
   const chartData = useMemo<GsrLinePoint[]>(() => {
@@ -196,6 +211,25 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
     setSelectedTime(time)
   }
 
+  const handleApplyTimeWindow = () => {
+    const { window, error } = validateTimeWindowDraft(timeWindowDraft)
+    if (error || !window) {
+      setTimeWindowError(error)
+      return
+    }
+
+    setTimeWindow(window)
+    setTimeWindowError(null)
+    setSelectedTime(null)
+  }
+
+  const handleResetTimeWindow = () => {
+    setTimeWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
+    setTimeWindow(EMPTY_TIME_WINDOW)
+    setTimeWindowError(null)
+    setSelectedTime(null)
+  }
+
   return (
     <div className="space-y-6 py-6">
       <Card>
@@ -231,6 +265,22 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
         </CardHeader>
 
         <CardContent>
+          <TimeWindowControls
+            draftStart={timeWindowDraft.start}
+            draftEnd={timeWindowDraft.end}
+            appliedWindow={timeWindow}
+            error={timeWindowError}
+            loading={timeseriesLoading || statsLoading}
+            onDraftStartChange={(value) =>
+              setTimeWindowDraft((current) => ({ ...current, start: value }))
+            }
+            onDraftEndChange={(value) =>
+              setTimeWindowDraft((current) => ({ ...current, end: value }))
+            }
+            onApply={handleApplyTimeWindow}
+            onReset={handleResetTimeWindow}
+          />
+
           <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
             {[
               {
