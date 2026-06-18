@@ -82,9 +82,9 @@ function SummaryCards({ row, loading, unit = " mm" }: { row?: StatRow; loading?:
       label: `MIN (${suffix})`,
       value: fmt(row.min, 4, unit),
       Icon: TrendingDown,
-      bg: "bg-cyan-50 dark:bg-cyan-950/40",
-      iconColor: "text-cyan-500",
-      valueColor: "text-cyan-600 dark:text-cyan-400",
+      bg: "bg-emerald-50 dark:bg-emerald-950/40",
+      iconColor: "text-emerald-500",
+      valueColor: "text-emerald-600 dark:text-emerald-400",
     },
     {
       label: `MAX (${suffix})`,
@@ -247,7 +247,7 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activ
                       {fmt(row.mean ?? row.median, 4, unit)}
                     </td>
 
-                    <td className="px-4 py-4 text-right font-medium text-cyan-500 dark:text-cyan-400">
+                    <td className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">
                       {fmt(row.min, 4, unit)}
                     </td>
 

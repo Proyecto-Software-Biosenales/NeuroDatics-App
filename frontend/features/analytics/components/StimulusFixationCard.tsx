@@ -311,7 +311,7 @@ export function StimulusPreviewScreen({
                     className="absolute -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
                     style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
                   >
-                    <div className="h-7 w-7 rounded-full border-4 border-cyan-400 bg-cyan-400/20 shadow-lg" />
+                    <div className="h-8 w-8 rounded-full border-[5px] border-cyan-400 bg-cyan-400/20 shadow-[0_6px_20px_rgba(6,182,212,0.35)]" />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="flex items-center gap-3 px-3 py-2.5">
@@ -430,7 +430,7 @@ export function StimulusPreviewSurface({
                 className="absolute -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
                 style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
               >
-                <div className="h-6 w-6 rounded-full border-[3px] border-cyan-400 bg-cyan-400/20 shadow-lg" />
+                <div className="h-7 w-7 rounded-full border-4 border-cyan-400 bg-cyan-400/20 shadow-[0_6px_20px_rgba(6,182,212,0.35)]" />
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" className="flex items-center gap-3 px-3 py-2.5">
@@ -570,8 +570,8 @@ export function StimulusFixationCard({
                 value: metricValueText,
                 sub: selectedValueSub,
                 Icon: Gauge,
-                bg: "bg-teal-50 dark:bg-teal-950/40",
-                iconColor: "text-teal-500",
+                bg: "bg-emerald-50 dark:bg-emerald-950/40",
+                iconColor: "text-emerald-500",
               },
               {
                 label: "POS X",
@@ -586,8 +586,8 @@ export function StimulusFixationCard({
                 value: gazeData.gy != null ? `${gazeData.gy.toFixed(0)}%` : "—",
                 sub: "vertical",
                 Icon: Crosshair,
-                bg: "bg-sky-50 dark:bg-sky-950/40",
-                iconColor: "text-sky-500",
+                bg: "bg-emerald-50 dark:bg-emerald-950/40",
+                iconColor: "text-emerald-500",
               },
             ].map(({ label, value, sub, Icon, bg, iconColor }) => (
               <div
@@ -658,16 +658,12 @@ export function StimulusFixationCard({
                           className="absolute z-30 -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
                           style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
                         >
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-[0_4px_14px_rgba(15,23,42,0.3)]">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-950">
-                              <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                            </span>
-                          </div>
+                          <div className="h-8 w-8 rounded-full border-[5px] border-cyan-400 bg-cyan-400/20 shadow-[0_6px_20px_rgba(6,182,212,0.35)]" />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="flex items-center gap-3 px-3 py-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-900">
-                          <Crosshair className="h-4 w-4 text-slate-800 dark:text-slate-100" />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-950">
+                          <Crosshair className="h-4 w-4 text-cyan-500" />
                         </div>
                         <div>
                           <p className="text-sm font-semibold leading-none">Punto de atención</p>

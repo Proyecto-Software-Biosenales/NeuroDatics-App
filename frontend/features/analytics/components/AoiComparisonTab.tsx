@@ -76,7 +76,7 @@ const eventPosition = (event: AoiEventItem) => (
 const eventTone = (kind: string) => (
   kind === "min"
     ? {
-        badge: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300",
+        badge: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
       }
     : {
         badge: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
@@ -360,7 +360,7 @@ export function AoiComparisonTab({
       title: "Distancia dispositivo",
       description: "Momentos de distancia minima y maxima frente a pantalla.",
       Icon: Ruler,
-      iconClassName: "text-cyan-700 dark:text-cyan-300",
+      iconClassName: "text-emerald-700 dark:text-emerald-300",
       events: events.filter((event) => event.metric === "distance"),
     },
   ], [events])
