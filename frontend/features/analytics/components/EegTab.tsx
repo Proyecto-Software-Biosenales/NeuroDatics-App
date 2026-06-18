@@ -52,7 +52,7 @@ const CHANNEL_COLORS: Record<string, string> = {
   c4: "#059669",
   p4: "#7C3AED",
   p3: "#EA580C",
-  c3: "#0891B2",
+  c3: "#65A30D",
   f3: "#BE123C",
 }
 
@@ -519,7 +519,7 @@ function SpectrogramPanel({
           />
           {selectedTimeRatio != null ? (
             <div
-              className="pointer-events-none absolute inset-y-0 w-px bg-cyan-300 shadow-[0_0_0_1px_rgba(8,145,178,0.25)]"
+              className="pointer-events-none absolute inset-y-0 w-px bg-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.25)]"
               style={{ left: `${selectedTimeRatio * 100}%` }}
             />
           ) : null}
@@ -847,7 +847,7 @@ function EegStatsTable({ rows }: { rows: ChannelStats[] }) {
               <td className="px-4 py-4 text-right font-semibold text-foreground">{formatNumber(row.mean, 4, " uV")}</td>
               <td className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.std, 4, " uV")}</td>
               <td className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.median, 4, " uV")}</td>
-              <td className="px-4 py-4 text-right font-medium text-cyan-500 dark:text-cyan-400">{formatNumber(row.min, 4, " uV")}</td>
+              <td className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">{formatNumber(row.min, 4, " uV")}</td>
               <td className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">{formatNumber(row.max, 4, " uV")}</td>
               <td className="px-4 py-4 text-right font-semibold text-emerald-600 dark:text-emerald-400">
                 {row.peakPercent != null ? `${row.peakPercent >= 0 ? "+" : ""}${row.peakPercent.toFixed(1)}%` : "—"}
@@ -897,7 +897,7 @@ function PsdStatsTable({ rows, unit }: { rows: PsdStats[]; unit: string }) {
               <td className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.mean, 4, ` ${unit}`)}</td>
               <td className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.std, 4, ` ${unit}`)}</td>
               <td className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.median, 4, ` ${unit}`)}</td>
-              <td className="px-4 py-4 text-right font-medium text-cyan-500 dark:text-cyan-400">{formatNumber(row.min, 4, ` ${unit}`)}</td>
+              <td className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">{formatNumber(row.min, 4, ` ${unit}`)}</td>
               <td className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">{formatNumber(row.max, 4, ` ${unit}`)}</td>
             </tr>
           ))}
@@ -970,7 +970,7 @@ function SpectrogramStatsTable({ rows, unit }: { rows: SpectrogramStats[]; unit:
               <td className="px-4 py-4 text-right text-foreground/80">
                 {formatNumber(row.medianPower, 4, ` ${unit}`)}
               </td>
-              <td className="px-4 py-4 text-right font-medium text-cyan-500 dark:text-cyan-400">
+              <td className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">
                 {formatNumber(row.minPower, 4, ` ${unit}`)}
               </td>
               <td className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">
@@ -1555,11 +1555,11 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
               loading={timeseriesLoading}
               onClick={timeExtremePoints.minPoint ? () => setSelectedTime(timeExtremePoints.minPoint?.time ?? null) : undefined}
               active={selectedTime === timeExtremePoints.minPoint?.time}
-              hoverBgClass="hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
-              activeBgClass="bg-cyan-50 dark:bg-cyan-950/30"
-              iconBgClass="bg-cyan-100 dark:bg-cyan-900/40"
-              iconColorClass="text-cyan-600 dark:text-cyan-400"
-              labelColorClass="text-cyan-700 dark:text-cyan-400"
+              hoverBgClass="hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+              activeBgClass="bg-emerald-50 dark:bg-emerald-950/30"
+              iconBgClass="bg-emerald-100 dark:bg-emerald-900/40"
+              iconColorClass="text-emerald-600 dark:text-emerald-400"
+              labelColorClass="text-emerald-700 dark:text-emerald-400"
             />
             <KpiCard
               label="Máximo"
@@ -1826,9 +1826,9 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
               description="Promedio espectral visible"
               Icon={Waves}
               loading={psdLoading}
-              iconBgClass="bg-cyan-100 dark:bg-cyan-900/40"
-              iconColorClass="text-cyan-600 dark:text-cyan-400"
-              labelColorClass="text-cyan-700 dark:text-cyan-400"
+              iconBgClass="bg-emerald-100 dark:bg-emerald-900/40"
+              iconColorClass="text-emerald-600 dark:text-emerald-400"
+              labelColorClass="text-emerald-700 dark:text-emerald-400"
             />
           </div>
 
@@ -2006,9 +2006,9 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                 description="Promedio de la matriz visible"
                 Icon={Activity}
                 loading={spectrogramLoading}
-                iconBgClass="bg-cyan-100 dark:bg-cyan-900/40"
-                iconColorClass="text-cyan-600 dark:text-cyan-400"
-                labelColorClass="text-cyan-700 dark:text-cyan-400"
+                iconBgClass="bg-emerald-100 dark:bg-emerald-900/40"
+                iconColorClass="text-emerald-600 dark:text-emerald-400"
+                labelColorClass="text-emerald-700 dark:text-emerald-400"
               />
             </div>
 
@@ -2299,7 +2299,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                   <div className="grid grid-cols-2 gap-3 border-t border-border p-4 text-sm">
                     <div>
                       <p className="text-xs uppercase tracking-widest text-muted-foreground">Mínima</p>
-                      <p className="mt-1 font-semibold text-cyan-600 dark:text-cyan-400">
+                      <p className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
                         {formatNumber(topographyStats.minPower, 4, ` ${topographyData.unit}`)}
                       </p>
                     </div>

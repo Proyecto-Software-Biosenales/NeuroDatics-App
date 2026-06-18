@@ -137,11 +137,11 @@ export function FixationHistogramTab({
           unit="ms"
           description="Duración más corta registrada"
           Icon={TrendingDown}
-          iconBgClass="bg-cyan-100 dark:bg-cyan-900/40"
-          iconColorClass="text-cyan-500"
-          labelColorClass="text-cyan-600 dark:text-cyan-400"
-          hoverBgClass="hover:bg-cyan-50/50 dark:hover:bg-cyan-950/30"
-          activeBgClass="bg-cyan-50/50 dark:bg-cyan-950/30"
+          iconBgClass="bg-emerald-100 dark:bg-emerald-900/40"
+          iconColorClass="text-emerald-500"
+          labelColorClass="text-emerald-600 dark:text-emerald-400"
+          hoverBgClass="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30"
+          activeBgClass="bg-emerald-50/50 dark:bg-emerald-950/30"
           active={false}
         />
         <KpiCard

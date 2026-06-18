@@ -157,9 +157,9 @@ export function ScanpathTab({
                   Icon={Ruler}
                   loading={loading}
                   bgClass="bg-card"
-                  iconBgClass="bg-cyan-100 dark:bg-cyan-900/30"
-                  iconColorClass="text-cyan-500"
-                  labelColorClass="text-cyan-600 dark:text-cyan-400"
+                  iconBgClass="bg-emerald-100 dark:bg-emerald-900/30"
+                  iconColorClass="text-emerald-500"
+                  labelColorClass="text-emerald-600 dark:text-emerald-400"
                   decimals={0}
                 />
                 <KpiCard
