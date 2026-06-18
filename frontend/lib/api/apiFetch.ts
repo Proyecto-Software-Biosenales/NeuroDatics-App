@@ -1,6 +1,6 @@
 import { clearStoredAuthSession, getAccessToken, isAccessTokenExpired } from "@/lib/auth/sessionStore";
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const BASE = "";
 const API_REQUEST_TIMEOUT_MS = 5 * 60_000;
 const ZIP_UPLOAD_TIMEOUT_MS = 30 * 60_000;
 const BLOB_CACHE_TTL_MS = 5 * 60_000;
@@ -80,7 +80,7 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
       : error instanceof Error
         ? error.message
         : "Network error";
-    throw new Error(`No se pudo conectar con el backend (${BASE}). ${reason}`);
+    throw new Error(`No se pudo conectar con el backend. ${reason}`);
   }
 
   if (res.status === 401) {
@@ -317,7 +317,7 @@ export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Pro
         : error instanceof Error
           ? error.message
           : "Network error";
-      throw new Error(`No se pudo conectar con el backend (${BASE}). ${reason}`);
+      throw new Error(`No se pudo conectar con el backend. ${reason}`);
     }
 
     if (res.status === 401) {

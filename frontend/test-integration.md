@@ -97,7 +97,7 @@ npm run dev
 
 ### **Variables de Entorno (Frontend)**
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_INTERNAL_API_BASE_URL=http://localhost:8000
 ```
 
 ### **Variables de Entorno (Backend)**

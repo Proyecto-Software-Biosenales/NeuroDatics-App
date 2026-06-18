@@ -24,7 +24,7 @@ WORKDIR /app
 
 # ---- Install deps first (better cache) ----
 COPY pyproject.toml poetry.lock* /app/
-RUN poetry install --no-root
+RUN poetry install --no-root --only main
 
 # ---- Copy source ----
 COPY . /app

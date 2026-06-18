@@ -13,8 +13,7 @@ Frontend de NeuroDatics construido con Next.js App Router, TypeScript y Tailwind
 Crear archivo frontend/.env.local con:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=
+NEXT_INTERNAL_API_BASE_URL=http://localhost:8000
 
 # Opcional (modo admin local para desarrollo)
 NEXT_PUBLIC_DEV_ADMIN_EMAIL=
@@ -58,5 +57,6 @@ npm run format
 
 ## Integracion Con Backend
 
-- Base URL configurada por NEXT_PUBLIC_API_BASE_URL.
+- El navegador llama `/api` en el mismo origen.
+- Next.js reenvia esas solicitudes al backend usando `NEXT_INTERNAL_API_BASE_URL`.
 - Endpoints principales consumidos desde features/projects/api/projectsApi.ts.

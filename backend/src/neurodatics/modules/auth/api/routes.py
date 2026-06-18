@@ -5,14 +5,34 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import httpx
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from urllib.parse import urlencode
 
 from ....api.deps import get_db
 from ....config.security import create_access_token
 from ....config.settings import settings
 from ..infrastructure.user_store import auth_user_store
-from .schemas import GoogleAuthorizeRequest, GoogleAuthorizeResponse, AuthUserResponse
+from .schemas import GoogleAuthorizeRequest, GoogleAuthorizeResponse, GoogleLoginUrlResponse, AuthUserResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _ensure_google_oauth_configured() -> None:
+    if not settings.google_oauth_client_id or not settings.google_oauth_client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google OAuth no configurado en backend. Define GOOGLE_OAUTH_CLIENT_ID y GOOGLE_OAUTH_CLIENT_SECRET.",
+        )
+
+
+def _resolve_google_redirect_uri(redirect_uri: str | None) -> str:
+    resolved_redirect_uri = redirect_uri or settings.google_oauth_redirect_uri
+    if not resolved_redirect_uri:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing redirect_uri. Provide it in request or GOOGLE_OAUTH_REDIRECT_URI env var.",
+        )
+
+    return resolved_redirect_uri
 
 
 async def _ensure_app_user(
@@ -72,23 +92,31 @@ async def _ensure_app_user(
     return user_id
 
 
+@router.get("/google/login-url", response_model=GoogleLoginUrlResponse)
+async def google_login_url(redirect_uri: str | None = None):
+    _ensure_google_oauth_configured()
+    resolved_redirect_uri = _resolve_google_redirect_uri(redirect_uri)
+    query = {
+        "client_id": settings.google_oauth_client_id,
+        "redirect_uri": resolved_redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": str(uuid.uuid4()),
+        "prompt": "consent",
+    }
+
+    return GoogleLoginUrlResponse(
+        authorization_url=f"{settings.google_oauth_authorize_url}?{urlencode(query)}"
+    )
+
+
 @router.post("/google/authorize", response_model=GoogleAuthorizeResponse)
 async def authorize_google(
     request: GoogleAuthorizeRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    if not settings.google_oauth_client_id or not settings.google_oauth_client_secret:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google OAuth no configurado en backend. Define GOOGLE_OAUTH_CLIENT_ID y GOOGLE_OAUTH_CLIENT_SECRET.",
-        )
-
-    redirect_uri = request.redirect_uri or settings.google_oauth_redirect_uri
-    if not redirect_uri:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing redirect_uri. Provide it in request or GOOGLE_OAUTH_REDIRECT_URI env var.",
-        )
+    _ensure_google_oauth_configured()
+    redirect_uri = _resolve_google_redirect_uri(request.redirect_uri)
 
     token_payload = {
         "code": request.code,

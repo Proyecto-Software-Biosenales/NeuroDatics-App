@@ -13,6 +13,10 @@ class AuthUserResponse(BaseModel):
     name: Optional[str] = None
 
 
+class GoogleLoginUrlResponse(BaseModel):
+    authorization_url: str
+
+
 class GoogleAuthorizeResponse(BaseModel):
     access_token: str
     token_type: str = "Bearer"

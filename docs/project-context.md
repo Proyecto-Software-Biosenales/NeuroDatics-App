@@ -161,12 +161,11 @@ Each module follows: `api/` → `application/` → `domain/` → `infrastructure
 | `worker` | RQ worker for async processing jobs |
 
 ### Environment Variables
-**Frontend:**
-- `NEXT_PUBLIC_API_BASE_URL`
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
-- `NEXT_PUBLIC_DEV_ADMIN_EMAIL` / `_PASSWORD` / `_DISPLAY_NAME` (optional dev shortcuts)
+**Frontend local development:**
+- `NEXT_INTERNAL_API_BASE_URL`
+- `NEXT_PUBLIC_DEV_ADMIN_EMAIL` / `_PASSWORD` / `_DISPLAY_NAME` (optional frontend-only dev shortcuts)
 
-**Docker Compose:** see root `.env.example`.
+**Docker Compose:** see root `.env.example`. The Docker distribution does not require `NEXT_PUBLIC_API_BASE_URL` or `NEXT_PUBLIC_GOOGLE_CLIENT_ID`; browser calls go through `/api`, and the backend generates the Google login URL at runtime.
 
 ### Access Points
 - Frontend: `http://localhost:3000`

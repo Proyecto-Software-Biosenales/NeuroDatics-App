@@ -20,7 +20,6 @@ export function AuthCallback() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const errorHandledRef = useRef(false)
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
 
   useEffect(() => {
     if (errorHandledRef.current) {
@@ -50,7 +49,7 @@ export function AuthCallback() {
     const authorizeWithBackend = async () => {
       try {
         const redirectUri = `${window.location.origin}/authorize`
-        const response = await fetch(`${baseUrl}/api/auth/google/authorize`, {
+        const response = await fetch('/api/auth/google/authorize', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -89,7 +88,7 @@ export function AuthCallback() {
     }
 
     void authorizeWithBackend()
-  }, [baseUrl, router, searchParams])
+  }, [router, searchParams])
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
