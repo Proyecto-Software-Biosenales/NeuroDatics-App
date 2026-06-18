@@ -60,11 +60,34 @@ def _robust_baseline(x: np.ndarray) -> float:
     return result if np.isfinite(result) else 0.0
 
 
+def _filter_time_window(
+    df: pd.DataFrame,
+    start_time_s: Optional[float] = None,
+    end_time_s: Optional[float] = None,
+) -> pd.DataFrame:
+    if "time" not in df.columns or (start_time_s is None and end_time_s is None):
+        return df
+
+    time_values = pd.to_numeric(df["time"], errors="coerce")
+    mask = time_values.notna()
+    if start_time_s is not None:
+        mask &= time_values >= float(start_time_s)
+    if end_time_s is not None:
+        mask &= time_values <= float(end_time_s)
+
+    return df.loc[mask]
+
+
 class PupilAnalyticsService:
     """Stateless computation helpers for pupil data."""
 
     @staticmethod
-    def compute_timeseries(df: pd.DataFrame, scenario: Optional[str] = None) -> dict:
+    def compute_timeseries(
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> dict:
         """Compute pupil timeseries from DataFrame."""
         if scenario and scenario != "all" and "scenario" in df.columns:
             df = df[df["scenario"].astype(str).str.strip() == scenario]
@@ -79,6 +102,8 @@ class PupilAnalyticsService:
                     "smooth_left": [],
                     "smooth_right": [],
                 }
+
+        df = _filter_time_window(df, start_time_s, end_time_s)
 
         mask = df["lx_pupil"].notna() | df["rx_pupil"].notna()
         df = df.loc[mask].sort_values("time").reset_index(drop=True)
@@ -118,7 +143,12 @@ class PupilAnalyticsService:
         }
 
     @staticmethod
-    def compute_statistics(df: pd.DataFrame, scenario: Optional[str] = None) -> dict:
+    def compute_statistics(
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> dict:
         """Compute pupil statistics on the smoothed signal (matches what the chart displays)."""
         _empty = {
             "mean": 0.0,
@@ -140,6 +170,8 @@ class PupilAnalyticsService:
 
         if "lx_pupil" not in df.columns or "rx_pupil" not in df.columns:
             return _empty
+
+        df = _filter_time_window(df, start_time_s, end_time_s)
 
         # Keep rows where at least one eye is valid, sort by time (match timeseries pipeline)
         mask = df["lx_pupil"].notna() | df["rx_pupil"].notna()
@@ -375,7 +407,12 @@ class PupilAnalyticsService:
         return df
 
     @staticmethod
-    def compute_gaze_timeseries(df: pd.DataFrame, scenario: Optional[str] = None) -> dict:
+    def compute_gaze_timeseries(
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> dict:
         """Compute cleaned gaze X/Y timeseries."""
         _empty: dict = {"time": [], "gx_clean": [], "gy_clean": []}
 
@@ -384,6 +421,8 @@ class PupilAnalyticsService:
 
         if "time" not in df.columns or "gx" not in df.columns or "gy" not in df.columns:
             return _empty
+
+        df = _filter_time_window(df, start_time_s, end_time_s)
 
         df = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True)
         if df.empty:
@@ -401,7 +440,12 @@ class PupilAnalyticsService:
         }
 
     @staticmethod
-    def compute_gaze_statistics(df: pd.DataFrame, scenario: Optional[str] = None) -> dict:
+    def compute_gaze_statistics(
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> dict:
         """Compute statistics for cleaned gaze X and Y signals."""
         _empty: dict = {
             "gx_mean": 0.0, "gx_min": 0.0, "gx_max": 0.0,
@@ -415,6 +459,8 @@ class PupilAnalyticsService:
 
         if "time" not in df.columns or "gx" not in df.columns or "gy" not in df.columns:
             return _empty
+
+        df = _filter_time_window(df, start_time_s, end_time_s)
 
         df = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True)
         if df.empty:
@@ -447,7 +493,12 @@ class PupilAnalyticsService:
         }
 
     @staticmethod
-    def compute_distance_timeseries(df: pd.DataFrame, scenario: Optional[str] = None) -> dict:
+    def compute_distance_timeseries(
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> dict:
         """Compute eye-to-screen distance timeseries (mm -> cm)."""
         _empty: dict = {"time": [], "distance_cm": []}
 
@@ -456,6 +507,8 @@ class PupilAnalyticsService:
 
         if "time" not in df.columns or "distance" not in df.columns:
             return _empty
+
+        df = _filter_time_window(df, start_time_s, end_time_s)
 
         df = df.copy()
         df["distance"] = pd.to_numeric(df["distance"], errors="coerce")
@@ -471,7 +524,12 @@ class PupilAnalyticsService:
         }
 
     @staticmethod
-    def compute_distance_statistics(df: pd.DataFrame, scenario: Optional[str] = None) -> dict:
+    def compute_distance_statistics(
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> dict:
         """Compute statistics for eye-to-screen distance signal (cm)."""
         _empty: dict = {
             "mean": 0.0, "min": 0.0, "max": 0.0, "std": 0.0, "median": 0.0, "baseline": 0.0,
@@ -482,6 +540,8 @@ class PupilAnalyticsService:
 
         if "time" not in df.columns or "distance" not in df.columns:
             return _empty
+
+        df = _filter_time_window(df, start_time_s, end_time_s)
 
         df = df.copy()
         df["distance"] = pd.to_numeric(df["distance"], errors="coerce")
@@ -516,7 +576,12 @@ class GsrAnalyticsService:
     """Stateless computation helpers for galvanic skin response data."""
 
     @staticmethod
-    def _clean_signal(df: pd.DataFrame, scenario: Optional[str] = None) -> pd.DataFrame:
+    def _clean_signal(
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> pd.DataFrame:
         if scenario and scenario != "all" and "scenario" in df.columns:
             df = df[df["scenario"].astype(str).str.strip() == scenario]
 
@@ -535,17 +600,26 @@ class GsrAnalyticsService:
         fs = _infer_fs(time_arr)
         win = max(1, int(round(fs * 1.0)))
         smooth = _moving_average(clean["gsr"].to_numpy(dtype=float), win)
+        clean["gsr_smooth"] = smooth
 
         clean["time"] = clean["time"] - clean["time"].min()
-        clean["gsr_smooth"] = smooth
+        clean = _filter_time_window(clean, start_time_s, end_time_s).reset_index(drop=True)
+        if clean.empty:
+            return pd.DataFrame(columns=["time", "gsr", "gsr_smooth"])
+
         return clean
 
     @staticmethod
-    def compute_timeseries(df: pd.DataFrame, scenario: Optional[str] = None) -> dict:
+    def compute_timeseries(
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> dict:
         """Compute raw and 1-second smoothed GSR timeseries."""
         _empty: dict = {"time": [], "gsr": [], "gsr_smooth": []}
 
-        clean = GsrAnalyticsService._clean_signal(df, scenario)
+        clean = GsrAnalyticsService._clean_signal(df, scenario, start_time_s, end_time_s)
         if clean.empty:
             return _empty
 
@@ -562,7 +636,12 @@ class GsrAnalyticsService:
         }
 
     @staticmethod
-    def compute_statistics(df: pd.DataFrame, scenario: Optional[str] = None) -> dict:
+    def compute_statistics(
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        start_time_s: Optional[float] = None,
+        end_time_s: Optional[float] = None,
+    ) -> dict:
         """Compute statistics on the smoothed GSR signal shown in the chart."""
         _empty = {
             "mean": 0.0,
@@ -579,7 +658,7 @@ class GsrAnalyticsService:
             "raw_baseline": None,
         }
 
-        clean = GsrAnalyticsService._clean_signal(df, scenario)
+        clean = GsrAnalyticsService._clean_signal(df, scenario, start_time_s, end_time_s)
         if clean.empty:
             return _empty
 

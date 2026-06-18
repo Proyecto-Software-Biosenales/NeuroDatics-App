@@ -157,12 +157,20 @@ async def pupil_timeseries(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(project_id, participant_code, "timeseries_pupil", scenario)
+    cache_key = _redis.build_key(
+        project_id,
+        participant_code,
+        f"timeseries_pupil:{_time_window_key(start_time_s, end_time_s)}",
+        scenario,
+    )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return PupilTimeseriesResponse(**cached)
@@ -176,7 +184,12 @@ async def pupil_timeseries(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_timeseries(df, scenario)
+        lambda: PupilAnalyticsService.compute_timeseries(
+            df,
+            scenario,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+        )
     )
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
@@ -188,12 +201,20 @@ async def pupil_statistics(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(project_id, participant_code, "statistics_pupil", scenario)
+    cache_key = _redis.build_key(
+        project_id,
+        participant_code,
+        f"statistics_pupil:{_time_window_key(start_time_s, end_time_s)}",
+        scenario,
+    )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return PupilStatisticsResponse(**cached)
@@ -207,7 +228,12 @@ async def pupil_statistics(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_statistics(df, scenario)
+        lambda: PupilAnalyticsService.compute_statistics(
+            df,
+            scenario,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+        )
     )
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
@@ -315,12 +341,20 @@ async def gaze_timeseries(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(project_id, participant_code, "timeseries_gaze", scenario)
+    cache_key = _redis.build_key(
+        project_id,
+        participant_code,
+        f"timeseries_gaze:{_time_window_key(start_time_s, end_time_s)}",
+        scenario,
+    )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return GazeTimeseriesResponse(**cached)
@@ -334,7 +368,12 @@ async def gaze_timeseries(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_gaze_timeseries(df, scenario)
+        lambda: PupilAnalyticsService.compute_gaze_timeseries(
+            df,
+            scenario,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+        )
     )
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
@@ -346,12 +385,20 @@ async def gaze_statistics(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(project_id, participant_code, "statistics_gaze", scenario)
+    cache_key = _redis.build_key(
+        project_id,
+        participant_code,
+        f"statistics_gaze:{_time_window_key(start_time_s, end_time_s)}",
+        scenario,
+    )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return GazeStatisticsResponse(**cached)
@@ -365,7 +412,12 @@ async def gaze_statistics(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_gaze_statistics(df, scenario)
+        lambda: PupilAnalyticsService.compute_gaze_statistics(
+            df,
+            scenario,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+        )
     )
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
@@ -377,12 +429,20 @@ async def distance_timeseries(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(project_id, participant_code, "timeseries_distance", scenario)
+    cache_key = _redis.build_key(
+        project_id,
+        participant_code,
+        f"timeseries_distance:{_time_window_key(start_time_s, end_time_s)}",
+        scenario,
+    )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return DistanceTimeseriesResponse(**cached)
@@ -396,7 +456,12 @@ async def distance_timeseries(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_distance_timeseries(df, scenario)
+        lambda: PupilAnalyticsService.compute_distance_timeseries(
+            df,
+            scenario,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+        )
     )
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
@@ -408,12 +473,20 @@ async def distance_statistics(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(project_id, participant_code, "statistics_distance", scenario)
+    cache_key = _redis.build_key(
+        project_id,
+        participant_code,
+        f"statistics_distance:{_time_window_key(start_time_s, end_time_s)}",
+        scenario,
+    )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return DistanceStatisticsResponse(**cached)
@@ -427,7 +500,12 @@ async def distance_statistics(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_distance_statistics(df, scenario)
+        lambda: PupilAnalyticsService.compute_distance_statistics(
+            df,
+            scenario,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+        )
     )
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
@@ -439,12 +517,20 @@ async def gsr_timeseries(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(project_id, participant_code, "timeseries_gsr", scenario)
+    cache_key = _redis.build_key(
+        project_id,
+        participant_code,
+        f"timeseries_gsr:{_time_window_key(start_time_s, end_time_s)}",
+        scenario,
+    )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return GsrTimeseriesResponse(**cached)
@@ -458,7 +544,12 @@ async def gsr_timeseries(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
-        lambda: GsrAnalyticsService.compute_timeseries(df, scenario)
+        lambda: GsrAnalyticsService.compute_timeseries(
+            df,
+            scenario,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+        )
     )
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
@@ -470,12 +561,20 @@ async def gsr_statistics(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(project_id, participant_code, "statistics_gsr", scenario)
+    cache_key = _redis.build_key(
+        project_id,
+        participant_code,
+        f"statistics_gsr:{_time_window_key(start_time_s, end_time_s)}",
+        scenario,
+    )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return GsrStatisticsResponse(**cached)
@@ -489,7 +588,12 @@ async def gsr_statistics(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
-        lambda: GsrAnalyticsService.compute_statistics(df, scenario)
+        lambda: GsrAnalyticsService.compute_statistics(
+            df,
+            scenario,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+        )
     )
 
     await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))

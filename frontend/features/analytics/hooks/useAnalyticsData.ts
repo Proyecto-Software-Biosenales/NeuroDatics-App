@@ -79,7 +79,9 @@ export function useAnalyticsScenarios(projectId: string | null) {
 export function usePupilTimeseries(
   projectId: string | null,
   participantCode: string | null,
-  scenario: string = "all"
+  scenario: string = "all",
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<PupilTimeseriesData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -93,7 +95,7 @@ export function usePupilTimeseries(
     let cancelled = false
     setLoading(true)
     setError(null)
-    AnalyticsApi.getPupilTimeseries(projectId, participantCode, scenario)
+    AnalyticsApi.getPupilTimeseries(projectId, participantCode, scenario, startTimeS, endTimeS)
       .then((result) => {
         if (!cancelled) setData(result)
       })
@@ -109,7 +111,7 @@ export function usePupilTimeseries(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario])
+  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
 
   return { data, loading, error }
 }
@@ -117,7 +119,9 @@ export function usePupilTimeseries(
 export function usePupilStatistics(
   projectId: string | null,
   participantCode: string | null,
-  scenario: string = "all"
+  scenario: string = "all",
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<PupilStatistics | null>(null)
   const [loading, setLoading] = useState(false)
@@ -129,7 +133,7 @@ export function usePupilStatistics(
     }
     let cancelled = false
     setLoading(true)
-    AnalyticsApi.getPupilStatistics(projectId, participantCode, scenario)
+    AnalyticsApi.getPupilStatistics(projectId, participantCode, scenario, startTimeS, endTimeS)
       .then((result) => {
         if (!cancelled) setData(result)
       })
@@ -142,7 +146,7 @@ export function usePupilStatistics(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario])
+  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
 
   return { data, loading }
 }
@@ -183,7 +187,9 @@ export function useGazeAt(projectId: string | null, participantCode: string | nu
 export function useGazeTimeseries(
   projectId: string | null,
   participantCode: string | null,
-  scenario: string = "all"
+  scenario: string = "all",
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<GazeTimeseriesData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -197,7 +203,7 @@ export function useGazeTimeseries(
     let cancelled = false
     setLoading(true)
     setError(null)
-    AnalyticsApi.getGazeTimeseries(projectId, participantCode, scenario)
+    AnalyticsApi.getGazeTimeseries(projectId, participantCode, scenario, startTimeS, endTimeS)
       .then((result) => {
         if (!cancelled) setData(result)
       })
@@ -213,7 +219,7 @@ export function useGazeTimeseries(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario])
+  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
 
   return { data, loading, error }
 }
@@ -221,7 +227,9 @@ export function useGazeTimeseries(
 export function useGazeStatistics(
   projectId: string | null,
   participantCode: string | null,
-  scenario: string = "all"
+  scenario: string = "all",
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<GazeStatistics | null>(null)
   const [loading, setLoading] = useState(false)
@@ -233,7 +241,7 @@ export function useGazeStatistics(
     }
     let cancelled = false
     setLoading(true)
-    AnalyticsApi.getGazeStatistics(projectId, participantCode, scenario)
+    AnalyticsApi.getGazeStatistics(projectId, participantCode, scenario, startTimeS, endTimeS)
       .then((result) => {
         if (!cancelled) setData(result)
       })
@@ -246,7 +254,7 @@ export function useGazeStatistics(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario])
+  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
 
   return { data, loading }
 }
@@ -254,7 +262,9 @@ export function useGazeStatistics(
 export function useDistanceTimeseries(
   projectId: string | null,
   participantCode: string | null,
-  scenario: string = "all"
+  scenario: string = "all",
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<DistanceTimeseriesData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -268,7 +278,7 @@ export function useDistanceTimeseries(
     let cancelled = false
     setLoading(true)
     setError(null)
-    AnalyticsApi.getDistanceTimeseries(projectId, participantCode, scenario)
+    AnalyticsApi.getDistanceTimeseries(projectId, participantCode, scenario, startTimeS, endTimeS)
       .then((result) => {
         if (!cancelled) setData(result)
       })
@@ -284,7 +294,7 @@ export function useDistanceTimeseries(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario])
+  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
 
   return { data, loading, error }
 }
@@ -292,7 +302,9 @@ export function useDistanceTimeseries(
 export function useDistanceStatistics(
   projectId: string | null,
   participantCode: string | null,
-  scenario: string = "all"
+  scenario: string = "all",
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<DistanceStatistics | null>(null)
   const [loading, setLoading] = useState(false)
@@ -304,7 +316,7 @@ export function useDistanceStatistics(
     }
     let cancelled = false
     setLoading(true)
-    AnalyticsApi.getDistanceStatistics(projectId, participantCode, scenario)
+    AnalyticsApi.getDistanceStatistics(projectId, participantCode, scenario, startTimeS, endTimeS)
       .then((result) => {
         if (!cancelled) setData(result)
       })
@@ -317,7 +329,7 @@ export function useDistanceStatistics(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario])
+  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
 
   return { data, loading }
 }
@@ -325,7 +337,9 @@ export function useDistanceStatistics(
 export function useGsrTimeseries(
   projectId: string | null,
   participantCode: string | null,
-  scenario: string = "all"
+  scenario: string = "all",
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<GsrTimeseriesData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -339,7 +353,7 @@ export function useGsrTimeseries(
     let cancelled = false
     setLoading(true)
     setError(null)
-    AnalyticsApi.getGsrTimeseries(projectId, participantCode, scenario)
+    AnalyticsApi.getGsrTimeseries(projectId, participantCode, scenario, startTimeS, endTimeS)
       .then((result) => {
         if (!cancelled) setData(result)
       })
@@ -355,7 +369,7 @@ export function useGsrTimeseries(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario])
+  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
 
   return { data, loading, error }
 }
@@ -363,7 +377,9 @@ export function useGsrTimeseries(
 export function useGsrStatistics(
   projectId: string | null,
   participantCode: string | null,
-  scenario: string = "all"
+  scenario: string = "all",
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
 ) {
   const [data, setData] = useState<GsrStatistics | null>(null)
   const [loading, setLoading] = useState(false)
@@ -375,7 +391,7 @@ export function useGsrStatistics(
     }
     let cancelled = false
     setLoading(true)
-    AnalyticsApi.getGsrStatistics(projectId, participantCode, scenario)
+    AnalyticsApi.getGsrStatistics(projectId, participantCode, scenario, startTimeS, endTimeS)
       .then((result) => {
         if (!cancelled) setData(result)
       })
@@ -388,7 +404,7 @@ export function useGsrStatistics(
     return () => {
       cancelled = true
     }
-  }, [projectId, participantCode, scenario])
+  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
 
   return { data, loading }
 }

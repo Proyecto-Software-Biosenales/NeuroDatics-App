@@ -21,6 +21,19 @@ import type {
   ScanpathData,
 } from "../types"
 
+function appendTimeWindowParams(
+  params: URLSearchParams,
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
+) {
+  if (startTimeS != null) {
+    params.set("start_time_s", String(startTimeS))
+  }
+  if (endTimeS != null) {
+    params.set("end_time_s", String(endTimeS))
+  }
+}
+
 export const AnalyticsApi = {
   getParticipants: (projectId: string) =>
     apiFetch<AnalyticsParticipant[]>(`/api/projects/${projectId}/analytics/participants`),
@@ -28,13 +41,27 @@ export const AnalyticsApi = {
   getScenarios: (projectId: string) =>
     apiFetch<AnalyticsScenario[]>(`/api/projects/${projectId}/analytics/scenarios`),
 
-  getPupilTimeseries: (projectId: string, participantCode: string, scenario: string = "all") => {
+  getPupilTimeseries: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ) => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<PupilTimeseriesData>(`/api/projects/${projectId}/analytics/timeseries/pupil?${params}`)
   },
 
-  getPupilStatistics: (projectId: string, participantCode: string, scenario: string = "all") => {
+  getPupilStatistics: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ) => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<PupilStatistics>(`/api/projects/${projectId}/analytics/statistics/pupil?${params}`)
   },
 
@@ -46,33 +73,75 @@ export const AnalyticsApi = {
     return apiFetch<GazeAtData>(`/api/projects/${projectId}/analytics/gaze-at?${params}`)
   },
 
-  getGazeTimeseries: (projectId: string, participantCode: string, scenario: string = "all") => {
+  getGazeTimeseries: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ) => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<GazeTimeseriesData>(`/api/projects/${projectId}/analytics/timeseries/gaze?${params}`)
   },
 
-  getGazeStatistics: (projectId: string, participantCode: string, scenario: string = "all") => {
+  getGazeStatistics: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ) => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<GazeStatistics>(`/api/projects/${projectId}/analytics/statistics/gaze?${params}`)
   },
 
-  getDistanceTimeseries: (projectId: string, participantCode: string, scenario: string = "all") => {
+  getDistanceTimeseries: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ) => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<DistanceTimeseriesData>(`/api/projects/${projectId}/analytics/timeseries/distance?${params}`)
   },
 
-  getDistanceStatistics: (projectId: string, participantCode: string, scenario: string = "all") => {
+  getDistanceStatistics: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ) => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<DistanceStatistics>(`/api/projects/${projectId}/analytics/statistics/distance?${params}`)
   },
 
-  getGsrTimeseries: (projectId: string, participantCode: string, scenario: string = "all") => {
+  getGsrTimeseries: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ) => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<GsrTimeseriesData>(`/api/projects/${projectId}/analytics/timeseries/gsr?${params}`)
   },
 
-  getGsrStatistics: (projectId: string, participantCode: string, scenario: string = "all") => {
+  getGsrStatistics: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ) => {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<GsrStatistics>(`/api/projects/${projectId}/analytics/statistics/gsr?${params}`)
   },
 
