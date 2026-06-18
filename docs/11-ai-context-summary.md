@@ -238,7 +238,7 @@ Every module under `backend/src/neurodatics/modules/<name>/` follows:
 - `scenaries_router` — `/api/projects/{id}/scenaries`
 
 ### Auth & Security
-- **Flow**: Google OAuth code exchange → `POST /api/auth/google/authorize` → local access JWT issued.
+- **Flow**: frontend requests `GET /api/auth/google/login-url` → Google OAuth code callback → `POST /api/auth/google/authorize` → local access JWT issued.
 - **JWT**: Access token (14 days default). Signed with HS256, validated for `iss`, `exp`, `typ`.
 - **Middleware**: `get_current_user_id` extracts `sub` from Bearer token. Used by authenticated routes via `api/deps.py`.
 
@@ -424,6 +424,7 @@ Defined in `modules/projects/domain/entities.py` (`JobStatus` enum) and persiste
 ### Auth
 | Method | Path | Description |
 |---|---|---|
+| GET | `/api/auth/google/login-url` | Build Google OAuth URL from backend runtime config |
 | POST | `/api/auth/google/authorize` | Exchange Google OAuth code for local access JWT |
 
 ### Projects

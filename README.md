@@ -12,7 +12,7 @@ Esa guia explica como instalar Docker Desktop, descargar el proyecto, configurar
 
 ## Inicio Rapido Con Docker
 
-Este es el camino corto para usuarios que ya tienen Docker Desktop y Git instalados.
+Este es el camino corto para usuarios que ya tienen Docker Desktop y Git instalados. No construye la app localmente: descarga las imagenes publicadas en GHCR.
 
 ### 1. Clonar el proyecto
 
@@ -27,13 +27,13 @@ cd NeuroDatics-App
 cp .env.example .env
 ```
 
-Edita `.env` y completa al menos estas variables si quieres usar login real:
+Edita `.env` y completa al menos estas variables para usar login real:
 
+- `AUTH_JWT_SECRET`
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` si quieres sobrescribir el client ID usado por el frontend. Si queda vacio, Docker Compose usa `GOOGLE_OAUTH_CLIENT_ID`.
 
-Docker Compose lee el archivo `.env` de la raiz del proyecto. No usa `frontend/.env.local` cuando construye desde el `docker-compose.yml` principal. Si cambias variables `NEXT_PUBLIC_*`, vuelve a levantar con `docker compose up -d --build` para reconstruir el frontend.
+El frontend ya no necesita `NEXT_PUBLIC_GOOGLE_CLIENT_ID`; pide al backend la URL de login de Google en tiempo de ejecucion.
 
 Para usar ingestion de proyectos con Google Drive, configura tambien:
 
@@ -43,10 +43,16 @@ Para usar ingestion de proyectos con Google Drive, configura tambien:
 ### 3. Levantar toda la app
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-La primera vez Docker descargara imagenes, construira frontend/backend, creara la base de datos y ejecutara migraciones automaticamente.
+La primera vez Docker descargara las imagenes, creara la base de datos y ejecutara migraciones automaticamente.
+
+Para fijar una version publicada, edita `NEURODATICS_VERSION` en `.env`:
+
+```text
+NEURODATICS_VERSION=v1.2.3
+```
 
 ### 4. Abrir
 
@@ -57,8 +63,6 @@ La primera vez Docker descargara imagenes, construira frontend/backend, creara l
 | Swagger UI | http://localhost:3000/docs |
 
 En Docker Desktop, la fila padre `neurodatics` puede mostrar `-` en la columna de puertos. Es normal para grupos de Compose. Expande el grupo y haz click en el puerto `3000:3000` del servicio `frontend`.
-
-Si solo aparece un grupo llamado `backend` con un contenedor `backend-1` y puerto `8000:8000`, se ejecuto Docker desde la carpeta incorrecta. Deten ese grupo y ejecuta `docker compose up -d --build` desde la raiz del repositorio, donde estan `frontend/`, `backend/` y `docker-compose.yml`.
 
 ### 5. Detener
 
@@ -85,14 +89,19 @@ No necesitas instalar Node.js, Python, PostgreSQL ni Redis para usar la app con 
 ## Auth Y Google Drive
 
 - El login real usa Google OAuth.
-- El backend emite `access_token` y `expires_in`.
+- El backend genera la URL de Google OAuth y emite `access_token` y `expires_in`.
 - No hay refresh token publico en el contrato actual.
-- El login `DEV_ADMIN` es solo una ayuda local de frontend y no reemplaza Google OAuth para usar la API protegida.
 - El backend no publica el puerto `8000` al host en el modo Docker principal. El frontend enruta `/api/*`, `/docs`, `/openapi.json` y `/redoc` hacia el backend dentro de Docker.
 
-## Desarrollo Local Sin Docker Completo
+## Desarrollo Local Con Build
 
-Solo para desarrollo de codigo:
+Solo para contributors que modifican codigo:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Para desarrollo de frontend sin Docker completo:
 
 ```bash
 cd frontend
@@ -101,11 +110,21 @@ npm install
 npm run dev
 ```
 
-El frontend local usa `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`, por lo que en ese modo necesitas levantar el backend aparte.
+El frontend llama `/api` en el mismo origen y Next.js usa `NEXT_INTERNAL_API_BASE_URL` para reenviar al backend.
+
+## Actualizar Imagenes
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Si usas una version fija en `NEURODATICS_VERSION`, cambia ese valor antes de ejecutar los comandos.
 
 ## Estructura
 
 - `frontend/` - UI Next.js App Router.
 - `backend/` - API FastAPI con PostgreSQL, Redis y worker.
 - `docs/` - documentacion tecnica y guias de uso.
-- `docker-compose.yml` - stack Docker recomendado.
+- `docker-compose.yml` - stack Docker recomendado con imagenes publicadas.
+- `docker-compose.dev.yml` - override para construir imagenes localmente.

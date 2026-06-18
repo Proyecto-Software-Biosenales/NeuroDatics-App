@@ -1,5 +1,31 @@
 name: neurodatics
 
+x-backend-environment: &backend-environment
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/neurodatics}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-neurodatics-local-development-secret-change-me}
+  AUTH_USER_STORE_PATH: ${AUTH_USER_STORE_PATH:-/data/auth_users.json}
+  GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+  GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+  GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3000/authorize}
+  GOOGLE_DRIVE_OAUTH_REDIRECT_URI: ${GOOGLE_DRIVE_OAUTH_REDIRECT_URI:-http://localhost:3000/api/integrations/google-drive/callback}
+  GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID:-}
+  GDRIVE_REFRESH_TOKEN: ${GDRIVE_REFRESH_TOKEN:-}
+  GDRIVE_HTTP_TIMEOUT_SECONDS: ${GDRIVE_HTTP_TIMEOUT_SECONDS:-300}
+  GDRIVE_REQUEST_RETRIES: ${GDRIVE_REQUEST_RETRIES:-5}
+  PROJECT_ZIP_MAX_SIZE_MB: ${PROJECT_ZIP_MAX_SIZE_MB:-500}
+  INGESTION_SAVE_ORIGINAL_ZIP: ${INGESTION_SAVE_ORIGINAL_ZIP:-true}
+  JOB_TIMEOUT: ${JOB_TIMEOUT:-3600}
+  JOB_RESULT_TTL: ${JOB_RESULT_TTL:-86400}
+  PARQUET_CACHE_DIR: ${PARQUET_CACHE_DIR:-/data/parquet_cache}
+  PARQUET_CACHE_TTL_HOURS: ${PARQUET_CACHE_TTL_HOURS:-4}
+  ANALYTICS_REDIS_TTL_SECONDS: ${ANALYTICS_REDIS_TTL_SECONDS:-900}
+  IMAGE_CACHE_DIR: ${IMAGE_CACHE_DIR:-/data/image_cache}
+  VIDEO_CACHE_DIR: ${VIDEO_CACHE_DIR:-/data/video_cache}
+  VIDEO_FRAME_CACHE_DIR: ${VIDEO_FRAME_CACHE_DIR:-/data/video_frame_cache}
+  APP_NAME: ${APP_NAME:-NeuroDatics API}
+  DEBUG: ${DEBUG:-false}
+
 services:
   db:
     image: postgres:16-alpine
@@ -29,35 +55,9 @@ services:
       retries: 5
 
   backend:
-    image: neurodatics-backend:local
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/proyecto-software-biosenales/neurodatics-backend:${NEURODATICS_VERSION:-latest}
     restart: unless-stopped
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/neurodatics}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-neurodatics-local-development-secret-change-me}
-      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
-      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
-      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3000/authorize}
-      GOOGLE_DRIVE_OAUTH_REDIRECT_URI: ${GOOGLE_DRIVE_OAUTH_REDIRECT_URI:-http://localhost:3000/api/integrations/google-drive/callback}
-      GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID:-}
-      GDRIVE_REFRESH_TOKEN: ${GDRIVE_REFRESH_TOKEN:-}
-      GDRIVE_HTTP_TIMEOUT_SECONDS: ${GDRIVE_HTTP_TIMEOUT_SECONDS:-300}
-      GDRIVE_REQUEST_RETRIES: ${GDRIVE_REQUEST_RETRIES:-5}
-      PROJECT_ZIP_MAX_SIZE_MB: ${PROJECT_ZIP_MAX_SIZE_MB:-500}
-      INGESTION_SAVE_ORIGINAL_ZIP: ${INGESTION_SAVE_ORIGINAL_ZIP:-true}
-      JOB_TIMEOUT: ${JOB_TIMEOUT:-3600}
-      JOB_RESULT_TTL: ${JOB_RESULT_TTL:-86400}
-      PARQUET_CACHE_DIR: ${PARQUET_CACHE_DIR:-/data/parquet_cache}
-      PARQUET_CACHE_TTL_HOURS: ${PARQUET_CACHE_TTL_HOURS:-4}
-      ANALYTICS_REDIS_TTL_SECONDS: ${ANALYTICS_REDIS_TTL_SECONDS:-900}
-      IMAGE_CACHE_DIR: ${IMAGE_CACHE_DIR:-/data/image_cache}
-      VIDEO_CACHE_DIR: ${VIDEO_CACHE_DIR:-/data/video_cache}
-      VIDEO_FRAME_CACHE_DIR: ${VIDEO_FRAME_CACHE_DIR:-/data/video_frame_cache}
-      APP_NAME: ${APP_NAME:-NeuroDatics API}
-      DEBUG: ${DEBUG:-false}
+    environment: *backend-environment
     depends_on:
       db:
         condition: service_healthy
@@ -73,33 +73,10 @@ services:
       start_period: 20s
 
   worker:
-    image: neurodatics-backend:local
+    image: ghcr.io/proyecto-software-biosenales/neurodatics-backend:${NEURODATICS_VERSION:-latest}
     restart: unless-stopped
     command: python -m neurodatics.workers
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/neurodatics}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-neurodatics-local-development-secret-change-me}
-      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
-      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
-      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3000/authorize}
-      GOOGLE_DRIVE_OAUTH_REDIRECT_URI: ${GOOGLE_DRIVE_OAUTH_REDIRECT_URI:-http://localhost:3000/api/integrations/google-drive/callback}
-      GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID:-}
-      GDRIVE_REFRESH_TOKEN: ${GDRIVE_REFRESH_TOKEN:-}
-      GDRIVE_HTTP_TIMEOUT_SECONDS: ${GDRIVE_HTTP_TIMEOUT_SECONDS:-300}
-      GDRIVE_REQUEST_RETRIES: ${GDRIVE_REQUEST_RETRIES:-5}
-      PROJECT_ZIP_MAX_SIZE_MB: ${PROJECT_ZIP_MAX_SIZE_MB:-500}
-      INGESTION_SAVE_ORIGINAL_ZIP: ${INGESTION_SAVE_ORIGINAL_ZIP:-true}
-      JOB_TIMEOUT: ${JOB_TIMEOUT:-3600}
-      JOB_RESULT_TTL: ${JOB_RESULT_TTL:-86400}
-      PARQUET_CACHE_DIR: ${PARQUET_CACHE_DIR:-/data/parquet_cache}
-      PARQUET_CACHE_TTL_HOURS: ${PARQUET_CACHE_TTL_HOURS:-4}
-      ANALYTICS_REDIS_TTL_SECONDS: ${ANALYTICS_REDIS_TTL_SECONDS:-900}
-      IMAGE_CACHE_DIR: ${IMAGE_CACHE_DIR:-/data/image_cache}
-      VIDEO_CACHE_DIR: ${VIDEO_CACHE_DIR:-/data/video_cache}
-      VIDEO_FRAME_CACHE_DIR: ${VIDEO_FRAME_CACHE_DIR:-/data/video_frame_cache}
-      APP_NAME: ${APP_NAME:-NeuroDatics API}
-      DEBUG: ${DEBUG:-false}
+    environment: *backend-environment
     depends_on:
       backend:
         condition: service_healthy
@@ -117,14 +94,7 @@ services:
       start_period: 20s
 
   frontend:
-    image: neurodatics-frontend:local
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
-        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-${GOOGLE_OAUTH_CLIENT_ID:-}}
+    image: ghcr.io/proyecto-software-biosenales/neurodatics-frontend:${NEURODATICS_VERSION:-latest}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -133,8 +103,6 @@ services:
       PORT: 3000
       HOSTNAME: 0.0.0.0
       NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
-      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-${GOOGLE_OAUTH_CLIENT_ID:-}}
     depends_on:
       backend:
         condition: service_healthy

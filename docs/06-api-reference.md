@@ -4,6 +4,24 @@ Base path comun: `/api`
 
 ## Auth
 
+### GET /api/auth/google/login-url
+
+- Proposito: generar la URL de Google OAuth desde configuracion runtime del backend.
+- Implementacion: `backend/src/neurodatics/modules/auth/api/routes.py`
+- Query params:
+  - `redirect_uri` opcional; si no se envia, usa `GOOGLE_OAUTH_REDIRECT_URI`.
+- Response:
+
+```json
+{
+  "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?..."
+}
+```
+
+Errores comunes:
+- 400 si no hay `redirect_uri` ni `GOOGLE_OAUTH_REDIRECT_URI`.
+- 500 si faltan variables OAuth en backend.
+
 ### POST /api/auth/google/authorize
 
 - Proposito: intercambiar `code` de Google por un JWT local.

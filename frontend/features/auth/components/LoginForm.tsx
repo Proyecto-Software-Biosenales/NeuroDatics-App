@@ -63,7 +63,7 @@ export function LoginForm() {
     setIsSubmitting(true)
 
     try {
-      redirectToGoogleAuth()
+      await redirectToGoogleAuth()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión con Google.'
       toast.error(message)

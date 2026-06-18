@@ -1,34 +1,46 @@
-function getRequiredEnvVar(name: string, value: string | undefined): string {
-	const nextValue = value?.trim()
-	if (!nextValue) {
-		throw new Error(`Falta la variable de entorno ${name} para iniciar sesion con Google.`)
-	}
-
-	return nextValue
+interface GoogleLoginUrlResponse {
+	authorization_url: string
 }
 
-export function ensureGoogleOAuthEnv() {
-	return {
-		googleClientId: getRequiredEnvVar('NEXT_PUBLIC_GOOGLE_CLIENT_ID', process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID),
+async function readErrorMessage(response: Response): Promise<string> {
+	const text = await response.text().catch(() => '')
+	if (!text) {
+		return ''
+	}
+
+	try {
+		const parsed = JSON.parse(text) as { detail?: unknown }
+		return typeof parsed.detail === 'string' ? parsed.detail : text
+	} catch {
+		return text
 	}
 }
 
-export function redirectToGoogleAuth() {
+async function requestGoogleLoginUrl(redirectUri: string): Promise<string> {
+	const params = new URLSearchParams({ redirect_uri: redirectUri })
+	const response = await fetch(`/api/auth/google/login-url?${params.toString()}`, {
+		cache: 'no-store',
+	})
+
+	if (!response.ok) {
+		const message = await readErrorMessage(response)
+		throw new Error(message || 'No se pudo iniciar sesion con Google.')
+	}
+
+	const data = (await response.json()) as GoogleLoginUrlResponse
+	if (!data.authorization_url) {
+		throw new Error('El backend no retorno la URL de autorizacion de Google.')
+	}
+
+	return data.authorization_url
+}
+
+export async function redirectToGoogleAuth() {
 	if (typeof window === 'undefined') {
 		throw new Error('La redireccion a Google solo puede ejecutarse en el navegador.')
 	}
 
-	const { googleClientId } = ensureGoogleOAuthEnv()
 	const redirectUri = `${window.location.origin}/authorize`
-	const state = crypto.randomUUID()
-
-	const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
-	authUrl.searchParams.set('client_id', googleClientId)
-	authUrl.searchParams.set('redirect_uri', redirectUri)
-	authUrl.searchParams.set('response_type', 'code')
-	authUrl.searchParams.set('scope', 'openid email profile')
-	authUrl.searchParams.set('state', state)
-	authUrl.searchParams.set('prompt', 'consent')
-
-	window.location.assign(authUrl.toString())
+	const authorizationUrl = await requestGoogleLoginUrl(redirectUri)
+	window.location.assign(authorizationUrl)
 }

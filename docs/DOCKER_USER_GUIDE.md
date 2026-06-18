@@ -196,10 +196,9 @@ Abre `.env` y completa:
 ```text
 GOOGLE_OAUTH_CLIENT_ID=pega-aqui-tu-client-id
 GOOGLE_OAUTH_CLIENT_SECRET=pega-aqui-tu-client-secret
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=pega-aqui-tu-client-id
 ```
 
-No agregues comillas.
+No agregues comillas. El frontend no necesita una variable `NEXT_PUBLIC_GOOGLE_CLIENT_ID`; ahora pide al backend la URL de login de Google cuando el usuario hace click.
 
 ## Parte 6: Configurar Google Drive
 
@@ -260,10 +259,10 @@ Hasta que exista una pantalla visual de integraciones, este paso es manual.
 2. En la terminal, dentro de la carpeta `NeuroDatics-App`, ejecuta:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-La primera vez puede tardar varios minutos. Docker descargara imagenes, construira la app y creara la base de datos.
+La primera vez puede tardar varios minutos. Docker descargara imagenes publicadas, creara la base de datos y ejecutara migraciones.
 
 ## Parte 8: Abrir La App
 
@@ -324,12 +323,12 @@ docker compose down
 docker compose up -d
 ```
 
-### Reconstruir Despues De Cambiar .env
+### Aplicar Cambios De .env
 
-Usa esto si cambiaste variables `NEXT_PUBLIC_*`, Google OAuth o configuracion importante:
+Usa esto si cambiaste Google OAuth, Drive, puerto o configuracion importante:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 ### Ver Logs
@@ -358,8 +357,11 @@ Usalo solo si quieres empezar desde cero.
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
+
+Si quieres usar una version fija, cambia `NEURODATICS_VERSION` en `.env`, por ejemplo `NEURODATICS_VERSION=v1.2.3`, antes de ejecutar `docker compose pull`.
 
 ## Problemas Comunes
 
@@ -380,10 +382,10 @@ Si Docker dice que el puerto `3000` ya esta en uso:
 FRONTEND_PORT=3100
 ```
 
-3. Reconstruye:
+3. Aplica el cambio:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 4. Abre:
@@ -410,7 +412,7 @@ Para corregirlo:
 4. Ejecuta:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 El grupo correcto se llama `neurodatics` y debe mostrar los servicios `frontend`, `backend`, `worker`, `db` y `redis`.
@@ -440,7 +442,7 @@ El token actual dura 14 dias por defecto. Si la sesion expira:
 Si al crear o editar proyectos aparece un error de Drive:
 
 1. Confirma que Google Drive API este habilitada.
-2. Confirma que `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` y `NEXT_PUBLIC_GOOGLE_CLIENT_ID` esten en `.env`.
+2. Confirma que `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET` esten en `.env`.
 3. Abre:
 
 ```text
@@ -451,17 +453,17 @@ http://localhost:3000/api/integrations/google-drive/status
 
 ### Cambie .env Pero No Se Refleja
 
-Algunas variables del frontend se fijan al construir la imagen. Ejecuta:
+Ejecuta:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 ### Quiero Empezar Desde Cero
 
 ```bash
 docker compose down -v
-docker compose up -d --build
+docker compose up -d
 ```
 
 ## Nota Para Usuarios Tecnicos

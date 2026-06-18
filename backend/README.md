@@ -10,14 +10,14 @@ Usa siempre el `docker-compose.yml` de la raiz del repositorio:
 
 ```powershell
 cd ..
-docker compose up -d --build
+docker compose up -d
 ```
 
 O, si estas en cualquier otra carpeta, entra a la raiz del proyecto, donde estan `frontend/`, `backend/` y `docker-compose.yml`:
 
 ```powershell
 cd C:\ruta\a\NeuroDatics-App
-docker compose up -d --build
+docker compose up -d
 ```
 
 El stack completo debe aparecer en Docker Desktop como `neurodatics` e incluir:
@@ -74,6 +74,7 @@ python -m uvicorn neurodatics.main:app --reload --host 0.0.0.0 --port 8000 --app
 |---|---|---|
 | `DATABASE_URL` | Si | URL PostgreSQL con driver `psycopg` |
 | `AUTH_JWT_SECRET` | Si | Secreto para firmar tokens JWT |
+| `AUTH_USER_STORE_PATH` | No | Ruta del archivo auxiliar de usuarios locales. En Docker usa `/data/auth_users.json` |
 | `GOOGLE_OAUTH_CLIENT_ID` | Login Google | Client ID de Google OAuth |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Login Google | Client Secret de Google OAuth |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Login Google | URI de redireccion OAuth |
@@ -94,6 +95,7 @@ alembic upgrade head
 
 ### Auth
 
+- `GET /api/auth/google/login-url` - genera la URL de Google OAuth usando configuracion runtime del backend.
 - `POST /api/auth/google/authorize` - intercambia code OAuth por access token local.
 
 ### Proyectos

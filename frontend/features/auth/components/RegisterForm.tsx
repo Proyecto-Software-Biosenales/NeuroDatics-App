@@ -76,7 +76,7 @@ export function RegisterForm() {
     setIsSubmitting(true)
 
     try {
-      redirectToGoogleAuth()
+      await redirectToGoogleAuth()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo continuar con Google.'
       toast.error(message)
