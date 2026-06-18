@@ -1,0 +1,41 @@
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Google and OAuth credential files
+*service-account*.json
+*credentials*.json
+*oauth-secret*.json
+*.pem
+*.key
+*.p12
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node / Next.js
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Local app data and caches
+data/
+backend/data/
+output/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# Delivery package (contains the real .env with secrets)
+delivery/
