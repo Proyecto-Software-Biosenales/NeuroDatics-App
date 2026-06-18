@@ -36,3 +36,6 @@ output/
 # OS / editor noise
 .DS_Store
 Thumbs.db
+
+# Delivery package (contains the real .env with secrets)
+delivery/

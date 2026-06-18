@@ -262,7 +262,7 @@ Hasta que exista una pantalla visual de integraciones, este paso es manual.
 docker compose up -d
 ```
 
-La primera vez puede tardar varios minutos. Docker descargara imagenes publicadas, creara la base de datos y ejecutara migraciones.
+La primera vez puede tardar varios minutos. Docker intentara descargar imagenes publicadas, creara la base de datos y ejecutara migraciones. Si Docker muestra `denied` para una imagen de GHCR, el archivo Compose puede construir esa imagen localmente y continuar; deja que el comando termine.
 
 ## Parte 8: Abrir La App
 
