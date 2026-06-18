@@ -1,4 +1,47 @@
-# pyproject.toml placeholder
 [tool.poetry]
 name = "neurodatics-backend"
 version = "0.1.0"
+description = "NeuroDatics Backend API"
+authors = ["NeuroDatics Team"]
+packages = [
+  { include = "neurodatics", from = "src" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.104.1"
+uvicorn = {extras = ["standard"], version = "^0.24.0"}
+sqlalchemy = "^2.0.23"
+psycopg = {extras = ["binary"], version = "^3.2.0"}
+alembic = "^1.12.1"
+pydantic = {extras = ["email"], version = "^2.5.0"}
+pydantic-settings = "^2.1.0"
+pyjwt = {extras = ["crypto"], version = "^2.8.0"}
+python-jose = {extras = ["cryptography"], version = "^3.4.0"}
+httpx = "^0.25.2"
+cryptography = "^41.0.7"
+pandas = "^2.0.0"
+pyarrow = "^16.0.0"
+google-api-python-client = "^2.108.0"
+google-auth = "^2.23.4"
+python-multipart = "^0.0.6"
+redis = "^5.0.0"
+rq = "^1.16.0"
+scipy = "^1.11.0"
+matplotlib = "^3.8.0"
+Pillow = "^10.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+pytest-asyncio = "^0.21.1"
+black = "^23.11.0"
+isort = "^5.12.0"
+flake8 = "^6.1.0"
+mypy = "^1.7.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+dev = "neurodatics.main:main"

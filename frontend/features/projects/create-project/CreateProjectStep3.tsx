@@ -23,16 +23,39 @@ export const CreateProjectStep3 = ({
     participants[0]?.id || ""
   )
 
+  const sexOptions = [
+    { label: "Masculino", value: "male" },
+    { label: "Femenino", value: "female" },
+    { label: "Otro", value: "other" },
+  ] as const
+
+  const isParticipantComplete = (p: ParticipantData): boolean => {
+    const hasValidSex = p.sex === "male" || p.sex === "female" || p.sex === "other"
+    const ageNum = Number(p.age)
+    const hasValidAge = p.age.trim() !== "" && Number.isFinite(ageNum) && ageNum > 0
+    return p.id.trim() !== "" && hasValidSex && hasValidAge
+  }
+
+  const incompleteCount = participants.filter((p) => !isParticipantComplete(p)).length
+
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+        <h3 className="text-xl font-semibold text-foreground mb-2">
           Datos del participante
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Información demográfica del participante del experimento
         </p>
       </div>
+
+      {participants.length > 0 && incompleteCount > 0 && (
+        <div className="p-3 bg-muted border border-border rounded-lg text-sm text-foreground">
+          {incompleteCount === 1
+            ? "1 participante requiere sexo y edad para continuar."
+            : `${incompleteCount} participantes requieren sexo y edad para continuar.`}
+        </div>
+      )}
 
       <div className="space-y-3">
         {participants.map((participant) => {
@@ -41,46 +64,53 @@ export const CreateProjectStep3 = ({
           return (
             <div
               key={participant.id}
-              className="border border-gray-200 rounded-xl bg-white overflow-hidden"
+              className="border border-border rounded-xl bg-card overflow-hidden"
             >
               <button
                 type="button"
                 onClick={() =>
                   setOpenParticipant(isOpen ? "" : participant.id)
                 }
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
               >
-                <span className="font-medium text-gray-900">
-                  {participant.id}
-                </span>
+                <div className="flex items-center">
+                  <span className="font-medium text-foreground">
+                    {participant.id}
+                  </span>
+                  {!isParticipantComplete(participant) && (
+                    <span className="ml-2 text-xs font-medium text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5">
+                      Completar
+                    </span>
+                  )}
+                </div>
                 {isOpen ? (
-                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
                 ) : (
-                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 )}
               </button>
 
               {isOpen && (
-                <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
+                <div className="px-4 pb-4 space-y-4 border-t border-border">
                   <div className="pt-4">
-                    <Label className="text-sm font-medium text-gray-900 mb-3 block">
+                    <Label className="text-sm font-medium text-foreground mb-3 block">
                       Sexo
                     </Label>
                     <div className="flex gap-2">
-                      {["Masculino", "Femenino", "Otro"].map((option) => (
+                      {sexOptions.map((option) => (
                         <button
-                          key={option}
+                          key={option.value}
                           type="button"
                           onClick={() =>
-                            onUpdateParticipant(participant.id, "sex", option)
+                            onUpdateParticipant(participant.id, "sex", option.value)
                           }
                           className={`flex-1 px-4 py-2 rounded-lg border transition-all duration-200 text-sm font-medium ${
-                            participant.sex === option
-                              ? "border-black bg-black text-white"
-                              : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                            participant.sex === option.value
+                              ? "border-foreground bg-foreground text-background"
+                              : "border-border bg-card text-foreground hover:border-foreground/40"
                           }`}
                         >
-                          {option}
+                          {option.label}
                         </button>
                       ))}
                     </div>
@@ -89,7 +119,7 @@ export const CreateProjectStep3 = ({
                   <div>
                     <Label
                       htmlFor={`edad-${participant.id}`}
-                      className="text-sm font-medium text-gray-900 mb-2 block"
+                      className="text-sm font-medium text-foreground mb-2 block"
                     >
                       Edad
                     </Label>

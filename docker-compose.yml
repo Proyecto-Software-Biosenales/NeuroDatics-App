@@ -1,0 +1,127 @@
+name: neurodatics
+
+x-backend-environment: &backend-environment
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/neurodatics}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-neurodatics-local-development-secret-change-me}
+  AUTH_USER_STORE_PATH: ${AUTH_USER_STORE_PATH:-/data/auth_users.json}
+  GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+  GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+  GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3000/authorize}
+  GOOGLE_DRIVE_OAUTH_REDIRECT_URI: ${GOOGLE_DRIVE_OAUTH_REDIRECT_URI:-http://localhost:3000/api/integrations/google-drive/callback}
+  GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID:-}
+  GDRIVE_REFRESH_TOKEN: ${GDRIVE_REFRESH_TOKEN:-}
+  GDRIVE_HTTP_TIMEOUT_SECONDS: ${GDRIVE_HTTP_TIMEOUT_SECONDS:-300}
+  GDRIVE_REQUEST_RETRIES: ${GDRIVE_REQUEST_RETRIES:-5}
+  PROJECT_ZIP_MAX_SIZE_MB: ${PROJECT_ZIP_MAX_SIZE_MB:-500}
+  INGESTION_SAVE_ORIGINAL_ZIP: ${INGESTION_SAVE_ORIGINAL_ZIP:-true}
+  JOB_TIMEOUT: ${JOB_TIMEOUT:-3600}
+  JOB_RESULT_TTL: ${JOB_RESULT_TTL:-86400}
+  PARQUET_CACHE_DIR: ${PARQUET_CACHE_DIR:-/data/parquet_cache}
+  PARQUET_CACHE_TTL_HOURS: ${PARQUET_CACHE_TTL_HOURS:-4}
+  ANALYTICS_REDIS_TTL_SECONDS: ${ANALYTICS_REDIS_TTL_SECONDS:-900}
+  IMAGE_CACHE_DIR: ${IMAGE_CACHE_DIR:-/data/image_cache}
+  VIDEO_CACHE_DIR: ${VIDEO_CACHE_DIR:-/data/video_cache}
+  VIDEO_FRAME_CACHE_DIR: ${VIDEO_FRAME_CACHE_DIR:-/data/video_frame_cache}
+  APP_NAME: ${APP_NAME:-NeuroDatics API}
+  DEBUG: ${DEBUG:-false}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-neurodatics}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/proyecto-software-biosenales/neurodatics-backend:${NEURODATICS_VERSION:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment: *backend-environment
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - neurodatics_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    image: ghcr.io/proyecto-software-biosenales/neurodatics-backend:${NEURODATICS_VERSION:-latest}
+    restart: unless-stopped
+    command: python -m neurodatics.workers
+    environment: *backend-environment
+    depends_on:
+      backend:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - neurodatics_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health/worker')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    image: ghcr.io/proyecto-software-biosenales/neurodatics-frontend:${NEURODATICS_VERSION:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  redis_data:
+  neurodatics_data:

@@ -1,0 +1,194 @@
+
+> app@0.0.1 lint
+> eslint
+
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\app\dashboard\page.tsx
+  71:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\app\dashboard\page.tsx:71:7
+  69 |   useEffect(() => {
+  70 |     if (participants.length === 0) {
+> 71 |       setSelectedParticipant(null)
+     |       ^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  72 |       return
+  73 |     }
+  74 |  react-hooks/set-state-in-effect
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\components\layout\NavBar.tsx
+  56:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\analytics\hooks\useAnalyticsData.ts
+   20:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\analytics\hooks\useAnalyticsData.ts:20:5
+  18 |     if (!projectId) return
+  19 |     let cancelled = false
+> 20 |     setLoading(true)
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  21 |     AnalyticsApi.getParticipants(projectId)
+  22 |       .then((data) => {
+  23 |         if (!cancelled) setParticipants(data)  react-hooks/set-state-in-effect
+   46:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\analytics\hooks\useAnalyticsData.ts:46:5
+  44 |     if (!projectId) return
+  45 |     let cancelled = false
+> 46 |     setLoading(true)
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  47 |     AnalyticsApi.getScenarios(projectId)
+  48 |       .then((data) => {
+  49 |         if (!cancelled) setScenarios(data)        react-hooks/set-state-in-effect
+   76:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\analytics\hooks\useAnalyticsData.ts:76:7
+  74 |   useEffect(() => {
+  75 |     if (!projectId || !participantCode) {
+> 76 |       setData(null)
+     |       ^^^^^^^ Avoid calling setState() directly within an effect
+  77 |       return
+  78 |     }
+  79 |     let cancelled = false                                                                react-hooks/set-state-in-effect
+  113:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\analytics\hooks\useAnalyticsData.ts:113:7
+  111 |   useEffect(() => {
+  112 |     if (!projectId || !participantCode) {
+> 113 |       setData(null)
+      |       ^^^^^^^ Avoid calling setState() directly within an effect
+  114 |       return
+  115 |     }
+  116 |     let cancelled = false                                                        react-hooks/set-state-in-effect
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\api\projectsApi.ts
+  160:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  166:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\components\DeleteProjectDialog.tsx
+  16:3  warning  'AlertDialogTrigger' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\components\EditProjectDialog.tsx
+   14:3   warning  'DialogTrigger' is defined but never used                                                                       @typescript-eslint/no-unused-vars
+  202:3   warning  'projectName' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+  317:6   warning  React Hook useEffect has a missing dependency: 'loadProject'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  326:46  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  451:20  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  463:27  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\components\ViewProjectDialog.tsx
+   86:3  warning  'projectName' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  140:9  warning  The 'scenaries' logical expression could make the dependencies of useEffect Hook (at line 158) change on every render. To fix this, wrap the initialization of 'scenaries' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react-hooks/exhaustive-deps
+  358:5  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\components\ViewProjectDialog.tsx:358:5
+  356 |     let objectUrl: string | null = null
+  357 |
+> 358 |     setBlobUrl(null)
+      |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  359 |     setCurrentSrc(null)
+  360 |     setLoadError(false)
+  361 |     setIsLoading(hasAnySource)  react-hooks/set-state-in-effect
+  404:9  warning  Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     jsx-a11y/alt-text
+  417:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @next/next/no-img-element
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\create-project\CreateProjectStep1.tsx
+   55:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  136:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\create-project\CreateProjectStep4.tsx
+  33:5  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\create-project\CreateProjectStep4.tsx:33:5
+  31 |     let objectUrl: string | null = null
+  32 |
+> 33 |     setBlobUrl(null)
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  34 |     setCurrentSrc(null)
+  35 |     setLoadError(false)
+  36 |     setIsLoading(hasAnySource)  react-hooks/set-state-in-effect
+  92:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @next/next/no-img-element
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\create-project\useCreateProjectWizard.ts
+  173:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  265:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  278:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  476:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  741:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\create-project\useProjectsStorage.ts
+   92:29  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  103:28  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:16  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\hooks\useProjectApi.ts
+  27:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\features\projects\hooks\useProjectApi.ts:27:21
+  25 |   }
+  26 |
+> 27 |   useEffect(() => { refresh(); }, []);
+     |                     ^^^^^^^ Avoid calling setState() directly within an effect
+  28 |   return { projects, loading, refresh, addProject, removeProject };
+  29 | }  react-hooks/set-state-in-effect
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\lib\api\apiFetch.ts
+  117:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  144:83  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  425:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  452:81  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose├▒ales\NeuroDatics-App\frontend\lib\providers\AuthProvider.tsx
+  98:37  warning  '_fullName' is defined but never used  @typescript-eslint/no-unused-vars
+  98:56  warning  '_email' is defined but never used     @typescript-eslint/no-unused-vars
+  98:72  warning  '_password' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 40 problems (26 errors, 14 warnings)
+

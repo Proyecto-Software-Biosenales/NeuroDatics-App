@@ -1,226 +1,130 @@
 # NeuroDatics-App
 
-## Description
+Plataforma para analisis de biosenales aplicada a neuromarketing.
 
-Plataforma profesional para el análisis de bioseñales en neuromarketing. 
+## Guia Principal
 
-## Fast start
+Si estas instalando la app por primera vez o no tienes experiencia tecnica, usa la guia paso a paso:
+
+[Guia Docker para usuarios principiantes](./docs/DOCKER_USER_GUIDE.md)
+
+Esa guia explica como instalar Docker Desktop, descargar el proyecto, configurar Google OAuth, abrir la app desde Docker Desktop y resolver errores comunes.
+
+## Inicio Rapido Con Docker
+
+Este es el camino corto para usuarios que ya tienen Docker Desktop y Git instalados. No construye la app localmente: descarga las imagenes publicadas en GHCR.
+
+### 1. Clonar el proyecto
 
 ```bash
-# Instalar dependencias
+git clone https://github.com/Proyecto-Software-Biosenales/NeuroDatics-App.git
+cd NeuroDatics-App
+```
+
+### 2. Crear configuracion local
+
+```bash
+cp .env.example .env
+```
+
+Edita `.env` y completa al menos estas variables para usar login real:
+
+- `AUTH_JWT_SECRET`
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+
+El frontend ya no necesita `NEXT_PUBLIC_GOOGLE_CLIENT_ID`; pide al backend la URL de login de Google en tiempo de ejecucion.
+
+Para usar ingestion de proyectos con Google Drive, configura tambien:
+
+- `GDRIVE_FOLDER_ID` si quieres una carpeta raiz especifica.
+- La conexion OAuth de Drive desde `http://localhost:3000/api/integrations/google-drive/authorize` cuando el stack ya este corriendo.
+
+### 3. Levantar toda la app
+
+```bash
+docker compose up -d
+```
+
+La primera vez Docker intentara descargar las imagenes, creara la base de datos y ejecutara migraciones automaticamente. Si GHCR todavia no entrega alguna imagen o responde `denied`, Compose construira esa imagen localmente desde el codigo del repositorio y continuara.
+
+Para fijar una version publicada, edita `NEURODATICS_VERSION` en `.env`:
+
+```text
+NEURODATICS_VERSION=v1.2.3
+```
+
+### 4. Abrir
+
+| Recurso | URL |
+| --- | --- |
+| Aplicacion | http://localhost:3000 |
+| API por proxy | http://localhost:3000/api |
+| Swagger UI | http://localhost:3000/docs |
+
+En Docker Desktop, la fila padre `neurodatics` puede mostrar `-` en la columna de puertos. Es normal para grupos de Compose. Expande el grupo y haz click en el puerto `3000:3000` del servicio `frontend`.
+
+### 5. Detener
+
+```bash
+docker compose down
+```
+
+Para borrar tambien base de datos, usuarios locales, cache y volumenes:
+
+```bash
+docker compose down -v
+```
+
+## Que Incluye Docker
+
+- Frontend Next.js.
+- Backend FastAPI.
+- PostgreSQL.
+- Redis.
+- Worker RQ.
+
+No necesitas instalar Node.js, Python, PostgreSQL ni Redis para usar la app con Docker.
+
+## Auth Y Google Drive
+
+- El login real usa Google OAuth.
+- El backend genera la URL de Google OAuth y emite `access_token` y `expires_in`.
+- No hay refresh token publico en el contrato actual.
+- El backend no publica el puerto `8000` al host en el modo Docker principal. El frontend enruta `/api/*`, `/docs`, `/openapi.json` y `/redoc` hacia el backend dentro de Docker.
+
+## Desarrollo Local Con Build
+
+Solo para contributors que modifican codigo:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Para desarrollo de frontend sin Docker completo:
+
+```bash
+cd frontend
+cp .env.example .env.local
 npm install
-
-# Ejecutar en desarrollo
 npm run dev
-
-# Build de producción
-npm run build
 ```
 
-Abrir en navegador: `http://localhost:5173`
+El frontend llama `/api` en el mismo origen y Next.js usa `NEXT_INTERNAL_API_BASE_URL` para reenviar al backend.
 
-## Stack 
+## Actualizar Imagenes
 
-- **React 19** + **Vite 8**
-- **TypeScript 5.9** 
-- **TailwindCSS v4** 
-- **React Router DOM v7**
-- **Fuente:** Poppins
-
-## Structure Front
-
-```
-src/
-├── app/                    # App-level setup (router, store, providers)
-│   ├── App.tsx
-│   ├── router.tsx
-│   └── providers.tsx
-│
-├── pages/                  # Route-level components (thin, mostly composition)
-│   ├── Dashboard/
-│   └── Profile/
-│
-├── features/               # Self-contained business domains ← core of modularity
-│   ├── auth/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   ├── store/
-│   │   ├── types/
-│   │   └── index.ts        # Public API — only export what others need
-│   └── notifications/
-│
-├── shared/                 # Truly reusable, domain-agnostic code
-│   ├── components/         # Button, Modal, Input...
-│   ├── hooks/              # useDebounce, useLocalStorage...
-│   ├── utils/              # formatDate, slugify...
-│   └── types/
-│
-├── assets/                 # Static files
-└── styles/ 
+```bash
+docker compose pull
+docker compose up -d
 ```
 
+Si usas una version fija en `NEURODATICS_VERSION`, cambia ese valor antes de ejecutar los comandos.
 
-## Structure Back
+## Estructura
 
-```
-backend/
-  README.md
-  pyproject.toml
-  .env.example
-  .gitignore
-
-  scripts/
-    dev.sh
-    lint.sh
-    test.sh
-    seed.sh
-
-  migrations/
-    versions/
-
-  tests/
-    unit/
-    integration/
-    e2e/
-
-  src/
-    neurodatics/
-      main.py
-      config/
-        settings.py
-        logging.py
-        security.py
-
-      api/
-        deps.py
-        router.py
-        middlewares.py
-
-      shared/
-        exceptions/
-          base.py
-          domain.py
-          http.py
-        utils/
-          ids.py
-          dates.py
-          files.py
-        schemas/
-          common.py
-        constants/
-          sensors.py
-          statuses.py
-
-      infra/
-        db/
-          base.py
-          session.py
-          models/
-          repositories/
-        storage/
-          r2_client.py
-        queue/
-          broker.py
-        cache/
-          redis_client.py
-        observability/
-          metrics.py
-          tracing.py
-
-      modules/
-        projects/
-          api/
-            routes.py
-            schemas.py
-          application/
-            dto.py
-            use_cases/
-              create_project.py
-              list_projects.py
-              delete_project.py
-          domain/
-            entities.py
-            value_objects.py
-            repository.py
-            services.py
-          infrastructure/
-            repository_impl.py
-            mappers.py
-
-        uploads/
-          api/
-            routes.py
-            schemas.py
-          application/
-            dto.py
-            use_cases/
-              upload_experiment_folder.py
-              validate_upload.py
-          domain/
-            entities.py
-            repository.py
-            services.py
-          infrastructure/
-            repository_impl.py
-            r2_storage_adapter.py
-
-        processing/
-          api/
-            routes.py
-            schemas.py
-          application/
-            dto.py
-            use_cases/
-              enqueue_processing.py
-              get_job_status.py
-          domain/
-            entities.py
-            repository.py
-            services.py
-          infrastructure/
-            repository_impl.py
-            parquet_adapter.py
-
-        reports/
-          api/
-            routes.py
-            schemas.py
-          application/
-            dto.py
-            use_cases/
-              create_report_job.py
-              list_reports.py
-          domain/
-            entities.py
-            repository.py
-            services.py
-          infrastructure/
-            repository_impl.py
-            pdf_adapter.py
-
-        participants/
-          api/
-            routes.py
-            schemas.py
-          application/
-            dto.py
-            use_cases/
-          domain/
-            entities.py
-            repository.py
-          infrastructure/
-            repository_impl.py
-
-      workers/
-        entrypoint.py
-        tasks/
-          process_experiment_folder.py
-          generate_report_pdf.py
-          extract_metrics.py
-        pipelines/
-          csv_to_parquet.py
-          validations.py
-          feature_extraction.py
-          report_builder.py
-```
+- `frontend/` - UI Next.js App Router.
+- `backend/` - API FastAPI con PostgreSQL, Redis y worker.
+- `docs/` - documentacion tecnica y guias de uso.
+- `docker-compose.yml` - stack Docker recomendado con imagenes publicadas.
+- `docker-compose.dev.yml` - override para construir imagenes localmente.
