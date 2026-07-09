@@ -15,6 +15,16 @@ from ...infrastructure.parquet_cache import ParquetCacheService
 
 logger = logging.getLogger(__name__)
 
+GOOGLE_DRIVE_RECONNECT_MESSAGE = (
+    "La conexion de Google Drive expiro o fue revocada. "
+    "Reconecta Google Drive para generar un refresh token nuevo."
+)
+
+
+def _is_invalid_google_grant_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "invalid_grant" in message or "expired or revoked" in message
+
 
 class ParquetReaderService:
     def __init__(self, db: AsyncSession):
@@ -41,9 +51,15 @@ class ParquetReaderService:
 
         import anyio
 
-        content = await anyio.to_thread.run_sync(
-            lambda: client.download_file_content(parquet_file.external_id)
-        )
+        try:
+            content = await anyio.to_thread.run_sync(
+                lambda: client.download_file_content(parquet_file.external_id)
+            )
+        except Exception as exc:
+            if _is_invalid_google_grant_error(exc):
+                logger.warning("Google Drive OAuth token expired or revoked while reading parquet")
+                raise RuntimeError(GOOGLE_DRIVE_RECONNECT_MESSAGE) from exc
+            raise RuntimeError("No se pudo descargar el parquet desde Google Drive") from exc
 
         path = self._cache.put(project_id, participant_code, content)
         return pd.read_parquet(path)
