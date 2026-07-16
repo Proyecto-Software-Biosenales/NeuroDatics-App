@@ -46,7 +46,7 @@ Para usar ingestion de proyectos con Google Drive, configura tambien:
 docker compose up -d
 ```
 
-La primera vez Docker descargara las imagenes, creara la base de datos y ejecutara migraciones automaticamente.
+La primera vez Docker intentara descargar las imagenes, creara la base de datos y ejecutara migraciones automaticamente. Si GHCR todavia no entrega alguna imagen o responde `denied`, Compose construira esa imagen localmente desde el codigo del repositorio y continuara.
 
 Para fijar una version publicada, edita `NEURODATICS_VERSION` en `.env`:
 

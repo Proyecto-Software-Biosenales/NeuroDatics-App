@@ -56,6 +56,9 @@ services:
 
   backend:
     image: ghcr.io/proyecto-software-biosenales/neurodatics-backend:${NEURODATICS_VERSION:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-8000}:8000"
@@ -97,6 +100,11 @@ services:
 
   frontend:
     image: ghcr.io/proyecto-software-biosenales/neurodatics-frontend:${NEURODATICS_VERSION:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
