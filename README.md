@@ -91,7 +91,7 @@ No necesitas instalar Node.js, Python, PostgreSQL ni Redis para usar la app con 
 - El login real usa Google OAuth.
 - El backend genera la URL de Google OAuth y emite `access_token` y `expires_in`.
 - No hay refresh token publico en el contrato actual.
-- El backend no publica el puerto `8000` al host en el modo Docker principal. El frontend enruta `/api/*`, `/docs`, `/openapi.json` y `/redoc` hacia el backend dentro de Docker.
+- El backend publica el puerto `8000` al host para subidas largas de proyectos. El frontend sigue enrutando `/api/*`, `/docs`, `/openapi.json` y `/redoc` hacia el backend dentro de Docker para las solicitudes normales.
 
 ## Desarrollo Local Con Build
 

@@ -27,7 +27,12 @@ from ..infrastructure.repository_impl import SQLProjectRepository
 from ..application.use_cases.create_project import CreateProjectUseCase
 from ..application.use_cases.list_projects import ListProjectsUseCase
 from ..application.use_cases.delete_project import DeleteProjectUseCase
-from ..application.use_cases.upload_experiment_zip import UploadExperimentZipUseCase, UploadCanceledError
+from ..application.use_cases.upload_experiment_zip import (
+    GoogleDriveConfigurationError,
+    GoogleDriveReconnectRequiredError,
+    UploadCanceledError,
+    UploadExperimentZipUseCase,
+)
 from ..application.services.drive_upload_progress_registry import drive_upload_progress_registry
 from ..domain.entities import Project, ProjectFile, ProjectStatus
 from .schemas import (
@@ -958,6 +963,11 @@ async def upload_experiment_zip(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Upload canceled by user"
+        )
+    except (GoogleDriveConfigurationError, GoogleDriveReconnectRequiredError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e)
         )
     except Exception as e:
         from ..application.services.zip_validation_service import ZipValidationService

@@ -16,6 +16,7 @@ from fastapi import HTTPException, status
 from .....config.settings import settings
 from .....infra.storage.gdrive_oauth_credentials import build_google_drive_oauth_credentials
 from .....infra.storage.gdrive_file_service import create_gdrive_file_service
+from ..infrastructure.configure_client import reset_gdrive_oauth_configuration_cache
 from ..infrastructure.repository import SystemIntegrationRepository
 
 
@@ -137,6 +138,7 @@ class GoogleDriveIntegrationService:
             expires_at=expires_at,
             metadata={"id_token_present": bool(id_token)},
         )
+        reset_gdrive_oauth_configuration_cache()
 
         return {
             "connected": True,
@@ -169,6 +171,7 @@ class GoogleDriveIntegrationService:
 
     async def disconnect(self) -> dict[str, Any]:
         await self._repository.delete_by_provider(GOOGLE_DRIVE_PROVIDER)
+        reset_gdrive_oauth_configuration_cache(clear_client=True)
         return {
             "connected": False,
             "provider": GOOGLE_DRIVE_PROVIDER,

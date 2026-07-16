@@ -1,6 +1,7 @@
 import { clearStoredAuthSession, getAccessToken, isAccessTokenExpired } from "@/lib/auth/sessionStore";
 
 const BASE = "";
+const DEFAULT_DIRECT_API_PORT = process.env.NEXT_PUBLIC_API_UPLOAD_PORT || "8000";
 const API_REQUEST_TIMEOUT_MS = 5 * 60_000;
 const ZIP_UPLOAD_TIMEOUT_MS = 30 * 60_000;
 const BLOB_CACHE_TTL_MS = 5 * 60_000;
@@ -43,6 +44,32 @@ async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: num
 type ApiRequestInit = RequestInit & {
   timeoutMs?: number;
 };
+
+function trimTrailingSlash(value: string) {
+  return value.replace(/\/+$/, "");
+}
+
+function isLocalNetworkHost(hostname: string) {
+  if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+  if (hostname.startsWith("10.")) return true;
+  if (hostname.startsWith("192.168.")) return true;
+
+  const match = hostname.match(/^172\.(\d{1,2})\./);
+  if (!match) return false;
+
+  const secondOctet = Number(match[1]);
+  return secondOctet >= 16 && secondOctet <= 31;
+}
+
+function getDirectApiBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (configured?.trim()) return trimTrailingSlash(configured.trim());
+
+  if (typeof window === "undefined") return BASE;
+  if (!isLocalNetworkHost(window.location.hostname)) return BASE;
+
+  return `${window.location.protocol}//${window.location.hostname}:${DEFAULT_DIRECT_API_PORT}`;
+}
 
 function redirectToLogin(message = SESSION_EXPIRED_MESSAGE): never {
   clearStoredAuthSession();
@@ -169,7 +196,8 @@ export async function apiUploadFormWithProgress<T>(
         signal.addEventListener("abort", onAbortRequest, { once: true });
       }
 
-      xhr.open("POST", `${BASE}${path}`);
+      const uploadBase = getDirectApiBaseUrl();
+      xhr.open("POST", `${uploadBase}${path}`);
       xhr.timeout = ZIP_UPLOAD_TIMEOUT_MS;
       xhr.responseType = "text";
 

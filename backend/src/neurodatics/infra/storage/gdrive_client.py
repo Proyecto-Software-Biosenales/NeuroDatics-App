@@ -40,6 +40,13 @@ class GoogleDriveClient:
             logger.error(f"❌ Failed to set OAuth credentials: {exc}")
             self._initialization_error = exc
 
+    def clear_oauth_credentials(self) -> None:
+        """Clear OAuth credentials and force service reinitialization."""
+        self._oauth_credentials = None
+        self._service = None
+        self._initialization_error = None
+        logger.info("Google Drive OAuth credentials cleared")
+
     def _initialize_service(self) -> None:
         try:
             base_http = httplib2.Http(timeout=max(30, int(settings.gdrive_http_timeout_seconds)))
