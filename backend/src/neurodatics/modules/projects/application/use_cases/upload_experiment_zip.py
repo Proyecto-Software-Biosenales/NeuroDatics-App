@@ -180,6 +180,8 @@ class UploadExperimentZipUseCase:
                     all_scenario_parquet_paths.extend(processing_result.scenario_parquet_paths)
 
                 all_detected_sensors = list(dict.fromkeys(all_detected_sensors))
+                all_user_parquet_paths = self._dedupe_user_parquet_paths(all_user_parquet_paths)
+                all_scenario_parquet_paths = self._dedupe_scenario_parquet_paths(all_scenario_parquet_paths)
 
                 total_drive_bytes = sum(
                     max(0, int(entry.size_bytes or 0))
@@ -628,6 +630,30 @@ class UploadExperimentZipUseCase:
             for chunk in iter(lambda: fp.read(65536), b""):
                 hasher.update(chunk)
         return hasher.hexdigest()
+
+    def _dedupe_user_parquet_paths(self, paths: List[tuple[int, str]]) -> List[tuple[int, str]]:
+        deduped: Dict[int, str] = {}
+        for user_index, parquet_path in paths:
+            deduped[user_index] = parquet_path
+
+        if len(deduped) != len(paths):
+            logger.info("Deduplicated user parquet outputs: %d -> %d", len(paths), len(deduped))
+
+        return list(deduped.items())
+
+    def _dedupe_scenario_parquet_paths(
+        self,
+        paths: List[tuple[int, str, str]],
+    ) -> List[tuple[int, str, str]]:
+        deduped: Dict[tuple[int, str], tuple[int, str, str]] = {}
+        for user_index, scenario_name, parquet_path in paths:
+            clean_name = CsvProcessingService._clean_scenario_name(scenario_name)
+            deduped[(user_index, clean_name)] = (user_index, scenario_name, parquet_path)
+
+        if len(deduped) != len(paths):
+            logger.info("Deduplicated scenario parquet outputs: %d -> %d", len(paths), len(deduped))
+
+        return list(deduped.values())
 
     def _build_scenary_from_file(self, project_file: ProjectFile) -> Optional[Scenaries]:
         if project_file.kind not in {"scenario_image", "scenario_video"}:

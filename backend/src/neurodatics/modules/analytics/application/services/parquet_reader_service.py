@@ -37,13 +37,15 @@ class ParquetReaderService:
         if cached is not None:
             return cached
 
-        user_index = await self._resolve_user_index(project_id, participant_code)
-        if user_index is None:
-            raise ValueError(f"Participant '{participant_code}' not found in project")
-
-        parquet_file = await self._find_parquet_file(project_id, user_index)
+        parquet_file = await self._find_parquet_file_by_participant_code(project_id, participant_code)
         if parquet_file is None:
-            raise FileNotFoundError(f"No processed Parquet file for user_index={user_index}")
+            user_index = await self._resolve_user_index(project_id, participant_code)
+            if user_index is None:
+                raise ValueError(f"Participant '{participant_code}' not found in project")
+
+            parquet_file = await self._find_parquet_file(project_id, user_index)
+            if parquet_file is None:
+                raise FileNotFoundError(f"No processed Parquet file for participant='{participant_code}'")
 
         client = await self._build_drive_client()
         if client is None:
@@ -72,7 +74,7 @@ class ParquetReaderService:
         result = await self._db.execute(
             select(Participant)
             .where(Participant.project_id == project_id)
-            .order_by(Participant.id)
+            .order_by(Participant.created_at, Participant.id)
         )
         participants = result.scalars().all()
         for idx, participant in enumerate(participants, start=1):
@@ -90,7 +92,29 @@ class ParquetReaderService:
             )
         )
         for project_file in result.scalars().all():
-            if target_filename in project_file.filename:
+            metadata = project_file.file_metadata or {}
+            if metadata.get("type") == "user_parquet" and project_file.filename == target_filename:
+                return project_file
+        return None
+
+    async def _find_parquet_file_by_participant_code(
+        self,
+        project_id: UUID,
+        participant_code: str,
+    ) -> Optional[ProjectFile]:
+        result = await self._db.execute(
+            select(ProjectFile).where(
+                ProjectFile.project_id == project_id,
+                ProjectFile.kind == "processed_parquet",
+                ProjectFile.deleted_at.is_(None),
+            )
+        )
+        for project_file in result.scalars().all():
+            metadata = project_file.file_metadata or {}
+            if (
+                metadata.get("type") == "user_parquet"
+                and str(metadata.get("participant_code")) == participant_code
+            ):
                 return project_file
         return None
 

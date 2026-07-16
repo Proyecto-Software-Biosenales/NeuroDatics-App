@@ -60,6 +60,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
     environment: *backend-environment
     depends_on:
       db:
@@ -76,7 +78,10 @@ services:
       start_period: 20s
 
   worker:
-    image: neurodatics-backend:delivery
+    image: neurodatics-backend-worker:delivery
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     command: python -m neurodatics.workers
     environment: *backend-environment
@@ -103,6 +108,8 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+        NEXT_PUBLIC_API_UPLOAD_PORT: ${BACKEND_PORT:-8000}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -111,6 +118,8 @@ services:
       PORT: 3000
       HOSTNAME: 0.0.0.0
       NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+      NEXT_PUBLIC_API_UPLOAD_PORT: ${BACKEND_PORT:-8000}
     depends_on:
       backend:
         condition: service_healthy

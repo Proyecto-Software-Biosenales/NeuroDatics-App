@@ -12,7 +12,7 @@ Esa guia explica como instalar Docker Desktop, descargar el proyecto, configurar
 
 ## Inicio Rapido Con Docker
 
-Este es el camino corto para usuarios que ya tienen Docker Desktop y Git instalados. No construye la app localmente: descarga las imagenes publicadas en GHCR.
+Este es el camino corto para usuarios que ya tienen Docker Desktop y Git instalados. Construye las imagenes localmente desde el codigo fuente del repositorio.
 
 ### 1. Clonar el proyecto
 
@@ -43,16 +43,10 @@ Para usar ingestion de proyectos con Google Drive, configura tambien:
 ### 3. Levantar toda la app
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-La primera vez Docker intentara descargar las imagenes, creara la base de datos y ejecutara migraciones automaticamente. Si GHCR todavia no entrega alguna imagen o responde `denied`, Compose construira esa imagen localmente desde el codigo del repositorio y continuara.
-
-Para fijar una version publicada, edita `NEURODATICS_VERSION` en `.env`:
-
-```text
-NEURODATICS_VERSION=v1.2.3
-```
+La primera vez Docker construira `neurodatics-backend:local`, `neurodatics-backend-worker:local` y `neurodatics-frontend:local`, creara la base de datos y ejecutara migraciones automaticamente.
 
 ### 4. Abrir
 
@@ -95,10 +89,10 @@ No necesitas instalar Node.js, Python, PostgreSQL ni Redis para usar la app con 
 
 ## Desarrollo Local Con Build
 
-Solo para contributors que modifican codigo:
+Si modificas codigo y quieres reconstruir todo:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+docker compose up -d --build
 ```
 
 Para desarrollo de frontend sin Docker completo:
@@ -112,19 +106,16 @@ npm run dev
 
 El frontend llama `/api` en el mismo origen y Next.js usa `NEXT_INTERNAL_API_BASE_URL` para reenviar al backend.
 
-## Actualizar Imagenes
+## Actualizar Desde Git
 
 ```bash
-docker compose pull
-docker compose up -d
+git pull
+docker compose up -d --build
 ```
-
-Si usas una version fija en `NEURODATICS_VERSION`, cambia ese valor antes de ejecutar los comandos.
 
 ## Estructura
 
 - `frontend/` - UI Next.js App Router.
 - `backend/` - API FastAPI con PostgreSQL, Redis y worker.
 - `docs/` - documentacion tecnica y guias de uso.
-- `docker-compose.yml` - stack Docker recomendado con imagenes publicadas.
-- `docker-compose.dev.yml` - override para construir imagenes localmente.
+- `docker-compose.yml` - stack Docker recomendado con imagenes locales construidas desde el codigo.

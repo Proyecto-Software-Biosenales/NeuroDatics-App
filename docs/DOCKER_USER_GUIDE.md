@@ -259,10 +259,10 @@ Hasta que exista una pantalla visual de integraciones, este paso es manual.
 2. En la terminal, dentro de la carpeta `NeuroDatics-App`, ejecuta:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-La primera vez puede tardar varios minutos. Docker intentara descargar imagenes publicadas, creara la base de datos y ejecutara migraciones. Si Docker muestra `denied` para una imagen de GHCR, el archivo Compose puede construir esa imagen localmente y continuar; deja que el comando termine.
+La primera vez puede tardar varios minutos. Docker construira las imagenes locales de frontend, backend y worker desde el codigo del proyecto, creara la base de datos y ejecutara migraciones.
 
 ## Parte 8: Abrir La App
 
@@ -328,7 +328,7 @@ docker compose up -d
 Usa esto si cambiaste Google OAuth, Drive, puerto o configuracion importante:
 
 ```bash
-docker compose up -d
+docker compose up -d --build --force-recreate
 ```
 
 ### Ver Logs
@@ -357,11 +357,8 @@ Usalo solo si quieres empezar desde cero.
 
 ```bash
 git pull
-docker compose pull
-docker compose up -d
+docker compose up -d --build
 ```
-
-Si quieres usar una version fija, cambia `NEURODATICS_VERSION` en `.env`, por ejemplo `NEURODATICS_VERSION=v1.2.3`, antes de ejecutar `docker compose pull`.
 
 ## Problemas Comunes
 
@@ -402,7 +399,7 @@ Es normal en la fila padre `neurodatics`. Expande el grupo y abre el puerto del 
 
 ### Solo Aparece Un Grupo Llamado "backend"
 
-Si Docker Desktop muestra solo un grupo llamado `backend` y no aparece el grupo `neurodatics`, se ejecuto Docker desde la carpeta incorrecta o con una configuracion backend-only.
+Si Docker Desktop muestra solo un grupo llamado `backend` y no aparece el grupo `neurodatics`, se ejecuto Docker desde la carpeta incorrecta.
 
 Para corregirlo:
 
@@ -463,7 +460,7 @@ docker compose up -d
 
 ```bash
 docker compose down -v
-docker compose up -d
+docker compose up -d --build
 ```
 
 ## Nota Para Usuarios Tecnicos
