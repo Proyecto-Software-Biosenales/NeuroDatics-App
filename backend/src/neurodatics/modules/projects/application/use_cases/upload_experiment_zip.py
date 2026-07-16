@@ -28,6 +28,34 @@ class UploadCanceledError(Exception):
     pass
 
 
+class GoogleDriveConfigurationError(RuntimeError):
+    pass
+
+
+class GoogleDriveReconnectRequiredError(RuntimeError):
+    pass
+
+
+GOOGLE_DRIVE_NOT_CONNECTED_MESSAGE = (
+    "Google Drive no esta conectado. Reconecta Google Drive antes de subir proyectos."
+)
+GOOGLE_DRIVE_RECONNECT_MESSAGE = (
+    "La conexion de Google Drive expiro o fue revocada. "
+    "Reconecta Google Drive para generar un refresh token nuevo."
+)
+
+
+def _is_invalid_google_grant_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "invalid_grant" in message or "expired or revoked" in message
+
+
+def _user_facing_ingestion_error(exc: Exception) -> str:
+    if _is_invalid_google_grant_error(exc):
+        return GOOGLE_DRIVE_RECONNECT_MESSAGE
+    return str(exc)
+
+
 class UploadExperimentZipUseCase:
     """End-to-end project ZIP ingestion use case."""
 
@@ -49,7 +77,13 @@ class UploadExperimentZipUseCase:
 
         # Configure Google Drive client with OAuth credentials from system integrations
         if self.db:
-            await configure_gdrive_client_with_oauth(self.db, silent=True)
+            configured = await configure_gdrive_client_with_oauth(
+                self.db,
+                silent=True,
+                force_refresh=True,
+            )
+            if not configured:
+                raise GoogleDriveConfigurationError(GOOGLE_DRIVE_NOT_CONNECTED_MESSAGE)
 
         uploaded_drive_ids: List[str] = []
         previous_root_folder_id = project.drive_root_folder_id
@@ -491,8 +525,9 @@ class UploadExperimentZipUseCase:
                 ],
             }
         except Exception as exc:
+            user_error = _user_facing_ingestion_error(exc)
             logger.exception("Project ingestion failed for project %s", project_id)
-            drive_upload_progress_registry.fail(project_id, str(exc))
+            drive_upload_progress_registry.fail(project_id, user_error)
             await self.repository.rollback()
 
             for drive_id in reversed(uploaded_drive_ids):
@@ -524,7 +559,7 @@ class UploadExperimentZipUseCase:
             # mark the project as FAILED so the user can retry or see what went wrong.
             failure_updates = {
                 "ingestion_status": "FAILED",
-                "ingestion_error": str(exc),
+                "ingestion_error": user_error,
                 "storage_provider": "gdrive",
             }
             try:
@@ -533,6 +568,9 @@ class UploadExperimentZipUseCase:
             except Exception:
                 await self.repository.rollback()
                 logger.exception("Could not update project ingestion status to FAILED")
+
+            if _is_invalid_google_grant_error(exc):
+                raise GoogleDriveReconnectRequiredError(user_error) from exc
 
             raise
 

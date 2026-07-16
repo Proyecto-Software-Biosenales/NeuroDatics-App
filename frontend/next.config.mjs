@@ -4,6 +4,10 @@ const internalApiBaseUrl = process.env.NEXT_INTERNAL_API_BASE_URL ?? "http://loc
 const nextConfig = {
   output: "standalone",
   skipTrailingSlashRedirect: true,
+  experimental: {
+    proxyClientMaxBodySize: "550mb",
+    proxyTimeout: 30 * 60_000,
+  },
   turbopack: {
     root: import.meta.dirname,
   },

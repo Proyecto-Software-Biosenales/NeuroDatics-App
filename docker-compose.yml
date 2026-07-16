@@ -57,6 +57,8 @@ services:
   backend:
     image: ghcr.io/proyecto-software-biosenales/neurodatics-backend:${NEURODATICS_VERSION:-latest}
     restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
     environment: *backend-environment
     depends_on:
       db:
@@ -103,6 +105,8 @@ services:
       PORT: 3000
       HOSTNAME: 0.0.0.0
       NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+      NEXT_PUBLIC_API_UPLOAD_PORT: ${BACKEND_PORT:-8000}
     depends_on:
       backend:
         condition: service_healthy

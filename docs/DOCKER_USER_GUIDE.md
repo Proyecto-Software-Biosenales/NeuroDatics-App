@@ -402,7 +402,7 @@ Es normal en la fila padre `neurodatics`. Expande el grupo y abre el puerto del 
 
 ### Solo Aparece Un Grupo Llamado "backend"
 
-Si Docker Desktop muestra un grupo llamado `backend`, un contenedor `backend-1` y el puerto `8000:8000`, se ejecuto Docker desde la carpeta incorrecta o con una configuracion backend-only.
+Si Docker Desktop muestra solo un grupo llamado `backend` y no aparece el grupo `neurodatics`, se ejecuto Docker desde la carpeta incorrecta o con una configuracion backend-only.
 
 Para corregirlo:
 
@@ -476,4 +476,4 @@ El stack recomendado usa Docker Compose con servicios separados:
 - `db`
 - `redis`
 
-Solo `frontend` publica un puerto al computador. El backend queda interno y se accede por proxy desde `http://localhost:3000/api`.
+`frontend` publica el puerto `3000` y `backend` publica el puerto `8000`. La app usa `http://localhost:3000/api` para solicitudes normales y `http://localhost:8000` para subidas largas de proyectos.
