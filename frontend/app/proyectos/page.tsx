@@ -36,14 +36,14 @@ export default function ProyectosPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-50 dark:bg-black">
-        <div className="max-w-6xl mx-auto px-8 py-10">
-          <div className="mb-10 flex items-start justify-between">
+      <div className="min-h-[calc(100vh-var(--app-nav-height))] bg-gray-50 dark:bg-black">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 xl:px-8 xl:py-10">
+          <div className="mb-6 flex items-start justify-between gap-4 xl:mb-10">
             <div>
-              <h1 className="text-3xl font-semibold text-foreground mb-3 tracking-tight">
+              <h1 className="mb-2 text-2xl font-semibold text-foreground tracking-tight xl:mb-3 xl:text-3xl">
                 Proyectos
               </h1>
-              <p className="text-lg text-muted-foreground leading-relaxed">
+              <p className="max-w-3xl text-base text-muted-foreground leading-relaxed xl:text-lg">
                 Gestiona tus experimentos de neuromarketing y análisis de
                 bioseñales.
               </p>

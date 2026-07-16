@@ -269,7 +269,7 @@ export const CreateProjectStep1 = ({
                 : "border-border hover:border-foreground/60"
             }`}
           >
-            <div className="flex flex-col items-center justify-center py-12 px-8 text-center">
+            <div className="flex flex-col items-center justify-center px-5 py-8 text-center xl:px-8 xl:py-12">
               <div className="mb-5 relative">
                 <div className="absolute inset-0 bg-muted rounded-full blur-xl opacity-50" />
                 <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center shadow-sm">
@@ -281,7 +281,7 @@ export const CreateProjectStep1 = ({
                 Arrastra la carpeta aquí o haz clic para seleccionar
               </h3>
 
-              <p className="text-muted-foreground text-base leading-relaxed max-w-xl mb-4">
+              <p className="mb-4 max-w-xl text-sm leading-relaxed text-muted-foreground xl:text-base">
                 Selecciona la carpeta del experimento con imágenes, vídeos y CSV.
               </p>
 
@@ -425,7 +425,7 @@ export const CreateProjectStep1 = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 rounded-xl bg-muted py-4 px-5">
+      <div className="flex items-center gap-3 rounded-xl bg-muted px-4 py-3 xl:gap-4 xl:px-5 xl:py-4">
         <div className="shrink-0 rounded-lg bg-black p-1.5 text-white">
           <AlertCircle size={20} />
         </div>

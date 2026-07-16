@@ -80,7 +80,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
       {projects.map((project) => {
         const projectStatus = (project.status || "active") as ProjectStatus
         const participants = project.participants ?? 0
@@ -101,7 +101,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
         return (
         <Card
           key={project.id}
-          className={`group relative cursor-pointer rounded-2xl border p-6 transition-all duration-200 ${
+          className={`group relative cursor-pointer rounded-2xl border p-4 transition-all duration-200 xl:p-6 ${
             isDeleting ? "animate-pulse scale-[0.99] opacity-70 pointer-events-none" : ""
           } ${
             isDraftProcessing
@@ -187,15 +187,15 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             </DropdownMenu>
           </div>
 
-          <div className="mb-5 flex items-center gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors ${
+          <div className="mb-4 flex items-center gap-3 xl:mb-5 xl:gap-4">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors xl:h-12 xl:w-12 ${
                 isDraftProcessing ? "animate-pulse" : "group-hover:bg-accent"
               }`}>
-              <Folder className={`h-6 w-6 ${isDraftProcessing ? "text-muted-foreground" : "text-foreground"}`} />
+              <Folder className={`h-5 w-5 xl:h-6 xl:w-6 ${isDraftProcessing ? "text-muted-foreground" : "text-foreground"}`} />
             </div>
 
             <div className="min-w-0 flex-1 pr-24">
-              <h3 className="mb-0.5 truncate text-lg font-semibold leading-tight text-foreground">
+              <h3 className="mb-0.5 truncate text-base font-semibold leading-tight text-foreground xl:text-lg">
                 {project.name}
               </h3>
 
@@ -225,7 +225,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             )}
           </div>
 
-          <div className="mb-5 mt-4 flex flex-wrap gap-2">
+          <div className="mb-4 mt-3 flex flex-wrap gap-2 xl:mb-5 xl:mt-4">
             {project.sensors.map((sensor) => (
               <SensorBadge key={sensor} sensor={sensor} size="sm" />
             ))}
