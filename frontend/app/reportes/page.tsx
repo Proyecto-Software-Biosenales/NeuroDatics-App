@@ -67,19 +67,19 @@ export default function ReportesPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-gray-50 dark:bg-black">
-        <div className="max-w-6xl mx-auto px-8 py-10">
-          <div className="mb-10">
-            <h1 className="text-3xl font-semibold text-foreground mb-3 tracking-tight">
+      <div className="min-h-[calc(100vh-var(--app-nav-height))] bg-gray-50 dark:bg-black">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 xl:px-8 xl:py-10">
+          <div className="mb-6 xl:mb-10">
+            <h1 className="mb-2 text-2xl font-semibold text-foreground tracking-tight xl:mb-3 xl:text-3xl">
               Reportes
             </h1>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <p className="max-w-4xl text-base text-muted-foreground leading-relaxed xl:text-lg">
               Genera y descarga reportes en PDF de tus proyectos, incluyendo
               gráficas, estadísticas y análisis de sensores.
             </p>
           </div>
 
-          <div className="mb-8">
+          <div className="mb-6 xl:mb-8">
             <ProjectSelectionCard
               projects={mockProjects}
               selectedProject={selectedProject}
@@ -88,7 +88,7 @@ export default function ReportesPage() {
           </div>
 
           {hasSelection && (
-            <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 xl:mb-8">
               <ReportConfigurationCard
                 reportType={reportType}
                 onReportTypeChange={handleReportTypeChange}
@@ -100,7 +100,7 @@ export default function ReportesPage() {
           )}
 
           {hasReportType && (
-            <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 xl:mb-8">
               <ReportContentCard
                 enabled={hasReportType}
                 content={content}
@@ -108,7 +108,7 @@ export default function ReportesPage() {
               />
 
               {hasContent && (
-                <div className="pl-14 pr-8">
+                <div className="pl-8 pr-4 xl:pl-14 xl:pr-8">
                   <ReportPreview selectedCount={selectedCount} />
                 </div>
               )}
@@ -117,7 +117,7 @@ export default function ReportesPage() {
 
           {hasReportType && (
             <div
-              className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300"
+              className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 xl:mb-8"
               style={{ animationDelay: "100ms" }}
             >
               <ExportOptionsCard

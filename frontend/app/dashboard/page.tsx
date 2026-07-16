@@ -108,7 +108,7 @@ export default function DashboardPage() {
 
   return (
     <AuthGuard>
-      <div className="flex h-screen bg-gray-50 dark:bg-black">
+      <div className="flex h-[calc(100vh-var(--app-nav-height))] bg-gray-50 dark:bg-black">
         <AnalyticsSidebar
           projects={projects}
           selectedProjectId={selectedProjectId}
@@ -131,7 +131,7 @@ export default function DashboardPage() {
             participantsLoading={participantsLoading}
           />
 
-          <main className="flex-1 overflow-y-auto px-6 pb-6">
+          <main className="analytics-shell flex-1 overflow-y-auto px-4 pb-4 xl:px-6 xl:pb-6">
             {!selectedProjectId ? (
               <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
                 Selecciona un proyecto del panel lateral
@@ -145,7 +145,7 @@ export default function DashboardPage() {
               />
             ) : selectedSensor === "EEG" ? (
               <>
-                <div className="flex gap-6 text-muted-foreground border-b border-gray-200 dark:border-border px-6">
+                <div className="flex gap-4 overflow-x-auto whitespace-nowrap text-muted-foreground border-b border-gray-200 dark:border-border px-4 xl:gap-6 xl:px-6">
                   {EEG_TABS.map((tab) => {
                     const isActive = activeEegTab === tab.key
                     return (
@@ -179,7 +179,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <>
-                <div className="flex gap-6 text-muted-foreground border-b border-gray-200 dark:border-border px-6">
+                <div className="flex gap-4 overflow-x-auto whitespace-nowrap text-muted-foreground border-b border-gray-200 dark:border-border px-4 xl:gap-6 xl:px-6">
                   {ANALYTICS_TABS.map((tab) => {
                     const isActive = activeTab === tab.key
                     return (

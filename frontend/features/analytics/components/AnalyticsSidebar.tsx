@@ -106,7 +106,7 @@ export function AnalyticsSidebar({
   }, [selectedProject])
 
   return (
-    <aside className={cn("flex h-full shrink-0 flex-col border-r border-border bg-card", collapsed ? "w-14" : "w-64")}>
+    <aside className={cn("flex h-full shrink-0 flex-col border-r border-border bg-card", collapsed ? "w-14" : "w-60 xl:w-64")}>
       <div className={cn(
         "flex items-center border-b border-border py-2",
         collapsed ? "justify-center px-2" : "justify-between px-3"
@@ -122,7 +122,7 @@ export function AnalyticsSidebar({
         </button>
       </div>
 
-      <div className={cn("flex-1 overflow-y-auto", collapsed ? "p-2" : "p-4")}>
+      <div className={cn("flex-1 overflow-y-auto", collapsed ? "p-2" : "p-3 xl:p-4")}>
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
             {selectedProjectId ? collapsedSensors.map((sensor) => renderSensorItem(selectedProjectId, sensor)) : null}
@@ -162,7 +162,7 @@ export function AnalyticsSidebar({
                   </div>
 
                   {isExpanded ? (
-                    <div className="space-y-1 pl-6">
+                    <div className="space-y-1 pl-5 xl:pl-6">
                       {sensorItems.map((sensor) => renderSensorItem(project.id, sensor))}
                       {renderSensorItem(project.id, ALWAYS_SENSOR)}
                     </div>
@@ -174,7 +174,7 @@ export function AnalyticsSidebar({
         )}
       </div>
 
-      <div className={cn("border-t border-border", collapsed ? "p-2" : "p-4")}>
+      <div className={cn("border-t border-border", collapsed ? "p-2" : "p-3 xl:p-4")}>
         <button
           type="button"
           className={cn(

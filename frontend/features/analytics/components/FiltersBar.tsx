@@ -35,7 +35,7 @@ export function FiltersBar({
   participantsLoading,
 }: FiltersBarProps) {
   return (
-    <div className="flex items-center gap-3 px-6 py-4">
+    <div className="flex flex-wrap items-center gap-2 px-4 py-3 xl:flex-nowrap xl:gap-3 xl:px-6 xl:py-4">
       <div className="flex items-center gap-2.5 text-sm font-medium text-muted-foreground">
         <SlidersHorizontal className="h-4 w-4 shrink-0" />
         <span>Filtros</span>
@@ -46,7 +46,7 @@ export function FiltersBar({
         onValueChange={(val) => onScenarioChange(val ?? "all")}
         disabled={scenariosLoading}
       >
-        <ComboboxTrigger className="flex max-w-[280px] items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50">
+        <ComboboxTrigger className="flex max-w-[240px] items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 xl:max-w-[280px] xl:py-2">
           <span className="truncate">
             {selectedScenario === "all" ? "Todos los escenarios" : selectedScenario}
           </span>
@@ -68,7 +68,7 @@ export function FiltersBar({
         onValueChange={(val) => val && onParticipantChange(val)}
         disabled={participantsLoading || participants.length === 0}
       >
-        <ComboboxTrigger className="flex min-w-[180px] shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50">
+        <ComboboxTrigger className="flex min-w-[160px] shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 xl:min-w-[180px] xl:py-2">
           <ComboboxValue placeholder="Sin sujetos" />
         </ComboboxTrigger>
         <ComboboxContent>

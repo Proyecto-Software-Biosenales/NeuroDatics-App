@@ -601,7 +601,7 @@ export function PupilDilationTab({
             onReset={handleResetTimeWindow}
           />
 
-          <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
+          <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3 xl:mb-6">
             {[
               {
                 label: "Media",

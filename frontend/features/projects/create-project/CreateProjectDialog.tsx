@@ -128,10 +128,10 @@ export const CreateProjectDialog = ({
       <DialogContent
         onPointerDownOutside={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => event.preventDefault()}
-        className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-8"
+        className="max-h-[calc(100vh-2rem)] overflow-y-auto p-5 sm:max-w-3xl xl:max-h-[90vh] xl:p-8"
       >
         <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">
+          <DialogTitle className="text-xl font-semibold xl:text-2xl">
             Crear nuevo proyecto
           </DialogTitle>
           <DialogDescription asChild>
@@ -153,7 +153,7 @@ export const CreateProjectDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-6">
+        <div className="py-4 xl:py-6">
           {currentStep === 1 && (
             <CreateProjectStep1
               projectName={formData.projectName}

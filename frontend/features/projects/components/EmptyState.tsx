@@ -15,22 +15,22 @@ export const EmptyState = ({
   action,
 }: EmptyStateProps) => {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-      <div className="mb-5 relative">
+    <div className="flex flex-col items-center justify-center px-5 py-10 text-center xl:px-8 xl:py-16">
+      <div className="relative mb-4 xl:mb-5">
         <div className="absolute inset-0 bg-muted rounded-full blur-xl opacity-50" />
-        <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center shadow-sm">
-          <Icon name={icon} size={40} className="text-foreground" />
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted shadow-sm xl:h-20 xl:w-20">
+          <Icon name={icon} size={34} className="text-foreground xl:size-10" />
         </div>
       </div>
 
-      <h3 className="text-xl font-semibold text-foreground mb-3">{title}</h3>
+      <h3 className="mb-2 text-lg font-semibold text-foreground xl:mb-3 xl:text-xl">{title}</h3>
 
-      <p className="text-muted-foreground text-lg leading-relaxed max-w-xl">
+      <p className="max-w-xl text-base leading-relaxed text-muted-foreground xl:text-lg">
         {description}
       </p>
 
       {action && (
-        <div className="mt-10 opacity-100 visible">{action}</div>
+        <div className="mt-6 opacity-100 visible xl:mt-10">{action}</div>
       )}
     </div>
   )
