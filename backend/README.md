@@ -10,14 +10,14 @@ Usa siempre el `docker-compose.yml` de la raiz del repositorio:
 
 ```powershell
 cd ..
-docker compose up -d
+docker compose up -d --build
 ```
 
 O, si estas en cualquier otra carpeta, entra a la raiz del proyecto, donde estan `frontend/`, `backend/` y `docker-compose.yml`:
 
 ```powershell
 cd C:\ruta\a\NeuroDatics-App
-docker compose up -d
+docker compose up -d --build
 ```
 
 El stack completo debe aparecer en Docker Desktop como `neurodatics` e incluir:
@@ -30,18 +30,7 @@ El stack completo debe aparecer en Docker Desktop como `neurodatics` e incluir:
 
 El puerto para abrir la app es el del servicio `frontend`: `3000:3000`.
 
-Si Docker Desktop muestra un grupo llamado solo `backend` con un contenedor `backend-1` y puerto `8000:8000`, se ejecuto el Compose antiguo/backend-only. Detenlo y vuelve a ejecutar Docker desde la raiz del proyecto.
-
-## Backend-Only Para Desarrollo Avanzado
-
-Solo si necesitas levantar el backend aislado, existe un archivo no recomendado para usuarios finales:
-
-```powershell
-cd backend
-docker compose -f docker-compose.backend-only.yml up --build
-```
-
-Ese modo no levanta frontend, Postgres, Redis ni worker. Para uso normal de la app, no lo uses.
+Si Docker Desktop muestra un grupo llamado solo `backend`, se ejecuto Docker desde la carpeta incorrecta. Detenlo y vuelve a ejecutar Docker desde la raiz del proyecto.
 
 ## Arranque Local Sin Docker Completo
 

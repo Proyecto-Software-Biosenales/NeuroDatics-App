@@ -55,7 +55,7 @@ services:
       retries: 5
 
   backend:
-    image: ghcr.io/proyecto-software-biosenales/neurodatics-backend:${NEURODATICS_VERSION:-latest}
+    image: neurodatics-backend:local
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -78,7 +78,10 @@ services:
       start_period: 20s
 
   worker:
-    image: ghcr.io/proyecto-software-biosenales/neurodatics-backend:${NEURODATICS_VERSION:-latest}
+    image: neurodatics-backend-worker:local
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     command: python -m neurodatics.workers
     environment: *backend-environment
@@ -99,12 +102,14 @@ services:
       start_period: 20s
 
   frontend:
-    image: ghcr.io/proyecto-software-biosenales/neurodatics-frontend:${NEURODATICS_VERSION:-latest}
+    image: neurodatics-frontend:local
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
         NEXT_INTERNAL_API_BASE_URL: ${NEXT_INTERNAL_API_BASE_URL:-http://backend:8000}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+        NEXT_PUBLIC_API_UPLOAD_PORT: ${BACKEND_PORT:-8000}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"

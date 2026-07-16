@@ -4,7 +4,7 @@ This folder is a self-contained Docker delivery package for non-technical users.
 
 ## Required Files And Folders
 
-- `docker-compose.yml`: delivery compose file. It builds local images and does not pull private GHCR images.
+- `docker-compose.yml`: delivery compose file. It builds local images from the included source.
 - `.env`: completed runtime configuration with secrets. Keep it private.
 - `Final-Instructions.md`: short user guide for starting the app.
 - `frontend/`: source needed by Docker to build the Next.js image.
@@ -31,5 +31,6 @@ Run this from the delivery folder:
 docker compose up -d
 ```
 
-The first run builds `neurodatics-backend:delivery` and `neurodatics-frontend:delivery`
+The first run builds `neurodatics-backend:delivery`,
+`neurodatics-backend-worker:delivery`, and `neurodatics-frontend:delivery`
 locally, then starts PostgreSQL, Redis, backend, worker, and frontend.

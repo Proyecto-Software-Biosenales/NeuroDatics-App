@@ -25,8 +25,8 @@ Importante:
 
 - Manten el `.env` en la misma carpeta que `docker-compose.yml` y no lo renombres.
 - No compartas el `.env` con nadie: contiene secretos.
-- No borres las carpetas `frontend/` ni `backend/`. Sirven como respaldo si Docker
-  no puede descargar las imagenes publicadas.
+- No borres las carpetas `frontend/` ni `backend/`. Docker construye la app desde
+  esas carpetas.
 
 ## Paso 1: Instalar Docker Desktop
 
@@ -165,10 +165,6 @@ Luego abre la carpeta nueva y ejecuta:
 docker compose up -d
 ```
 
-Si el responsable confirma que las imagenes de GHCR ya son publicas y te entrega un
-paquete liviano, tambien puedes actualizar desde la misma carpeta con
-`docker compose pull` y luego `docker compose up -d`.
-
 ## Problemas Comunes
 
 La app no carga al abrir `http://localhost:3000`
@@ -180,13 +176,6 @@ La app no carga al abrir `http://localhost:3000`
 
 - Abre el `.env`, cambia `FRONTEND_PORT=3000` por `FRONTEND_PORT=3100`, guarda y
   ejecuta `docker compose up -d`. Luego abre `http://localhost:3100`.
-
-Error al descargar imagenes ("denied", "unauthorized" o "pull access denied")
-
-- Estas instrucciones son para el paquete actualizado, que no descarga las imagenes
-  privadas de GHCR. Si ves ese error, probablemente tienes un ZIP anterior.
-- Pide el ZIP actualizado y confirma que la carpeta tenga `frontend/`, `backend/`,
-  `docker-compose.yml` y `.env`.
 
 Docker pide iniciar sesion o crear cuenta
 
@@ -204,25 +193,7 @@ guia completa en `docs/DOCKER_USER_GUIDE.md`.
 
 ---
 
-## Apendice A: Solo Para El Responsable Del Proyecto (Una Sola Vez)
-
-Para que los usuarios NO tengan que iniciar sesion en GitHub ni usar tokens, las
-imagenes de Docker deben ser PUBLICAS. Hoy estan privadas. Haz esto una sola vez:
-
-1. Entra a https://github.com/orgs/Proyecto-Software-Biosenales/packages
-2. Abre el paquete `neurodatics-frontend`.
-3. En la barra derecha, haz click en "Package settings".
-4. Baja hasta "Danger Zone" -> "Change visibility".
-5. Elige "Public", confirma escribiendo el nombre del paquete y guarda.
-6. Repite los pasos 2 a 5 con el paquete `neurodatics-backend`.
-
-Las imagenes de PostgreSQL y Redis ya son publicas; no requieren ninguna accion.
-
-Para verificar que quedaron publicas, abre de nuevo
-https://github.com/orgs/Proyecto-Software-Biosenales/packages y confirma que ambos
-paquetes muestran la etiqueta "Public".
-
-## Apendice B: Como Preparar La Carpeta De Entrega (Responsable)
+## Apendice: Como Preparar La Carpeta De Entrega (Responsable)
 
 La carpeta o ZIP que entregas por interno necesita estos archivos en la raiz:
 
@@ -233,8 +204,5 @@ La carpeta o ZIP que entregas por interno necesita estos archivos en la raiz:
 - `Final-Instructions.md` (recomendado, para que la persona tenga esta guia a mano).
 
 Para esta entrega, copia `docker-compose.delivery.yml` como `docker-compose.yml`
-dentro del ZIP. Ese compose usa imagenes locales (`neurodatics-*:delivery`) y no
-intenta descargar `ghcr.io/proyecto-software-biosenales/*`.
-
-Cuando ambos paquetes GHCR sean publicos y verificados, puedes entregar una version
-liviana sin `frontend/` ni `backend/`.
+dentro del ZIP. Ese compose construye imagenes locales (`neurodatics-*:delivery`)
+desde las carpetas incluidas.
