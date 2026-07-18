@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from .api.router import include_routes
 from .api.middlewares import register_middlewares
 from .config.settings import settings
 from .config.logging import configure_logging
 from .infra.db.base import Base
 from .infra.db.session import engine
+from .infra.health.readiness import collect_readiness
 
 # Create FastAPI app
 app = FastAPI(
@@ -16,14 +18,8 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ],
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?",
-    allow_credentials=True,
+    allow_origins=settings.cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["Content-Type", "Authorization"],
 )
@@ -46,8 +42,20 @@ async def startup_event():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "debug": settings.debug}
+    """Liveness endpoint that does not depend on external services."""
+    return {"status": "healthy"}
+
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Report whether database and Redis are usable without exposing their details."""
+    dependencies = await collect_readiness()
+    payload = {
+        "status": "ready" if all(value == "ok" for value in dependencies.values()) else "not_ready",
+        "dependencies": dependencies,
+    }
+    status_code = 200 if payload["status"] == "ready" else 503
+    return JSONResponse(status_code=status_code, content=payload)
 
 
 def main():

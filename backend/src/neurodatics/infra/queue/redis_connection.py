@@ -20,6 +20,8 @@ class RedisConnectionPool:
                 decode_responses=True,
                 max_connections=10,
                 socket_keepalive=True,
+                socket_connect_timeout=settings.redis_socket_connect_timeout_seconds,
+                socket_timeout=settings.redis_socket_timeout_seconds,
             )
             cls._instance = redis.Redis(connection_pool=cls._pool)
         return cls._instance

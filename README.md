@@ -29,11 +29,19 @@ cp .env.example .env
 
 Edita `.env` y completa al menos estas variables para usar login real:
 
+- `APP_ENV=production`
 - `AUTH_JWT_SECRET`
+- `POSTGRES_PASSWORD`
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
 
 El frontend ya no necesita `NEXT_PUBLIC_GOOGLE_CLIENT_ID`; pide al backend la URL de login de Google en tiempo de ejecucion.
+
+`AUTH_JWT_SECRET` debe ser un valor aleatorio, único y de al menos 32
+caracteres. Si la base de datos es externa (por ejemplo Supabase), su
+`DATABASE_URL` debe incluir `?sslmode=require` como mínimo.
+`POSTGRES_PASSWORD` también debe ser único: el stack incluye PostgreSQL local
+en una red interna, incluso si configuras una base externa.
 
 Para usar ingestion de proyectos con Google Drive, configura tambien:
 
@@ -85,7 +93,13 @@ No necesitas instalar Node.js, Python, PostgreSQL ni Redis para usar la app con 
 - El login real usa Google OAuth.
 - El backend genera la URL de Google OAuth y emite `access_token` y `expires_in`.
 - No hay refresh token publico en el contrato actual.
-- El backend publica el puerto `8000` al host para subidas largas de proyectos. El frontend sigue enrutando `/api/*`, `/docs`, `/openapi.json` y `/redoc` hacia el backend dentro de Docker para las solicitudes normales.
+- El backend no publica un puerto al host. El frontend enruta `/api/*`,
+  subidas grandes, `/docs`, `/openapi.json` y `/redoc`
+  hacia el backend dentro de Docker.
+
+Para un despliegue en una red universitaria, consulta
+[docs/NETWORK_DEPLOYMENT.md](./docs/NETWORK_DEPLOYMENT.md) antes de abrir la
+solicitud a TI.
 
 ## Desarrollo Local Con Build
 

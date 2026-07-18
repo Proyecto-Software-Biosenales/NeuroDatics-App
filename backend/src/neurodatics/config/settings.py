@@ -1,13 +1,43 @@
-from pydantic_settings import BaseSettings
-from typing import Optional
+from __future__ import annotations
+
 import os
+from typing import Literal, Optional
+from urllib.parse import parse_qs, urlsplit
+
+from pydantic import model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_LOCAL_DATABASE_HOSTS = {"db", "localhost", "127.0.0.1", "::1"}
+_INSECURE_JWT_SECRETS = {
+    "",
+    "change-me-in-production",
+    "neurodatics-local-development-secret-change-me",
+    "change-this-neurodatics-local-secret-before-sharing",
+    "replace-with-a-long-random-secret",
+    "replace-this-with-a-unique-random-secret-of-at-least-32-characters",
+}
+_ACCEPTED_SSL_MODES = {"require", "verify-ca", "verify-full"}
 
 
 class Settings(BaseSettings):
-    """Application settings"""
-    
+    """Runtime configuration with production safety checks."""
+
+    model_config = SettingsConfigDict(
+        env_file=os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"),
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # Runtime
+    app_env: Literal["development", "test", "production"] = "development"
+    debug: bool = False
+    app_name: str = "NeuroDatics API"
+
     # Database
     database_url: str
+    readiness_timeout_seconds: float = 3.0
+    network_preflight_timeout_seconds: float = 10.0
 
     # Google OAuth
     google_oauth_client_id: Optional[str] = None
@@ -20,12 +50,18 @@ class Settings(BaseSettings):
     google_drive_oauth_state_ttl_seconds: int = 600
 
     # Auth JWT
-    auth_jwt_secret: str = "change-me-in-production"
+    auth_jwt_secret: str
     auth_jwt_algorithm: str = "HS256"
     auth_jwt_issuer: str = "neurodatics-backend"
     auth_access_token_exp_minutes: int = 14 * 24 * 60
-    auth_user_store_path: str = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "auth_users.json")
-    
+    auth_user_store_path: str = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "data", "auth_users.json"
+    )
+
+    # Browser access. Docker uses same-origin /api, so only explicit direct clients
+    # need to be listed here.
+    cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
     # Google Drive
     google_application_credentials: Optional[str] = None
     gdrive_service_account_json: Optional[str] = None
@@ -38,20 +74,63 @@ class Settings(BaseSettings):
 
     # Redis / Queue
     redis_url: str = "redis://localhost:6379"
-    
-    # App
-    app_name: str = "NeuroDatics API"
-    debug: bool = False
+    redis_socket_connect_timeout_seconds: float = 3.0
+    redis_socket_timeout_seconds: float = 3.0
 
     # Analytics cache
     parquet_cache_dir: str = "/data/parquet_cache"
     parquet_cache_ttl_hours: int = 4
     analytics_redis_ttl_seconds: int = 900
-    
-    class Config:
-        env_file = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")
-        case_sensitive = False
-        extra = "ignore"
+    image_cache_dir: str = "/data/image_cache"
+    video_cache_dir: str = "/data/video_cache"
+    video_frame_cache_dir: str = "/data/video_frame_cache"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Return normalized origins without allowing broad private-network ranges."""
+        return [
+            origin.strip().rstrip("/")
+            for origin in self.cors_allowed_origins.split(",")
+            if origin.strip()
+        ]
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        secret = self.auth_jwt_secret.strip()
+        if not secret:
+            raise ValueError("AUTH_JWT_SECRET must be set.")
+
+        if self.app_env != "production":
+            return self
+
+        if self.debug:
+            raise ValueError("DEBUG must be false when APP_ENV=production.")
+
+        if secret in _INSECURE_JWT_SECRETS or len(secret) < 32:
+            raise ValueError(
+                "AUTH_JWT_SECRET must be a unique production secret with at least 32 characters."
+            )
+
+        parsed_url = urlsplit(self.database_url)
+        host = parsed_url.hostname
+        if not parsed_url.scheme.startswith("postgresql") or not host:
+            raise ValueError("DATABASE_URL must be a PostgreSQL connection URL in production.")
+
+        # Docker's local PostgreSQL service stays on an internal network. Any
+        # external database, including Supabase, must opt into encrypted transport.
+        if host.lower() not in _LOCAL_DATABASE_HOSTS:
+            query_params = {
+                key.lower(): values
+                for key, values in parse_qs(parsed_url.query, keep_blank_values=True).items()
+            }
+            sslmode = query_params.get("sslmode", [""])[-1].lower()
+            if sslmode not in _ACCEPTED_SSL_MODES:
+                raise ValueError(
+                    "External DATABASE_URL values must set sslmode=require, "
+                    "verify-ca, or verify-full in production."
+                )
+
+        return self
 
 
 settings = Settings()
