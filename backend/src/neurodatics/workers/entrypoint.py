@@ -19,10 +19,16 @@ class _HealthCheckHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health/worker":
-            self.send_response(200)
+            try:
+                redis_ready = bool(get_redis_client().ping())
+            except Exception:
+                redis_ready = False
+
+            self.send_response(200 if redis_ready else 503)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(b'{"status":"ok"}')
+            status = b'{"status":"ok"}' if redis_ready else b'{"status":"not_ready"}'
+            self.wfile.write(status)
         else:
             self.send_response(404)
             self.end_headers()

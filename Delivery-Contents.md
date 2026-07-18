@@ -5,7 +5,8 @@ This folder is a self-contained Docker delivery package for non-technical users.
 ## Required Files And Folders
 
 - `docker-compose.yml`: delivery compose file. It builds local images from the included source.
-- `.env`: completed runtime configuration with secrets. Keep it private.
+- `.env`: completed production runtime configuration with secrets. Keep it private
+  and use unique `AUTH_JWT_SECRET` and `POSTGRES_PASSWORD` values.
 - `Final-Instructions.md`: short user guide for starting the app.
 - `frontend/`: source needed by Docker to build the Next.js image.
 - `backend/`: source needed by Docker to build the FastAPI/worker image.

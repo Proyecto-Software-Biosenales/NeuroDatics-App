@@ -136,7 +136,11 @@ notepad .env
 
 3. Guarda el archivo cuando termines.
 
-Importante: no compartas el archivo `.env`. Puede contener secretos de Google.
+4. Antes de iniciar Docker, reemplaza al menos `AUTH_JWT_SECRET` y
+   `POSTGRES_PASSWORD` por valores únicos y largos. Ambos son obligatorios.
+
+Importante: no compartas el archivo `.env`. Puede contener secretos de Google
+y de la base de datos.
 
 ## Parte 5: Configurar Google OAuth Para Login Real
 
@@ -473,4 +477,7 @@ El stack recomendado usa Docker Compose con servicios separados:
 - `db`
 - `redis`
 
-`frontend` publica el puerto `3000` y `backend` publica el puerto `8000`. La app usa `http://localhost:3000/api` para solicitudes normales y `http://localhost:8000` para subidas largas de proyectos.
+`frontend` publica el puerto `3000`. El backend, PostgreSQL y Redis
+permanecen dentro de la red Docker; la app usa
+`http://localhost:3000/api` tanto para solicitudes normales como para subidas
+largas de proyectos.
