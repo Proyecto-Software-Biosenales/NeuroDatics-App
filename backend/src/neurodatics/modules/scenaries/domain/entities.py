@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, JSON
+from sqlalchemy import CheckConstraint, Column, String, Integer, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -29,6 +29,12 @@ class Scenaries(BaseModel):
 class AOI(BaseModel):
     """Area of Interest entity"""
     __tablename__ = "aois"
+    __table_args__ = (
+        CheckConstraint(
+            "shape_type IN ('rect', 'circle', 'polygon')",
+            name="aoi_shape_allowed",
+        ),
+    )
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     scenaries_id = Column(UUID(as_uuid=True), ForeignKey("scenaries.id"), nullable=False)

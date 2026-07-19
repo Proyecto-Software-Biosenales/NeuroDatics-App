@@ -6,12 +6,12 @@ from neurodatics.diagnostics import network_preflight
 def test_database_target_omits_credentials():
     target = network_preflight.database_target(
         "postgresql+psycopg://postgres:super-secret@"
-        "aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require"
+        "aws-1-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
     )
 
     assert target == {
         "host": "aws-1-us-east-2.pooler.supabase.com",
-        "port": 6543,
+        "port": 5432,
         "sslmode": "require",
     }
     assert "super-secret" not in str(target)
