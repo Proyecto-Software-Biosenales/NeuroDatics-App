@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from urllib.parse import parse_qs, urlsplit
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     redis_socket_connect_timeout_seconds: float = 3.0
     redis_socket_timeout_seconds: float = 3.0
+    redis_worker_socket_timeout_seconds: Optional[float] = 450.0
 
     # Analytics cache
     parquet_cache_dir: str = "/data/parquet_cache"
@@ -84,6 +85,24 @@ class Settings(BaseSettings):
     image_cache_dir: str = "/data/image_cache"
     video_cache_dir: str = "/data/video_cache"
     video_frame_cache_dir: str = "/data/video_frame_cache"
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug_flag(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"release", "production", "prod"}:
+                return False
+            if normalized in {"development", "dev"}:
+                return True
+        return value
+
+    @field_validator("redis_worker_socket_timeout_seconds", mode="before")
+    @classmethod
+    def parse_optional_worker_redis_timeout(cls, value: Any) -> Any:
+        if isinstance(value, str) and value.strip().lower() in {"", "none", "null"}:
+            return None
+        return value
 
     @property
     def cors_origins(self) -> list[str]:
