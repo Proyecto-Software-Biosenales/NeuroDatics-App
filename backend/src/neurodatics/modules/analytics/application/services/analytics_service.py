@@ -248,8 +248,29 @@ class PupilAnalyticsService:
         }
 
     @staticmethod
-    def find_gaze_at(df: pd.DataFrame, t_s: float) -> dict:
-        """Find gaze data at nearest time point."""
+    def find_gaze_at(
+        df: pd.DataFrame,
+        t_s: float,
+        scenario: Optional[str] = None,
+    ) -> dict:
+        """Find gaze data at the nearest time, optionally within one scenario."""
+        if scenario and str(scenario).strip().lower() != "all":
+            if "scenario" not in df.columns:
+                df = df.iloc[0:0]
+            else:
+                from pathlib import Path as _Path
+
+                scenario_values = df["scenario"].astype(str).str.strip()
+                target = str(scenario).strip()
+                mask = scenario_values == target
+                if not mask.any():
+                    def _norm(name: str) -> str:
+                        return _Path(str(name).strip()).stem.lower().replace(" ", "")
+
+                    target_stem = _norm(target)
+                    mask = scenario_values.map(_norm) == target_stem
+                df = df.loc[mask]
+
         if "time" not in df.columns or df.empty:
             return {
                 "requested_time_s": round(t_s, 1),

@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "test:comparison-click": "node --test features/analytics/comparison/chartInteraction.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

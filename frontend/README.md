@@ -1,62 +1,26 @@
 # NeuroDatics Frontend
 
-Frontend de NeuroDatics construido con Next.js App Router, TypeScript y Tailwind CSS.
+Interfaz Next.js App Router, TypeScript y Tailwind CSS. La aplicación se inicia como parte del [stack Docker de la raíz](../README.md); no mantiene un arranque independiente del frontend.
 
-## Requisitos
+## Responsabilidades
 
-- Node.js 20+
-- npm 10+
-- Backend disponible en http://localhost:8000
+- Rutas de inicio de sesión, dashboard, proyectos, reportes y autorización.
+- Componentes y flujos organizados por dominio en `features/`.
+- Componentes reutilizables en `components/ui`.
+- Cliente HTTP y proveedores de autenticación en `lib/`.
 
-## Variables De Entorno
+## Integración con el backend
 
-Crear archivo frontend/.env.local con:
+- El navegador usa `/api` en el mismo origen.
+- Next.js reenvía las solicitudes al backend interno mediante `NEXT_INTERNAL_API_BASE_URL`.
+- El login principal usa Google OAuth; el callback es `/authorize`.
 
-```env
-NEXT_INTERNAL_API_BASE_URL=http://localhost:8000
+## Comprobaciones de código
 
-# Opcional (modo admin local para desarrollo)
-NEXT_PUBLIC_DEV_ADMIN_EMAIL=
-NEXT_PUBLIC_DEV_ADMIN_PASSWORD=
-NEXT_PUBLIC_DEV_ADMIN_DISPLAY_NAME=Administrador NeuroDatics
-```
-
-## Ejecutar En Desarrollo
+Desde esta carpeta puedes ejecutar las comprobaciones de calidad cuando trabajes en la interfaz:
 
 ```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Scripts Disponibles
-
-```bash
-npm run dev
-npm run build
-npm run start
 npm run lint
 npm run typecheck
-npm run format
+npm run build
 ```
-
-## Autenticacion
-
-- Login principal: Google OAuth.
-- Callback de autorizacion: /authorize.
-- El frontend guarda accessToken y expiresAt en localStorage.
-- El access token dura 2 semanas; al expirar, el wrapper de API limpia la sesion y redirige a login.
-
-## Estructura Principal
-
-- app: rutas App Router (login, dashboard, proyectos, reportes, authorize).
-- features: logica por dominio (auth, projects, reports, home).
-- components/ui: componentes reutilizables.
-- lib/api: wrapper HTTP central.
-- lib/providers: contexto de autenticacion y helpers OAuth.
-
-## Integracion Con Backend
-
-- El navegador llama `/api` en el mismo origen.
-- Next.js reenvia esas solicitudes al backend usando `NEXT_INTERNAL_API_BASE_URL`.
-- Endpoints principales consumidos desde features/projects/api/projectsApi.ts.

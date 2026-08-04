@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -280,3 +280,41 @@ class AoiMetricsResponse(BaseModel):
     total_dwell_time_ms: float
     observed_aoi_dwell_time_ms: float
     observed_aoi_dwell_time_percent: float
+
+
+class CorrelationSignal(BaseModel):
+    id: str
+    label: str
+    unit: str
+    available: bool
+    valid_bins: int
+    coverage: float
+    source_columns: List[str]
+    unavailable_reason: Optional[str] = None
+
+
+class CorrelationCell(BaseModel):
+    signal_x: str
+    signal_y: str
+    coefficient: Optional[float] = None
+    n_samples: int
+    coverage: float
+    status: Literal[
+        "ok",
+        "unavailable",
+        "insufficient_overlap",
+        "constant_signal",
+    ]
+
+
+class CorrelationsResponse(BaseModel):
+    participant_code: str
+    scenario: str
+    method: Literal["pearson"]
+    time_basis: Literal["scenario_relative"]
+    bin_size_s: float
+    min_pair_samples: int
+    duration_s: float
+    total_bins: int
+    signals: List[CorrelationSignal]
+    matrix: List[List[CorrelationCell]]

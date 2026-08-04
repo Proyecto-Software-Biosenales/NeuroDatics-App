@@ -23,10 +23,12 @@ from ..application.services.analytics_service import (
     PupilAnalyticsService,
     ScanpathAnalyticsService,
 )
+from ..application.services.correlation_service import CorrelationAnalyticsService
 from ..application.services.parquet_reader_service import ParquetReaderService
 from ..infrastructure.redis_cache import AnalyticsRedisCache
 from .schemas import (
     AoiMetricsResponse,
+    CorrelationsResponse,
     DistanceStatisticsResponse,
     DistanceTimeseriesResponse,
     EegPsdResponse,
@@ -50,6 +52,8 @@ from .schemas import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/analytics", tags=["analytics"])
 _redis = AnalyticsRedisCache()
+_CORRELATIONS_CACHE_ENDPOINT = "correlations:v2"
+_CORRELATIONS_CACHE_TTL_SECONDS = 900
 
 
 async def _verify_ownership(db: AsyncSession, project_id: UUID, current_user: str) -> Project:
@@ -152,6 +156,69 @@ async def list_scenarios(
     ]
 
 
+@router.get("/correlations", response_model=CorrelationsResponse)
+async def correlations(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    requested_scenario = scenario.strip()
+    if requested_scenario.lower() == "all":
+        raise HTTPException(
+            status_code=400,
+            detail="Correlations require one concrete scenario; scenario=all is not supported",
+        )
+
+    scenary = await _resolve_scenary_for_analytics(
+        db,
+        project_id,
+        requested_scenario,
+    )
+    if scenary is None:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+
+    canonical_scenario = str(scenary.name).strip()
+    cache_key = _redis.build_key(
+        project_id,
+        participant_code,
+        _CORRELATIONS_CACHE_ENDPOINT,
+        canonical_scenario,
+    )
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return CorrelationsResponse(**cached)
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    result_data = await anyio.to_thread.run_sync(
+        lambda: CorrelationAnalyticsService.compute(df, canonical_scenario)
+    )
+    response_data = {
+        "participant_code": participant_code,
+        "scenario": canonical_scenario,
+        **result_data,
+    }
+
+    await anyio.to_thread.run_sync(
+        lambda: _redis.set_json(
+            cache_key,
+            response_data,
+            ttl=_CORRELATIONS_CACHE_TTL_SECONDS,
+        )
+    )
+    return CorrelationsResponse(**response_data)
+
+
 @router.get("/timeseries/pupil", response_model=PupilTimeseriesResponse)
 async def pupil_timeseries(
     project_id: UUID,
@@ -245,13 +312,46 @@ async def gaze_at(
     project_id: UUID,
     participant_code: str = Query(...),
     t_s: float = Query(...),
+    scenario: Optional[str] = Query(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
     await _verify_ownership(db, project_id, current_user)
 
+    requested_scenary = None
+    canonical_scenario = None
+    if scenario is not None:
+        requested_scenario = scenario.strip()
+        if not requested_scenario or requested_scenario.lower() == "all":
+            raise HTTPException(
+                status_code=400,
+                detail="gaze-at requires a concrete scenario when scenario is provided",
+            )
+        requested_scenary = await _resolve_scenary_for_analytics(
+            db,
+            project_id,
+            requested_scenario,
+        )
+        if requested_scenary is None:
+            raise HTTPException(status_code=404, detail="Scenario not found")
+        canonical_scenario = str(requested_scenary.name).strip()
+
     rounded_t = round(t_s, 1)
-    cache_key = _redis.build_key(project_id, participant_code, "gaze_at_v2", str(rounded_t))
+    if canonical_scenario is None:
+        # Preserve the existing unscoped cache contract for standalone sensor tabs.
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            "gaze_at_v2",
+            str(rounded_t),
+        )
+    else:
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            f"gaze_at_v3:{rounded_t}",
+            canonical_scenario,
+        )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return GazeAtResponse(**cached)
@@ -267,22 +367,33 @@ async def gaze_at(
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    gaze_data = await anyio.to_thread.run_sync(lambda: PupilAnalyticsService.find_gaze_at(df, t_s))
+    gaze_data = await anyio.to_thread.run_sync(
+        lambda: PupilAnalyticsService.find_gaze_at(
+            df,
+            t_s,
+            scenario=canonical_scenario,
+        )
+    )
+
+    if requested_scenary is not None and gaze_data.get("scenario") is not None:
+        gaze_data["scenario"] = canonical_scenario
 
     from pathlib import Path as _Path
 
     scenario_name = gaze_data.get("scenario")
     scenario_file_id = None
     scenario_type = None
+    scenary = requested_scenary
     if scenario_name:
-        # Tier 1: exact match
-        result = await db.execute(
-            select(Scenaries).where(
-                Scenaries.project_id == project_id,
-                Scenaries.name == scenario_name,
+        if scenary is None:
+            # Tier 1: exact match
+            result = await db.execute(
+                select(Scenaries).where(
+                    Scenaries.project_id == project_id,
+                    Scenaries.name == scenario_name,
+                )
             )
-        )
-        scenary = result.scalar_one_or_none()
+            scenary = result.scalar_one_or_none()
 
         # Tier 2: normalized match (case-insensitive stem, spaces removed)
         # Handles variants like "Instruction1" vs "Instruction 1"
