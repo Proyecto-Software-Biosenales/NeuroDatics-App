@@ -3,6 +3,7 @@ import type {
   AoiMetricsData,
   AnalyticsParticipant,
   AnalyticsScenario,
+  CorrelationResponse,
   DistanceStatistics,
   DistanceTimeseriesData,
   EegPsdData,
@@ -41,6 +42,13 @@ export const AnalyticsApi = {
   getScenarios: (projectId: string) =>
     apiFetch<AnalyticsScenario[]>(`/api/projects/${projectId}/analytics/scenarios`),
 
+  getCorrelations: (projectId: string, participantCode: string, scenario: string) => {
+    const params = new URLSearchParams({ participant_code: participantCode, scenario })
+    return apiFetch<CorrelationResponse>(
+      `/api/projects/${projectId}/analytics/correlations?${params}`
+    )
+  },
+
   getPupilTimeseries: (
     projectId: string,
     participantCode: string,
@@ -65,11 +73,17 @@ export const AnalyticsApi = {
     return apiFetch<PupilStatistics>(`/api/projects/${projectId}/analytics/statistics/pupil?${params}`)
   },
 
-  getGazeAt: (projectId: string, participantCode: string, timeS: number) => {
+  getGazeAt: (
+    projectId: string,
+    participantCode: string,
+    timeS: number,
+    scenario?: string | null
+  ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
       t_s: String(timeS),
     })
+    if (scenario && scenario !== "all") params.set("scenario", scenario)
     return apiFetch<GazeAtData>(`/api/projects/${projectId}/analytics/gaze-at?${params}`)
   },
 

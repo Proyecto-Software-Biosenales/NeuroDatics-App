@@ -270,3 +270,50 @@ export interface AoiMetricsData {
   observed_aoi_dwell_time_ms: number
   observed_aoi_dwell_time_percent: number
 }
+
+export type CorrelationSignalId =
+  | "pupil_avg_mm"
+  | "gaze_x_pct"
+  | "gaze_y_pct"
+  | "distance_cm"
+  | "gsr_smoothed_us"
+  | "eeg_broadband_power_db"
+
+export type CorrelationCellStatus =
+  | "ok"
+  | "unavailable"
+  | "insufficient_overlap"
+  | "constant_signal"
+
+export interface CorrelationSignal {
+  id: CorrelationSignalId
+  label: string
+  unit: string
+  available: boolean
+  valid_bins: number
+  coverage: number
+  source_columns: string[]
+  unavailable_reason: string | null
+}
+
+export interface CorrelationCell {
+  signal_x: CorrelationSignalId
+  signal_y: CorrelationSignalId
+  coefficient: number | null
+  n_samples: number
+  coverage: number
+  status: CorrelationCellStatus
+}
+
+export interface CorrelationResponse {
+  participant_code: string
+  scenario: string
+  method: "pearson"
+  time_basis: "scenario_relative"
+  bin_size_s: number
+  min_pair_samples: number
+  duration_s: number
+  total_bins: number
+  signals: CorrelationSignal[]
+  matrix: CorrelationCell[][]
+}

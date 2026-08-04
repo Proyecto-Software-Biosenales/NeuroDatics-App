@@ -1,99 +1,45 @@
 # NeuroDatics Backend
 
-API backend para NeuroDatics, construida con FastAPI y PostgreSQL.
-
-## Importante: Docker Recomendado
-
-Para levantar la aplicacion completa no ejecutes Docker desde esta carpeta.
-
-Usa siempre el `docker-compose.yml` de la raiz del repositorio:
+API FastAPI de NeuroDatics. La aplicación completa se inicia únicamente desde la [raíz del repositorio](../README.md):
 
 ```powershell
-cd ..
 docker compose up -d --build
 ```
 
-O, si estas en cualquier otra carpeta, entra a la raiz del proyecto, donde estan `frontend/`, `backend/` y `docker-compose.yml`:
+No ejecutes Docker ni mantengas una configuración independiente desde esta carpeta. El backend usa las variables del `.env` raíz y permanece accesible solo dentro de la red de Docker.
 
-```powershell
-cd C:\ruta\a\NeuroDatics-App
-docker compose up -d --build
-```
+## Responsabilidades
 
-El stack completo debe aparecer en Docker Desktop como `neurodatics` e incluir:
+- API HTTP y documentación OpenAPI.
+- Migraciones de PostgreSQL al iniciar el contenedor.
+- Autenticación con Google OAuth y gestión de proyectos.
+- Procesamiento asíncrono mediante Redis y el servicio `worker`.
 
-- `frontend`
-- `backend`
-- `worker`
-- `db`
-- `redis`
+## Configuración relevante
 
-El puerto para abrir la app es el del servicio `frontend`: `3000:3000`.
+| Variable | Uso |
+| --- | --- |
+| `DATABASE_URL` | URL PostgreSQL; si se omite, usa la base de datos del stack. |
+| `AUTH_JWT_SECRET` | Secreto obligatorio para firmar tokens. |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Inicio de sesión con Google. |
+| `GDRIVE_FOLDER_ID` | Carpeta raíz opcional para la integración con Drive. |
 
-Si Docker Desktop muestra un grupo llamado solo `backend`, se ejecuto Docker desde la carpeta incorrecta. Detenlo y vuelve a ejecutar Docker desde la raiz del proyecto.
+Consulta `.env.example` en la raíz para el contrato completo de configuración.
 
-## Arranque Local Sin Docker Completo
+## Endpoints principales
 
-Solo para desarrollo de codigo. Requiere tener PostgreSQL corriendo aparte.
+### Autenticación
 
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -e .
-```
-
-Edita `.env` y usa una URL local:
-
-```text
-DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/neurodatics
-```
-
-Luego:
-
-```powershell
-alembic upgrade head
-python -m uvicorn neurodatics.main:app --reload --host 0.0.0.0 --port 8000 --app-dir src
-```
-
-## Variables De Entorno
-
-| Variable | Requerida | Descripcion |
-|---|---|---|
-| `DATABASE_URL` | Si | URL PostgreSQL con driver `psycopg` |
-| `AUTH_JWT_SECRET` | Si | Secreto para firmar tokens JWT |
-| `AUTH_USER_STORE_PATH` | No | Ruta del archivo auxiliar de usuarios locales. En Docker usa `/data/auth_users.json` |
-| `GOOGLE_OAUTH_CLIENT_ID` | Login Google | Client ID de Google OAuth |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | Login Google | Client Secret de Google OAuth |
-| `GOOGLE_OAUTH_REDIRECT_URI` | Login Google | URI de redireccion OAuth |
-| `GDRIVE_FOLDER_ID` | Drive | ID carpeta raiz en Drive |
-| `DEBUG` | No | Activa logs verbose |
-
-El driver obligatorio para PostgreSQL es `postgresql+psycopg://`.
-
-## Migraciones
-
-Las migraciones corren automaticamente al iniciar el backend Docker del stack principal. Para correrlas manualmente:
-
-```bash
-alembic upgrade head
-```
-
-## Endpoints Principales
-
-### Auth
-
-- `GET /api/auth/google/login-url` - genera la URL de Google OAuth usando configuracion runtime del backend.
-- `POST /api/auth/google/authorize` - intercambia code OAuth por access token local.
+- `GET /api/auth/google/login-url`: genera la URL de inicio de sesión de Google.
+- `POST /api/auth/google/authorize`: intercambia el código OAuth por la sesión local.
 
 ### Proyectos
 
-- `POST /api/projects` - crear proyecto.
-- `GET /api/projects` - listar proyectos.
-- `GET /api/projects/{id}` - obtener proyecto.
-- `PATCH /api/projects/{id}` - actualizar proyecto.
-- `DELETE /api/projects/{id}` - eliminar proyecto.
-- `POST /api/projects/{id}/files/experiment-zip` - subir ZIP.
-- `PUT /api/projects/{id}/sensors` - actualizar sensores.
-- `POST /api/projects/{id}/finalize` - finalizar proyecto.
+- `POST /api/projects`: crear proyecto.
+- `GET /api/projects`: listar proyectos.
+- `GET /api/projects/{id}`: obtener proyecto.
+- `PATCH /api/projects/{id}`: actualizar proyecto.
+- `DELETE /api/projects/{id}`: eliminar proyecto.
+- `POST /api/projects/{id}/files/experiment-zip`: subir ZIP.
+- `PUT /api/projects/{id}/sensors`: actualizar sensores.
+- `POST /api/projects/{id}/finalize`: finalizar proyecto.

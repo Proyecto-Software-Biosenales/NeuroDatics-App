@@ -5,6 +5,7 @@
 **/.env
 **/.env.*
 !**/.env.example
+NeuroDatics-Docker
 
 # Google and OAuth credential files
 *service-account*.json

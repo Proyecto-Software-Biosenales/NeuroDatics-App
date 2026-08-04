@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { AuthGuard } from "@/features/auth/components/AuthGuard"
 import { ProjectsApi, type ApiProject } from "@/features/projects/api/projectsApi"
 import { AnalyticsSidebar } from "@/features/analytics/components/AnalyticsSidebar"
@@ -15,6 +15,7 @@ import { ScanpathTab } from "@/features/analytics/components/ScanpathTab"
 import { HeatmapTab } from "@/features/analytics/components/HeatmapTab"
 import { FixationHistogramTab } from "@/features/analytics/components/FixationHistogramTab"
 import { AoiComparisonTab } from "@/features/analytics/components/AoiComparisonTab"
+import { ComparisonTab } from "@/features/analytics/comparison/ComparisonTab"
 import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
@@ -50,13 +51,6 @@ const EEG_TABS: Array<{ key: EegTabKey; label: string }> = [
   { key: "topography", label: "Topografía EEG" },
 ]
 
-const SENSOR_LABELS: Record<SensorSelection, string> = {
-  EyeTracker: "Eye Tracker",
-  EEG: "Electroencefalógrafo",
-  GSR: "Sensor Galvánico",
-  Comparativas: "Comparativas",
-}
-
 export default function DashboardPage() {
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
@@ -66,9 +60,28 @@ export default function DashboardPage() {
   const [activeEegTab, setActiveEegTab] = useState<EegTabKey>("timeseries")
   const [selectedParticipantOverride, setSelectedParticipantOverride] = useState<string | null>(null)
   const [selectedScenario, setSelectedScenario] = useState("all")
+  const [participantDataProjectId, setParticipantDataProjectId] = useState<string | null>(null)
+  const sawParticipantLoading = useRef(false)
 
   const { participants, loading: participantsLoading } = useAnalyticsParticipants(selectedProjectId)
   const { scenarios, loading: scenariosLoading } = useAnalyticsScenarios(selectedProjectId)
+
+  useEffect(() => {
+    if (participantsLoading) {
+      sawParticipantLoading.current = true
+      return
+    }
+    if (!selectedProjectId || !sawParticipantLoading.current) return
+
+    const readyProjectId = selectedProjectId
+    let cancelled = false
+    Promise.resolve().then(() => {
+      if (!cancelled) setParticipantDataProjectId(readyProjectId)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [participantsLoading, selectedProjectId])
 
   useEffect(() => {
     let cancelled = false
@@ -88,7 +101,7 @@ export default function DashboardPage() {
   }, [])
 
   const selectedParticipant = useMemo(() => {
-    if (participants.length === 0) {
+    if (participantDataProjectId !== selectedProjectId || participants.length === 0) {
       return null
     }
 
@@ -102,9 +115,27 @@ export default function DashboardPage() {
     }
 
     return participants[0].participant_code
-  }, [participants, selectedParticipantOverride])
+  }, [participantDataProjectId, participants, selectedParticipantOverride, selectedProjectId])
 
-  const selectedSensorLabel = useMemo(() => SENSOR_LABELS[selectedSensor], [selectedSensor])
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId]
+  )
+
+  const availableSensors = useMemo(
+    () => (selectedProject?.sensors ?? []).map((sensor) => sensor.sensor_type),
+    [selectedProject]
+  )
+
+  const handleSelectProject = (projectId: string) => {
+    if (projectId !== selectedProjectId) {
+      sawParticipantLoading.current = false
+      setParticipantDataProjectId(null)
+      setSelectedParticipantOverride(null)
+      setSelectedScenario("all")
+    }
+    setSelectedProjectId(projectId)
+  }
 
   return (
     <AuthGuard>
@@ -113,7 +144,7 @@ export default function DashboardPage() {
           projects={projects}
           selectedProjectId={selectedProjectId}
           selectedSensor={selectedSensor}
-          onSelectProject={setSelectedProjectId}
+          onSelectProject={handleSelectProject}
           onSelectSensor={setSelectedSensor}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
@@ -136,6 +167,14 @@ export default function DashboardPage() {
               <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
                 Selecciona un proyecto del panel lateral
               </div>
+            ) : selectedSensor === "Comparativas" ? (
+              <ComparisonTab
+                key={selectedProjectId}
+                projectId={selectedProjectId}
+                participantCode={selectedParticipant}
+                scenario={selectedScenario}
+                availableSensors={availableSensors}
+              />
             ) : selectedSensor === "GSR" ? (
               <GsrTab
                 key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
@@ -173,10 +212,6 @@ export default function DashboardPage() {
                   view={activeEegTab}
                 />
               </>
-            ) : selectedSensor !== "EyeTracker" ? (
-              <div className="py-6">
-                <PlaceholderTab label={selectedSensorLabel} />
-              </div>
             ) : (
               <>
                 <div className="flex gap-4 overflow-x-auto whitespace-nowrap text-muted-foreground border-b border-gray-200 dark:border-border px-4 xl:gap-6 xl:px-6">
