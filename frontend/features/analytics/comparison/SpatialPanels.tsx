@@ -15,6 +15,7 @@ import {
   CircleOff,
   Crosshair,
   ImageOff,
+  Layers,
   LoaderCircle,
   MousePointerClick,
   X,
@@ -33,6 +34,12 @@ import type {
   GazeAtData,
   ScanpathData,
 } from "../types"
+import {
+  getMissingStimulusMessage,
+  getPreviewFailureMessage,
+  resolveStimulusPointStatus,
+  supportsStimulusAois,
+} from "../components/stimulusState"
 
 interface ImageState {
   url: string | null
@@ -134,6 +141,9 @@ export function PointOnStimulusPanel({
   aoi: AoiMetricsData | null
   onClear: () => void
 }) {
+  const [showAois, setShowAois] = useState(true)
+  const [showFixationPoint, setShowFixationPoint] = useState(true)
+
   if (pinnedTime == null) {
     return (
       <MessageSurface Icon={Crosshair}>
@@ -143,34 +153,117 @@ export function PointOnStimulusPanel({
     )
   }
 
-  const currentAoi = gaze ? findAoiAtPoint(aoi?.aois, gaze.gx, gaze.gy) : null
+  const stimulusStatus = resolveStimulusPointStatus({
+    gaze,
+    gazeLoading,
+    preview,
+  })
+  const overlaysAvailable = stimulusStatus === "ready"
+  const canUseAois = overlaysAvailable && supportsStimulusAois(gaze)
+  const currentAoi =
+    canUseAois && gaze ? findAoiAtPoint(aoi?.aois, gaze.gx, gaze.gy) : null
+  const hasAois = canUseAois && Boolean(aoi?.aois.length)
+  const hasFixationPoint = overlaysAvailable
   return (
     <div className="space-y-3">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold">Punto sobre estímulo</h3>
           <p className="mt-1 text-xs text-muted-foreground">
             Ubicación de la mirada en el instante seleccionado.
           </p>
         </div>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8"
-          aria-label="Cerrar visualización del estímulo"
-          onClick={onClear}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={
+              showAois && hasAois
+                ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                : undefined
+            }
+            aria-label={showAois ? "Ocultar AOIs" : "Mostrar AOIs"}
+            aria-pressed={showAois}
+            title={showAois ? "Ocultar AOIs" : "Mostrar AOIs"}
+            disabled={!hasAois}
+            onClick={() => setShowAois((visible) => !visible)}
+          >
+            <Layers />
+            AOIs
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={
+              showFixationPoint && hasFixationPoint
+                ? "border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                : undefined
+            }
+            aria-label={
+              showFixationPoint
+                ? "Ocultar punto de fijación"
+                : "Mostrar punto de fijación"
+            }
+            aria-pressed={showFixationPoint}
+            title={
+              showFixationPoint
+                ? "Ocultar punto de fijación"
+                : "Mostrar punto de fijación"
+            }
+            disabled={!hasFixationPoint}
+            onClick={() => setShowFixationPoint((visible) => !visible)}
+          >
+            <Crosshair />
+            Punto
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            aria-label="Cerrar visualización del estímulo"
+            onClick={onClear}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-      {gazeLoading ? (
+      {stimulusStatus === "loading-gaze" ||
+      stimulusStatus === "loading-preview" ? (
         <div className="h-[420px] w-full animate-pulse rounded-xl bg-muted" />
-      ) : !gaze ? (
+      ) : stimulusStatus === "no-gaze" ? (
         <MessageSurface Icon={CircleOff}>
-          No se encontró una muestra de mirada para este instante.
+          No se pudo ubicar la mirada para este instante.
         </MessageSurface>
-      ) : (
+      ) : stimulusStatus === "no-coordinates" && gaze ? (
+        <MessageSurface Icon={CircleOff}>
+          <span>
+            Sin coordenadas de mirada registradas para t ={" "}
+            {gaze.nearest_time_s.toFixed(1)}s
+          </span>
+          {gaze.scenario ? (
+            <span className="text-xs text-muted-foreground/60">
+              Escenario: {gaze.scenario}
+            </span>
+          ) : null}
+        </MessageSurface>
+      ) : stimulusStatus === "no-stimulus" && gaze ? (
+        <MessageSurface>
+          <span className="text-sm font-medium text-foreground">
+            {getMissingStimulusMessage(gaze.scenario)}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            t = {gaze.nearest_time_s.toFixed(2)}s · Posición de mirada: (
+            {gaze.gx?.toFixed(1)}, {gaze.gy?.toFixed(1)})
+          </span>
+        </MessageSurface>
+      ) : stimulusStatus === "preview-error" && gaze ? (
+        <MessageSurface>
+          {getPreviewFailureMessage(gaze, preview.error)}
+        </MessageSurface>
+      ) : stimulusStatus === "ready" && gaze ? (
         <>
           <StimulusSurface
             image={preview}
@@ -182,8 +275,10 @@ export function PointOnStimulusPanel({
                   : null
               return (
                 <>
-                  <AoiOverlay aois={aoi?.aois ?? []} box={box} />
-                  {point ? (
+                  {showAois ? (
+                    <AoiOverlay aois={aoi?.aois ?? []} box={box} />
+                  ) : null}
+                  {showFixationPoint && point ? (
                     <span
                       className="pointer-events-none absolute z-30 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-rose-500 shadow-lg ring-2 ring-rose-500/40"
                       style={{ left: `${point.x}%`, top: `${point.y}%` }}
@@ -209,11 +304,11 @@ export function PointOnStimulusPanel({
             </span>
             <span>
               <strong className="font-semibold">AOI:</strong>{" "}
-              {currentAoi?.name ?? "Fuera de AOI"}
+              {currentAoi?.name ?? (hasAois ? "Fuera de AOI" : "No disponible")}
             </span>
           </div>
         </>
-      )}
+      ) : null}
     </div>
   )
 }

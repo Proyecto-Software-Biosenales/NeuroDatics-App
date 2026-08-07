@@ -336,20 +336,21 @@ async def gaze_at(
             raise HTTPException(status_code=404, detail="Scenario not found")
         canonical_scenario = str(requested_scenary.name).strip()
 
-    rounded_t = round(t_s, 1)
+    # Eye-tracker samples can be only a few milliseconds apart. Four decimal
+    # places prevent distinct chart clicks from sharing a cached gaze point.
+    rounded_t = round(t_s, 4)
     if canonical_scenario is None:
-        # Preserve the existing unscoped cache contract for standalone sensor tabs.
         cache_key = _redis.build_key(
             project_id,
             participant_code,
-            "gaze_at_v2",
+            "gaze_at_v3",
             str(rounded_t),
         )
     else:
         cache_key = _redis.build_key(
             project_id,
             participant_code,
-            f"gaze_at_v3:{rounded_t}",
+            f"gaze_at_v4:{rounded_t}",
             canonical_scenario,
         )
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))

@@ -273,23 +273,43 @@ class PupilAnalyticsService:
 
         if "time" not in df.columns or df.empty:
             return {
-                "requested_time_s": round(t_s, 1),
+                "requested_time_s": round(t_s, 4),
                 "nearest_time_s": 0.0,
                 "scenario": None,
                 "gx": None,
                 "gy": None,
             }
 
-        clean = df.dropna(subset=["time"])
+        clean = df.copy()
+        clean["time"] = pd.to_numeric(clean["time"], errors="coerce")
+        clean = clean.dropna(subset=["time"])
         if clean.empty:
             return {
-                "requested_time_s": round(t_s, 1),
+                "requested_time_s": round(t_s, 4),
                 "nearest_time_s": 0.0,
                 "scenario": None,
                 "gx": None,
                 "gy": None,
             }
 
+        # Resolve the scenario from the original nearest row before cleaning.
+        # For an unscoped lookup this prevents interpolation/smoothing across a
+        # boundary when two scenarios contain overlapping or adjacent times.
+        raw_idx = (clean["time"] - t_s).abs().idxmin()
+        raw_row = clean.loc[raw_idx]
+        has_scenario = "scenario" in clean.columns and pd.notna(
+            raw_row.get("scenario")
+        )
+        raw_scenario = str(raw_row["scenario"]).strip() if has_scenario else None
+        if raw_scenario and "scenario" in clean.columns:
+            scenario_values = clean["scenario"].astype(str).str.strip()
+            clean = clean.loc[scenario_values == raw_scenario]
+
+        # The temporal gaze chart uses this same cleaning pipeline. Reusing it
+        # here keeps the point-on-stimulus preview aligned with the clicked
+        # curve and fills the short gaps that otherwise produced a missing dot.
+        clean = clean.sort_values("time").reset_index(drop=True)
+        clean = PupilAnalyticsService._clean_gaze(clean)
         idx = (clean["time"] - t_s).abs().idxmin()
         row = clean.loc[idx]
 
@@ -300,18 +320,25 @@ class PupilAnalyticsService:
             else None
         )
 
-        gx = float(row["gx"]) if "gx" in clean.columns and pd.notna(row.get("gx")) else None
-        gy = float(row["gy"]) if "gy" in clean.columns and pd.notna(row.get("gy")) else None
-
-        if gx is not None and (gx < 0 or gx > 100):
-            gx = None
-            gy = None
-        if gy is not None and (gy < 0 or gy > 100):
+        gx_value = row.get("gx_clean")
+        gy_value = row.get("gy_clean")
+        coordinates_are_valid = (
+            pd.notna(gx_value)
+            and pd.notna(gy_value)
+            and np.isfinite(float(gx_value))
+            and np.isfinite(float(gy_value))
+            and 0 <= float(gx_value) <= 100
+            and 0 <= float(gy_value) <= 100
+        )
+        if coordinates_are_valid:
+            gx = float(gx_value)
+            gy = float(gy_value)
+        else:
             gx = None
             gy = None
 
         return {
-            "requested_time_s": round(t_s, 1),
+            "requested_time_s": round(t_s, 4),
             "nearest_time_s": round(nearest_time, 4),
             "scenario": scenario,
             "gx": round(gx, 2) if gx is not None else None,

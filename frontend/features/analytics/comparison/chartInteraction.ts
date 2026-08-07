@@ -9,6 +9,21 @@ interface TemporalPoint {
   time: number
 }
 
+export function canPinComparisonPoint(
+  participantCode: string | null | undefined,
+  scenario: string | null | undefined
+): boolean {
+  return Boolean(participantCode?.trim() && scenario?.trim())
+}
+
+export function isComparisonPointActive(
+  participantCode: string | null | undefined,
+  scenario: string | null | undefined,
+  sourceTime: number | null | undefined
+): boolean {
+  return canPinComparisonPoint(participantCode, scenario) && sourceTime != null
+}
+
 function finiteNumber(value: unknown): number | null {
   if (value == null || value === "") return null
   const number = typeof value === "number" ? value : Number(value)

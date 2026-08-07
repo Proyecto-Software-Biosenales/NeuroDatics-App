@@ -29,6 +29,11 @@ import {
   imagePointToContainerPercent,
   type ContainedImageBox,
 } from "./AoiOverlay"
+import {
+  getMissingStimulusMessage,
+  getPreviewFailureMessage,
+  supportsStimulusAois,
+} from "./stimulusState"
 
 interface StimulusFixationCardProps {
   projectId: string
@@ -47,23 +52,6 @@ interface StimulusFixationCardProps {
   onClearSelection?: () => void
   canClearSelection?: boolean
   enableAois?: boolean
-}
-
-/** Returns true if the scenario name looks like an instruction/non-stimulus screen. */
-function isNoImageScenario(name: string | null): boolean {
-  if (!name) return false
-  const lower = name.toLowerCase().trim()
-  return (
-    lower.startsWith("instruction") ||
-    lower.startsWith("instruccion") ||
-    lower.startsWith("instrucción") ||
-    lower.startsWith("practice") ||
-    lower.startsWith("practica") ||
-    lower.startsWith("intro") ||
-    lower.startsWith("blank") ||
-    lower.startsWith("rest") ||
-    lower.startsWith("fixation")
-  )
 }
 
 function formatMetricValue(value: number | null | undefined, decimals: number) {
@@ -103,7 +91,6 @@ function useStimulusPreview({
     fetchGaze(selectedTime)
   }, [clearGaze, fetchGaze, participantCode, selectedTime])
 
-  const isVideoScenario = String(gazeData?.scenario_type || "").toLowerCase() === "video"
   const gazeX = gazeData?.gx
   const gazeY = gazeData?.gy
 
@@ -208,7 +195,6 @@ function useStimulusPreview({
     gazeLoading,
     clearGaze,
     computeGazeOffset,
-    isVideoScenario,
     gazeX,
     gazeY,
   }
@@ -241,7 +227,6 @@ export function StimulusPreviewScreen({
     gazeData,
     gazeLoading,
     computeGazeOffset,
-    isVideoScenario,
   } = useStimulusPreview({ projectId, participantCode, selectedTime })
   const hasSelection = selectedTime != null && Boolean(participantCode)
 
@@ -280,9 +265,7 @@ export function StimulusPreviewScreen({
       ) : !gazeData.scenario_file_id ? (
         <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 bg-muted/30 px-6 text-center">
           <span className="text-sm font-medium text-foreground">
-            {isNoImageScenario(gazeData.scenario)
-              ? "Pantalla de instrucción - no hay estímulo visual asociado a este escenario"
-              : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene estímulo visual registrado`}
+            {getMissingStimulusMessage(gazeData.scenario)}
           </span>
           <span className="text-xs text-muted-foreground">
             Posición de mirada: ({gazeData.gx?.toFixed(1) ?? "—"}, {gazeData.gy?.toFixed(1) ?? "—"})
@@ -331,9 +314,7 @@ export function StimulusPreviewScreen({
         </div>
       ) : (
         <div className="flex min-h-[260px] items-center justify-center bg-muted/30 px-6 text-center text-sm text-muted-foreground">
-          {isVideoScenario
-            ? "No se pudo cargar el frame del video."
-            : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
+          {getPreviewFailureMessage(gazeData, scenarioPreviewError)}
         </div>
       )}
     </div>
@@ -363,7 +344,6 @@ export function StimulusPreviewSurface({
     gazeData,
     gazeLoading,
     computeGazeOffset,
-    isVideoScenario,
   } = useStimulusPreview({ projectId, participantCode, selectedTime })
   const hasSelection = selectedTime != null && Boolean(participantCode)
   const surfaceClassName = cn(
@@ -387,9 +367,7 @@ export function StimulusPreviewSurface({
     return (
       <div className={cn(surfaceClassName, "flex-col gap-2")}>
         <span className="font-medium text-gray-100">
-          {isNoImageScenario(gazeData.scenario)
-            ? "Pantalla de instrucción"
-            : `Sin estímulo visual para "${gazeData.scenario ?? "escenario"}"`}
+          {getMissingStimulusMessage(gazeData.scenario)}
         </span>
         <span className="text-xs text-gray-400">
           Mirada: ({gazeData.gx?.toFixed(1) ?? "—"}, {gazeData.gy?.toFixed(1) ?? "—"})
@@ -405,9 +383,7 @@ export function StimulusPreviewSurface({
   if (!scenarioImageUrl) {
     return (
       <div className={surfaceClassName}>
-        {isVideoScenario
-          ? "No se pudo cargar el frame del video."
-          : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
+        {getPreviewFailureMessage(gazeData, scenarioPreviewError)}
       </div>
     )
   }
@@ -482,11 +458,10 @@ export function StimulusFixationCard({
     gazeLoading,
     clearGaze,
     computeGazeOffset,
-    isVideoScenario,
     gazeX,
     gazeY,
   } = useStimulusPreview({ projectId, participantCode, selectedTime })
-  const canUseAois = enableAois && !isVideoScenario
+  const canUseAois = enableAois && supportsStimulusAois(gazeData)
   const canShowAois = canUseAois && showAois
   const aoiScenario = canUseAois
     ? scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
@@ -625,9 +600,7 @@ export function StimulusFixationCard({
         ) : gazeData && !gazeData.scenario_file_id ? (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
             <span className="text-sm font-medium text-foreground">
-              {isNoImageScenario(gazeData.scenario)
-                ? "Pantalla de instrucción - no hay estímulo visual asociado a este escenario"
-                : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene estímulo visual registrado`}
+              {getMissingStimulusMessage(gazeData.scenario)}
             </span>
             <span className="text-xs text-muted-foreground">
               t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
@@ -678,9 +651,7 @@ export function StimulusFixationCard({
               </div>
             ) : (
               <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-                {isVideoScenario
-                  ? "No se pudo cargar el frame del video."
-                  : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
+                {getPreviewFailureMessage(gazeData, scenarioPreviewError)}
               </div>
             )}
           </div>

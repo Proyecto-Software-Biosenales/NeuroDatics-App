@@ -65,6 +65,7 @@ import {
   type TimeWindow,
   type TimeWindowDraft,
 } from "./TimeWindowControls"
+import { getMissingStimulusMessage } from "./stimulusState"
 
 type ViewMode = "both" | "x" | "y"
 
@@ -112,23 +113,6 @@ function GazeTooltip({ active, payload, label }: GazeTooltipProps) {
         </div>
       ))}
     </div>
-  )
-}
-
-/** Returns true if the scenario name looks like an instruction/non-stimulus screen. */
-function isNoImageScenario(name: string | null): boolean {
-  if (!name) return false
-  const lower = name.toLowerCase().trim()
-  return (
-    lower.startsWith("instruction") ||
-    lower.startsWith("instruccion") ||
-    lower.startsWith("instrucción") ||
-    lower.startsWith("practice") ||
-    lower.startsWith("practica") ||
-    lower.startsWith("intro") ||
-    lower.startsWith("blank") ||
-    lower.startsWith("rest") ||
-    lower.startsWith("fixation")
   )
 }
 
@@ -690,9 +674,7 @@ export function GazePointTab({
           ) : gazeData && !gazeData.scenario_file_id ? (
             <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
               <span className="text-sm font-medium text-foreground">
-                {isNoImageScenario(gazeData.scenario)
-                  ? "Pantalla de instrucción — no hay imagen de estímulo asociada a este escenario"
-                  : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene imagen de estímulo registrada`}
+                {getMissingStimulusMessage(gazeData.scenario)}
               </span>
               <span className="text-xs text-muted-foreground">
                 t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})

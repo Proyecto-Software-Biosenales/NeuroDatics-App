@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card"
+import { useAuth } from "@/lib/providers/AuthProvider"
 import {
   EegPsdChart,
   EegSpectrogramGrid,
@@ -26,6 +27,14 @@ import {
 } from "./ComparisonCharts"
 import { ComparisonStatistics } from "./ComparisonStatistics"
 import { CorrelationMatrixSection } from "./CorrelationMatrixSection"
+import {
+  loadComparisonPreferences,
+  saveComparisonPreferences,
+} from "./comparisonPreferences"
+import {
+  canPinComparisonPoint,
+  isComparisonPointActive,
+} from "./chartInteraction"
 import {
   AoiPanel,
   HeatmapPanel,
@@ -48,6 +57,10 @@ export interface ComparisonTabProps {
   participantCode: string | null
   scenario: string
   availableSensors: string[]
+}
+
+interface ComparisonWorkspaceProps extends ComparisonTabProps {
+  preferenceUserId: string | null
 }
 
 type PointOwnerId = Extract<VisualizationId, "pupil" | "distance" | "gaze">
@@ -163,9 +176,18 @@ function ComparisonPanel({
 }
 
 export function ComparisonTab(props: ComparisonTabProps) {
-  // Project-keyed workspace guarantees a clean selection when the project changes
-  // while preserving layout across participant/scenario changes.
-  return <ComparisonWorkspace key={props.projectId} {...props} />
+  const { currentUser } = useAuth()
+  const preferenceUserId = currentUser?.id ?? null
+
+  // Remount per user/project so each workspace restores its own applied views
+  // while participant and scenario changes keep the current layout intact.
+  return (
+    <ComparisonWorkspace
+      key={`${preferenceUserId ?? "anonymous"}:${props.projectId}`}
+      {...props}
+      preferenceUserId={preferenceUserId}
+    />
+  )
 }
 
 function ComparisonWorkspace({
@@ -173,14 +195,25 @@ function ComparisonWorkspace({
   participantCode,
   scenario,
   availableSensors,
-}: ComparisonTabProps) {
+  preferenceUserId,
+}: ComparisonWorkspaceProps) {
   const availableIds = useMemo(
     () => availableVisualizationIds(availableSensors),
     [availableSensors]
   )
-  const [selectedIds, setSelectedIds] = useState<VisualizationId[]>(() =>
-    defaultVisualizationIds(availableSensors)
-  )
+  const [selectedIds, setSelectedIds] = useState<VisualizationId[]>(() => {
+    const defaults = defaultVisualizationIds(availableSensors)
+    if (!preferenceUserId || typeof window === "undefined") return defaults
+
+    return (
+      loadComparisonPreferences(
+        window.localStorage,
+        preferenceUserId,
+        projectId,
+        availableIds
+      ) ?? defaults
+    )
+  })
   const [collapsedIds, setCollapsedIds] = useState<Set<VisualizationId>>(
     () => new Set()
   )
@@ -190,13 +223,14 @@ function ComparisonWorkspace({
     pinState?.context === pinContext && selectedIds.includes(pinState.ownerId)
       ? pinState
       : null
-  const pointPinningEnabled = Boolean(
-    participantCode && scenario && scenario.toLowerCase() !== "all"
+  const pointPinningEnabled = canPinComparisonPoint(participantCode, scenario)
+  const pointActive = Boolean(
+    pinned &&
+    isComparisonPointActive(participantCode, scenario, pinned.sourceTime)
   )
-  const pointActive = Boolean(pinned && pointPinningEnabled)
   const pointInteractionHint = pointPinningEnabled
     ? "Haz clic en un punto para ver el estímulo."
-    : "Selecciona un escenario específico para ver el estímulo al hacer clic."
+    : "Selecciona un participante y un escenario para ver el estímulo al hacer clic."
 
   useEffect(() => {
     let cancelled = false
@@ -319,6 +353,14 @@ function ComparisonWorkspace({
 
   const applySelection = (ids: VisualizationId[]) => {
     setSelectedIds(ids)
+    if (preferenceUserId && typeof window !== "undefined") {
+      saveComparisonPreferences(
+        window.localStorage,
+        preferenceUserId,
+        projectId,
+        ids
+      )
+    }
     setCollapsedIds(
       (current) => new Set([...current].filter((id) => ids.includes(id)))
     )
@@ -600,7 +642,7 @@ function ComparisonWorkspace({
                     gaze={data.gazeAt.data}
                     gazeLoading={data.gazeAt.loading}
                     preview={data.pointPreview}
-                    aoi={data.aoi.data}
+                    aoi={data.pointAoi.data}
                     onClear={() => setPinState(null)}
                   />
                 </div>

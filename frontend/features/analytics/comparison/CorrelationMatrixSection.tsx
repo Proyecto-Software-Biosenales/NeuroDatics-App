@@ -394,7 +394,7 @@ export function CorrelationMatrixSection({
               <div className="overflow-x-auto rounded-lg border border-border">
                 <table
                   aria-label={`Matriz de correlaciones de Pearson para ${data.scenario}`}
-                  className="min-w-[720px] border-collapse text-sm"
+                  className="mx-auto min-w-[720px] border-collapse text-sm"
                 >
                   <caption className="sr-only">
                     Coeficientes de Pearson, muestras emparejadas, cobertura y

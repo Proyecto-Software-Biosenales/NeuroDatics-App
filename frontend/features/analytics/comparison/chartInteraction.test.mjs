@@ -1,6 +1,10 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { resolveClickedPoint } from "./chartInteraction.ts"
+import {
+  canPinComparisonPoint,
+  isComparisonPointActive,
+  resolveClickedPoint,
+} from "./chartInteraction.ts"
 
 const data = [
   { time: 0, sourceTime: 100, value: 1 },
@@ -40,4 +44,15 @@ test("keeps compatibility with the Recharts 2 payload shape", () => {
 test("ignores incomplete chart clicks", () => {
   assert.equal(resolveClickedPoint(data, {}), null)
   assert.equal(resolveClickedPoint([], { activeLabel: 0 }), null)
+})
+
+test("enables point-on-stimulus selection for the all-scenarios filter", () => {
+  assert.equal(canPinComparisonPoint("P-01", "all"), true)
+  assert.equal(isComparisonPointActive("P-01", "all", 0), true)
+  assert.equal(isComparisonPointActive("P-01", "all", 12.5), true)
+})
+
+test("requires a participant and selected time for an active point", () => {
+  assert.equal(canPinComparisonPoint(null, "all"), false)
+  assert.equal(isComparisonPointActive("P-01", "all", null), false)
 })
