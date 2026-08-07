@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
   return (
     <AuthGuard>
-      <div className="flex h-[calc(100vh-var(--app-nav-height))] bg-gray-50 dark:bg-black">
+      <div className="fixed inset-x-0 top-[var(--app-nav-height)] bottom-0 flex min-h-0 min-w-0 overflow-hidden bg-gray-50 dark:bg-black">
         <AnalyticsSidebar
           projects={projects}
           selectedProjectId={selectedProjectId}
@@ -150,7 +150,7 @@ export default function DashboardPage() {
           onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
         />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <FiltersBar
             scenarios={scenarios}
             participants={participants}
@@ -162,7 +162,7 @@ export default function DashboardPage() {
             participantsLoading={participantsLoading}
           />
 
-          <main className="analytics-shell flex-1 overflow-y-auto px-4 pb-4 xl:px-6 xl:pb-6">
+          <main className="analytics-shell min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-4 xl:px-6 xl:pb-6">
             {!selectedProjectId ? (
               <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
                 Selecciona un proyecto del panel lateral

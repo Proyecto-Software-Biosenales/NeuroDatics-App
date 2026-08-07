@@ -18,6 +18,7 @@ import {
   useScanpathData,
 } from "../hooks/useAnalyticsData"
 import type { GazeAtData } from "../types"
+import { isComparisonPointActive } from "./chartInteraction"
 import type { VisualizationId } from "./registry"
 
 interface ObjectUrlState {
@@ -32,6 +33,14 @@ const EMPTY_OBJECT_URL_STATE: ObjectUrlState = {
   url: null,
   loading: false,
   error: null,
+}
+
+function scenarioKey(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .replace(/\.[^./\\]+$/, "")
+    .toLowerCase()
+    .replace(/\s+/g, "")
 }
 
 function useComparisonGazeAt(
@@ -234,7 +243,11 @@ export function useComparisonData({
   )
 
   // Spatial views are intentionally gated before their hooks issue requests.
-  const pointActive = concreteScenario && pinnedSourceTime != null
+  const pointActive = isComparisonPointActive(
+    participantCode,
+    scenario,
+    pinnedSourceTime
+  )
   const heatmapEnabled = concreteScenario && selected.has("heatmap")
   const scanpathEnabled = concreteScenario && selected.has("scanpath")
   const aoiEnabled =
@@ -277,6 +290,36 @@ export function useComparisonData({
     void fetchGazeAt(pinnedSourceTime)
   }, [clearGazeAt, fetchGazeAt, pinnedSourceTime, pointActive])
 
+  // When the global filter is active, gaze-at resolves the concrete scenario
+  // for the selected timestamp. Use that result to load the matching AOIs
+  // without enabling aggregate spatial panels for `all`.
+  const resolvedPointScenario =
+    !concreteScenario && pointActive
+      ? gazeAt.data?.scenario?.trim() || "all"
+      : "all"
+  const allScenarioPointAoi = useAoiMetrics(
+    enabledProject(
+      !concreteScenario &&
+        pointActive &&
+        resolvedPointScenario.toLowerCase() !== "all"
+    ),
+    participantCode,
+    resolvedPointScenario
+  )
+  const allScenarioPointAoiData =
+    allScenarioPointAoi.data &&
+    scenarioKey(allScenarioPointAoi.data.scenario) ===
+      scenarioKey(resolvedPointScenario)
+      ? allScenarioPointAoi.data
+      : null
+  const concretePointAoiData =
+    aoi.data && scenarioKey(aoi.data.scenario) === scenarioKey(scenario)
+      ? aoi.data
+      : null
+  const pointAoi = concreteScenario
+    ? { ...aoi, data: concretePointAoiData }
+    : { ...allScenarioPointAoi, data: allScenarioPointAoiData }
+
   const staticFileId =
     fixation.data?.scenario_file_id ??
     scanpath.data?.scenario_file_id ??
@@ -318,6 +361,7 @@ export function useComparisonData({
     heatmap,
     scanpath,
     aoi,
+    pointAoi,
     gazeAt,
     staticImage,
     pointPreview,
