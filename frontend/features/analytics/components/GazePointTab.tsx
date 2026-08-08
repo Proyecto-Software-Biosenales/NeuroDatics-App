@@ -65,7 +65,7 @@ import {
   type TimeWindow,
   type TimeWindowDraft,
 } from "./TimeWindowControls"
-import { getMissingStimulusMessage } from "./stimulusState"
+import { MissingStimulusImage } from "./MissingStimulusImage"
 
 type ViewMode = "both" | "x" | "y"
 
@@ -672,13 +672,19 @@ export function GazePointTab({
               )}
             </div>
           ) : gazeData && !gazeData.scenario_file_id ? (
-            <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
-              <span className="text-sm font-medium text-foreground">
-                {getMissingStimulusMessage(gazeData.scenario)}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
-              </span>
+            <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-xl bg-card">
+              <MissingStimulusImage
+                scenario={gazeData.scenario}
+                gazeX={gazeData.gx}
+                gazeY={gazeData.gy}
+                showGazePoint
+                markerTone="cyan"
+                className="w-full"
+              />
+              <div className="px-4 py-2 text-center text-xs text-muted-foreground">
+                t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada:
+                ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
+              </div>
             </div>
           ) : gazeData ? (
             <div className="overflow-hidden rounded-xl bg-card">

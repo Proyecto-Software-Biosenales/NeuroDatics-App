@@ -1,5 +1,50 @@
-import { apiFetch, apiFetchBlob, apiUploadFormWithProgress, type UploadProgress } from "@/lib/api/apiFetch";
+import { ApiError, apiFetch, apiFetchBlob, apiUploadFormWithProgress, type UploadProgress } from "@/lib/api/apiFetch";
 import type { UploadedProjectZip } from "../types";
+import type { FolderSelection } from "../create-project/folderStructure";
+
+/** Mirror of the backend `UploadClarificationResponse` (HTTP 409). */
+export type ApiUploadClarification = {
+  error: "structure_clarification_required";
+  message: string;
+  questions: Array<{
+    code: string;
+    field: string;
+    kind: "choice" | "confirm";
+    message: string;
+    options: string[];
+  }>;
+  detected: {
+    csv_files: string[];
+    images_folders: string[];
+    videos_folders: string[];
+    acquisition_folders: string[];
+  };
+};
+
+/**
+ * The backend re-validates structure independently of the wizard, so a 409 can
+ * still arrive (e.g. a folder edited between selection and upload).
+ */
+export const asUploadClarification = (error: unknown): ApiUploadClarification | null => {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const detail = error.detail as ApiUploadClarification | undefined;
+  if (detail && typeof detail === "object" && detail.error === "structure_clarification_required") {
+    return detail;
+  }
+  return null;
+};
+
+const appendSelection = (form: FormData, selection?: FolderSelection | null) => {
+  if (!selection) return;
+  if (selection.selectedCsvPath) form.append("selected_csv_path", selection.selectedCsvPath);
+  if (selection.selectedImagesFolder) form.append("selected_images_folder", selection.selectedImagesFolder);
+  if (selection.selectedVideosFolder) form.append("selected_videos_folder", selection.selectedVideosFolder);
+  if (selection.selectedAcquisitionFolder) {
+    form.append("selected_acquisition_folder", selection.selectedAcquisitionFolder);
+  }
+  if (selection.allowMissingImages) form.append("allow_missing_images", "true");
+  if (selection.allowMissingVideos) form.append("allow_missing_videos", "true");
+};
 
 export type ApiProject = {
   id: string;
@@ -117,9 +162,10 @@ export const ProjectsApi = {
   delete: (projectId: string) =>
     apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" }),
 
-  uploadZip: (projectId: string, file: File, signal?: AbortSignal) => {
+  uploadZip: (projectId: string, file: File, selection?: FolderSelection | null, signal?: AbortSignal) => {
     const form = new FormData();
     form.append("file", file);
+    appendSelection(form, selection);
     return apiUploadFormWithProgress<UploadedProjectZip>(
       `/api/projects/${projectId}/files/experiment-zip`,
       form,
@@ -133,9 +179,11 @@ export const ProjectsApi = {
     file: File,
     onProgress?: (progress: UploadProgress) => void,
     signal?: AbortSignal,
+    selection?: FolderSelection | null,
   ) => {
     const form = new FormData();
     form.append("file", file);
+    appendSelection(form, selection);
     return apiUploadFormWithProgress<UploadedProjectZip>(
       `/api/projects/${projectId}/files/experiment-zip`,
       form,

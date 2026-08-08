@@ -72,6 +72,23 @@ class Settings(BaseSettings):
     project_zip_max_size_mb: int = 500
     ingestion_save_original_zip: bool = True
 
+    # Google Drive folder sync. Empty means the sync-folder endpoints are disabled;
+    # any other value is the only directory tree they are allowed to read from.
+    gdrive_sync_allowed_root: Optional[str] = None
+
+    # ZIP decompression guards (zip-bomb defence). The compressed cap above is not
+    # enough on its own: a small archive can expand without bound.
+    project_zip_max_uncompressed_mb: int = 2000
+    project_zip_max_entry_uncompressed_mb: int = 600
+    project_zip_max_entries: int = 20000
+    project_zip_max_compression_ratio: float = 100.0
+
+    # Upload throttling. Ingestion is synchronous and memory-hungry, so a single
+    # user must not be able to start several runs at once.
+    upload_max_concurrent_per_user: int = 1
+    upload_max_concurrent_global: int = 4
+    upload_min_seconds_between_uploads: float = 5.0
+
     # Redis / Queue
     redis_url: str = "redis://localhost:6379"
     redis_socket_connect_timeout_seconds: float = 3.0

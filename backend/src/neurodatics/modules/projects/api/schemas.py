@@ -91,6 +91,33 @@ class DetectedParticipantResponse(BaseModel):
     user_index: int
 
 
+class ResolvedUploadSelectionResponse(BaseModel):
+    """Which parts of an ambiguous archive were actually ingested."""
+
+    csv_entry_path: Optional[str] = None
+    images_folder: Optional[str] = None
+    videos_folder: Optional[str] = None
+    acquisition_folder: Optional[str] = None
+
+
+class AcquisitionRecordingResponse(BaseModel):
+    folder_name: str
+    subject_code: Optional[str] = None
+    scenario_name: Optional[str] = None
+    recording_index: Optional[int] = None
+    documents: List[str] = []
+
+
+class AcquisitionSummaryResponse(BaseModel):
+    """Reference-only metadata read from `Acquisition/`. Never persisted."""
+
+    present: bool = False
+    folder_path: Optional[str] = None
+    recordings: List[AcquisitionRecordingResponse] = []
+    default_participant_codes: List[str] = []
+    default_scenario_names: List[str] = []
+
+
 class UploadedProjectZipSummaryResponse(BaseModel):
     project_id: UUID
     ingestion_status: str
@@ -105,6 +132,33 @@ class UploadedProjectZipSummaryResponse(BaseModel):
     manifest: Dict[str, int]
     detected_sensors: List[str] = []
     participants: List[DetectedParticipantResponse] = []
+    selection: ResolvedUploadSelectionResponse = ResolvedUploadSelectionResponse()
+    acquisition: AcquisitionSummaryResponse = AcquisitionSummaryResponse()
+    excluded_entries: List[str] = []
+
+
+class UploadClarificationQuestionResponse(BaseModel):
+    code: str
+    field: str
+    kind: str
+    message: str
+    options: List[str] = []
+
+
+class UploadClarificationDetectedResponse(BaseModel):
+    csv_files: List[str] = []
+    images_folders: List[str] = []
+    videos_folders: List[str] = []
+    acquisition_folders: List[str] = []
+
+
+class UploadClarificationResponse(BaseModel):
+    """409 body returned when the archive needs a decision from the user."""
+
+    error: str = "structure_clarification_required"
+    message: str
+    questions: List[UploadClarificationQuestionResponse] = []
+    detected: UploadClarificationDetectedResponse = UploadClarificationDetectedResponse()
 
 
 class DriveUploadProgressResponse(BaseModel):

@@ -285,6 +285,56 @@ class GoogleDriveIntegrationService:
                 detail=f"Failed to create folder: {str(exc)}",
             ) from exc
 
+    def resolve_syncable_folder(self, local_folder_path: str) -> Path:
+        """Resolve a caller-supplied path, refusing anything outside the allowed root.
+
+        Without this, the endpoint is an arbitrary server-directory read that
+        exfiltrates straight into the connected Drive account — `/data` holds
+        `auth_users.json`, `/app` holds the source and any mounted secrets.
+        Symlinks are resolved before the comparison so they cannot escape either.
+        """
+        allowed_root_setting = (settings.gdrive_sync_allowed_root or "").strip()
+        if not allowed_root_setting:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    "La sincronizacion de carpetas locales esta deshabilitada. "
+                    "Define GDRIVE_SYNC_ALLOWED_ROOT para habilitarla."
+                ),
+            )
+
+        try:
+            allowed_root = Path(allowed_root_setting).resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="GDRIVE_SYNC_ALLOWED_ROOT no apunta a un directorio valido.",
+            ) from exc
+
+        try:
+            candidate = Path(local_folder_path).resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Carpeta no encontrada o no permitida.",
+            ) from exc
+
+        if candidate != allowed_root and allowed_root not in candidate.parents:
+            # Deliberately the same message as "not found": a caller must not be
+            # able to probe the server filesystem by comparing error responses.
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Carpeta no encontrada o no permitida.",
+            )
+
+        if not candidate.is_dir():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Carpeta no encontrada o no permitida.",
+            )
+
+        return candidate
+
     async def sync_folder_to_drive(
         self,
         *,
@@ -294,23 +344,19 @@ class GoogleDriveIntegrationService:
         """
         Sync a local folder structure and files to Google Drive.
         Recreates the entire folder structure and uploads all files.
-        
+
         Args:
-            local_folder_path: Path to local folder to sync
+            local_folder_path: Path to local folder to sync, confined to
+                GDRIVE_SYNC_ALLOWED_ROOT
             target_folder_id: Google Drive folder ID (uses GDRIVE_FOLDER_ID if not provided)
-        
+
         Returns:
             Dict with sync results (folders_created, files_uploaded, etc)
         """
         import logging
         logger = logging.getLogger(__name__)
-        
-        folder_path = Path(local_folder_path)
-        if not folder_path.exists() or not folder_path.is_dir():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Folder not found or not a directory: {local_folder_path}",
-            )
+
+        folder_path = self.resolve_syncable_folder(local_folder_path)
 
         try:
             credentials = await self.build_google_drive_credentials()
@@ -336,8 +382,11 @@ class GoogleDriveIntegrationService:
             uploaded_files = []
             created_folders = []
             
-            # Walk through all subdirectories and files
-            for root, dirs, files in os.walk(folder_path):
+            # Walk through all subdirectories and files. `followlinks=False` (the
+            # default) keeps directory symlinks from escaping the allowed root;
+            # symlinked files are skipped explicitly below for the same reason.
+            for root, dirs, files in os.walk(folder_path, followlinks=False):
+                dirs[:] = [d for d in dirs if not (Path(root) / d).is_symlink()]
                 rel_path = Path(root).relative_to(folder_path)
                 
                 # Create folder structure in Drive
@@ -358,6 +407,9 @@ class GoogleDriveIntegrationService:
                 # Upload files in current directory
                 for file_name in files:
                     file_path = Path(root) / file_name
+                    if file_path.is_symlink():
+                        logger.warning("Skipping symlinked file during sync: %s", file_path)
+                        continue
                     logger.info(f"  📤 Uploading file: {file_name}")
                     file_id = await file_service.upload_file(
                         file_path=str(file_path),

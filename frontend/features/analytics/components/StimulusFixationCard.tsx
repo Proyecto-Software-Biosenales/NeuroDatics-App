@@ -30,10 +30,10 @@ import {
   type ContainedImageBox,
 } from "./AoiOverlay"
 import {
-  getMissingStimulusMessage,
   getPreviewFailureMessage,
   supportsStimulusAois,
 } from "./stimulusState"
+import { MissingStimulusImage } from "./MissingStimulusImage"
 
 interface StimulusFixationCardProps {
   projectId: string
@@ -263,13 +263,17 @@ export function StimulusPreviewScreen({
           No se pudo ubicar la mirada para este instante.
         </div>
       ) : !gazeData.scenario_file_id ? (
-        <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 bg-muted/30 px-6 text-center">
-          <span className="text-sm font-medium text-foreground">
-            {getMissingStimulusMessage(gazeData.scenario)}
-          </span>
-          <span className="text-xs text-muted-foreground">
+        <div className="mx-auto w-full max-w-[560px] overflow-hidden bg-gray-950">
+          <MissingStimulusImage
+            scenario={gazeData.scenario}
+            gazeX={gazeData.gx}
+            gazeY={gazeData.gy}
+            markerTone="cyan"
+            className="rounded-none"
+          />
+          <div className="border-t border-white/10 px-4 py-2 text-center text-xs text-gray-300">
             Posición de mirada: ({gazeData.gx?.toFixed(1) ?? "—"}, {gazeData.gy?.toFixed(1) ?? "—"})
-          </span>
+          </div>
         </div>
       ) : scenarioPreviewLoading ? (
         <div className="min-h-[260px] animate-pulse bg-muted" />
@@ -365,11 +369,15 @@ export function StimulusPreviewSurface({
 
   if (!gazeData.scenario_file_id) {
     return (
-      <div className={cn(surfaceClassName, "flex-col gap-2")}>
-        <span className="font-medium text-gray-100">
-          {getMissingStimulusMessage(gazeData.scenario)}
-        </span>
-        <span className="text-xs text-gray-400">
+      <div className={cn(surfaceClassName, "p-0")}>
+        <MissingStimulusImage
+          scenario={gazeData.scenario}
+          gazeX={gazeData.gx}
+          gazeY={gazeData.gy}
+          markerTone="cyan"
+          className="h-full min-h-0 w-full max-w-none rounded-none"
+        />
+        <span className="absolute inset-x-0 bottom-0 z-10 bg-black/70 px-3 py-1.5 text-xs text-gray-300">
           Mirada: ({gazeData.gx?.toFixed(1) ?? "—"}, {gazeData.gy?.toFixed(1) ?? "—"})
         </span>
       </div>
@@ -598,13 +606,17 @@ export function StimulusFixationCard({
             )}
           </div>
         ) : gazeData && !gazeData.scenario_file_id ? (
-          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
-            <span className="text-sm font-medium text-foreground">
-              {getMissingStimulusMessage(gazeData.scenario)}
-            </span>
-            <span className="text-xs text-muted-foreground">
+          <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-xl border border-border bg-gray-950">
+            <MissingStimulusImage
+              scenario={gazeData.scenario}
+              gazeX={gazeData.gx}
+              gazeY={gazeData.gy}
+              markerTone="cyan"
+              className="rounded-none"
+            />
+            <div className="border-t border-white/10 px-4 py-2 text-center text-xs text-gray-300">
               t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
-            </span>
+            </div>
           </div>
         ) : gazeData ? (
           <div className="overflow-hidden rounded-xl bg-card">

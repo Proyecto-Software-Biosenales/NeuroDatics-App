@@ -15,6 +15,50 @@ type BlobCacheEntry = {
 const blobCache = new Map<string, BlobCacheEntry>();
 const inflightBlobRequests = new Map<string, Promise<Blob>>();
 
+/**
+ * Error that preserves the parsed `detail` payload.
+ *
+ * FastAPI answers some failures with a structured `detail` object rather than a
+ * string — the ZIP structure clarification (409) is one. Collapsing everything
+ * to `Error(message)` would throw that payload away, so callers get the status
+ * and the raw detail alongside the human-readable message.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly detail: unknown;
+
+  constructor(message: string, status: number, detail: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+function buildApiError(status: number, statusText: string, text: string): ApiError {
+  let detail: unknown;
+  try {
+    const parsed = JSON.parse(text);
+    detail = parsed?.detail;
+  } catch {
+    detail = undefined;
+  }
+
+  if (typeof detail === "string" && detail.trim()) {
+    return new ApiError(detail, status, detail);
+  }
+  if (detail && typeof detail === "object") {
+    const message =
+      typeof (detail as { message?: unknown }).message === "string"
+        ? (detail as { message: string }).message
+        : `Error ${status}`;
+    return new ApiError(message, status, detail);
+  }
+
+  const message = text ? `Error ${status}: ${text}` : `Error ${status}: ${statusText}`;
+  return new ApiError(message, status, detail);
+}
+
 function pruneBlobCache(now: number) {
   for (const [key, entry] of blobCache.entries()) {
     if (entry.expiresAt <= now) {
@@ -89,18 +133,7 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    // Try to parse JSON error detail
-    let errorMessage = `Error ${res.status}`;
-    try {
-      const parsed = JSON.parse(text);
-      if (parsed.detail) {
-        errorMessage = parsed.detail;
-      }
-    } catch {
-      // If JSON parsing fails, use the raw text or status text
-      errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
-    }
-    throw new Error(errorMessage);
+    throw buildApiError(res.status, res.statusText, text);
   }
   return res.json() as Promise<T>;
 }
@@ -267,18 +300,7 @@ export async function apiUploadFormWithProgress<T>(
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    let errorMessage = `Error ${res.status}`;
-    try {
-      const parsed = JSON.parse(text);
-      if (typeof parsed?.detail === "string" && parsed.detail.trim()) {
-        errorMessage = parsed.detail;
-      } else {
-        errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
-      }
-    } catch {
-      errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
-    }
-    throw new Error(errorMessage);
+    throw buildApiError(res.status, res.statusText, text);
   }
 
   return res.json() as Promise<T>;

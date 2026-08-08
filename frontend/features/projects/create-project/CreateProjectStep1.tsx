@@ -1,13 +1,25 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { FolderOpen, AlertCircle, X, CheckCircle } from "lucide-react"
+import { FolderOpen, AlertCircle, X, CheckCircle, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { UploadedProjectZip } from "@/features/projects/types"
+import {
+  analyzeFolderStructure,
+  buildStructureQuestions,
+  emptyFolderSelection,
+  filterRelevantFiles,
+  getBlockingStructureError,
+  getFileRelativePath,
+  resolveSelection,
+  type FolderSelection,
+  type FolderStructure,
+  type FolderStructureQuestion,
+} from "./folderStructure"
 
 interface CreateProjectStep1Props {
   projectName: string
@@ -18,6 +30,7 @@ interface CreateProjectStep1Props {
   onDescriptionChange: (description: string) => void
   onFolderPathChange: (path: string) => void
   onFolderSelected: (files: File[] | null) => void
+  onSelectionChange?: (selection: FolderSelection | null) => void
   zipRequired?: boolean
   isEditMode?: boolean
   shouldUpdateFolder?: boolean
@@ -33,6 +46,7 @@ export const CreateProjectStep1 = ({
   onDescriptionChange,
   onFolderPathChange,
   onFolderSelected,
+  onSelectionChange,
   zipRequired = true,
   isEditMode = false,
   shouldUpdateFolder = false,
@@ -41,62 +55,93 @@ export const CreateProjectStep1 = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [fileError, setFileError] = useState<string | null>(null)
+  const [structure, setStructure] = useState<FolderStructure | null>(null)
+  const [selection, setSelection] = useState<FolderSelection>(emptyFolderSelection())
 
   const pickFile = () => fileInputRef.current?.click()
 
-  const handleFolder = (files: File[]) => {
-    if (files.length === 0) {
+  const pendingQuestions: FolderStructureQuestion[] = structure
+    ? buildStructureQuestions(structure, selection)
+    : []
+
+  /**
+   * The folder is only handed upstream once every ambiguity is resolved, so the
+   * wizard can never start a packaging run that the backend would answer 409 to.
+   */
+  const publishSelection = (
+    nextStructure: FolderStructure,
+    nextSelection: FolderSelection,
+    files: File[],
+    rootFolderName: string
+  ) => {
+    const questions = buildStructureQuestions(nextStructure, nextSelection)
+    if (questions.length > 0) {
       onFolderSelected(null)
-      setFileError("No se encontraron archivos en la carpeta")
+      onSelectionChange?.(null)
       return
     }
 
-    const getRelativePath = (file: File): string =>
-      (file as any)._relativePath || file.webkitRelativePath || file.name
+    onFolderSelected(filterRelevantFiles(files, rootFolderName))
+    onSelectionChange?.(resolveSelection(nextStructure, nextSelection))
+  }
+
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [pendingRoot, setPendingRoot] = useState<string>("")
+
+  const answerQuestion = (field: keyof FolderSelection, value: string | boolean) => {
+    const nextSelection = { ...selection, [field]: value } as FolderSelection
+    setSelection(nextSelection)
+    if (structure) {
+      publishSelection(structure, nextSelection, pendingFiles, pendingRoot)
+    }
+  }
+
+  const handleFolder = (files: File[]) => {
+    const resetFolder = (message: string) => {
+      setFileError(message)
+      setStructure(null)
+      setSelection(emptyFolderSelection())
+      setPendingFiles([])
+      setPendingRoot("")
+      onFolderSelected(null)
+      onSelectionChange?.(null)
+      onFolderPathChange("")
+    }
+
+    if (files.length === 0) {
+      resetFolder("No se encontraron archivos en la carpeta")
+      return
+    }
 
     const filteredFiles = files.filter((file) => {
-      const relativePath = getRelativePath(file)
+      const relativePath = getFileRelativePath(file)
       return !file.name.startsWith(".") && !relativePath.includes("__MACOSX/")
     })
 
     const totalSize = filteredFiles.reduce((sum, file) => sum + file.size, 0)
     const maxSize = 500 * 1024 * 1024
     if (totalSize > maxSize) {
-      setFileError("La carpeta es demasiado grande. Máximo 500MB.")
-      onFolderSelected(null)
-      onFolderPathChange("")
+      resetFolder("La carpeta es demasiado grande. Máximo 500MB.")
       return
     }
 
-    const hasCsv = filteredFiles.some((file) => getRelativePath(file).toLowerCase().endsWith(".csv"))
-    if (!hasCsv) {
-      setFileError("La carpeta debe contener al menos un archivo CSV")
-      onFolderSelected(null)
-      onFolderPathChange("")
+    const folderName = getFileRelativePath(files[0]).split("/")[0]
+    const nextStructure = analyzeFolderStructure(filteredFiles, folderName)
+
+    const blockingError = getBlockingStructureError(nextStructure)
+    if (blockingError) {
+      resetFolder(blockingError)
       return
     }
 
-    const hasImagesOrVideos = filteredFiles.some((file) => {
-      const relativePath = getRelativePath(file).toLowerCase()
-      return relativePath.includes("/images/") || relativePath.includes("/videos/")
-    })
-    if (!hasImagesOrVideos) {
-      setFileError("La carpeta debe contener subcarpetas Images y/o Videos con archivos")
-      onFolderSelected(null)
-      onFolderPathChange("")
-      return
-    }
-
-    // Only keep files the backend needs: CSVs + files inside Images/ or Videos/ folders
-    const relevantFiles = filteredFiles.filter((file) => {
-      const p = getRelativePath(file).toLowerCase()
-      return p.endsWith(".csv") || p.includes("/images/") || p.includes("/videos/")
-    })
-
-    const folderName = getRelativePath(files[0]).split("/")[0]
-    onFolderSelected(relevantFiles)
-    onFolderPathChange(folderName)
+    const nextSelection = emptyFolderSelection()
     setFileError(null)
+    setStructure(nextStructure)
+    setSelection(nextSelection)
+    setPendingFiles(filteredFiles)
+    setPendingRoot(folderName)
+    onFolderPathChange(folderName)
+    publishSelection(nextStructure, nextSelection, filteredFiles, folderName)
   }
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -168,7 +213,12 @@ export const CreateProjectStep1 = ({
 
   const clearFolder = () => {
     setFileError(null)
+    setStructure(null)
+    setSelection(emptyFolderSelection())
+    setPendingFiles([])
+    setPendingRoot("")
     onFolderSelected(null)
+    onSelectionChange?.(null)
     onFolderPathChange("")
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
@@ -422,6 +472,97 @@ export const CreateProjectStep1 = ({
               )}
             </div>
           </div>
+
+          {/* Preguntas de aclaración sobre la estructura de la carpeta */}
+          {pendingQuestions.length > 0 && (
+            <div
+              className="mt-4 space-y-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-2">
+                <HelpCircle size={18} className="mt-0.5 flex-shrink-0 text-amber-500" />
+                <div>
+                  <h4 className="font-medium text-amber-500">Necesitamos una confirmación</h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    La estructura de la carpeta es ambigua. Responde para continuar.
+                  </p>
+                </div>
+              </div>
+
+              {pendingQuestions.map((question) => (
+                <div key={question.code} className="space-y-2">
+                  <p className="text-sm text-foreground">{question.message}</p>
+
+                  {question.kind === "choice" ? (
+                    <div className="space-y-1">
+                      {question.options.map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => answerQuestion(question.field, option)}
+                          className="w-full break-all rounded-lg border border-border bg-card px-3 py-2 text-left text-xs text-foreground transition-colors hover:border-foreground/60 hover:bg-accent"
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => answerQuestion(question.field, true)}
+                      >
+                        Sí, continuar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={clearFolder}
+                      >
+                        No, elegir otra carpeta
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Resumen de lo que se procesará una vez resueltas las preguntas */}
+          {structure && pendingQuestions.length === 0 && !uploadedZip && (
+            <div className="mt-4 space-y-1 rounded-xl border border-border bg-muted p-4 text-xs">
+              <p className="text-foreground">
+                <span className="text-muted-foreground">CSV a procesar: </span>
+                <span className="break-all font-medium">
+                  {resolveSelection(structure, selection).selectedCsvPath ?? "—"}
+                </span>
+              </p>
+              <p className="text-foreground">
+                <span className="text-muted-foreground">Imágenes: </span>
+                <span className="break-all font-medium">
+                  {resolveSelection(structure, selection).selectedImagesFolder ?? "sin imágenes"}
+                </span>
+              </p>
+              <p className="text-foreground">
+                <span className="text-muted-foreground">Vídeos: </span>
+                <span className="break-all font-medium">
+                  {resolveSelection(structure, selection).selectedVideosFolder ?? "sin vídeos"}
+                </span>
+              </p>
+              {structure.acquisitionRecordings.length > 0 && (
+                <p className="text-foreground">
+                  <span className="text-muted-foreground">Acquisition: </span>
+                  <span className="font-medium">
+                    {structure.acquisitionRecordings.length} grabación(es) detectada(s) — se usarán
+                    como valores por defecto, no se almacenan
+                  </span>
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

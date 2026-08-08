@@ -20,6 +20,8 @@ FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 class GoogleDriveClient:
     """Google Drive client for file and folder operations."""
 
+    UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024
+
     def __init__(self):
         self._service = None
         self._initialization_error: Optional[Exception] = None
@@ -123,7 +125,10 @@ class GoogleDriveClient:
     def find_child_folder_by_name(self, name: str, parent_id: str) -> Optional[Dict[str, Any]]:
         service = self._require_service()
 
-        safe_name = name.replace("'", "\\'")
+        # Folder names come from ZIP entry paths, so they are user controlled.
+        # The backslash has to be escaped first, otherwise a name ending in `\`
+        # escapes the escape and lets the string literal run into query syntax.
+        safe_name = name.replace("\\", "\\\\").replace("'", "\\'")
         query = (
             "mimeType = 'application/vnd.google-apps.folder' "
             "and trashed = false "
@@ -163,39 +168,64 @@ class GoogleDriveClient:
 
         resolved_parent = parent_id or folder_id or settings.gdrive_folder_id
 
-        if local_path:
-            local_file = Path(local_path)
-            payload = local_file.read_bytes()
-            filename = filename or local_file.name
-        else:
-            payload = file_content or b""
-
         service = self._require_service()
 
-        from googleapiclient.http import MediaIoBaseUpload
+        from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 
         metadata = {"name": filename}
         if resolved_parent:
             metadata["parents"] = [resolved_parent]
 
-        media = MediaIoBaseUpload(BytesIO(payload), mimetype=mime_type, resumable=True)
+        if local_path:
+            # Stream straight off disk. Reading the file into a bytes object first
+            # would put a second full copy of every uploaded file in RAM.
+            local_file = Path(local_path)
+            metadata["name"] = filename or local_file.name
+            checksum = self._file_checksum(local_file)
+            media = MediaFileUpload(
+                str(local_file),
+                mimetype=mime_type,
+                chunksize=self.UPLOAD_CHUNK_SIZE,
+                resumable=True,
+            )
+        else:
+            payload = file_content or b""
+            checksum = hashlib.sha256(payload).hexdigest()
+            media = MediaIoBaseUpload(BytesIO(payload), mimetype=mime_type, resumable=True)
 
-        uploaded = service.files().create(
-            body=metadata,
-            media_body=media,
-            fields="id,name,size,mimeType,webViewLink,webContentLink,parents",
-        ).execute(num_retries=max(0, int(settings.gdrive_request_retries)))
+        try:
+            uploaded = service.files().create(
+                body=metadata,
+                media_body=media,
+                fields="id,name,size,mimeType,webViewLink,webContentLink,parents",
+            ).execute(num_retries=max(0, int(settings.gdrive_request_retries)))
+        finally:
+            # MediaFileUpload keeps the file handle open until it is closed.
+            closer = getattr(media, "stream", None)
+            if local_path and callable(closer):
+                try:
+                    closer().close()
+                except Exception:  # noqa: BLE001 - best effort handle cleanup
+                    pass
 
         return {
             "drive_file_id": uploaded["id"],
-            "filename": uploaded.get("name", filename),
+            "filename": uploaded.get("name", metadata["name"]),
             "size_bytes": int(uploaded.get("size", 0)),
             "mime_type": uploaded.get("mimeType", mime_type),
-            "checksum_sha256": hashlib.sha256(payload).hexdigest(),
+            "checksum_sha256": checksum,
             "drive_web_view_link": uploaded.get("webViewLink"),
             "drive_download_link": uploaded.get("webContentLink"),
             "parents": uploaded.get("parents", []),
         }
+
+    @staticmethod
+    def _file_checksum(path: Path) -> str:
+        hasher = hashlib.sha256()
+        with path.open("rb") as fp:
+            for chunk in iter(lambda: fp.read(1024 * 1024), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
 
     def delete_file(self, file_id: str) -> bool:
         service = self._require_service()

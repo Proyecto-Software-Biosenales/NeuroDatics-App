@@ -25,6 +25,14 @@ x-backend-environment: &backend-environment
   GDRIVE_HTTP_TIMEOUT_SECONDS: ${GDRIVE_HTTP_TIMEOUT_SECONDS:-300}
   GDRIVE_REQUEST_RETRIES: ${GDRIVE_REQUEST_RETRIES:-5}
   PROJECT_ZIP_MAX_SIZE_MB: ${PROJECT_ZIP_MAX_SIZE_MB:-500}
+  PROJECT_ZIP_MAX_UNCOMPRESSED_MB: ${PROJECT_ZIP_MAX_UNCOMPRESSED_MB:-2000}
+  PROJECT_ZIP_MAX_ENTRY_UNCOMPRESSED_MB: ${PROJECT_ZIP_MAX_ENTRY_UNCOMPRESSED_MB:-600}
+  PROJECT_ZIP_MAX_ENTRIES: ${PROJECT_ZIP_MAX_ENTRIES:-20000}
+  PROJECT_ZIP_MAX_COMPRESSION_RATIO: ${PROJECT_ZIP_MAX_COMPRESSION_RATIO:-100}
+  UPLOAD_MAX_CONCURRENT_PER_USER: ${UPLOAD_MAX_CONCURRENT_PER_USER:-1}
+  UPLOAD_MAX_CONCURRENT_GLOBAL: ${UPLOAD_MAX_CONCURRENT_GLOBAL:-4}
+  UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS: ${UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS:-5}
+  GDRIVE_SYNC_ALLOWED_ROOT: ${GDRIVE_SYNC_ALLOWED_ROOT:-}
   INGESTION_SAVE_ORIGINAL_ZIP: ${INGESTION_SAVE_ORIGINAL_ZIP:-true}
   JOB_TIMEOUT: ${JOB_TIMEOUT:-3600}
   JOB_RESULT_TTL: ${JOB_RESULT_TTL:-86400}
@@ -88,6 +96,11 @@ services:
     networks:
       - app
       - data
+    # Ingestion streams large archives through this container. A hard ceiling
+    # turns "one oversized upload" into a failed request instead of an OOM kill
+    # that takes the API down for everyone.
+    mem_limit: ${BACKEND_MEM_LIMIT:-2g}
+    mem_reservation: ${BACKEND_MEM_RESERVATION:-512m}
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health/ready"]
       interval: 15s
@@ -115,6 +128,8 @@ services:
     networks:
       - egress
       - data
+    mem_limit: ${WORKER_MEM_LIMIT:-2g}
+    mem_reservation: ${WORKER_MEM_RESERVATION:-512m}
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health/worker', timeout=5)\""]
       interval: 15s

@@ -60,6 +60,7 @@ import {
   type TimeWindow,
   type TimeWindowDraft,
 } from "./TimeWindowControls"
+import { MissingStimulusImage } from "./MissingStimulusImage"
 
 interface DeviceDistanceTabProps {
   projectId: string
@@ -102,23 +103,6 @@ function DistanceTooltip({ active, payload, label }: DistanceTooltipProps) {
         </div>
       ))}
     </div>
-  )
-}
-
-/** Returns true if the scenario name looks like an instruction/non-stimulus screen. */
-function isNoImageScenario(name: string | null): boolean {
-  if (!name) return false
-  const lower = name.toLowerCase().trim()
-  return (
-    lower.startsWith("instruction") ||
-    lower.startsWith("instruccion") ||
-    lower.startsWith("instrucción") ||
-    lower.startsWith("practice") ||
-    lower.startsWith("practica") ||
-    lower.startsWith("intro") ||
-    lower.startsWith("blank") ||
-    lower.startsWith("rest") ||
-    lower.startsWith("fixation")
   )
 }
 
@@ -597,15 +581,19 @@ export function DeviceDistanceTab({
               )}
             </div>
           ) : gazeData && !gazeData.scenario_file_id ? (
-            <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
-              <span className="text-sm font-medium text-foreground">
-                {isNoImageScenario(gazeData.scenario)
-                  ? "Pantalla de instrucción - no hay imagen de estímulo asociada a este escenario"
-                  : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene imagen de estímulo registrada`}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                t = {gazeData.nearest_time_s.toFixed(2)}s - Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
-              </span>
+            <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-xl bg-card">
+              <MissingStimulusImage
+                scenario={gazeData.scenario}
+                gazeX={gazeData.gx}
+                gazeY={gazeData.gy}
+                showGazePoint
+                markerTone="cyan"
+                className="w-full"
+              />
+              <div className="px-4 py-2 text-center text-xs text-muted-foreground">
+                t = {gazeData.nearest_time_s.toFixed(2)}s - Posición de mirada:
+                ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
+              </div>
             </div>
           ) : gazeData ? (
             <div className="overflow-hidden rounded-xl bg-card">

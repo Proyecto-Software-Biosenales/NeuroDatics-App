@@ -3,8 +3,9 @@
 import { useRef, useState } from "react";
 import type { ProjectFormData, SensorType, ParticipantData } from "./types";
 import type { Project, DetectedParticipant } from "@/features/projects/types";
-import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
+import { ProjectsApi, asUploadClarification, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
 import { apiAoiToFormAoi, serializeScenaryAois } from "./aoiUtils";
+import { getFileRelativePath, type FolderSelection } from "./folderStructure";
 import { toast } from "sonner";
 
 const STEP1_LOADING_TOAST_ID = "create-project-step1-drive-sync";
@@ -121,6 +122,7 @@ export const useCreateProjectWizard = (
   const [isResumedDraft, setIsResumedDraft] = useState(false);
   const uploadAbortControllerRef = useRef<AbortController | null>(null);
   const activeZipUploadProjectIdRef = useRef<string | null>(null);
+  const [folderSelection, setFolderSelection] = useState<FolderSelection | null>(null);
 
   const clearStep1RetryState = () => {
     setSaveError(null);
@@ -171,8 +173,13 @@ export const useCreateProjectWizard = (
     setFormData((prev) => ({
       ...prev,
       experimentFolderFiles: files,
-      folderPath: files?.[0] ? ((files[0] as any)._relativePath || files[0].webkitRelativePath || files[0].name).split("/")[0] : "",
+      folderPath: files?.[0] ? getFileRelativePath(files[0]).split("/")[0] : "",
     }))
+  }
+
+  const setFolderStructureSelection = (selection: FolderSelection | null) => {
+    clearStep1RetryState();
+    setFolderSelection(selection);
   }
 
   const normalizeParticipants = (participants: ParticipantData[]) => {
@@ -220,7 +227,13 @@ export const useCreateProjectWizard = (
   const canGoNext = () => {
     switch (currentStep) {
       case 1:
-        return formData.projectName.trim() !== "" && !!formData.experimentFolderFiles?.length
+        // `experimentFolderFiles` stays null while Step 1 still has unanswered
+        // structure questions, so this also gates on the clarification flow.
+        return (
+          formData.projectName.trim() !== "" &&
+          !!formData.experimentFolderFiles?.length &&
+          !!folderSelection
+        )
       case 2:
         return formData.sensors.length > 0;
       case 3:
@@ -271,8 +284,7 @@ export const useCreateProjectWizard = (
       try {
         const JSZip = (await import("jszip")).default;
         const zip = new JSZip();
-        const getFilePath = (file: File): string =>
-          (file as any)._relativePath || file.webkitRelativePath || file.name;
+        const getFilePath = getFileRelativePath;
 
         const folderName = getFilePath(formData.experimentFolderFiles[0]).split("/")[0];
         for (const file of formData.experimentFolderFiles) {
@@ -428,6 +440,7 @@ export const useCreateProjectWizard = (
           }
         },
         uploadAbortController.signal,
+        folderSelection,
       );
 
       clearDriveProgressPolling();
@@ -455,12 +468,25 @@ export const useCreateProjectWizard = (
           age: "",
         }));
 
+      // The Acquisition/ folder names carry the subject codes. Nothing about that
+      // folder is stored, but it is the better default when the CSV metadata is
+      // missing and would otherwise fall back to "participante_1".
+      const acquisitionCodes = uploadedZipResult.acquisition?.default_participant_codes ?? [];
+      const detectedParticipants: ParticipantData[] =
+        csvParticipants.length > 0
+          ? csvParticipants
+          : acquisitionCodes.map((code) => ({
+              id: code,
+              sex: null as ParticipantData["sex"],
+              age: "",
+            }));
+
       setFormData((prev) => ({
         ...prev,
         uploadedZip: uploadedZipResult,
         scenaries: buildStep4ImageScenaries(detail),
         sensors: detectedSensors.length > 0 ? detectedSensors : prev.sensors,
-        participants: csvParticipants.length > 0 ? csvParticipants : prev.participants,
+        participants: detectedParticipants.length > 0 ? detectedParticipants : prev.participants,
       }));
 
       // Immediately persist detected sensors and participants to DB so they are
@@ -470,10 +496,10 @@ export const useCreateProjectWizard = (
           console.warn("[CreateProjectWizard] could not save detected sensors to DB", err);
         });
       }
-      if (csvParticipants.length > 0) {
+      if (detectedParticipants.length > 0) {
         await ProjectsApi.setParticipants(
           projectIdForUpload!,
-          csvParticipants.map((p) => ({ participant_code: p.id, age: null, sex: null }))
+          detectedParticipants.map((p) => ({ participant_code: p.id, age: null, sex: null }))
         ).catch((err: unknown) => {
           console.warn("[CreateProjectWizard] could not save detected participants to DB", err);
         });
@@ -484,6 +510,21 @@ export const useCreateProjectWizard = (
       setSaveProgressMessage(null);
       setSaveNotice("Carpeta procesada correctamente. Puedes continuar con la configuración.");
     } catch (error: any) {
+      // The backend re-validates structure independently. If it still finds the
+      // archive ambiguous, surface its questions instead of a generic failure
+      // and send the user back to Step 1 to answer them.
+      const clarification = asUploadClarification(error);
+      if (clarification) {
+        setSaveNotice(null);
+        setSaveError(
+          [clarification.message, ...clarification.questions.map((q) => q.message)].join(" ")
+        );
+        setFolderSelection(null);
+        setFormData((prev) => ({ ...prev, uploadedZip: null, experimentFolderFiles: null }));
+        setCurrentStep(1);
+        return;
+      }
+
       const rawErrorMessage = error?.message ?? "Error procesando carpeta";
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
@@ -567,6 +608,7 @@ export const useCreateProjectWizard = (
     });
     setDraftProjectId(null);
     setIsResumedDraft(false);
+    setFolderSelection(null);
   };
 
   const discardDraftProject = async () => {
@@ -816,6 +858,7 @@ export const useCreateProjectWizard = (
     isZipUploadInProgress,
     cancelZipUpload,
     setExperimentFolder,
+    setFolderStructureSelection,
     discardDraftProject,
     openForResume,
     isResumedDraft,
