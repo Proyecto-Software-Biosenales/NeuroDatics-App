@@ -35,11 +35,11 @@ import type {
   ScanpathData,
 } from "../types"
 import {
-  getMissingStimulusMessage,
   getPreviewFailureMessage,
   resolveStimulusPointStatus,
   supportsStimulusAois,
 } from "../components/stimulusState"
+import { MissingStimulusImage } from "../components/MissingStimulusImage"
 
 interface ImageState {
   url: string | null
@@ -158,12 +158,13 @@ export function PointOnStimulusPanel({
     gazeLoading,
     preview,
   })
-  const overlaysAvailable = stimulusStatus === "ready"
-  const canUseAois = overlaysAvailable && supportsStimulusAois(gaze)
+  const hasStimulusPreview = stimulusStatus === "ready"
+  const canUseAois = hasStimulusPreview && supportsStimulusAois(gaze)
   const currentAoi =
     canUseAois && gaze ? findAoiAtPoint(aoi?.aois, gaze.gx, gaze.gy) : null
   const hasAois = canUseAois && Boolean(aoi?.aois.length)
-  const hasFixationPoint = overlaysAvailable
+  const hasFixationPoint =
+    stimulusStatus === "ready" || stimulusStatus === "no-stimulus"
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -250,15 +251,30 @@ export function PointOnStimulusPanel({
           ) : null}
         </MessageSurface>
       ) : stimulusStatus === "no-stimulus" && gaze ? (
-        <MessageSurface>
-          <span className="text-sm font-medium text-foreground">
-            {getMissingStimulusMessage(gaze.scenario)}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            t = {gaze.nearest_time_s.toFixed(2)}s · Posición de mirada: (
-            {gaze.gx?.toFixed(1)}, {gaze.gy?.toFixed(1)})
-          </span>
-        </MessageSurface>
+        <>
+          <MissingStimulusImage
+            scenario={gaze.scenario}
+            gazeX={gaze.gx}
+            gazeY={gaze.gy}
+            showGazePoint={showFixationPoint}
+            markerTone="rose"
+            className="w-full overflow-hidden rounded-xl"
+          />
+          <div className="mx-auto flex w-full max-w-[560px] flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
+            <span>
+              <strong className="font-semibold">Tiempo:</strong>{" "}
+              {gaze.nearest_time_s.toFixed(2)} s
+            </span>
+            <span>
+              <strong className="font-semibold">X:</strong>{" "}
+              {gaze.gx?.toFixed(1) ?? "—"}%
+            </span>
+            <span>
+              <strong className="font-semibold">Y:</strong>{" "}
+              {gaze.gy?.toFixed(1) ?? "—"}%
+            </span>
+          </div>
+        </>
       ) : stimulusStatus === "preview-error" && gaze ? (
         <MessageSurface>
           {getPreviewFailureMessage(gaze, preview.error)}

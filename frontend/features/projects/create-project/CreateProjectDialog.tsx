@@ -64,6 +64,7 @@ export const CreateProjectDialog = ({
     isZipUploadInProgress,
     cancelZipUpload,
     setExperimentFolder,
+    setFolderStructureSelection,
     discardDraftProject,
     openForResume,
     isResumedDraft,
@@ -164,6 +165,7 @@ export const CreateProjectDialog = ({
               onDescriptionChange={updateDescription}
               onFolderPathChange={updateFolderPath}
               onFolderSelected={setExperimentFolder}
+              onSelectionChange={setFolderStructureSelection}
               zipRequired
             />
           )}

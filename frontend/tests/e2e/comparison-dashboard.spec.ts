@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect, test, type Locator, type Page } from "@playwright/test"
 
 const TEST_USER_ID = "e2e-comparison-user"
 const STORAGE_KEY_PREFIX = "neurodatics-comparison-views-v1"
@@ -49,6 +49,28 @@ const gazeTimeseries = {
   time,
   gx_clean: time.map((value) => 45 + Math.sin(value / 3) * 15),
   gy_clean: time.map((value) => 52 + Math.cos(value / 3) * 12),
+}
+
+const instructionGaze = {
+  requested_time_s: 10,
+  nearest_time_s: 10,
+  scenario: "Instrucción 01.png",
+  gx: 37.5,
+  gy: 62.5,
+  scenario_file_id: null,
+  scenario_type: null,
+  scenario_time_s: 10,
+}
+
+const emptyAoiMetrics = {
+  scenario: "Escenario concreto",
+  scenario_file_id: null,
+  aois: [],
+  transitions: [],
+  total_fixations: 0,
+  total_dwell_time_ms: 0,
+  observed_aoi_dwell_time_ms: 0,
+  observed_aoi_dwell_time_percent: 0,
 }
 
 const distanceTimeseries = {
@@ -152,7 +174,7 @@ async function installAuthenticatedSession(page: Page) {
   )
 }
 
-async function mockDashboardApi(page: Page) {
+async function mockDashboardApi(page: Page, gazeAtResponse = instructionGaze) {
   const unhandledRequests: string[] = []
 
   await page.route("**/api/**", async (route) => {
@@ -181,6 +203,14 @@ async function mockDashboardApi(page: Page) {
     }
     if (/\/analytics\/timeseries\/distance$/.test(path)) {
       await route.fulfill({ json: distanceTimeseries })
+      return
+    }
+    if (/\/analytics\/gaze-at$/.test(path)) {
+      await route.fulfill({ json: gazeAtResponse })
+      return
+    }
+    if (/\/analytics\/aois$/.test(path)) {
+      await route.fulfill({ json: emptyAoiMetrics })
       return
     }
     if (/\/analytics\/correlations$/.test(path)) {
@@ -248,8 +278,131 @@ async function openComparisonDashboard(
   }
 }
 
+async function expectCompactGenericImage(image: Locator) {
+  const box = await image.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.width).toBeLessThanOrEqual(561)
+  expect(box!.height).toBeLessThanOrEqual(316)
+  expect(box!.width / box!.height).toBeCloseTo(16 / 9, 1)
+}
+
 test.beforeEach(async ({ page }) => {
   await installAuthenticatedSession(page)
+})
+
+test("renders a generic stimulus in the single-sensor view for a fileless moment", async ({
+  page,
+}) => {
+  const stimulusFileRequests: string[] = []
+  page.on("request", (request) => {
+    if (/\/files\/[^/]+\/(?:preview|image)(?:\?|$)/.test(request.url())) {
+      stimulusFileRequests.push(request.url())
+    }
+  })
+  const unhandledRequests = await mockDashboardApi(page, {
+    ...instructionGaze,
+    gx: 0,
+    gy: 0,
+  })
+
+  await page.goto("/dashboard")
+  await page.getByRole("button", { name: "Proyecto Alfa", exact: true }).click()
+
+  const minimumCard = page.getByRole("button", { name: /Mínimo/ })
+  await expect(minimumCard).toBeVisible()
+  await minimumCard.click()
+
+  const genericImage = page.getByRole("img", {
+    name: "Pantalla genérica: INSTRUCCIONES",
+  })
+  await expect(genericImage).toBeVisible()
+  await expectCompactGenericImage(genericImage)
+  await expect(genericImage.locator("rect").first()).toHaveAttribute(
+    "fill",
+    "#000000"
+  )
+
+  const gazeMarker = genericImage.getByTestId("missing-stimulus-gaze-marker")
+  await expect(gazeMarker).toBeVisible()
+  await expect(gazeMarker).toHaveAttribute("data-gaze-marker", "cyan")
+  await expect(gazeMarker).toHaveAttribute("data-gaze-x", "0")
+  await expect(gazeMarker).toHaveAttribute("data-gaze-y", "0")
+
+  const stimulusBlock = genericImage.locator("xpath=..")
+  await expect(stimulusBlock).toContainText("t = 10.00s")
+  await expect(stimulusBlock).toContainText("Posición de mirada: (0.0, 0.0)")
+  await expect(page.getByText(/no hay estímulo visual asociado/)).toHaveCount(0)
+  expect(stimulusFileRequests).toEqual([])
+  expect(unhandledRequests).toEqual([])
+})
+
+test("renders a generic stimulus and gaze point when the selected moment has no file", async ({
+  page,
+}) => {
+  const stimulusFileRequests: string[] = []
+  page.on("request", (request) => {
+    if (/\/files\/[^/]+\/(?:preview|image)(?:\?|$)/.test(request.url())) {
+      stimulusFileRequests.push(request.url())
+    }
+  })
+  const unhandledRequests = await mockDashboardApi(page)
+  await openComparisonDashboard(page)
+
+  const pupilChart = page.getByRole("img", {
+    name: /Diámetro \(mm\).*Haz clic en un punto/,
+  })
+  const chartBox = await pupilChart.boundingBox()
+  expect(chartBox).not.toBeNull()
+  const chartPosition = {
+    x: chartBox!.width / 2,
+    y: chartBox!.height / 2,
+  }
+  await pupilChart.hover({ position: chartPosition })
+  const activePoint = pupilChart.locator(".recharts-active-dot").first()
+  await expect(activePoint).toBeVisible()
+  await activePoint.click()
+
+  const pointHeading = page.getByRole("heading", {
+    name: "Punto sobre estímulo",
+  })
+  await expect(pointHeading).toBeVisible()
+  const pointPanel = pointHeading.locator("xpath=../../..")
+  await expect(
+    pointPanel.getByRole("img", {
+      name: "Pantalla genérica: INSTRUCCIONES",
+    })
+  ).toBeVisible()
+  await expectCompactGenericImage(
+    pointPanel.getByRole("img", {
+      name: "Pantalla genérica: INSTRUCCIONES",
+    })
+  )
+  const gazeMarker = pointPanel.getByTestId("missing-stimulus-gaze-marker")
+  await expect(gazeMarker).toBeVisible()
+  await expect(gazeMarker).toHaveAttribute("data-gaze-marker", "rose")
+  await expect(gazeMarker).toHaveAttribute("data-gaze-x", "37.5")
+  await expect(gazeMarker).toHaveAttribute("data-gaze-y", "62.5")
+  await expect(pointPanel).toContainText("Tiempo: 10.00 s")
+  await expect(pointPanel).toContainText("X: 37.5%")
+  await expect(pointPanel).toContainText("Y: 62.5%")
+  await expect(pointPanel).not.toContainText(
+    "no hay estímulo visual asociado a este escenario"
+  )
+
+  const aoiToggle = pointPanel.getByRole("button", { name: "Ocultar AOIs" })
+  const pointToggle = pointPanel.getByRole("button", {
+    name: "Ocultar punto de fijación",
+  })
+  await expect(aoiToggle).toBeDisabled()
+  await expect(pointToggle).toBeEnabled()
+  await expect(pointToggle).toHaveAttribute("aria-pressed", "true")
+  await pointToggle.click()
+  await expect(gazeMarker).toHaveCount(0)
+  await expect(
+    pointPanel.getByRole("button", { name: "Mostrar punto de fijación" })
+  ).toHaveAttribute("aria-pressed", "false")
+  expect(stimulusFileRequests).toEqual([])
+  expect(unhandledRequests).toEqual([])
 })
 
 test("keeps the document fixed while the comparison shell consumes extra scroll", async ({

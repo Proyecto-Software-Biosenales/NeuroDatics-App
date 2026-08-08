@@ -6,7 +6,9 @@ defends against and what it does not.
 
 - **Scope**: the experiment-ZIP ingestion path (`POST /api/projects/{id}/files/experiment-zip`)
   and the media read-back path (`/files/{id}/image`, `/files/{id}/preview`).
-- **Status**: reflects the code on branch `dashboard` as of 2026-08-06.
+- **Status**: reflects the code on branch `dashboard` as of 2026-08-07. Findings
+  §5.1, §5.2, §5.3, §5.11 and §5.14 have since been fixed and are marked as such;
+  everything else in §5 is still open. See §6 for the running list.
 - **Audience**: developers and whoever signs off on the deployment.
 
 ---
@@ -25,10 +27,16 @@ Two other modules look like upload paths but are dead code: `modules/uploads/*`
 `r2_storage_adapter.py` is `class R2StorageAdapter: pass`) and
 `workers/tasks/process_experiment_zip.py` (logs "stub, not implemented").
 
-The single most serious finding in this review is unrelated to the ZIP endpoint
-itself: **the entire Google Drive integration router has no authentication**, and
-one of its endpoints uploads an arbitrary server-side directory to Drive. See
-[§5.1](#51-critical--the-google-drive-integration-router-has-no-authentication).
+The single most serious finding in this review was unrelated to the ZIP endpoint
+itself: the entire Google Drive integration router had no authentication, and one of
+its endpoints uploaded an arbitrary server-side directory to Drive. That is now fixed
+— see [§5.1](#51-critical--the-google-drive-integration-router-has-no-authentication--fixed).
+
+The archive is also no longer accepted blindly. When its structure is ambiguous —
+several `.csv` data sources, several or zero `Images`/`Videos` folders — ingestion
+stops and asks the user which one to use rather than guessing. An optional
+`Acquisition/` folder is read for default values (subject codes, scenario names) but
+never stored.
 
 ---
 
@@ -36,26 +44,37 @@ one of its endpoints uploads an arbitrary server-side directory to Drive. See
 
 ```mermaid
 flowchart TD
-    A["User picks folder<br/>webkitdirectory / drag-drop"] --> B["Client-side filter + checks<br/>CreateProjectStep1.tsx"]
+    A["User picks folder<br/>webkitdirectory / drag-drop"] --> B["analyzeFolderStructure<br/>CSVs, Images/Videos, Acquisition"]
+    B -->|ambiguous| B2["Ask the user in Step 1<br/>which CSV / which folder / no media?"]
+    B2 --> B
     B --> C["JSZip packaging in browser<br/>compression: STORE"]
     C --> D["POST /api/projects/ → draft project"]
-    D --> E["XHR multipart POST<br/>field name: file"]
+    D --> E["XHR multipart POST<br/>file + selected_* / allow_missing_*"]
     E --> F["Next.js rewrite /api/:path*<br/>proxyClientMaxBodySize 550mb"]
-    F --> G["FastAPI route<br/>await file.read → bytes in RAM"]
-    G --> H["ZipValidationService<br/>size / MIME / CRC / structure"]
+    F --> G0["UploadAdmissionControl<br/>per-user + global concurrency, rate limit"]
+    G0 -->|rejected| G1["429 Retry-After"]
+    G0 --> G["Stream part to temp file<br/>1 MB chunks, cap enforced live"]
+    G -->|over cap| G2["413 — transfer cut off"]
+    G --> H["ZipValidationService<br/>size / MIME / bomb guards / structure"]
     H -->|invalid| H2["400 — nothing written anywhere"]
-    H --> I["Configure Drive OAuth client<br/>force_refresh=True"]
+    H -->|ambiguous| H3["409 structure_clarification_required<br/>questions + detected options"]
+    H --> L["ZipExtractionService → temp dir<br/>path-traversal guard, byte budget, CRC"]
+    L -->|corrupt or over budget| H2
+    L --> I["Configure Drive OAuth client<br/>force_refresh=True"]
     I --> J["ingestion_status = PROCESSING<br/>COMMIT"]
     J --> K["Create fresh Drive root folder"]
-    K --> L["ZipExtractionService → temp dir<br/>path-traversal guard"]
-    L --> M["CsvProcessingService<br/>CSV → Parquet per user + scenario"]
-    M --> N["Upload to Drive:<br/>original ZIP, media, parquets"]
+    K --> M["CsvProcessingService<br/>CSV → Parquet per user + scenario"]
+    M --> N["Stream to Drive:<br/>original ZIP, media, parquets"]
     N --> O["DB swap: soft-delete old files,<br/>purge zip row, clear scenaries,<br/>insert new rows"]
     O --> P["Delete previous Drive root"]
     P --> Q["ingestion_status = READY<br/>COMMIT"]
-    Q --> R["Response summary → wizard step 2"]
+    Q --> R["Response summary + acquisition defaults<br/>→ wizard step 2"]
     N -.->|any failure| X["Compensation: rollback DB,<br/>delete every uploaded Drive object,<br/>status = FAILED"]
 ```
+
+Validation **and** extraction now happen before the `PROCESSING` transition, so an
+archive that is invalid, ambiguous, corrupt or over budget produces no Drive object,
+no DB mutation and no status change.
 
 ### Stage 0 — Folder selection (browser)
 
@@ -121,17 +140,21 @@ backend port is never published — `docker-compose.yml` uses `expose: "8000"`, 
 
 ### Stage 4 — Backend receives
 
-[routes.py:929-1004](../backend/src/neurodatics/modules/projects/api/routes.py#L929-L1004)
+[routes.py](../backend/src/neurodatics/modules/projects/api/routes.py)
 
-```python
-file_content = await file.read()          # entire archive materialised in RAM
-mime_type = file.content_type or "application/zip"
-filename  = file.filename or "experiment.zip"
-```
+The request first has to pass `upload_admission_control.slot(current_user)`, which
+enforces the per-user and global concurrency caps and the minimum gap between attempts;
+a rejection is **429** with `Retry-After`.
 
-Starlette spools the multipart part to a temp file past ~1 MB, but `.read()` pulls it
-all back into a single `bytes` object. That buffer is then held for the whole
-ingestion and copied again in later stages.
+The multipart part is then streamed to a temp file in 1 MB chunks by
+`_spool_upload_to_disk`, which aborts with **413** the moment the running total passes
+`PROJECT_ZIP_MAX_SIZE_MB` — so an oversized body is cut off mid-transfer rather than
+buffered in full. Nothing downstream ever holds the archive in memory; every later
+stage works from `zip_path`.
+
+The route also accepts the structure answers as optional form fields:
+`selected_csv_path`, `selected_images_folder`, `selected_videos_folder`,
+`selected_acquisition_folder`, `allow_missing_images`, `allow_missing_videos`.
 
 ### Stage 5 — Validation (before anything is written)
 
@@ -141,24 +164,51 @@ ingestion and copied again in later stages.
 case does — before the project status changes and before any Drive call — so an invalid
 archive leaves zero side effects.
 
-1. **`validate_upload`**
-   - filename must end in `.zip`
-   - if a `content_type` was supplied it must be `application/zip` or
-     `application/x-zip-compressed`
-   - `len(file_content) ≤ PROJECT_ZIP_MAX_SIZE_MB × 1024²` (default **500 MB**)
-2. **`validate_zip_integrity`** — `zipfile.ZipFile(BytesIO(...))`, must be non-empty,
-   then `testzip()` runs a **CRC check over every member** (this decompresses the whole
-   archive once).
-3. **`build_manifest`** — for each non-directory entry: normalise the path
+1. **`validate_upload`** — filename must end in `.zip`; a supplied `content_type` must
+   be `application/zip` or `application/x-zip-compressed`; on-disk size must be within
+   `PROJECT_ZIP_MAX_SIZE_MB` (default **500 MB**).
+2. **`enforce_archive_limits`** — the zip-bomb guard (§5.2). Reads the central
+   directory only; decompresses nothing.
+3. **`scan_structure`** — inventories the archive: candidate `.csv` data sources,
+   every distinct `Images` / `Videos` / `Acquisition` folder, and the
+   `Sujet_<id>_Scenario_<name>_Rec<n>` sub-folders under `Acquisition/`.
+4. **`resolve_structure`** — turns that inventory plus the user's answers into one
+   unambiguous plan:
+   - **zero** `.csv` → `ValidationError` → **400** (unresolvable)
+   - **more than one** `.csv` → `ClarificationRequired` unless `selected_csv_path` picks one
+   - **zero** `Images` (or `Videos`) folders → `ClarificationRequired` unless the
+     matching `allow_missing_*` flag confirms it
+   - **more than one** `Images` (or `Videos`) folder → `ClarificationRequired` unless
+     `selected_*_folder` picks one
+   - **more than one** `Acquisition` folder → `ClarificationRequired`
+
+   `ClarificationRequired` becomes a **409** whose `detail` carries
+   `error: "structure_clarification_required"`, the list of questions (each with the
+   form field that answers it and the available options) and what was detected. The
+   client re-sends the same archive with those fields filled in.
+5. **`build_manifest`** — for each non-directory entry: normalise the path
    (`\` → `/`, strip leading/trailing `/`), skip `__MACOSX/`, classify by extension via
    `KIND_BY_EXTENSION`, and **demote** any image/video to `other_asset` unless one of its
    parent path components is literally `images` or `videos` (case-insensitive).
-4. **`validate_structure`** — at least one CSV **and** at least one image or video,
-   otherwise a Spanish-language `ValidationError` that the route maps to 400.
+   Entries the user did not pick — the other CSVs, non-selected scenario folders, and
+   **everything under `Acquisition/`** — are dropped from the manifest and reported in
+   `excluded_entries`, so they are never decompressed, uploaded or recorded.
 
 Kind mapping: `.jpg/.jpeg/.png/.gif/.bmp/.webp/.tif/.tiff/.svg` → `scenario_image`;
 `.mp4/.avi/.mov/.mkv/.webm/.m4v` → `scenario_video`; `.csv` → `raw_csv`;
 `.pdf` → `report_pdf`; everything else → `other_asset`.
+
+#### The `Acquisition/` folder
+
+`Acquisition/` is **reference-only**. It is scanned with exactly the same security
+rules as the rest of the archive (bomb guards, path-traversal checks), but nothing in
+it is uploaded to Drive or written to the database. Its sub-folder names are parsed —
+`Sujet_1001014126_Scenario_Scenario 1_Rec1` yields subject `1001014126`, scenario
+`Scenario 1`, recording `1` — and returned in the response as `acquisition`, where the
+wizard uses `default_participant_codes` to seed the participant list when the CSV
+metadata does not supply one. Sub-folders that do not match the pattern are ignored,
+and an `Acquisition/Images` or `Acquisition/*.csv` never competes with the real
+scenario folders or the real data source.
 
 ### Stage 6 — Drive credentials and status transition
 
@@ -180,14 +230,23 @@ Kind mapping: `.jpg/.jpeg/.png/.gif/.bmp/.webp/.tif/.tiff/.svg` → `scenario_im
 
 Inside `tempfile.TemporaryDirectory(prefix="neurodatics-ingestion-")`:
 
-- the in-memory buffer is written back out as `payload.zip` and reopened
+- the spooled `zip_path` is opened directly — no second copy of the archive is made
 - for every manifest entry, `_is_unsafe_relative_path` rejects absolute paths,
   Windows drive letters (`C:`), and any `..` component
-- extraction is manual — `zip_file.open(rel_path)` + `shutil.copyfileobj` into
+- extraction is manual — `zip_file.open(rel_path)` + a **bounded** chunked copy into
   `extracted/<rel_path>`. Nothing calls `ZipFile.extract*`, so archive-declared
   symlinks/permissions are never honoured.
+- `_copy_bounded` counts the bytes that really come out and aborts if an entry exceeds
+  its declared size or the run exceeds `PROJECT_ZIP_MAX_UNCOMPRESSED_MB`, so a lying
+  central directory cannot get past the Stage 5 guard
+- reading each member to EOF makes `zipfile` verify its CRC, which is why the separate
+  `testzip()` pass no longer exists
 - the directory (and everything in it) is removed by the context manager on exit,
   success or failure
+
+This whole block now runs **before** the project status changes and before the Drive
+root folder is created, so a corrupt or over-budget archive still leaves zero side
+effects.
 
 ### Stage 8 — CSV → Parquet
 
@@ -236,9 +295,11 @@ Each stored object gets a `project_files` row with `external_id` (Drive file ID)
 `checksum_sha256`, `mime_type`, `size_bytes`, `drive_web_view_link` and
 `drive_download_link`.
 
-`gdrive_client.upload_file` reads the local file fully into memory
-(`local_file.read_bytes()`) and wraps it in `MediaIoBaseUpload(BytesIO(payload),
-resumable=True)` — resumable in the Google-API sense, but sourced from RAM.
+`gdrive_client.upload_file` streams from disk with `MediaFileUpload(..., chunksize=8 MB,
+resumable=True)` when handed a `local_path`, closing the file handle afterwards, and
+returns the SHA-256 it computed while streaming — so callers do not read each file a
+second time to checksum it. The in-memory `MediaIoBaseUpload` path remains only for the
+`file_content=` callers.
 
 ### Stage 10 — Database swap
 
@@ -331,6 +392,15 @@ miss into `/data/parquet_cache`. Every analytics route calls `_verify_ownership`
 | Setting | Default | Effect on the pipeline |
 | --- | --- | --- |
 | `PROJECT_ZIP_MAX_SIZE_MB` | `500` | Hard cap on the **compressed** upload |
+| `PROJECT_ZIP_MAX_UNCOMPRESSED_MB` | `2000` | Cap on total expanded size (zip-bomb guard) |
+| `PROJECT_ZIP_MAX_ENTRY_UNCOMPRESSED_MB` | `600` | Cap on any single expanded entry |
+| `PROJECT_ZIP_MAX_ENTRIES` | `20000` | Cap on member count |
+| `PROJECT_ZIP_MAX_COMPRESSION_RATIO` | `100` | Max per-entry and overall expansion ratio |
+| `UPLOAD_MAX_CONCURRENT_PER_USER` | `1` | Simultaneous ingestions one user may run |
+| `UPLOAD_MAX_CONCURRENT_GLOBAL` | `4` | Simultaneous ingestions across all users |
+| `UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS` | `5` | Minimum gap between one user's attempts |
+| `GDRIVE_SYNC_ALLOWED_ROOT` | unset | Only directory `sync-folder*` may read; unset ⇒ endpoints 404 |
+| `BACKEND_MEM_LIMIT` / `WORKER_MEM_LIMIT` | `2g` | Container memory ceilings (compose) |
 | `INGESTION_SAVE_ORIGINAL_ZIP` | `true` | Whether the source ZIP is archived to Drive |
 | `GDRIVE_FOLDER_ID` | unset | Parent for project root folders; unset ⇒ Drive root |
 | `GDRIVE_HTTP_TIMEOUT_SECONDS` | `300` | Per-request Drive timeout |
@@ -403,68 +473,75 @@ miss into `/data/parquet_cache`. Every analytics route calls `_verify_ownership`
 
 Ordered by severity.
 
-### 5.1 CRITICAL — the Google Drive integration router has no authentication
+### 5.1 ~~CRITICAL — the Google Drive integration router has no authentication~~ — FIXED
 
 [modules/integrations/google_drive/api/routes.py](../backend/src/neurodatics/modules/integrations/google_drive/api/routes.py)
 
-Not one endpoint in this router declares `Depends(get_current_user)`. Every other
-router in the app does. Anyone who can reach `/api` — which, behind the same-origin
-proxy, means any unauthenticated visitor of the frontend host — can call:
+**Was**: not one endpoint in this router declared `Depends(get_current_user)`, so any
+unauthenticated visitor of the frontend host could read an arbitrary server directory
+into the connected Drive account (`/data`, which holds `auth_users.json`, `/app`,
+`/etc`), disconnect Drive for the whole install, or leak the connected account email
+and scope.
 
-| Endpoint | Consequence |
-| --- | --- |
-| `POST /api/integrations/google-drive/sync-folder?local_folder_path=/…` | **Reads an arbitrary server directory and uploads it into the connected Google Drive account.** `/data` (which holds `auth_users.json` and all caches), `/app` (source + any mounted secrets), `/etc` are all reachable. |
-| `POST /api/integrations/google-drive/sync-folder-scheduled` | Same, backgrounded, with a pollable task ID. |
-| `DELETE /api/integrations/google-drive` | Disconnects Drive for the whole installation — every upload and every analytics read breaks until an admin reconnects. |
-| `GET /api/integrations/google-drive/status` | Leaks the connected Google account email, the granted scope and the folder ID. |
-| `POST /api/integrations/google-drive/create-folder` | Arbitrary folder creation in the shared Drive account. |
-| `GET /api/integrations/google-drive/sync-tasks` | Lists all sync tasks with their local paths. |
-| `GET /api/integrations/google-drive/authorize` | Mints OAuth authorization URLs. |
+**Now**: the router carries a router-level `dependencies=[Depends(get_current_user)]`,
+so every route returns 401 without a valid bearer token. The OAuth `callback` moved to
+a separate `public_router` — Google redirects the browser there with no Authorization
+header, and it is still guarded by the HMAC-signed, TTL-bounded `state` it validates.
 
-`sync_folder_to_drive` does check that the path exists and is a directory — but never
-that it is inside any permitted root. Combined with §5.10 (a full-`drive` scope token),
-this is a server-filesystem exfiltration primitive requiring no credentials.
+`sync-folder` / `sync-folder-scheduled` are additionally **disabled by default**: they
+404 unless `GDRIVE_SYNC_ALLOWED_ROOT` is set, and `resolve_syncable_folder` then
+confines the caller's path to that root with `Path.resolve()` (so symlinks cannot
+escape) and returns an identical error whether a rejected path exists or not, so the
+endpoint cannot be used to probe the filesystem. `os.walk` runs with
+`followlinks=False` and symlinked files are skipped.
 
-The OAuth `callback` endpoint is the one defensible exception: it validates an
-HMAC-signed, TTL-bounded `state` using `auth_jwt_secret`, so it cannot be driven by an
-attacker who does not also hold that secret. Every other route here needs an auth
-dependency, and the connect/disconnect/sync ones arguably need an admin role that does
-not currently exist in the codebase.
+An admin role still does not exist in the codebase; connect/disconnect/sync are
+available to any authenticated user.
 
-### 5.2 HIGH — no zip-bomb or decompression-ratio guard
+Covered by [test_upload_pipeline_hardening.py](../backend/tests/unit/test_upload_pipeline_hardening.py).
 
-Only the **compressed** size is capped. Nothing bounds:
+### 5.2 ~~HIGH — no zip-bomb or decompression-ratio guard~~ — FIXED
 
-- total uncompressed size (`sum(info.file_size)` is computed for progress, never checked)
-- per-entry uncompressed size
-- entry count
-- compression ratio
+`ZipValidationService.enforce_archive_limits` now runs before anything is
+decompressed, rejecting an archive on any of:
 
-`testzip()` decompresses every member, then `extract_to_temp` writes every member to
-disk with an unbounded `copyfileobj`. A 500 MB archive of highly compressible data
-expands to hundreds of gigabytes, filling the container filesystem and the shared
-`neurodatics_data` volume — which also holds the database-adjacent caches and
-`auth_users.json`.
+| Bound | Setting | Default |
+| --- | --- | --- |
+| Entry count | `PROJECT_ZIP_MAX_ENTRIES` | 20000 |
+| Per-entry uncompressed size | `PROJECT_ZIP_MAX_ENTRY_UNCOMPRESSED_MB` | 600 |
+| Total uncompressed size | `PROJECT_ZIP_MAX_UNCOMPRESSED_MB` | 2000 |
+| Per-entry and overall compression ratio | `PROJECT_ZIP_MAX_COMPRESSION_RATIO` | 100:1 |
 
-The product's own client packages with `STORE` (ratio 1:1), so this requires a
-hand-crafted request — which any authenticated user can make with `curl`.
+Those checks read the central directory only, which is attacker-controlled, so they
+are not trusted on their own: `ZipExtractionService` re-counts the bytes that really
+come out of each member and aborts if an entry exceeds its declared size or the run
+exceeds the total budget.
 
-**Fix shape**: reject in `build_manifest` when `sum(info.file_size)` exceeds a ceiling
-(e.g. 4× the compressed cap), when any single entry exceeds a per-file limit, or when
-entry count exceeds a sane maximum — all cheap, all before extraction.
+The separate `testzip()` pass is gone. It decompressed the whole archive a second
+time; extraction now reads each member to EOF, which makes `zipfile` verify the same
+CRC in the one pass that has to happen anyway. Extraction also moved *ahead* of the
+first project write, so a corrupt archive still leaves zero side effects.
 
-### 5.3 HIGH — whole-file in-memory handling, several times over
+### 5.3 ~~HIGH — whole-file in-memory handling, several times over~~ — FIXED
 
-For one 500 MB upload the backend materialises the payload at least three times:
-`await file.read()` → `BytesIO(file_content)` for validation → `payload.zip` written from
-the same buffer, while the original `bytes` stays referenced for the entire ingestion
-(it is used again at the end for the ZIP upload and its SHA-256). On top of that,
-`gdrive_client.upload_file` re-reads each extracted file fully into RAM even when handed
-a `local_path`.
+The route streams the multipart part to a temp file in 1 MB chunks
+(`_spool_upload_to_disk`), aborting mid-transfer once the cap is passed rather than
+after the whole body has been buffered. Validation, extraction and the archival Drive
+upload all work from that path, so the archive is never held in RAM. Peak usage for a
+500 MB upload is one chunk instead of ~1.5 GB.
 
-Compounding it: **there is no rate limit, no per-user concurrency limit, and no memory
-limit on the backend container** in either compose file. A handful of simultaneous
-large uploads will OOM-kill the API for everyone.
+`gdrive_client.upload_file` uses `MediaFileUpload` when given a `local_path`, streaming
+from disk instead of `read_bytes()`, and returns the SHA-256 it computed while
+streaming so callers no longer read each file a second time to checksum it.
+
+`UploadAdmissionControl` caps uploads per user (`UPLOAD_MAX_CONCURRENT_PER_USER`,
+default 1) and globally (`UPLOAD_MAX_CONCURRENT_GLOBAL`, default 4), with a minimum
+gap between attempts (`UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS`, default 5 s); rejections
+are 429 with `Retry-After`. Both compose files now set `mem_limit` / `mem_reservation`
+on `backend` and `worker`.
+
+Like the progress registry (§5.8), admission control is process-local and must move to
+Redis if the API is ever scaled out.
 
 ### 5.4 HIGH — ingestion runs synchronously in the request
 
@@ -561,30 +638,27 @@ So any read of that one column — a DB backup, a log dump, a future SQLi, or th
 unauthenticated `/status` + `/sync-folder` combination in §5.1 — yields full read/write
 access to the connected Google account's entire Drive, not just NeuroDatics data.
 
-### 5.11 LOW — Drive query injection via ZIP folder names
+### 5.11 ~~LOW — Drive query injection via ZIP folder names~~ — FIXED
 
-[gdrive_client.py:126](../backend/src/neurodatics/infra/storage/gdrive_client.py#L126)
+[gdrive_client.py](../backend/src/neurodatics/infra/storage/gdrive_client.py)
+
+`find_child_folder_by_name` now escapes the backslash before the single quote:
 
 ```python
-safe_name = name.replace("'", "\\'")
-query = f"... and name = '{safe_name}' and '{parent_id}' in parents"
+safe_name = name.replace("\\", "\\\\").replace("'", "\\'")
 ```
 
-Only the single quote is escaped; the **backslash is not**. A folder name inside the ZIP
-ending in `\` produces `name = 'a\\'`, where the escaped quote lets the literal run on
-into attacker-influenced query syntax. Folder names originate from ZIP entry paths, so
-they are fully user-controlled.
+Previously only the quote was escaped, so a ZIP folder name ending in `\` produced
+`name = 'a\\'` — the escaped quote let the literal run on into attacker-influenced
+query syntax.
 
-Impact is bounded — the query only lists folders in the caller's Drive with a restricted
-field set — but it can cause malformed-query errors (failing an ingestion) or match an
-unintended folder, sending uploaded files to the wrong place within the same account.
+### 5.12 LOW — no quotas, partial rate limiting
 
-### 5.12 LOW — no quotas, no rate limiting
-
-Nothing caps projects per user, uploads per hour, or total bytes pushed to Drive. All
-users share **one** Google Drive account, so a single user can exhaust the shared storage
-quota and break ingestion for everyone. There is no `slowapi`, no reverse-proxy rate
-limit in the repo, and no accounting table.
+Upload *concurrency* and a minimum gap between attempts are now enforced per user and
+globally (§5.3), but nothing still caps projects per user, uploads per day, or total
+bytes pushed to Drive. All users share **one** Google Drive account, so a single user
+can exhaust the shared storage quota and break ingestion for everyone. There is no
+accounting table.
 
 ### 5.13 LOW — 14-day access tokens with no refresh or revocation
 
@@ -592,19 +666,20 @@ limit in the repo, and no accounting table.
 `jti` denylist and no logout-server-side. A token captured from browser storage grants
 upload and read access to that user's projects for two weeks.
 
-### 5.14 LOW — client and server validation rules have drifted
+### 5.14 ~~LOW — client and server validation rules have drifted~~ — MOSTLY FIXED
 
-They are intentionally duplicated, but they do not agree:
+The client rules now live in one module,
+[folderStructure.ts](../frontend/features/projects/create-project/folderStructure.ts),
+written as a deliberate mirror of `ZipValidationService`. Scenario-folder detection
+agrees on both sides (whole **path component** equal to `images`/`videos`, never a
+substring), `Acquisition/` is treated identically, and the clarification questions the
+wizard asks are the same ones the backend would answer 409 with.
 
-| Rule | Frontend | Backend |
-| --- | --- | --- |
-| Scenario folder detection | substring `"/images/"` / `"/videos/"` on the lowercased path | any **path component** equal to `images`/`videos`, case-insensitive |
-| Non-media, non-CSV files | stripped before packaging | accepted and stored as `other_asset` |
-| Dotfiles | stripped | accepted (only `__MACOSX/` is skipped) |
-| Size check | sum of source file sizes | length of the received ZIP |
-
-None of this is exploitable, but a direct API caller sees a materially more permissive
-pipeline than the wizard suggests, and the two rule sets need to be changed together.
+The remaining differences are intentional: the client still strips dotfiles and
+non-relevant files before packaging (a transfer-size optimisation), and its size check
+is on the source files rather than the resulting ZIP. The backend remains the
+authority — it re-runs every structure rule on the uploaded archive, so a direct API
+caller cannot bypass them.
 
 ### 5.15 LOW — a fully-failed CSV run still reports READY
 
@@ -641,22 +716,22 @@ project's folder wipes hand-drawn AOIs with no warning and no backup.
 
 ## 6. Recommended order of work
 
-| # | Action | Severity | Effort |
-| --- | --- | --- | --- |
-| 1 | Add `Depends(get_current_user)` to every Google Drive integration route; delete or root-restrict `sync-folder*` | Critical | XS |
-| 2 | Cap total uncompressed size, per-entry size and entry count in `build_manifest` | High | XS |
-| 3 | Narrow the OAuth scope to `drive.file`; encrypt `refresh_token` at rest | High | S |
-| 4 | Move ingestion to the existing RQ worker; add a `PROCESSING` reaper for stranded projects | High | M |
-| 5 | Stream the upload to a temp file instead of `await file.read()`; stream Drive uploads from disk | High | M |
-| 6 | Set container memory limits; add per-user upload concurrency/rate limits | High | S |
-| 7 | Magic-byte verification for images/videos; drop `.svg` or force `Content-Disposition: attachment` + `nosniff` | Medium | S |
-| 8 | Add `USER` to the backend Dockerfile; drop capabilities on the container | Medium | S |
-| 9 | Bound the four on-disk caches (size cap + LRU eviction) | Medium | S |
-| 10 | Move the progress registry to Redis | Medium | S |
-| 11 | Replace raw `str(exc)` in `detail`/`ingestion_error` with curated messages plus a correlation ID | Medium | S |
-| 12 | Escape backslashes in `find_child_folder_by_name` | Low | XS |
-| 13 | Fail ingestion (or mark `PARTIAL`) when every CSV fails | Low | XS |
-| 14 | Warn before re-upload destroys AOIs | Low | S |
+| # | Action | Severity | Effort | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Add `Depends(get_current_user)` to every Google Drive integration route; delete or root-restrict `sync-folder*` | Critical | XS | **Done** — §5.1 |
+| 2 | Cap total uncompressed size, per-entry size and entry count in `build_manifest` | High | XS | **Done** — §5.2 |
+| 3 | Narrow the OAuth scope to `drive.file`; encrypt `refresh_token` at rest | High | S | Open |
+| 4 | Move ingestion to the existing RQ worker; add a `PROCESSING` reaper for stranded projects | High | M | Open |
+| 5 | Stream the upload to a temp file instead of `await file.read()`; stream Drive uploads from disk | High | M | **Done** — §5.3 |
+| 6 | Set container memory limits; add per-user upload concurrency/rate limits | High | S | **Done** — §5.3 |
+| 7 | Magic-byte verification for images/videos; drop `.svg` or force `Content-Disposition: attachment` + `nosniff` | Medium | S | Open |
+| 8 | Add `USER` to the backend Dockerfile; drop capabilities on the container | Medium | S | Open |
+| 9 | Bound the four on-disk caches (size cap + LRU eviction) | Medium | S | Open |
+| 10 | Move the progress registry (and `UploadAdmissionControl`) to Redis | Medium | S | Open |
+| 11 | Replace raw `str(exc)` in `detail`/`ingestion_error` with curated messages plus a correlation ID | Medium | S | Open |
+| 12 | Escape backslashes in `find_child_folder_by_name` | Low | XS | **Done** — §5.11 |
+| 13 | Fail ingestion (or mark `PARTIAL`) when every CSV fails | Low | XS | Open |
+| 14 | Warn before re-upload destroys AOIs | Low | S | Open |
 
 ---
 
@@ -664,7 +739,8 @@ project's folder wipes hand-drawn AOIs with no warning and no backup.
 
 | Concern | Path |
 | --- | --- |
-| Folder picker + client validation | [frontend/features/projects/create-project/CreateProjectStep1.tsx](../frontend/features/projects/create-project/CreateProjectStep1.tsx) |
+| Folder picker + clarification UI | [frontend/features/projects/create-project/CreateProjectStep1.tsx](../frontend/features/projects/create-project/CreateProjectStep1.tsx) |
+| Client-side structure rules (mirror of the server) | [frontend/features/projects/create-project/folderStructure.ts](../frontend/features/projects/create-project/folderStructure.ts) |
 | Wizard orchestration, ZIP packaging, progress polling | [frontend/features/projects/create-project/useCreateProjectWizard.ts](../frontend/features/projects/create-project/useCreateProjectWizard.ts) |
 | Edit-mode re-upload | [frontend/features/projects/components/EditProjectDialog.tsx](../frontend/features/projects/components/EditProjectDialog.tsx) |
 | HTTP client, XHR upload with progress | [frontend/lib/api/apiFetch.ts](../frontend/lib/api/apiFetch.ts) |
@@ -676,8 +752,11 @@ project's folder wipes hand-drawn AOIs with no warning and no backup.
 | Safe extraction | [backend/src/neurodatics/modules/projects/application/services/zip_extraction_service.py](../backend/src/neurodatics/modules/projects/application/services/zip_extraction_service.py) |
 | CSV → Parquet | [backend/src/neurodatics/modules/projects/application/services/csv_processing_service.py](../backend/src/neurodatics/modules/projects/application/services/csv_processing_service.py) |
 | Progress/cancel registry | [backend/src/neurodatics/modules/projects/application/services/drive_upload_progress_registry.py](../backend/src/neurodatics/modules/projects/application/services/drive_upload_progress_registry.py) |
+| Upload concurrency + rate limiting | [backend/src/neurodatics/modules/projects/application/services/upload_throttle.py](../backend/src/neurodatics/modules/projects/application/services/upload_throttle.py) |
 | Drive SDK wrapper | [backend/src/neurodatics/infra/storage/gdrive_client.py](../backend/src/neurodatics/infra/storage/gdrive_client.py) |
-| Drive OAuth connect/status/sync (**unauthenticated**) | [backend/src/neurodatics/modules/integrations/google_drive/api/routes.py](../backend/src/neurodatics/modules/integrations/google_drive/api/routes.py) |
+| Drive OAuth connect/status/sync (authenticated; callback on `public_router`) | [backend/src/neurodatics/modules/integrations/google_drive/api/routes.py](../backend/src/neurodatics/modules/integrations/google_drive/api/routes.py) |
+| Structure / bomb-guard / extraction tests | [backend/tests/unit/test_zip_validation_service.py](../backend/tests/unit/test_zip_validation_service.py) |
+| Auth / path-confinement / throttle tests | [backend/tests/unit/test_upload_pipeline_hardening.py](../backend/tests/unit/test_upload_pipeline_hardening.py) |
 | Credential injection into the global client | [backend/src/neurodatics/modules/integrations/google_drive/infrastructure/configure_client.py](../backend/src/neurodatics/modules/integrations/google_drive/infrastructure/configure_client.py) |
 | JWT verification | [backend/src/neurodatics/config/security.py](../backend/src/neurodatics/config/security.py) |
 | Settings + production guardrails | [backend/src/neurodatics/config/settings.py](../backend/src/neurodatics/config/settings.py) |

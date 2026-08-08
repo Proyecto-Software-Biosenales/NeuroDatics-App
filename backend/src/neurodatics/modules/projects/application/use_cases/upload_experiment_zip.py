@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import logging
 import pathlib
 import uuid
@@ -19,7 +18,7 @@ from ...domain.repository import ProjectRepository
 from ..services.csv_processing_service import CsvProcessingService, CsvProcessingError, ParticipantInfo, ProcessingResult
 from ..services.drive_upload_progress_registry import drive_upload_progress_registry
 from ..services.zip_extraction_service import ZipExtractionService
-from ..services.zip_validation_service import ZipManifestEntry, ZipValidationService
+from ..services.zip_validation_service import UploadSelection, ZipValidationService
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +66,10 @@ class UploadExperimentZipUseCase:
         self,
         project_id: UUID,
         owner_id: UUID,
-        file_content: bytes,
+        zip_path: str,
         filename: str,
         mime_type: str,
+        selection: Optional[UploadSelection] = None,
     ) -> Dict[str, Any]:
         project = await self.repository.get_by_id(project_id, owner_id)
         if not project:
@@ -92,65 +92,77 @@ class UploadExperimentZipUseCase:
             # Validate the ZIP structure FIRST, before any uploads or project updates.
             # This ensures that if the structure is invalid, nothing gets uploaded to Drive
             # and the project state is not modified.
-            manifest_entries, manifest_counts = ZipValidationService.validate_and_analyze(
+            (
+                manifest_entries,
+                manifest_counts,
+                resolved_selection,
+                acquisition,
+                excluded_entries,
+            ) = ZipValidationService.validate_and_analyze(
                 filename=filename,
                 mime_type=mime_type,
-                file_content=file_content,
+                zip_path=zip_path,
+                selection=selection,
             )
 
-            zip_saved = bool(settings.ingestion_save_original_zip)
+            zip_size_bytes = pathlib.Path(zip_path).stat().st_size
 
-            # Structure validation passed, now update project status and proceed with ingestion
-            await self.repository.update_project_ingestion(
-                project_id=project_id,
-                updates={
-                    "ingestion_status": "PROCESSING",
-                    "ingestion_error": None,
-                    "storage_provider": "gdrive",
-                },
-            )
-            await self.repository.commit()
-            self._raise_if_canceled(project_id)
+            # Extraction is part of validation: it is the pass that actually
+            # decompresses (CRC-checking every member and enforcing the byte
+            # budget), so it has to happen before the project state changes too.
+            with ZipExtractionService.extract_to_temp(zip_path, manifest_entries) as extracted:
+                zip_saved = bool(settings.ingestion_save_original_zip)
 
-            # Always ingest into a fresh root folder when uploading a new ZIP.
-            # This allows us to safely replace previous Drive content for edits.
-            root_folder_info = await self._create_new_drive_root_folder(project)
-            root_folder_id = root_folder_info.get("drive_file_id")
-            root_folder_name = root_folder_info.get("name") or project.name
-            root_folder_url = root_folder_info.get("drive_web_view_link")
+                # Structure validation passed, now update project status and proceed with ingestion
+                await self.repository.update_project_ingestion(
+                    project_id=project_id,
+                    updates={
+                        "ingestion_status": "PROCESSING",
+                        "ingestion_error": None,
+                        "storage_provider": "gdrive",
+                    },
+                )
+                await self.repository.commit()
+                self._raise_if_canceled(project_id)
 
-            if root_folder_id:
-                uploaded_drive_ids.append(root_folder_id)
+                # Always ingest into a fresh root folder when uploading a new ZIP.
+                # This allows us to safely replace previous Drive content for edits.
+                root_folder_info = await self._create_new_drive_root_folder(project)
+                root_folder_id = root_folder_info.get("drive_file_id")
+                root_folder_name = root_folder_info.get("name") or project.name
+                root_folder_url = root_folder_info.get("drive_web_view_link")
 
-            folder_cache: Dict[str, str] = {"": root_folder_id}
+                if root_folder_id:
+                    uploaded_drive_ids.append(root_folder_id)
 
-            files_to_insert: List[ProjectFile] = []
-            scenaries_to_insert: List[Scenaries] = []
-            response_files: List[Dict[str, Any]] = []
-            csv_summary = {"detected": 0, "processed": 0, "failed": 0}
-            counts = {
-                "folders_created": 0,
-                "files_uploaded": 0,
-                "images": 0,
-                "videos": 0,
-                "csv": 0,
-                "other": 0,
-                "scenaries_created": 0,
-            }
+                folder_cache: Dict[str, str] = {"": root_folder_id}
 
-            if root_folder_id:
-                counts["folders_created"] += 1
+                files_to_insert: List[ProjectFile] = []
+                scenaries_to_insert: List[Scenaries] = []
+                response_files: List[Dict[str, Any]] = []
+                csv_summary = {"detected": 0, "processed": 0, "failed": 0}
+                counts = {
+                    "folders_created": 0,
+                    "files_uploaded": 0,
+                    "images": 0,
+                    "videos": 0,
+                    "csv": 0,
+                    "other": 0,
+                    "scenaries_created": 0,
+                }
 
-            source_zip_file_id: Optional[UUID] = None
-            zip_file_response: Optional[Dict[str, Any]] = None
-            all_detected_sensors: List[str] = []
-            all_participants: List[ParticipantInfo] = []
-            processing_result: Optional[ProcessingResult] = None
-            all_user_parquet_paths: List[tuple[int, str]] = []
-            all_scenario_parquet_paths: List[tuple[int, str, str]] = []
-            drive_uploaded_bytes = 0
+                if root_folder_id:
+                    counts["folders_created"] += 1
 
-            with ZipExtractionService.extract_to_temp(file_content, manifest_entries) as extracted:
+                source_zip_file_id: Optional[UUID] = None
+                zip_file_response: Optional[Dict[str, Any]] = None
+                all_detected_sensors: List[str] = []
+                all_participants: List[ParticipantInfo] = []
+                processing_result: Optional[ProcessingResult] = None
+                all_user_parquet_paths: List[tuple[int, str]] = []
+                all_scenario_parquet_paths: List[tuple[int, str, str]] = []
+                drive_uploaded_bytes = 0
+
                 processed_output_dir = pathlib.Path(extracted.temp_dir) / "processed"
                 processed_output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -193,7 +205,7 @@ class UploadExperimentZipUseCase:
                     pathlib.Path(path).stat().st_size for _, _, path in all_scenario_parquet_paths
                 )
                 if zip_saved:
-                    total_drive_bytes += len(file_content)
+                    total_drive_bytes += zip_size_bytes
 
                 drive_upload_progress_registry.start(project_id, total_drive_bytes)
                 self._raise_if_canceled(project_id)
@@ -205,14 +217,14 @@ class UploadExperimentZipUseCase:
                         filename=filename,
                         mime_type=mime_type,
                         parent_id=root_folder_id,
-                        file_content=file_content,
+                        local_path=zip_path,
                     )
                     uploaded_drive_ids.append(zip_upload["drive_file_id"])
-                    drive_uploaded_bytes += len(file_content)
+                    drive_uploaded_bytes += zip_size_bytes
                     drive_upload_progress_registry.mark_uploaded_bytes(project_id, drive_uploaded_bytes)
 
                     source_zip_file_id = uuid.uuid4()
-                    checksum = hashlib.sha256(file_content).hexdigest()
+                    checksum = zip_upload["checksum_sha256"]
                     zip_project_file = ProjectFile(
                         id=source_zip_file_id,
                         project_id=project_id,
@@ -226,7 +238,7 @@ class UploadExperimentZipUseCase:
                         source_entry_path=None,
                         mime_type=mime_type,
                         extension=".zip",
-                        size_bytes=len(file_content),
+                        size_bytes=zip_size_bytes,
                         checksum_sha256=checksum,
                         drive_web_view_link=zip_upload.get("drive_web_view_link"),
                         drive_download_link=zip_upload.get("drive_download_link"),
@@ -305,7 +317,9 @@ class UploadExperimentZipUseCase:
                     else:
                         counts["other"] += 1
 
-                    checksum_sha256 = self._compute_checksum(local_path)
+                    # The Drive client already hashed the file while streaming it,
+                    # so reuse that instead of reading every file a second time.
+                    checksum_sha256 = upload_info["checksum_sha256"]
                     file_metadata: Dict[str, Any] = {
                         "source_entry_path": entry.source_entry_path,
                     }
@@ -391,7 +405,7 @@ class UploadExperimentZipUseCase:
                             mime_type="application/octet-stream",
                             extension=".parquet",
                             size_bytes=parquet_size,
-                            checksum_sha256=self._compute_checksum(parquet_path),
+                            checksum_sha256=upload_info["checksum_sha256"],
                             drive_web_view_link=upload_info.get("drive_web_view_link"),
                             drive_download_link=upload_info.get("drive_download_link"),
                             validation_status="valid",
@@ -445,7 +459,7 @@ class UploadExperimentZipUseCase:
                             mime_type="application/octet-stream",
                             extension=".parquet",
                             size_bytes=parquet_size,
-                            checksum_sha256=self._compute_checksum(parquet_path),
+                            checksum_sha256=upload_info["checksum_sha256"],
                             drive_web_view_link=upload_info.get("drive_web_view_link"),
                             drive_download_link=upload_info.get("drive_download_link"),
                             validation_status="valid",
@@ -525,6 +539,14 @@ class UploadExperimentZipUseCase:
                     }
                     for participant in all_participants
                 ],
+                "selection": {
+                    "csv_entry_path": resolved_selection.csv_entry_path,
+                    "images_folder": resolved_selection.images_folder,
+                    "videos_folder": resolved_selection.videos_folder,
+                    "acquisition_folder": resolved_selection.acquisition_folder,
+                },
+                "acquisition": acquisition.to_dict(),
+                "excluded_entries": excluded_entries,
             }
         except Exception as exc:
             user_error = _user_facing_ingestion_error(exc)
@@ -538,9 +560,13 @@ class UploadExperimentZipUseCase:
                 except Exception:
                     logger.warning("Could not delete drive object during compensation: %s", drive_id)
 
-            # If the error was a ZIP structure validation error, it was caught before any
-            # project updates or Drive uploads, so we just re-raise it as-is.
-            if isinstance(exc, ZipValidationService.ValidationError):
+            # If the error was a ZIP structure validation error or a pending
+            # clarification, it was raised before any project update or Drive
+            # upload, so we re-raise it as-is and leave the project untouched.
+            if isinstance(
+                exc,
+                (ZipValidationService.ValidationError, ZipValidationService.ClarificationRequired),
+            ):
                 raise
 
             if isinstance(exc, UploadCanceledError):
@@ -623,13 +649,6 @@ class UploadExperimentZipUseCase:
             current_parent = folder_id
 
         return current_parent
-
-    def _compute_checksum(self, local_path: str) -> str:
-        hasher = hashlib.sha256()
-        with open(local_path, "rb") as fp:
-            for chunk in iter(lambda: fp.read(65536), b""):
-                hasher.update(chunk)
-        return hasher.hexdigest()
 
     def _dedupe_user_parquet_paths(self, paths: List[tuple[int, str]]) -> List[tuple[int, str]]:
         deduped: Dict[int, str] = {}

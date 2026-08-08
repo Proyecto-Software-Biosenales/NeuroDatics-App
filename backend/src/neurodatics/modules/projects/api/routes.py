@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile, File, Request, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -13,11 +13,13 @@ import io
 import logging
 import os
 import subprocess
+import tempfile
 import time
 
 import anyio
 
 from ....api.deps import get_db, get_current_user
+from ....config.settings import settings
 from ....infra.storage.gdrive_oauth_credentials import build_google_drive_oauth_credentials
 from ....infra.storage.gdrive_client import gdrive_client
 from ...integrations.google_drive.infrastructure.configure_client import configure_gdrive_client_with_oauth
@@ -34,11 +36,14 @@ from ..application.use_cases.upload_experiment_zip import (
     UploadExperimentZipUseCase,
 )
 from ..application.services.drive_upload_progress_registry import drive_upload_progress_registry
+from ..application.services.upload_throttle import UploadRejected, upload_admission_control
+from ..application.services.zip_extraction_service import ZipExtractionService
+from ..application.services.zip_validation_service import UploadSelection, ZipValidationService
 from ..domain.entities import Project, ProjectFile, ProjectStatus
 from .schemas import (
     CreateProjectRequest, UpdateProjectRequest, UpdateSensorsRequest,
     ProjectResponse, ProjectDetailResponse, ProjectFileResponse, UploadedProjectZipSummaryResponse,
-    DeleteProjectResponse, DriveUploadProgressResponse,
+    DeleteProjectResponse, DriveUploadProgressResponse, UploadClarificationResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,6 +66,16 @@ _VIDEO_FRAME_MIME_TYPE = "image/jpeg"
 _VIDEO_FRAME_TIME_DECIMALS = 1
 _FFMPEG_TIMEOUT_SECONDS = 45
 _video_preview_locks: dict[str, asyncio.Lock] = {}
+
+_UPLOAD_SPOOL_CHUNK_SIZE = 1024 * 1024
+
+
+def _clean_form_value(value: Optional[str]) -> Optional[str]:
+    """Normalise an optional multipart field to `None` when it carries no answer."""
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped or None
 
 
 def _hashed_cache_id(cache_key: str) -> str:
@@ -926,33 +941,130 @@ async def delete_project(
     )
 
 
-@router.post("/{project_id}/files/experiment-zip", response_model=UploadedProjectZipSummaryResponse)
+async def _spool_upload_to_disk(file: UploadFile, destination: Path) -> int:
+    """Stream the multipart part to disk, refusing to exceed the configured cap.
+
+    `await file.read()` would materialise the whole archive as one `bytes`
+    object and keep it alive for the entire ingestion. Streaming keeps peak
+    memory at one chunk and lets an oversized body be cut off mid-transfer
+    instead of after it has already been buffered.
+    """
+    max_bytes = ZipValidationService.get_max_file_size_bytes()
+    total = 0
+
+    with destination.open("wb") as buffer:
+        while True:
+            chunk = await file.read(_UPLOAD_SPOOL_CHUNK_SIZE)
+            if not chunk:
+                break
+
+            total += len(chunk)
+            if total > max_bytes:
+                raise ZipValidationService.ValidationError(
+                    f"ZIP excede el maximo permitido de {settings.project_zip_max_size_mb}MB"
+                )
+
+            await anyio.to_thread.run_sync(buffer.write, chunk)
+
+    return total
+
+
+@router.post(
+    "/{project_id}/files/experiment-zip",
+    response_model=UploadedProjectZipSummaryResponse,
+    responses={
+        409: {
+            "model": UploadClarificationResponse,
+            "description": (
+                "The archive is ambiguous and needs a decision from the user, or the "
+                "upload was canceled. Clarifications carry "
+                "`detail.error == 'structure_clarification_required'`."
+            ),
+        }
+    },
+)
 async def upload_experiment_zip(
     project_id: UUID,
     file: UploadFile = File(...),
+    selected_csv_path: Optional[str] = Form(default=None),
+    selected_images_folder: Optional[str] = Form(default=None),
+    selected_videos_folder: Optional[str] = Form(default=None),
+    selected_acquisition_folder: Optional[str] = Form(default=None),
+    allow_missing_images: bool = Form(default=False),
+    allow_missing_videos: bool = Form(default=False),
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Upload experiment ZIP and execute full project ingestion flow."""
-    
-    file_content = await file.read()
+    """Upload experiment ZIP and execute full project ingestion flow.
+
+    When the archive is structurally ambiguous — several `.csv` files, several
+    or zero `Images`/`Videos` folders — the request is answered with **409** and
+    a machine-readable list of questions. The client re-sends the same archive
+    with the matching `selected_*` / `allow_missing_*` fields filled in.
+    """
+
     owner_id = UUID(current_user)
     mime_type = file.content_type or "application/zip"
     filename = file.filename or "experiment.zip"
+    selection = UploadSelection(
+        csv_entry_path=_clean_form_value(selected_csv_path),
+        images_folder=_clean_form_value(selected_images_folder),
+        videos_folder=_clean_form_value(selected_videos_folder),
+        acquisition_folder=_clean_form_value(selected_acquisition_folder),
+        allow_missing_images=bool(allow_missing_images),
+        allow_missing_videos=bool(allow_missing_videos),
+    )
+
     logger.info("Processing ZIP upload for project %s, file: %s", project_id, filename)
-    
-    # Execute upload use case
+
     repository = SQLProjectRepository(db)
     use_case = UploadExperimentZipUseCase(repository, db=db)
 
     try:
-        summary = await use_case.execute(
-            project_id=project_id,
-            owner_id=owner_id,
-            file_content=file_content,
-            filename=filename,
-            mime_type=mime_type
-        )
+        with upload_admission_control.slot(current_user):
+            with tempfile.TemporaryDirectory(prefix="neurodatics-upload-") as spool_dir:
+                zip_path = Path(spool_dir) / "experiment.zip"
+
+                try:
+                    await _spool_upload_to_disk(file, zip_path)
+                except ZipValidationService.ValidationError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=str(exc),
+                    ) from exc
+
+                summary = await use_case.execute(
+                    project_id=project_id,
+                    owner_id=owner_id,
+                    zip_path=str(zip_path),
+                    filename=filename,
+                    mime_type=mime_type,
+                    selection=selection,
+                )
+    except UploadRejected as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except HTTPException:
+        raise
+    except ZipValidationService.ClarificationRequired as exc:
+        # 409: the archive is fine, the user just has to disambiguate it.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=exc.to_dict(),
+        ) from exc
+    except ZipValidationService.ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except ZipExtractionService.ExtractionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     except ValueError as e:
         logger.error(f"Project access denied: {e}")
         raise HTTPException(
@@ -970,18 +1082,7 @@ async def upload_experiment_zip(
             detail=str(e)
         )
     except Exception as e:
-        from ..application.services.zip_validation_service import ZipValidationService
-        
         logger.exception("ZIP upload failed")
-        
-        # Return user-friendly error messages for validation errors
-        if isinstance(e, ZipValidationService.ValidationError):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
-        
-        # Generic error message for other exceptions
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error procesando el archivo: {e}"
@@ -1001,6 +1102,9 @@ async def upload_experiment_zip(
         detected_sensors=summary.get("detected_sensors", []),
         participants=summary.get("participants", []),
         manifest=summary["manifest"],
+        selection=summary.get("selection", {}),
+        acquisition=summary.get("acquisition", {}),
+        excluded_entries=summary.get("excluded_entries", []),
     )
 
 

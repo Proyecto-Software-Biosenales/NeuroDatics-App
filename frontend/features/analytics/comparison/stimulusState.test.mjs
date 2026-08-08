@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
-  getMissingStimulusMessage,
+  getMissingStimulusDescriptor,
   getPreviewFailureMessage,
   hasGazeCoordinates,
   resolveStimulusPointStatus,
@@ -19,15 +19,61 @@ const gaze = {
 
 const emptyPreview = { url: null, loading: false, error: null }
 
-test("uses the standard instruction and missing-stimulus messages", () => {
-  assert.equal(
-    getMissingStimulusMessage("Instrucción 1"),
-    "Pantalla de instrucción — no hay estímulo visual asociado a este escenario"
+test("classifies bilingual fileless scenario names regardless of case or accents", () => {
+  const cases = [
+    ["Instruction 1.png", "instructions", "INSTRUCCIONES"],
+    ["Instructions02.png", "instructions", "INSTRUCCIONES"],
+    ["INSTRUCCIÓN 2.JPG", "instructions", "INSTRUCCIONES"],
+    ["practice-03.webp", "practice", "PRÁCTICA"],
+    ["Práctica 4.MP4", "practice", "PRÁCTICA"],
+    ["Introduction.mov", "introduction", "INTRODUCCIÓN"],
+    ["Introducción_02.svg", "introduction", "INTRODUCCIÓN"],
+    ["blank-screen.jpeg", "blank", "PANTALLA EN BLANCO"],
+    ["Pantalla en blanco 01.PNG", "blank", "PANTALLA EN BLANCO"],
+    ["rest 1.gif", "rest", "DESCANSO"],
+    ["Descanso_2.webm", "rest", "DESCANSO"],
+    ["fixation-01.bmp", "fixation", "FIJACIÓN"],
+    ["Fijación 2.tiff", "fixation", "FIJACIÓN"],
+  ]
+
+  for (const [scenario, category, displayLabel] of cases) {
+    assert.deepEqual(getMissingStimulusDescriptor(scenario), {
+      category,
+      displayLabel,
+    })
+  }
+})
+
+test("uses a cleaned scenario basename for unknown fileless scenarios", () => {
+  assert.deepEqual(
+    getMissingStimulusDescriptor("  study/Visual objetivo final.JPEG  "),
+    { category: "custom", displayLabel: "Visual objetivo final" }
   )
-  assert.equal(
-    getMissingStimulusMessage("Scenario A"),
-    'El escenario "Scenario A" no tiene estímulo visual registrado'
+  assert.deepEqual(
+    getMissingStimulusDescriptor("C:\\stimuli\\Escenario Personalizado.MKV"),
+    { category: "custom", displayLabel: "Escenario Personalizado" }
   )
+  assert.deepEqual(getMissingStimulusDescriptor("archive.session"), {
+    category: "custom",
+    displayLabel: "archive.session",
+  })
+  assert.deepEqual(getMissingStimulusDescriptor("Restaurant.png"), {
+    category: "custom",
+    displayLabel: "Restaurant",
+  })
+  assert.deepEqual(getMissingStimulusDescriptor("Blanket.jpg"), {
+    category: "custom",
+    displayLabel: "Blanket",
+  })
+})
+
+test("uses the generic no-stimulus label for null or empty scenario names", () => {
+  for (const scenario of [null, "", "   ", "path/.png"]) {
+    assert.deepEqual(getMissingStimulusDescriptor(scenario), {
+      category: "missing",
+      displayLabel: "SIN ESTÍMULO VISUAL",
+    })
+  }
 })
 
 test("treats zero coordinates as a valid fixation point", () => {

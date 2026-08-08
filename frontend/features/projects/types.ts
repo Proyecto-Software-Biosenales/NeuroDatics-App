@@ -47,6 +47,35 @@ export interface DetectedParticipant {
   user_index: number
 }
 
+/** One `Sujet_..._Scenario_..._RecN` folder found under `Acquisition/`. */
+export interface AcquisitionRecordingSummary {
+  folder_name: string
+  subject_code?: string | null
+  scenario_name?: string | null
+  recording_index?: number | null
+  documents: string[]
+}
+
+/**
+ * Reference-only metadata read from `Acquisition/`. The backend never stores
+ * anything from that folder; it is parsed purely to seed default values.
+ */
+export interface AcquisitionSummary {
+  present: boolean
+  folder_path?: string | null
+  recordings: AcquisitionRecordingSummary[]
+  default_participant_codes: string[]
+  default_scenario_names: string[]
+}
+
+/** Which parts of an ambiguous archive the backend actually ingested. */
+export interface ResolvedUploadSelection {
+  csv_entry_path?: string | null
+  images_folder?: string | null
+  videos_folder?: string | null
+  acquisition_folder?: string | null
+}
+
 export interface UploadedProjectZipSummary {
   id?: string
   project_id: string
@@ -68,6 +97,9 @@ export interface UploadedProjectZipSummary {
   }
   detected_sensors?: string[]
   participants?: DetectedParticipant[]
+  selection?: ResolvedUploadSelection
+  acquisition?: AcquisitionSummary
+  excluded_entries?: string[]
 }
 
 export type UploadedProjectZip = UploadedProjectZipSummary

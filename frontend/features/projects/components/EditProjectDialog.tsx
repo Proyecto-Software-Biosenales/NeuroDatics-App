@@ -18,10 +18,11 @@ import { CreateProjectStep1 } from "@/features/projects/create-project/CreatePro
 import { CreateProjectStep2 } from "@/features/projects/create-project/CreateProjectStep2"
 import { CreateProjectStep3 } from "@/features/projects/create-project/CreateProjectStep3"
 import { CreateProjectStep4 } from "@/features/projects/create-project/CreateProjectStep4"
-import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi"
+import { ProjectsApi, asUploadClarification, type ApiProjectDetail } from "@/features/projects/api/projectsApi"
 import type { Project, ProjectStatus, SensorType } from "@/features/projects/types"
 import type { ParticipantData, ProjectFormData, scenaries } from "@/features/projects/create-project/types"
 import { apiAoiToFormAoi, serializeAoisForComparison, serializeScenaryAois } from "@/features/projects/create-project/aoiUtils"
+import { getFileRelativePath, type FolderSelection } from "@/features/projects/create-project/folderStructure"
 
 interface EditProjectDialogProps {
   projectId: string
@@ -216,6 +217,7 @@ export const EditProjectDialog = ({
   const activeZipUploadProjectIdRef = useRef<string | null>(null)
   const [shouldUpdateFolder, setShouldUpdateFolder] = useState(false)
   const [hasProcessedFolderUpdate, setHasProcessedFolderUpdate] = useState(false)
+  const [folderSelection, setFolderSelection] = useState<FolderSelection | null>(null)
   const originalFormDataRef = useRef<ProjectFormData | null>(null)
   const originalCreatedAtRef = useRef<string>("")
   const projectNameIdSuffixRef = useRef<string>("")
@@ -309,7 +311,7 @@ export const EditProjectDialog = ({
     setFormData((prev) => ({
       ...prev,
       experimentFolderFiles: files,
-      folderPath: files?.[0] ? ((files[0] as any)._relativePath || files[0].webkitRelativePath || files[0].name).split("/")[0] : "",
+      folderPath: files?.[0] ? getFileRelativePath(files[0]).split("/")[0] : "",
     }))
   }
 
@@ -354,7 +356,13 @@ export const EditProjectDialog = ({
   const canGoNext = () => {
     switch (currentStep) {
       case 1:
-        return formData.projectName.trim() !== "" && (!shouldUpdateFolder || Boolean(formData.experimentFolderFiles?.length))
+        // While Step 1 still has unanswered structure questions it withholds the
+        // file list, so this also gates on the clarification flow.
+        return (
+          formData.projectName.trim() !== "" &&
+          (!shouldUpdateFolder ||
+            (Boolean(formData.experimentFolderFiles?.length) && Boolean(folderSelection)))
+        )
       case 2:
         return formData.sensors.length > 0
       case 3:
@@ -451,8 +459,7 @@ export const EditProjectDialog = ({
       try {
         const JSZip = (await import("jszip")).default
         const zip = new JSZip()
-        const getFilePath = (file: File): string =>
-          (file as any)._relativePath || file.webkitRelativePath || file.name
+        const getFilePath = getFileRelativePath
 
         const folderName = getFilePath(formData.experimentFolderFiles[0]).split("/")[0]
         for (const file of formData.experimentFolderFiles) {
@@ -573,7 +580,8 @@ export const EditProjectDialog = ({
             })
           }
         },
-        uploadAbortController.signal
+        uploadAbortController.signal,
+        folderSelection
       )
 
       clearDriveProgressPolling()
@@ -592,6 +600,20 @@ export const EditProjectDialog = ({
       setCurrentStep(2)
       setSaveNotice("Experimento procesado correctamente. Puedes continuar con la edición.")
     } catch (error) {
+      // The backend re-validates structure independently; surface its questions
+      // rather than a generic failure and keep the user on Step 1 to answer them.
+      const clarification = asUploadClarification(error)
+      if (clarification) {
+        setSaveNotice(null)
+        setSaveError(
+          [clarification.message, ...clarification.questions.map((q) => q.message)].join(" ")
+        )
+        setFolderSelection(null)
+        setFormData((prev) => ({ ...prev, experimentFolderFiles: null }))
+        setCurrentStep(1)
+        return
+      }
+
       const friendlyMessage = toFriendlyErrorMessage(error)
       const wasCanceled = /cancelad|abort/i.test(friendlyMessage)
       const showSessionHint = isGoogleSessionExpiredError(friendlyMessage)
@@ -787,6 +809,7 @@ export const EditProjectDialog = ({
     setZipDriveProcessingSeconds(null)
     setIsZipUploadInProgress(false)
     setHasProcessedFolderUpdate(false)
+    setFolderSelection(null)
     uploadAbortControllerRef.current = null
     activeZipUploadProjectIdRef.current = null
   }
@@ -855,6 +878,7 @@ export const EditProjectDialog = ({
                 onDescriptionChange={updateDescription}
                 onFolderPathChange={updateFolderPath}
                 onFolderSelected={setExperimentFolder}
+                onSelectionChange={setFolderSelection}
                 zipRequired={false}
                 isEditMode={true}
                 shouldUpdateFolder={shouldUpdateFolder}
