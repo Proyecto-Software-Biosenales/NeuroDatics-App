@@ -51,7 +51,12 @@ class GoogleDriveClient:
 
     def _initialize_service(self) -> None:
         try:
-            base_http = httplib2.Http(timeout=max(30, int(settings.gdrive_http_timeout_seconds)))
+            timeout = max(30, int(settings.gdrive_http_timeout_seconds))
+            base_http = httplib2.Http(timeout=timeout)
+            # Drive uses 308 as "Resume Incomplete" between upload chunks, not
+            # as a redirect. Mirror googleapiclient.http.build_http so httplib2
+            # lets the resumable-upload handler process that response.
+            base_http.redirect_codes = base_http.redirect_codes - {308}
 
             # Try OAuth credentials first
             if self._oauth_credentials is not None:
