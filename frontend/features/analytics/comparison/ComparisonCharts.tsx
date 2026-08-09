@@ -5,7 +5,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ReferenceDot,
@@ -15,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { AnalyticsChartShell } from "../components/AnalyticsChartShell"
 import type {
   EegPsdData,
   EegSpectrogramData,
@@ -131,6 +131,11 @@ export function TemporalLineChart({
   const domain: [number, number] | ["dataMin", "dataMax"] = data.length
     ? (xDomain ?? [data[0].time, data[data.length - 1].time])
     : ["dataMin", "dataMax"]
+  const chartVariant = height >= 380 ? "eeg" : "mid"
+  const chartLegend = series.map((item) => ({
+    label: item.label,
+    color: item.color,
+  }))
 
   return (
     <div
@@ -138,12 +143,17 @@ export function TemporalLineChart({
       aria-label={`${yLabel}. ${data.length} observaciones; eje horizontal en segundos absolutos.${interactionHint ? ` ${interactionHint}` : ""}`}
       className={onPin ? "cursor-crosshair" : undefined}
     >
-      <ResponsiveContainer width="100%" height={height}>
+      <AnalyticsChartShell
+        legend={chartLegend}
+        xAxisLabel={xLabel}
+        variant={chartVariant}
+      >
+      <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
         <LineChart
           data={data}
           syncId={synchronized ? "comparison-temporal-signals" : undefined}
           syncMethod={synchronized ? "value" : undefined}
-          margin={{ top: 12, right: 22, left: 12, bottom: 34 }}
+          margin={{ top: 24, right: 22, left: 12, bottom: 12 }}
           onClick={(state) => {
             const point = resolveClickedPoint(data, state)
             if (point) onPin?.(point)
@@ -158,14 +168,9 @@ export function TemporalLineChart({
             dataKey="time"
             type="number"
             domain={domain}
+            height={32}
             tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
             tickFormatter={(value) => Number(value).toFixed(0)}
-            label={{
-              value: xLabel,
-              position: "insideBottom",
-              offset: -18,
-              fontSize: 11,
-            }}
           />
           <YAxis
             width={62}
@@ -178,12 +183,6 @@ export function TemporalLineChart({
             }}
           />
           <RechartsTooltip content={<ChartTooltip series={series} />} />
-          <Legend
-            verticalAlign="top"
-            height={30}
-            iconType="plainline"
-            wrapperStyle={{ fontSize: 12 }}
-          />
           {pinnedTime != null ? (
             <ReferenceLine
               x={pinnedTime}
@@ -212,7 +211,7 @@ export function TemporalLineChart({
                   strokeWidth={1.3}
                   label={{
                     value: `${peak.value.toFixed(2)} ${peak.unit} ${peak.label} - ${peak.time_s.toFixed(1)} s`,
-                    position: peak.kind === "max" ? "top" : "bottom",
+                    position: "top",
                     fill: peak.color,
                     fontSize: 10,
                     fontWeight: 700,
@@ -244,11 +243,8 @@ export function TemporalLineChart({
           ))}
         </LineChart>
       </ResponsiveContainer>
-      {interactionHint ? (
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          {interactionHint}
-        </p>
-      ) : null}
+      </AnalyticsChartShell>
+      {interactionHint ? <span className="sr-only">{interactionHint}</span> : null}
     </div>
   )
 }
@@ -263,10 +259,11 @@ export function FixationHistogramChart({
       role="img"
       aria-label={`Histograma de ${data.n_fixations} fijaciones.`}
     >
-      <ResponsiveContainer width="100%" height={320}>
+      <AnalyticsChartShell xAxisLabel="Duración (ms)" variant="compact">
+      <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
         <BarChart
           data={data.bins}
-          margin={{ top: 12, right: 20, left: 8, bottom: 46 }}
+          margin={{ top: 12, right: 20, left: 8, bottom: 10 }}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -296,6 +293,7 @@ export function FixationHistogramChart({
           />
         </BarChart>
       </ResponsiveContainer>
+      </AnalyticsChartShell>
     </div>
   )
 }
@@ -309,15 +307,20 @@ export function EegPsdChart({ data }: { data: EegPsdData }) {
     }
     return row
   })
+  const chartLegend = data.channels.map((channel) => ({
+    label: channel.toUpperCase(),
+    color: EEG_CHANNEL_COLORS[channel] ?? "#64748B",
+  }))
   return (
     <div
       role="img"
       aria-label={`Densidad espectral de ${data.channels.length} canales EEG.`}
     >
-      <ResponsiveContainer width="100%" height={350}>
+      <AnalyticsChartShell legend={chartLegend} xAxisLabel="Frecuencia (Hz)" variant="mid">
+      <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
         <LineChart
           data={points}
-          margin={{ top: 12, right: 20, left: 12, bottom: 34 }}
+          margin={{ top: 18, right: 20, left: 12, bottom: 12 }}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -328,13 +331,8 @@ export function EegPsdChart({ data }: { data: EegPsdData }) {
             dataKey="frequency"
             type="number"
             domain={["dataMin", "dataMax"]}
+            height={32}
             tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-            label={{
-              value: "Frecuencia (Hz)",
-              position: "insideBottom",
-              offset: -18,
-              fontSize: 11,
-            }}
           />
           <YAxis
             width={72}
@@ -353,12 +351,6 @@ export function EegPsdChart({ data }: { data: EegPsdData }) {
               String(name).toUpperCase(),
             ]}
           />
-          <Legend
-            verticalAlign="top"
-            height={30}
-            iconType="plainline"
-            wrapperStyle={{ fontSize: 12 }}
-          />
           {data.channels.map((channel) => (
             <Line
               key={channel}
@@ -372,6 +364,7 @@ export function EegPsdChart({ data }: { data: EegPsdData }) {
           ))}
         </LineChart>
       </ResponsiveContainer>
+      </AnalyticsChartShell>
     </div>
   )
 }
@@ -460,14 +453,14 @@ function SpectrogramCanvas({
     <canvas
       ref={canvasRef}
       aria-label={label}
-      className="h-44 w-full rounded-md bg-gray-950"
+      className="eeg-spectrogram-canvas w-full rounded-md bg-gray-950"
     />
   )
 }
 
 export function EegSpectrogramGrid({ data }: { data: EegSpectrogramData }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-3 lg:grid-cols-2 2xl:gap-4">
       {data.channels.map((channel) => (
         <div
           key={channel}

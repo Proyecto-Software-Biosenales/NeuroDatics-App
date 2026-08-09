@@ -35,6 +35,7 @@ import {
   getContainedImageBox,
   type ContainedImageBox,
 } from "./AoiOverlay"
+import { AnalyticsChartShell } from "./AnalyticsChartShell"
 
 interface AoiComparisonTabProps {
   projectId: string
@@ -377,7 +378,7 @@ export function AoiComparisonTab({
 
   if (scenario === "all") {
     return (
-      <div className="space-y-6 py-6">
+      <div className="analytics-stack">
         <Card>
           <CardHeader>
             <CardTitle>Comparativa AOIs</CardTitle>
@@ -405,9 +406,9 @@ export function AoiComparisonTab({
 
   if (loading) {
     return (
-      <div className="space-y-6 py-6">
-        <div className="h-[420px] animate-pulse rounded-lg bg-muted" />
-        <div className="h-[320px] animate-pulse rounded-lg bg-muted" />
+      <div className="analytics-stack">
+        <div className="analytics-state-frame animate-pulse rounded-lg bg-muted" />
+        <div className="analytics-state-frame-compact animate-pulse rounded-lg bg-muted" />
         <div className="h-64 animate-pulse rounded-lg bg-muted" />
       </div>
     )
@@ -432,8 +433,8 @@ export function AoiComparisonTab({
   }
 
   return (
-    <div className="space-y-6 py-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+    <div className="analytics-stack">
+      <div className="analytics-kpi-grid analytics-kpi-grid-four">
         <KpiCard
           label="AOIs"
           value={data.aois.length}
@@ -492,16 +493,16 @@ export function AoiComparisonTab({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px] 2xl:gap-6">
             <div className="relative overflow-hidden rounded-lg bg-muted" ref={imageContainerRef}>
               {!scenarioImageUrl ? (
-                <div className="h-[420px] w-full animate-pulse bg-muted" />
+                <div className="analytics-state-frame w-full animate-pulse bg-muted" />
               ) : (
                 <img
                   ref={imageRef}
                   src={scenarioImageUrl}
                   alt={data.scenario}
-                  className="max-h-[520px] w-full object-contain"
+                  className="analytics-visual-image"
                   onLoad={computeLetterbox}
                 />
               )}
@@ -524,28 +525,30 @@ export function AoiComparisonTab({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.aois} margin={{ top: 16, right: 24, left: 0, bottom: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} tickMargin={8} />
-              <YAxis
-                domain={[0, 100]}
-                tick={{ fontSize: 12 }}
-                label={{
-                  value: "Tiempo en AOI (%)",
-                  angle: -90,
-                  position: "insideLeft",
-                  style: { textAnchor: "middle" },
-                }}
-              />
-              <RechartsTooltip content={<AoiTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.04)" }} />
-              <Bar dataKey="total_dwell_time_percent" radius={[4, 4, 0, 0]}>
-                {data.aois.map((aoi) => (
-                  <Cell key={aoi.id} fill={aoi.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <AnalyticsChartShell xAxisLabel="AOI" variant="compact">
+            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
+              <BarChart data={data.aois} margin={{ top: 16, right: 24, left: 0, bottom: 12 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis dataKey="name" height={36} tick={{ fontSize: 12 }} tickMargin={8} />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 12 }}
+                  label={{
+                    value: "Tiempo en AOI (%)",
+                    angle: -90,
+                    position: "insideLeft",
+                    style: { textAnchor: "middle" },
+                  }}
+                />
+                <RechartsTooltip content={<AoiTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.04)" }} />
+                <Bar dataKey="total_dwell_time_percent" radius={[4, 4, 0, 0]}>
+                  {data.aois.map((aoi) => (
+                    <Cell key={aoi.id} fill={aoi.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </AnalyticsChartShell>
         </CardContent>
       </Card>
 

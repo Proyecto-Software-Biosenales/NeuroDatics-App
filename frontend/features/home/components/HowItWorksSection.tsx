@@ -27,27 +27,27 @@ const steps = [
 
 export const HowItWorksSection = () => {
   return (
-    <section className="px-6 py-20">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-foreground/5 backdrop-blur-md rounded-3xl border border-foreground/10 px-8 py-14">
-          <h2 className="text-3xl font-semibold text-foreground text-center mb-12">
+    <section className="px-4 py-16 sm:px-6 lg:py-20">
+      <div className="mx-auto max-w-3xl">
+        <div className="rounded-2xl border border-foreground/10 bg-foreground/5 px-5 py-10 backdrop-blur-md sm:px-8 2xl:rounded-3xl 2xl:py-14">
+          <h2 className="mb-10 text-center text-2xl font-semibold text-foreground sm:text-3xl 2xl:mb-12">
             ¿Cómo funciona?
           </h2>
 
-          <div className="space-y-8">
+          <div className="space-y-6 2xl:space-y-8">
             {steps.map((step) => (
               <div key={step.number} className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-foreground/10 rounded-full flex items-center justify-center">
-                  <span className="text-foreground font-semibold text-lg">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-foreground/10">
+                  <span className="text-lg font-semibold text-foreground">
                     {step.number}
                   </span>
                 </div>
 
-                <div className="flex-1 pt-1">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                <div className="min-w-0 flex-1 pt-1">
+                  <h3 className="mb-2 text-lg font-semibold text-foreground">
                     {step.title}
                   </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
                     {step.description}
                   </p>
                 </div>

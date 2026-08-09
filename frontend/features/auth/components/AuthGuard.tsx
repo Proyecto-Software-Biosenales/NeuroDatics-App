@@ -21,7 +21,7 @@ export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[calc(100vh-81px)] items-center justify-center bg-gray-50">
+      <div className="app-page-shell flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
       </div>
     )

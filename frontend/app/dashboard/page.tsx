@@ -184,7 +184,7 @@ export default function DashboardPage() {
               />
             ) : selectedSensor === "EEG" ? (
               <>
-                <div className="flex gap-4 overflow-x-auto whitespace-nowrap text-muted-foreground border-b border-gray-200 dark:border-border px-4 xl:gap-6 xl:px-6">
+                <div className="dashboard-tab-list flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-2 text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:gap-2 2xl:px-5">
                   {EEG_TABS.map((tab) => {
                     const isActive = activeEegTab === tab.key
                     return (
@@ -194,8 +194,8 @@ export default function DashboardPage() {
                         onClick={() => setActiveEegTab(tab.key)}
                         className={
                           isActive
-                            ? "cursor-pointer border-b-2 border-gray-900 dark:border-white pb-3 text-sm font-semibold text-foreground"
-                            : "cursor-pointer pb-3 text-sm text-muted-foreground hover:text-gray-700 dark:hover:text-gray-200"
+                            ? "dashboard-tab-button dashboard-tab-button-active shrink-0 whitespace-nowrap border-b-2 border-foreground px-3 py-2.5 text-sm font-semibold leading-5 text-foreground"
+                            : "dashboard-tab-button shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm leading-5 text-muted-foreground hover:text-foreground"
                         }
                       >
                         {tab.label}
@@ -214,7 +214,7 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <div className="flex gap-4 overflow-x-auto whitespace-nowrap text-muted-foreground border-b border-gray-200 dark:border-border px-4 xl:gap-6 xl:px-6">
+                <div className="dashboard-tab-list flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-2 text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:gap-2 2xl:px-5">
                   {ANALYTICS_TABS.map((tab) => {
                     const isActive = activeTab === tab.key
                     return (
@@ -224,8 +224,8 @@ export default function DashboardPage() {
                         onClick={() => setActiveTab(tab.key)}
                         className={
                           isActive
-                            ? "cursor-pointer border-b-2 border-gray-900 dark:border-white pb-3 text-sm font-semibold text-foreground"
-                            : "cursor-pointer pb-3 text-sm text-muted-foreground hover:text-gray-700 dark:hover:text-gray-200"
+                            ? "dashboard-tab-button dashboard-tab-button-active shrink-0 whitespace-nowrap border-b-2 border-foreground px-3 py-2.5 text-sm font-semibold leading-5 text-foreground"
+                            : "dashboard-tab-button shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm leading-5 text-muted-foreground hover:text-foreground"
                         }
                       >
                         {tab.label}

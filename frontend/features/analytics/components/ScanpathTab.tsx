@@ -98,7 +98,7 @@ export function ScanpathTab({
 
   if (scenario === "all") {
     return (
-      <div className="space-y-6 py-6">
+      <div className="analytics-stack">
         <Card>
           <CardHeader>
             <CardTitle>Mapa de recorridos</CardTitle>
@@ -118,7 +118,7 @@ export function ScanpathTab({
   }
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       <Card>
         <CardHeader>
           <CardTitle>Mapa de recorridos</CardTitle>
@@ -133,7 +133,7 @@ export function ScanpathTab({
             </div>
           ) : (
             <>
-              <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
+              <div className="analytics-kpi-grid">
                 <KpiCard
                   label="Recorridos"
                   value={data?.n_objectives}
@@ -179,7 +179,7 @@ export function ScanpathTab({
               </div>
 
               {loading ? (
-                <div className="h-[500px] w-full animate-pulse rounded-lg bg-muted" />
+                <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
               ) : error ? (
                 <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
                   Error al cargar los datos: {error}
@@ -202,13 +202,13 @@ export function ScanpathTab({
                     <>
                       <div className="relative" ref={imageContainerRef}>
                         {!scenarioImageUrl ? (
-                          <div className="h-[500px] w-full animate-pulse rounded-lg bg-muted" />
+                          <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
                         ) : (
                           <img
                             ref={imageRef}
                             src={scenarioImageUrl}
                             alt="Escenario"
-                            className="max-h-[580px] w-full object-contain"
+                            className="analytics-visual-image"
                             onLoad={computeLetterbox}
                           />
                         )}

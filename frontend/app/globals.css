@@ -7,7 +7,14 @@
 
 :root {
     --font-sans: "Poppins", sans-serif;
-    --app-nav-height: 4.5rem;
+    --app-nav-height: clamp(3.75rem, 5.2vh, 4.5rem);
+    --app-page-max-width: 88rem;
+    --app-page-max-width-wide: 96rem;
+    --analytics-chart-main-height: clamp(20rem, 43vh, 28.75rem);
+    --analytics-chart-mid-height: clamp(18.5rem, 40vh, 22rem);
+    --analytics-chart-compact-height: clamp(17.5rem, 36vh, 20rem);
+    --analytics-chart-eeg-height: clamp(22rem, 48vh, 31.25rem);
+    --analytics-chart-visual-height: clamp(20rem, 58vh, 36rem);
     --background: oklch(100% 0.00011 271.152);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -133,36 +140,268 @@
 @media (min-width: 1024px) and (max-width: 1440px), (min-width: 1024px) and (max-height: 900px) {
   :root {
     --app-nav-height: 4rem;
-  }
-
-  html {
-    font-size: 15px;
+    --analytics-chart-main-height: clamp(19rem, 42vh, 24.5rem);
+    --analytics-chart-mid-height: clamp(17.5rem, 38vh, 21rem);
+    --analytics-chart-compact-height: clamp(16.5rem, 34vh, 19rem);
+    --analytics-chart-eeg-height: clamp(20rem, 46vh, 27rem);
+    --analytics-chart-visual-height: clamp(19rem, 56vh, 32rem);
   }
 }
 
 @media (min-width: 1024px) and (max-height: 800px) {
   :root {
     --app-nav-height: 3.75rem;
-  }
-
-  html {
-    font-size: 14px;
-  }
-}
-
-@media (min-width: 1024px) and (max-height: 900px) {
-  .analytics-shell .recharts-responsive-container {
-    height: 390px !important;
-  }
-}
-
-@media (min-width: 1024px) and (max-height: 800px) {
-  .analytics-shell .recharts-responsive-container {
-    height: 340px !important;
+    --analytics-chart-main-height: clamp(17.75rem, 37vh, 20rem);
+    --analytics-chart-mid-height: clamp(16.5rem, 36vh, 19rem);
+    --analytics-chart-compact-height: clamp(15.5rem, 32vh, 17.5rem);
+    --analytics-chart-eeg-height: clamp(19rem, 44vh, 24rem);
+    --analytics-chart-visual-height: clamp(18rem, 54vh, 29rem);
   }
 }
 
 @layer components {
+  .app-page-shell {
+    min-height: calc(100svh - var(--app-nav-height));
+    @apply bg-gray-50 dark:bg-black;
+  }
+
+  .app-page-container {
+    width: 100%;
+    max-width: var(--app-page-max-width);
+    @apply mx-auto px-4 py-5 sm:px-5 lg:px-6 2xl:px-8;
+  }
+
+  .app-page-container-wide {
+    max-width: var(--app-page-max-width-wide);
+  }
+
+  @media (min-width: 1600px) {
+    .app-page-container {
+      @apply py-8;
+    }
+  }
+
+  .app-page-header {
+    @apply mb-5 flex flex-wrap items-start justify-between gap-4 2xl:mb-7;
+  }
+
+  .app-page-title {
+    font-size: clamp(1.5rem, 1.05vw + 1rem, 2rem);
+    @apply mb-2 font-semibold tracking-tight text-foreground;
+  }
+
+  .app-page-description {
+    font-size: clamp(0.875rem, 0.25vw + 0.8rem, 1rem);
+    @apply max-w-4xl leading-relaxed text-muted-foreground;
+  }
+
+  .analytics-stack {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 1.5vh, 1.5rem);
+    padding-block: clamp(1rem, 1.5vh, 1.5rem);
+  }
+
+  .analytics-panel-stack {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.875rem, 1.2vh, 1.25rem);
+  }
+
+  .dashboard-tab-list {
+    display: flex;
+    min-width: 0;
+    gap: 0.25rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-bottom: 1px solid var(--border);
+    padding-inline: 0.5rem;
+    color: var(--muted-foreground);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dashboard-tab-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dashboard-tab-button {
+    flex: 0 0 auto;
+    border-bottom: 2px solid transparent;
+    padding: 0.625rem 0.75rem 0.6rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+  }
+
+  .dashboard-tab-button:hover {
+    color: var(--foreground);
+  }
+
+  .dashboard-tab-button-active {
+    border-bottom-color: var(--foreground);
+    color: var(--foreground);
+    font-weight: 600;
+  }
+
+  .analytics-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: clamp(0.75rem, 1vw, 1rem);
+    margin-bottom: clamp(1rem, 1.4vh, 1.5rem);
+  }
+
+  .analytics-kpi-grid-four {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr));
+  }
+
+  @media (min-width: 768px) {
+    .analytics-kpi-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .analytics-kpi-grid-four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 767px) {
+    .analytics-kpi-grid,
+    .analytics-kpi-grid-four {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 520px) {
+    .analytics-kpi-grid,
+    .analytics-kpi-grid-four {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .analytics-chart-frame {
+    height: var(--analytics-chart-main-height) !important;
+    min-height: 15rem;
+    width: 100%;
+  }
+
+  .analytics-chart-frame-mid {
+    height: var(--analytics-chart-mid-height) !important;
+  }
+
+  .analytics-chart-frame-compact {
+    height: var(--analytics-chart-compact-height) !important;
+  }
+
+  .analytics-chart-frame-eeg {
+    height: var(--analytics-chart-eeg-height) !important;
+  }
+
+  .analytics-chart-shell {
+    display: flex;
+    height: var(--analytics-chart-main-height);
+    min-height: 15rem;
+    min-width: 0;
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .analytics-chart-shell-mid {
+    height: var(--analytics-chart-mid-height);
+  }
+
+  .analytics-chart-shell-compact {
+    height: var(--analytics-chart-compact-height);
+  }
+
+  .analytics-chart-shell-eeg {
+    height: var(--analytics-chart-eeg-height);
+  }
+
+  .analytics-chart-plot-area {
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .analytics-chart-plot-frame {
+    height: 100% !important;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .analytics-chart-axis-label {
+    margin-top: 0.125rem;
+    min-height: 0.875rem;
+    text-align: center;
+    font-size: 0.75rem;
+    line-height: 0.875rem;
+    color: var(--muted-foreground);
+  }
+
+  .analytics-chart-legend {
+    display: flex;
+    min-height: 1.25rem;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 0.75rem;
+    padding: 0.25rem 0.5rem 0;
+    font-size: 0.8125rem;
+    line-height: 1.125rem;
+  }
+
+  .analytics-chart-legend-item {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 0.375rem;
+    white-space: nowrap;
+  }
+
+  .analytics-chart-legend-line {
+    height: 0.125rem;
+    width: 1rem;
+    flex: 0 0 auto;
+    border-radius: 9999px;
+  }
+
+  .analytics-state-frame {
+    min-height: var(--analytics-chart-main-height);
+    @apply w-full;
+  }
+
+  .analytics-state-frame-mid {
+    min-height: var(--analytics-chart-mid-height);
+  }
+
+  .analytics-state-frame-compact {
+    min-height: var(--analytics-chart-compact-height);
+  }
+
+  .analytics-state-frame-eeg {
+    min-height: var(--analytics-chart-eeg-height);
+  }
+
+  .analytics-visual-image {
+    max-height: var(--analytics-chart-visual-height);
+    @apply w-full object-contain;
+  }
+
+  .analytics-visual-image-compact {
+    max-height: clamp(18rem, 50vh, 31.25rem);
+  }
+
+  .eeg-spectrogram-canvas {
+    height: clamp(12rem, 28vh, 16rem);
+  }
+
   .input {
     @apply h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 py-1
       text-base text-foreground transition-colors outline-none

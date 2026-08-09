@@ -36,14 +36,14 @@ export default function ProyectosPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-[calc(100vh-var(--app-nav-height))] bg-gray-50 dark:bg-black">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 xl:px-8 xl:py-10">
-          <div className="mb-6 flex items-start justify-between gap-4 xl:mb-10">
+      <div className="app-page-shell">
+        <div className="app-page-container">
+          <div className="app-page-header">
             <div>
-              <h1 className="mb-2 text-2xl font-semibold text-foreground tracking-tight xl:mb-3 xl:text-3xl">
+              <h1 className="app-page-title">
                 Proyectos
               </h1>
-              <p className="max-w-3xl text-base text-muted-foreground leading-relaxed xl:text-lg">
+              <p className="app-page-description">
                 Gestiona tus experimentos de neuromarketing y análisis de
                 bioseñales.
               </p>
@@ -60,10 +60,10 @@ export default function ProyectosPage() {
 
           {/* Loading state */}
           {loading && (
-            <div className="flex items-center justify-center h-64">
+            <div className="flex h-64 items-center justify-center">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted mb-4">
-                  <div className="w-8 h-8 border-4 border-border border-t-foreground rounded-full animate-spin"></div>
+                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-foreground"></div>
                 </div>
                 <p className="text-muted-foreground">Cargando proyectos...</p>
               </div>

@@ -5,7 +5,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  Legend,
   Line,
   ReferenceLine,
   ResponsiveContainer,
@@ -45,6 +44,7 @@ import {
   type TimeWindow,
   type TimeWindowDraft,
 } from "./TimeWindowControls"
+import { AnalyticsChartShell } from "./AnalyticsChartShell"
 
 type SignalMode = "smooth" | "raw" | "both"
 
@@ -142,6 +142,14 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
     if (chartData.length === 0) return ["dataMin", "dataMax"]
     return [chartData[0].time, chartData[chartData.length - 1].time]
   }, [chartData])
+  const chartLegend = [
+    ...(signalMode === "smooth" || signalMode === "both"
+      ? [{ label: "GSR suavizada", color: "#10B981" }]
+      : []),
+    ...(signalMode === "raw" || signalMode === "both"
+      ? [{ label: "GSR cruda", color: "#6366F1" }]
+      : []),
+  ]
 
   const minTime = useMemo(() => {
     if (chartData.length === 0) return null
@@ -231,7 +239,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
   }
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
@@ -281,7 +289,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
             onReset={handleResetTimeWindow}
           />
 
-          <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="analytics-kpi-grid">
             {[
               {
                 label: "Media",
@@ -340,17 +348,18 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
           </div>
 
           {timeseriesLoading ? (
-            <div className="h-[400px] w-full animate-pulse rounded-lg bg-muted" />
+            <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
           ) : chartData.length === 0 ? (
-            <div className="flex h-[400px] items-center justify-center text-sm text-muted-foreground">
+            <div className="analytics-state-frame flex items-center justify-center text-sm text-muted-foreground">
               No hay datos de GSR para los filtros seleccionados.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={460}>
+            <AnalyticsChartShell legend={chartLegend}>
+            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
               <AreaChart
                 data={chartData}
                 onClick={handleChartClick}
-                margin={{ top: 8, right: 24, left: 16, bottom: 80 }}
+                margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
               >
                 <defs>
                   <linearGradient id="gsrSmoothFill" x1="0" x2="0" y1="0" y2="1">
@@ -365,18 +374,12 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
                   domain={chartDomain}
                   tickFormatter={(value) => String(Math.round(Number(value)))}
                   tickMargin={8}
-                  label={{ value: "Tiempo (s)", position: "insideBottom", offset: -8 }}
                 />
                 <YAxis
                   width={80}
                   label={{ value: "Respuesta galvánica (µS)", angle: -90, position: "insideLeft", offset: 4, style: { textAnchor: "middle" } }}
                 />
                 <RechartsTooltip content={<GsrTooltip />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={52}
-                  wrapperStyle={{ paddingTop: "36px" }}
-                />
 
                 {typeof stats?.mean === "number" ? (
                   <ReferenceLine y={stats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
@@ -418,6 +421,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
                 ) : null}
               </AreaChart>
             </ResponsiveContainer>
+            </AnalyticsChartShell>
           )}
         </CardContent>
       </Card>
