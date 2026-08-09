@@ -126,7 +126,10 @@ export default function ReportesPage() {
     useAnalyticsParticipants(selectedProjectKey)
   const { scenarios, loading: scenariosLoading } =
     useAnalyticsScenarios(selectedProjectKey)
-  const availableSensors = selectedProject?.sensors ?? []
+  const availableSensors = useMemo(
+    () => selectedProject?.sensors ?? [],
+    [selectedProject]
+  )
   const reportableScenarios = useMemo(
     () => scenarios.filter((scenario) => !isVideoScenario(scenario)),
     [scenarios]
@@ -251,19 +254,21 @@ export default function ReportesPage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-[calc(100vh-var(--app-nav-height))] bg-gray-50 dark:bg-black">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 xl:px-8 xl:py-10">
-          <div className="mb-6 xl:mb-10">
-            <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground xl:mb-3 xl:text-3xl">
+      <div className="app-page-shell">
+        <div className="app-page-container">
+          <div className="app-page-header">
+            <div>
+            <h1 className="app-page-title">
               Reportes
             </h1>
-            <p className="max-w-4xl text-base leading-relaxed text-muted-foreground xl:text-lg">
+            <p className="app-page-description">
               Genera informes ejecutivos en PDF con mapas, AOIs, metricas y
               senales temporales resumidas por escenario.
             </p>
+            </div>
           </div>
 
-          <div className="mb-6 xl:mb-8">
+          <div className="mb-6 2xl:mb-8">
             <ProjectSelectionCard
               projects={projects}
               selectedProject={selectedProject}
@@ -278,7 +283,7 @@ export default function ReportesPage() {
 
           {hasSelection ? (
             <>
-              <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 xl:mb-8">
+              <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 2xl:mb-8">
                 <ReportScopeCard
                   participants={participants}
                   selectedParticipant={selectedParticipant}
@@ -289,7 +294,7 @@ export default function ReportesPage() {
                 />
               </div>
 
-              <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 xl:mb-8">
+              <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 2xl:mb-8">
                 <ReportConfigurationCard
                   reportMode={reportMode}
                   onReportModeChange={setReportMode}
@@ -299,7 +304,7 @@ export default function ReportesPage() {
                 />
               </div>
 
-              <div className="mb-6 pl-8 pr-4 xl:mb-8 xl:pl-14 xl:pr-8">
+              <div className="mb-6 pl-0 sm:pl-8 sm:pr-4 2xl:mb-8 2xl:pl-14 2xl:pr-8">
                 <ReportPreview
                   reportMode={reportMode}
                   scopeKind={scopeKind}
@@ -317,7 +322,7 @@ export default function ReportesPage() {
               </div>
 
               <div
-                className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 xl:mb-8"
+                className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 2xl:mb-8"
                 style={{ animationDelay: "100ms" }}
               >
                 <ExportOptionsCard

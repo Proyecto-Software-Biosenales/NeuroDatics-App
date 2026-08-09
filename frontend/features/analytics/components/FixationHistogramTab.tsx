@@ -19,6 +19,7 @@ import {
 import { Activity, TrendingDown, TrendingUp } from "lucide-react"
 
 import { KpiCard } from "@/components/ui/KpiCard"
+import { AnalyticsChartShell } from "./AnalyticsChartShell"
 import { useFixationHistogram } from "../hooks/useAnalyticsData"
 import type { FixationHistogramBin } from "../types"
 
@@ -92,13 +93,13 @@ export function FixationHistogramTab({
 
   if (loading) {
     return (
-      <div className="space-y-6 py-6">
-        <div className="grid grid-cols-3 gap-6">
+      <div className="analytics-stack">
+        <div className="analytics-kpi-grid">
           <div className="h-28 animate-pulse rounded-lg bg-muted" />
           <div className="h-28 animate-pulse rounded-lg bg-muted" />
           <div className="h-28 animate-pulse rounded-lg bg-muted" />
         </div>
-        <div className="h-[400px] w-full animate-pulse rounded-lg bg-muted" />
+        <div className="analytics-state-frame-compact w-full animate-pulse rounded-lg bg-muted" />
         <div className="h-64 animate-pulse rounded-lg bg-muted" />
       </div>
     )
@@ -115,9 +116,9 @@ export function FixationHistogramTab({
   }
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="analytics-kpi-grid">
         <KpiCard
           label="Media"
           value={data.mean_duration_ms}
@@ -168,36 +169,39 @@ export function FixationHistogramTab({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={data.bins}
-              margin={{ top: 16, right: 24, left: 0, bottom: 24 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 12 }}
-                tickMargin={8}
-                label={{ value: "Duración (ms)", position: "insideBottom", offset: -16 }}
-              />
-              <YAxis
-                allowDecimals={false}
-                label={{
-                  value: "Fijaciones",
-                  angle: -90,
-                  position: "insideLeft",
-                  style: { textAnchor: "middle" },
-                }}
-              />
-              <RechartsTooltip content={<HistogramTooltip />} cursor={{ fill: "rgba(59, 130, 246, 0.1)" }} />
-              <Bar
-                dataKey="conteo"
-                name="Fijaciones"
-                fill="#3B82F6"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <AnalyticsChartShell xAxisLabel="Duración (ms)" variant="compact">
+            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
+              <BarChart
+                data={data.bins}
+                margin={{ top: 16, right: 24, left: 0, bottom: 12 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis
+                  dataKey="label"
+                  height={36}
+                  minTickGap={8}
+                  tick={{ fontSize: 12 }}
+                  tickMargin={8}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  label={{
+                    value: "Fijaciones",
+                    angle: -90,
+                    position: "insideLeft",
+                    style: { textAnchor: "middle" },
+                  }}
+                />
+                <RechartsTooltip content={<HistogramTooltip />} cursor={{ fill: "rgba(59, 130, 246, 0.1)" }} />
+                <Bar
+                  dataKey="conteo"
+                  name="Fijaciones"
+                  fill="#3B82F6"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </AnalyticsChartShell>
         </CardContent>
       </Card>
 

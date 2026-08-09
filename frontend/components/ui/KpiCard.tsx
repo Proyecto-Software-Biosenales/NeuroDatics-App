@@ -87,7 +87,7 @@ export function KpiCard({
 
   if (loading) {
     return (
-      <div className={cn("rounded-2xl border border-border p-4 xl:p-6", className)}>
+      <div className={cn("rounded-xl border border-border p-4 2xl:p-5", className)}>
         <div className="mb-4 h-3 w-16 animate-pulse rounded bg-muted" />
         <div className="h-8 w-24 animate-pulse rounded bg-muted" />
       </div>
@@ -107,7 +107,7 @@ export function KpiCard({
           : undefined
       }
       className={cn(
-        "relative rounded-2xl border p-4 transition-all duration-200 xl:p-6",
+        "relative rounded-xl border p-4 transition-all duration-200 2xl:p-5",
         bgClass,
         borderClass,
         active ? cn("shadow-sm ring-1 ring-inset ring-foreground/10", activeBgClass) : "",
@@ -136,25 +136,25 @@ export function KpiCard({
         </div>
       )}
 
-      <div className="flex items-start gap-3 xl:gap-4">
+      <div className="flex items-start gap-3 2xl:gap-4">
         {/* Accent icon circle */}
         <div
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl xl:h-10 xl:w-10",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl 2xl:h-10 2xl:w-10",
             iconBgClass,
           )}
         >
-          <Icon className={cn("h-4 w-4 xl:h-5 xl:w-5", iconColorClass)} />
+          <Icon className={cn("h-4 w-4 2xl:h-5 2xl:w-5", iconColorClass)} />
         </div>
 
         {/* Label / value / description */}
         <div>
           <p className={cn("text-sm font-medium", labelColorClass)}>{label}</p>
-          <p className="mt-1 text-xl font-bold tracking-tight text-foreground xl:text-2xl">
+          <p className="mt-1 text-xl font-bold tracking-tight text-foreground 2xl:text-2xl">
             {value != null ? (
               <>
                 {value.toFixed(decimals).replace(".", ",")}
-                <span className="ml-1 text-base font-semibold text-foreground xl:text-lg">{unit}</span>
+                <span className="ml-1 text-base font-semibold text-foreground 2xl:text-lg">{unit}</span>
               </>
             ) : (
               "—"

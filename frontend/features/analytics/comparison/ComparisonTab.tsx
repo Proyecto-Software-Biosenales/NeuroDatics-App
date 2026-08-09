@@ -464,10 +464,10 @@ function ComparisonWorkspace({
   ).map((item) => item.id)
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight xl:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight 2xl:text-3xl">
             Comparativas
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -498,7 +498,7 @@ function ComparisonWorkspace({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-5">
+        <div className="analytics-panel-stack">
           {panelIds.map((id) => (
             <ComparisonPanel
               key={id}
@@ -508,7 +508,7 @@ function ComparisonWorkspace({
             >
               {renderPanel(id)}
               {pointActive && pinned?.ownerId === id ? (
-                <div className="mt-6 border-t border-border pt-6">
+                <div className="mt-5 border-t border-border pt-5 2xl:mt-6 2xl:pt-6">
                   <PointOnStimulusPanel
                     pinnedTime={pinnedDisplayTime}
                     gaze={data.gazeAt.data}

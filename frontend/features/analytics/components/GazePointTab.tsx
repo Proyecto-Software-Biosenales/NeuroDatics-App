@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ReferenceLine,
@@ -66,6 +65,7 @@ import {
   type TimeWindowDraft,
 } from "./TimeWindowControls"
 import { MissingStimulusImage } from "./MissingStimulusImage"
+import { AnalyticsChartShell } from "./AnalyticsChartShell"
 
 type ViewMode = "both" | "x" | "y"
 
@@ -180,6 +180,14 @@ export function GazePointTab({
     if (chartData.length === 0) return ["dataMin", "dataMax"]
     return [chartData[0].time, chartData[chartData.length - 1].time]
   }, [chartData])
+  const chartLegend = [
+    ...(viewMode === "both" || viewMode === "x"
+      ? [{ label: "Gaze X (%) filtrado", color: "#818CF8" }]
+      : []),
+    ...(viewMode === "both" || viewMode === "y"
+      ? [{ label: "Gaze Y (%) filtrado", color: "#22C55E" }]
+      : []),
+  ]
 
   const minTime = useMemo(() => {
     if (chartData.length === 0) return null
@@ -366,7 +374,7 @@ export function GazePointTab({
   }
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
@@ -416,7 +424,7 @@ export function GazePointTab({
             onReset={handleResetTimeWindow}
           />
 
-          <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
+          <div className="analytics-kpi-grid">
             {[
               {
                 label: "Media",
@@ -469,17 +477,18 @@ export function GazePointTab({
           </div>
 
           {timeseriesLoading ? (
-            <div className="h-[400px] w-full animate-pulse rounded-lg bg-muted" />
+            <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
           ) : chartData.length === 0 ? (
-            <div className="flex h-[400px] items-center justify-center text-sm text-muted-foreground">
+            <div className="analytics-state-frame flex items-center justify-center text-sm text-muted-foreground">
               No hay datos de gaze para los filtros seleccionados.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={460}>
+            <AnalyticsChartShell legend={chartLegend}>
+            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
               <LineChart
                 data={chartData}
                 onClick={handleChartClick}
-                margin={{ top: 8, right: 24, left: 16, bottom: 80 }}
+                margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
@@ -488,7 +497,6 @@ export function GazePointTab({
                   domain={chartDomain}
                   tickFormatter={(value) => String(Math.round(Number(value)))}
                   tickMargin={8}
-                  label={{ value: "Tiempo (s)", position: "insideBottom", offset: -8 }}
                 />
                 <YAxis
                   width={72}
@@ -501,11 +509,6 @@ export function GazePointTab({
                   }}
                 />
                 <RechartsTooltip content={<GazeTooltip />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={52}
-                  wrapperStyle={{ paddingTop: "36px" }}
-                />
 
                 {typeof stats?.gx_mean === "number" ? (
                   <ReferenceLine y={stats.gx_mean} stroke="#9CA3AF" strokeDasharray="4 4" />
@@ -549,6 +552,7 @@ export function GazePointTab({
                 ) : null}
               </LineChart>
             </ResponsiveContainer>
+            </AnalyticsChartShell>
           )}
         </CardContent>
       </Card>

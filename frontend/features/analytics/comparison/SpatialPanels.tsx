@@ -40,6 +40,7 @@ import {
   supportsStimulusAois,
 } from "../components/stimulusState"
 import { MissingStimulusImage } from "../components/MissingStimulusImage"
+import { AnalyticsChartShell } from "../components/AnalyticsChartShell"
 
 interface ImageState {
   url: string | null
@@ -89,7 +90,7 @@ function StimulusSurface({
 
   if (image.loading) {
     return (
-      <div className="h-[420px] w-full animate-pulse rounded-xl bg-muted" />
+      <div className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
     )
   }
   if (image.error) return <MessageSurface>{image.error}</MessageSurface>
@@ -110,7 +111,7 @@ function StimulusSurface({
         ref={imageRef}
         src={image.url}
         alt={alt}
-        className="max-h-[560px] min-h-64 w-full object-contain"
+        className="analytics-visual-image min-h-64"
         onLoad={measure}
       />
       {renderOverlay?.(box)}
@@ -233,7 +234,7 @@ export function PointOnStimulusPanel({
       </div>
       {stimulusStatus === "loading-gaze" ||
       stimulusStatus === "loading-preview" ? (
-        <div className="h-[420px] w-full animate-pulse rounded-xl bg-muted" />
+        <div className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
       ) : stimulusStatus === "no-gaze" ? (
         <MessageSurface Icon={CircleOff}>
           No se pudo ubicar la mirada para este instante.
@@ -346,7 +347,7 @@ export function HeatmapPanel({
 }) {
   if (loading)
     return (
-      <div className="h-[420px] w-full animate-pulse rounded-xl bg-muted" />
+      <div className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
     )
   if (error) return <MessageSurface>{error}</MessageSurface>
   if (!fixation?.fixations.length)
@@ -414,7 +415,7 @@ export function ScanpathPanel({
 }) {
   if (loading)
     return (
-      <div className="h-[420px] w-full animate-pulse rounded-xl bg-muted" />
+      <div className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
     )
   if (error) return <MessageSurface>{error}</MessageSurface>
   if (!data?.objectives.length)
@@ -543,7 +544,7 @@ export function AoiPanel({
     )
 
   return (
-    <div className="grid gap-5 xl:grid-cols-2">
+    <div className="grid gap-4 xl:grid-cols-2 2xl:gap-5">
       <StimulusSurface
         image={image}
         alt="Áreas de interés del escenario"
@@ -553,10 +554,11 @@ export function AoiPanel({
         role="img"
         aria-label={`Comparación de permanencia para ${data.aois.length} AOIs.`}
       >
-        <ResponsiveContainer width="100%" height={350}>
+        <AnalyticsChartShell xAxisLabel="AOI" variant="mid">
+        <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
           <BarChart
             data={data.aois}
-            margin={{ top: 12, right: 16, left: 0, bottom: 42 }}
+            margin={{ top: 12, right: 16, left: 0, bottom: 10 }}
           >
             <CartesianGrid
               strokeDasharray="3 3"
@@ -588,6 +590,7 @@ export function AoiPanel({
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        </AnalyticsChartShell>
       </div>
     </div>
   )

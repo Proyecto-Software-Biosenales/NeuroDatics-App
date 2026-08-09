@@ -40,7 +40,10 @@ export const NavBar = () => {
 
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   const handleSignOut = async () => {
     try {
@@ -55,27 +58,27 @@ export const NavBar = () => {
 
   return (
     <header className="sticky top-0 z-50 h-[var(--app-nav-height)] backdrop-blur-md bg-background/90 border-b border-border">
-      <div className="mx-auto h-full max-w-7xl px-4 sm:px-6 xl:px-8">
+      <div className="mx-auto h-full max-w-[var(--app-page-max-width)] px-4 sm:px-5 lg:px-6 2xl:px-8">
         <div className="flex h-full items-center justify-between">
-          <div className="flex min-w-0 items-center gap-5 xl:gap-10">
+          <div className="flex min-w-0 items-center gap-4 2xl:gap-10">
             <Link href="/" className="flex items-center gap-3 group">
               <img
                 src="assets/NeuroDatics-logo.png"
                 alt="NeuroDatics Logo"
-                className="h-8 w-auto transition-transform group-hover:scale-105 xl:h-10"
+                className="h-8 w-auto transition-transform group-hover:scale-105 2xl:h-10"
               />
-              <span className="text-base font-semibold text-foreground tracking-tight xl:text-lg">
+              <span className="text-base font-semibold tracking-tight text-foreground 2xl:text-lg">
                 NeuroDatics
               </span>
             </Link>
 
-            <nav className="flex items-center gap-0.5 xl:gap-1">
+            <nav className="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   href={item.path}
                   onClick={(event) => handleProtectedNavigation(event, item)}
-                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 relative xl:px-4 ${
+                  className={`relative shrink-0 px-3 py-2 text-sm font-medium transition-all duration-200 2xl:px-4 ${
                     pathname === item.path
                       ? 'text-foreground after:absolute after:bottom-0 after:left-4 after:right-4 after:h-px after:bg-foreground after:rounded-full'
                       : 'text-muted-foreground hover:text-foreground'
@@ -90,15 +93,15 @@ export const NavBar = () => {
             <button
               type="button"
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors xl:p-2"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground 2xl:p-2"
               aria-label="Cambiar tema"
             >
-              {mounted && resolvedTheme === 'dark' ? <Sun className="h-4 w-4 xl:h-5 xl:w-5" /> : <Moon className="h-4 w-4 xl:h-5 xl:w-5" />}
+              {mounted && resolvedTheme === 'dark' ? <Sun className="h-4 w-4 2xl:h-5 2xl:w-5" /> : <Moon className="h-4 w-4 2xl:h-5 2xl:w-5" />}
             </button>
             {currentUser ? (
-              <div className="hidden items-center gap-2 rounded-lg bg-muted px-2.5 py-1.5 text-sm text-muted-foreground sm:flex xl:px-3 xl:py-2">
+              <div className="hidden items-center gap-2 rounded-lg bg-muted px-2.5 py-1.5 text-sm text-muted-foreground sm:flex 2xl:px-3 2xl:py-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                <span className="max-w-36 truncate xl:max-w-44">{currentUser.name ?? currentUser.email ?? 'Usuario'}</span>
+                <span className="max-w-36 truncate 2xl:max-w-44">{currentUser.name ?? currentUser.email ?? 'Usuario'}</span>
               </div>
             ) : null}
 
@@ -112,7 +115,7 @@ export const NavBar = () => {
                 onClick={handleSignOut}
                 className={cn(
                   'inline-flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground',
-                  'px-2.5 py-1.5 xl:px-3 xl:py-2',
+                  'px-2.5 py-1.5 2xl:px-3 2xl:py-2',
                 )}
               >
                 Salir

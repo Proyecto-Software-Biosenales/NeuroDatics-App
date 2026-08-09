@@ -9,7 +9,6 @@ import {
   ComboboxList,
   ComboboxTrigger,
   ComboboxValue,
-  ComboboxInput
 } from "@/components/ui/combobox"
 import type { AnalyticsParticipant, AnalyticsScenario } from "../types"
 
@@ -35,8 +34,8 @@ export function FiltersBar({
   participantsLoading,
 }: FiltersBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 px-4 py-3 xl:flex-nowrap xl:gap-3 xl:px-6 xl:py-4">
-      <div className="flex items-center gap-2.5 text-sm font-medium text-muted-foreground">
+    <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 py-3 lg:flex-nowrap xl:gap-3 xl:px-6 xl:py-4">
+      <div className="flex shrink-0 items-center gap-2.5 text-sm font-medium text-muted-foreground">
         <SlidersHorizontal className="h-4 w-4 shrink-0" />
         <span>Filtros</span>
       </div>
@@ -46,7 +45,7 @@ export function FiltersBar({
         onValueChange={(val) => onScenarioChange(val ?? "all")}
         disabled={scenariosLoading}
       >
-        <ComboboxTrigger className="flex max-w-[240px] items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 xl:max-w-[280px] xl:py-2">
+        <ComboboxTrigger className="flex w-[min(34vw,240px)] min-w-40 max-w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-[280px] 2xl:py-2">
           <span className="truncate">
             {selectedScenario === "all" ? "Todos los escenarios" : selectedScenario}
           </span>
@@ -68,7 +67,7 @@ export function FiltersBar({
         onValueChange={(val) => val && onParticipantChange(val)}
         disabled={participantsLoading || participants.length === 0}
       >
-        <ComboboxTrigger className="flex min-w-[160px] shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 xl:min-w-[180px] xl:py-2">
+        <ComboboxTrigger className="flex w-40 shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-44 2xl:py-2">
           <ComboboxValue placeholder="Sin sujetos" />
         </ComboboxTrigger>
         <ComboboxContent>
@@ -82,7 +81,7 @@ export function FiltersBar({
         </ComboboxContent>
       </Combobox>
 
-      <div className="ml-auto">
+      <div className="ml-auto shrink-0">
         <Button
           type="button"
           variant="outline"

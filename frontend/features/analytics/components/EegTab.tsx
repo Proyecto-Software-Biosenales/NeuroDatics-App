@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type MouseEvent } from "react"
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ReferenceLine,
@@ -42,6 +41,7 @@ import {
   type TimeWindow,
   type TimeWindowDraft,
 } from "./TimeWindowControls"
+import { AnalyticsChartShell } from "./AnalyticsChartShell"
 
 const EEG_CHANNELS = ["le", "f4", "c4", "p4", "p3", "c3", "f3"]
 const TOPOGRAPHY_CHANNELS = ["f3", "f4", "c3", "c4", "p3", "p4"]
@@ -1312,6 +1312,22 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   const visiblePsdChannels = psdData?.channels ?? EMPTY_CHANNELS
   const visibleSpectrogramChannels = spectrogramData?.channels ?? EMPTY_CHANNELS
   const availableTopographyChannels = topographyData?.available_channels ?? TOPOGRAPHY_CHANNELS
+  const eegChartLegend = visibleChannels.flatMap((channel) => {
+    const color = CHANNEL_COLORS[channel] ?? "#4B5563"
+    const channelLabel = formatChannel(channel)
+    return [
+      ...(signalMode === "smooth" || signalMode === "both"
+        ? [{ label: `${channelLabel} suavizada`, color }]
+        : []),
+      ...(signalMode === "raw" || signalMode === "both"
+        ? [{ label: `${channelLabel} cruda`, color }]
+        : []),
+    ]
+  })
+  const psdChartLegend = visiblePsdChannels.map((channel) => ({
+    label: formatChannel(channel),
+    color: CHANNEL_COLORS[channel] ?? "#4B5563",
+  }))
 
   const selectedEegValue = useMemo(() => {
     if (!selectedPoint || visibleChannels.length === 0) return null
@@ -1449,7 +1465,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   }
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       {view === "timeseries" ? (
       <Card>
         <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -1532,7 +1548,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
             })}
           </div>
 
-          <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="analytics-kpi-grid">
             <KpiCard
               label="Media"
               value={timeRepresentativeStats.meanValue}
@@ -1627,21 +1643,22 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           </div>
 
           {timeseriesLoading ? (
-            <div className="h-[460px] w-full animate-pulse rounded-lg bg-muted" />
+            <div className="analytics-state-frame-eeg w-full animate-pulse rounded-lg bg-muted" />
           ) : timeseriesError ? (
-            <div className="flex h-[460px] items-center justify-center text-sm text-muted-foreground">
+            <div className="analytics-state-frame-eeg flex items-center justify-center text-sm text-muted-foreground">
               No se pudo cargar la senal EEG.
             </div>
           ) : chartData.length === 0 || visibleChannels.length === 0 ? (
-            <div className="flex h-[460px] items-center justify-center text-sm text-muted-foreground">
+            <div className="analytics-state-frame-eeg flex items-center justify-center text-sm text-muted-foreground">
               No hay datos de EEG para los filtros seleccionados.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={500}>
+            <AnalyticsChartShell legend={eegChartLegend} variant="eeg">
+            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
               <LineChart
                 data={chartData}
                 onClick={handleChartClick}
-                margin={{ top: 8, right: 24, left: 16, bottom: 84 }}
+                margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
@@ -1650,18 +1667,12 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                   domain={chartDomain}
                   tickFormatter={(value) => String(Math.round(Number(value)))}
                   tickMargin={8}
-                  label={{ value: "Tiempo (s)", position: "insideBottom", offset: -8 }}
                 />
                 <YAxis
                   width={80}
                   label={{ value: "EEG (uV)", angle: -90, position: "insideLeft", offset: 4, style: { textAnchor: "middle" } }}
                 />
                 <RechartsTooltip content={<EegTooltip />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={58}
-                  wrapperStyle={{ paddingTop: "36px" }}
-                />
 
                 {selectedTime != null ? (
                   <ReferenceLine
@@ -1706,6 +1717,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                 )}
               </LineChart>
             </ResponsiveContainer>
+            </AnalyticsChartShell>
           )}
         </CardContent>
       </Card>
@@ -1793,7 +1805,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
             onReset={handleResetPsdWindow}
           />
 
-          <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="analytics-kpi-grid">
             <KpiCard
               label="Frecuencia pico"
               value={psdRepresentativeStats.peakFrequency}
@@ -1858,20 +1870,21 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           </div>
 
           {psdLoading ? (
-            <div className="h-[380px] w-full animate-pulse rounded-lg bg-muted" />
+            <div className="analytics-state-frame-mid w-full animate-pulse rounded-lg bg-muted" />
           ) : psdError ? (
-            <div className="flex h-[380px] items-center justify-center text-sm text-muted-foreground">
+            <div className="analytics-state-frame-mid flex items-center justify-center text-sm text-muted-foreground">
               No se pudo cargar la PSD de EEG.
             </div>
           ) : psdChartData.length === 0 || visiblePsdChannels.length === 0 ? (
-            <div className="flex h-[380px] items-center justify-center text-sm text-muted-foreground">
+            <div className="analytics-state-frame-mid flex items-center justify-center text-sm text-muted-foreground">
               No hay datos suficientes para calcular la PSD.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={420}>
+            <AnalyticsChartShell legend={psdChartLegend} xAxisLabel="Frecuencia (Hz)" variant="mid">
+            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
               <LineChart
                 data={psdChartData}
-                margin={{ top: 8, right: 24, left: 16, bottom: 84 }}
+                margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
@@ -1880,7 +1893,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                   domain={psdDomain}
                   tickFormatter={(value) => Number(value).toFixed(1)}
                   tickMargin={8}
-                  label={{ value: "Frecuencia (Hz)", position: "insideBottom", offset: -8 }}
                 />
                 <YAxis
                   width={92}
@@ -1893,11 +1905,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                   }}
                 />
                 <RechartsTooltip content={<PsdTooltip unit={psdData?.unit ?? "dB"} />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={58}
-                  wrapperStyle={{ paddingTop: "36px" }}
-                />
 
                 {visiblePsdChannels.map((channel) => (
                   <Line
@@ -1914,6 +1921,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
                 ))}
               </LineChart>
             </ResponsiveContainer>
+            </AnalyticsChartShell>
           )}
         </CardContent>
       </Card>
