@@ -151,6 +151,50 @@ export interface EegTopographyData {
   remove_dc: boolean
 }
 
+export interface ComparisonChartSeries {
+  key: string
+  label: string
+  color: string
+  unit: string
+}
+
+export interface ComparisonChartLegendItem {
+  label: string
+  color: string
+}
+
+export interface ComparisonChartPeak {
+  kind: "min" | "max"
+  series_key: string
+  series_label: string
+  value: number
+  time_s: number
+  unit: string
+  color: string
+  line_style: "dotted" | "dashed"
+  label: string
+}
+
+export interface ComparisonChartConfig {
+  id: string
+  title: string
+  x_label: string
+  y_label: string
+  time_basis: "absolute"
+  x_domain: [number, number] | null
+  data: Array<Record<string, number | null>>
+  series: ComparisonChartSeries[]
+  legend: ComparisonChartLegendItem[]
+  peaks: ComparisonChartPeak[]
+  annotations: Array<Record<string, unknown>>
+  synchronized: boolean
+  height: number
+}
+
+export interface ComparisonChartsResponse {
+  charts: ComparisonChartConfig[]
+}
+
 export interface ScanpathObjective {
   id: number
   cx: number            // normalized 0-1 (horizontal position)

@@ -19,12 +19,11 @@ import { useAuth } from "@/lib/providers/AuthProvider"
 import {
   EegPsdChart,
   EegSpectrogramGrid,
-  EEG_CHANNEL_COLORS,
   FixationHistogramChart,
   TemporalLineChart,
   type TemporalChartPoint,
-  type TemporalSeries,
 } from "./ComparisonCharts"
+import type { ComparisonChartConfig } from "../types"
 import { ComparisonStatistics } from "./ComparisonStatistics"
 import { CorrelationMatrixSection } from "./CorrelationMatrixSection"
 import {
@@ -77,12 +76,22 @@ function finiteOrGap(value: number | null | undefined) {
     : Number.NaN
 }
 
-function firstFinite(values: number[] | undefined) {
-  return values?.find((value) => Number.isFinite(value)) ?? null
-}
-
-function toRelativeTime(sourceTime: number, origin: number) {
-  return Math.round((sourceTime - origin) * 10000) / 10000
+function chartToTemporalPoints(
+  chart: ComparisonChartConfig | null | undefined
+): TemporalChartPoint[] {
+  if (!chart) return []
+  return chart.data
+    .map((row) => {
+      const time = finiteOrGap(row.time)
+      const sourceTime = finiteOrGap(row.sourceTime ?? row.time)
+      if (!Number.isFinite(time) || !Number.isFinite(sourceTime)) return null
+      const point: TemporalChartPoint = { time, sourceTime }
+      for (const series of chart.series) {
+        point[series.key] = finiteOrGap(row[series.key])
+      }
+      return point
+    })
+    .filter((point): point is TemporalChartPoint => point != null)
 }
 
 function PanelState({
@@ -250,88 +259,23 @@ function ComparisonWorkspace({
     pinnedSourceTime: pinned?.sourceTime ?? null,
   })
 
-  // Pupil, gaze, distance and EEG endpoints retain their source timestamps.
-  // Use one loaded origin for every compatible chart so a shared x value always
-  // identifies the same real sample (and therefore the same gaze preview).
-  const sharedTemporalOrigin = useMemo(() => {
-    const candidates = [
-      firstFinite(data.pupil.data?.time),
-      firstFinite(data.distance.data?.time),
-      firstFinite(data.gaze.data?.time),
-      firstFinite(data.eegTimeseries.data?.time),
-    ].filter((value): value is number => value != null)
-    return candidates.length ? Math.min(...candidates) : null
-  }, [
-    data.distance.data?.time,
-    data.eegTimeseries.data?.time,
-    data.gaze.data?.time,
-    data.pupil.data?.time,
-  ])
-  const pinnedDisplayTime = pinned
-    ? toRelativeTime(
-        pinned.sourceTime,
-        sharedTemporalOrigin ?? pinned.sourceTime
-      )
-    : null
-
-  const pupilChart = useMemo<TemporalChartPoint[]>(() => {
-    const source = data.pupil.data
-    if (!source) return []
-    const origin = sharedTemporalOrigin ?? firstFinite(source.time) ?? 0
-    return source.time.map((sourceTime, index) => ({
-      time: toRelativeTime(sourceTime, origin),
-      sourceTime,
-      left: finiteOrGap(source.smooth_left[index]),
-      right: finiteOrGap(source.smooth_right[index]),
-    }))
-  }, [data.pupil.data, sharedTemporalOrigin])
-  const distanceChart = useMemo<TemporalChartPoint[]>(() => {
-    const source = data.distance.data
-    if (!source) return []
-    const origin = sharedTemporalOrigin ?? firstFinite(source.time) ?? 0
-    return source.time.map((sourceTime, index) => ({
-      time: toRelativeTime(sourceTime, origin),
-      sourceTime,
-      distance: finiteOrGap(source.distance_cm[index]),
-    }))
-  }, [data.distance.data, sharedTemporalOrigin])
-  const gazeChart = useMemo<TemporalChartPoint[]>(() => {
-    const source = data.gaze.data
-    if (!source) return []
-    const origin = sharedTemporalOrigin ?? firstFinite(source.time) ?? 0
-    return source.time.map((sourceTime, index) => ({
-      time: toRelativeTime(sourceTime, origin),
-      sourceTime,
-      x: finiteOrGap(source.gx_clean[index]),
-      y: finiteOrGap(source.gy_clean[index]),
-    }))
-  }, [data.gaze.data, sharedTemporalOrigin])
-  const gsrChart = useMemo<TemporalChartPoint[]>(() => {
-    const source = data.gsr.data
-    if (!source) return []
-    return source.time.map((sourceTime, index) => ({
-      // The established GSR endpoint already rebases time to its first valid
-      // sample, so it cannot safely participate in cross-endpoint sync.
-      time: sourceTime,
-      sourceTime,
-      gsr: finiteOrGap(source.gsr_smooth[index]),
-    }))
-  }, [data.gsr.data])
-  const eegChart = useMemo<TemporalChartPoint[]>(() => {
-    const source = data.eegTimeseries.data
-    if (!source) return []
-    const origin = sharedTemporalOrigin ?? firstFinite(source.time) ?? 0
-    return source.time.map((sourceTime, index) => {
-      const point: TemporalChartPoint = {
-        time: toRelativeTime(sourceTime, origin),
-        sourceTime,
-      }
-      for (const channel of source.channels) {
-        point[channel] = finiteOrGap(source.smooth[channel]?.[index])
-      }
-      return point
-    })
-  }, [data.eegTimeseries.data, sharedTemporalOrigin])
+  const chartById = useMemo(() => {
+    return new Map(
+      (data.comparisonCharts.data?.charts ?? []).map((chart) => [
+        chart.id,
+        chart,
+      ])
+    )
+  }, [data.comparisonCharts.data?.charts])
+  const chartRowsById = useMemo(() => {
+    return new Map(
+      [...chartById.entries()].map(([id, chart]) => [
+        id,
+        chartToTemporalPoints(chart),
+      ])
+    )
+  }, [chartById])
+  const pinnedDisplayTime = pinned?.sourceTime ?? null
 
   const pinEyePoint = (ownerId: PointOwnerId, point: TemporalChartPoint) => {
     if (!pointPinningEnabled) return
@@ -372,144 +316,72 @@ function ComparisonWorkspace({
     })
   }
 
+  const renderTemporalPanel = (
+    id: Extract<
+      VisualizationId,
+      "pupil" | "distance" | "gaze" | "gsr" | "eeg_timeseries"
+    >,
+    fallbackYLabel: string,
+    onPin?: (point: TemporalChartPoint) => void,
+    interactionHint?: string
+  ) => {
+    const chart = chartById.get(id)
+    const chartRows = chartRowsById.get(id) ?? []
+
+    return (
+      <PanelState
+        loading={data.comparisonCharts.loading}
+        error={data.comparisonCharts.error}
+        empty={!chartRows.length || !chart?.series.length}
+      >
+        <TemporalLineChart
+          data={chartRows}
+          series={chart?.series ?? []}
+          yLabel={chart?.y_label ?? fallbackYLabel}
+          xLabel={chart?.x_label}
+          xDomain={chart?.x_domain}
+          peaks={chart?.peaks}
+          pinnedTime={id === "gsr" ? null : pinnedDisplayTime}
+          interactionHint={interactionHint}
+          synchronized={chart?.synchronized ?? id !== "gsr"}
+          height={chart?.height ?? (id === "eeg_timeseries" ? 380 : 320)}
+          onPin={onPin}
+        />
+      </PanelState>
+    )
+  }
+
   const renderPanel = (id: VisualizationId) => {
-    const pinnedTime = pinnedDisplayTime
     switch (id) {
       case "pupil":
-        return (
-          <PanelState
-            loading={data.pupil.loading}
-            error={data.pupil.error}
-            empty={!pupilChart.length}
-          >
-            <TemporalLineChart
-              data={pupilChart}
-              series={[
-                {
-                  key: "left",
-                  label: "Pupila izquierda",
-                  color: "#F87171",
-                  unit: "mm",
-                },
-                {
-                  key: "right",
-                  label: "Pupila derecha",
-                  color: "#818CF8",
-                  unit: "mm",
-                },
-              ]}
-              yLabel="Diámetro (mm)"
-              pinnedTime={pinnedTime}
-              interactionHint={pointInteractionHint}
-              onPin={
-                pointPinningEnabled
-                  ? (point) => pinEyePoint("pupil", point)
-                  : undefined
-              }
-            />
-          </PanelState>
+        return renderTemporalPanel(
+          "pupil",
+          "Diametro (mm)",
+          pointPinningEnabled
+            ? (point) => pinEyePoint("pupil", point)
+            : undefined,
+          pointInteractionHint
         )
       case "distance":
-        return (
-          <PanelState
-            loading={data.distance.loading}
-            error={data.distance.error}
-            empty={!distanceChart.length}
-          >
-            <TemporalLineChart
-              data={distanceChart}
-              series={[
-                {
-                  key: "distance",
-                  label: "Distancia",
-                  color: "#8B5CF6",
-                  unit: "cm",
-                },
-              ]}
-              yLabel="Distancia (cm)"
-              pinnedTime={pinnedTime}
-              interactionHint={pointInteractionHint}
-              onPin={
-                pointPinningEnabled
-                  ? (point) => pinEyePoint("distance", point)
-                  : undefined
-              }
-            />
-          </PanelState>
+        return renderTemporalPanel(
+          "distance",
+          "Distancia (cm)",
+          pointPinningEnabled
+            ? (point) => pinEyePoint("distance", point)
+            : undefined,
+          pointInteractionHint
         )
       case "gaze":
-        return (
-          <PanelState
-            loading={data.gaze.loading}
-            error={data.gaze.error}
-            empty={!gazeChart.length}
-          >
-            <TemporalLineChart
-              data={gazeChart}
-              series={[
-                { key: "x", label: "Posición X", color: "#F87171", unit: "%" },
-                { key: "y", label: "Posición Y", color: "#8B5CF6", unit: "%" },
-              ]}
-              yLabel="Posición (%)"
-              pinnedTime={pinnedTime}
-              interactionHint={pointInteractionHint}
-              onPin={
-                pointPinningEnabled
-                  ? (point) => pinEyePoint("gaze", point)
-                  : undefined
-              }
-            />
-          </PanelState>
+        return renderTemporalPanel(
+          "gaze",
+          "Posicion (%)",
+          pointPinningEnabled ? (point) => pinEyePoint("gaze", point) : undefined,
+          pointInteractionHint
         )
       case "gsr":
-        return (
-          <PanelState
-            loading={data.gsr.loading}
-            error={data.gsr.error}
-            empty={!gsrChart.length}
-          >
-            <TemporalLineChart
-              data={gsrChart}
-              series={[
-                {
-                  key: "gsr",
-                  label: "GSR suavizada",
-                  color: "#10B981",
-                  unit: "µS",
-                },
-              ]}
-              yLabel="Conductancia (µS)"
-              pinnedTime={null}
-              synchronized={false}
-            />
-          </PanelState>
-        )
-      case "eeg_timeseries": {
-        const source = data.eegTimeseries.data
-        const series: TemporalSeries[] = (source?.channels ?? []).map(
-          (channel) => ({
-            key: channel,
-            label: channel.toUpperCase(),
-            color: EEG_CHANNEL_COLORS[channel] ?? "#64748B",
-            unit: "µV",
-          })
-        )
-        return (
-          <PanelState
-            loading={data.eegTimeseries.loading}
-            error={data.eegTimeseries.error}
-            empty={!eegChart.length || !series.length}
-          >
-            <TemporalLineChart
-              data={eegChart}
-              series={series}
-              yLabel="Amplitud (µV)"
-              pinnedTime={pinnedTime}
-              height={380}
-            />
-          </PanelState>
-        )
-      }
+        return renderTemporalPanel("gsr", "Conductancia (uS)")
+      case "eeg_timeseries":
+        return renderTemporalPanel("eeg_timeseries", "Amplitud (uV)")
       case "fixation_histogram":
         return (
           <PanelState

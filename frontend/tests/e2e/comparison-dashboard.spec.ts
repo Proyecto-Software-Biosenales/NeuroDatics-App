@@ -78,6 +78,117 @@ const distanceTimeseries = {
   distance_cm: time.map((value) => 61 + Math.sin(value / 4) * 3),
 }
 
+const comparisonCharts = {
+  charts: [
+    {
+      id: "pupil",
+      title: "Dilatación pupilar",
+      x_label: "Tiempo (s)",
+      y_label: "Diámetro (mm)",
+      time_basis: "absolute",
+      x_domain: [time[0], time[time.length - 1]],
+      data: time.map((value, index) => ({
+        time: value,
+        sourceTime: value,
+        left: pupilLeft[index],
+        right: pupilRight[index],
+      })),
+      series: [
+        {
+          key: "left",
+          label: "Pupila izquierda",
+          color: "#2563EB",
+          unit: "mm",
+        },
+        {
+          key: "right",
+          label: "Pupila derecha",
+          color: "#7C3AED",
+          unit: "mm",
+        },
+      ],
+      legend: [
+        { label: "Pupila izquierda", color: "#2563EB" },
+        { label: "Pupila derecha", color: "#7C3AED" },
+      ],
+      peaks: [
+        {
+          kind: "min",
+          series_key: "left",
+          series_label: "Pupila izquierda",
+          value: Math.min(...pupilLeft),
+          time_s: time[pupilLeft.indexOf(Math.min(...pupilLeft))],
+          unit: "mm",
+          color: "#111827",
+          line_style: "dotted",
+          label: "Mínimo",
+        },
+        {
+          kind: "max",
+          series_key: "right",
+          series_label: "Pupila derecha",
+          value: Math.max(...pupilRight),
+          time_s: time[pupilRight.indexOf(Math.max(...pupilRight))],
+          unit: "mm",
+          color: "#F97316",
+          line_style: "dashed",
+          label: "Máximo",
+        },
+      ],
+      annotations: [],
+      synchronized: true,
+      height: 320,
+    },
+    {
+      id: "gaze",
+      title: "Gaze point",
+      x_label: "Tiempo (s)",
+      y_label: "Posición (%)",
+      time_basis: "absolute",
+      x_domain: [time[0], time[time.length - 1]],
+      data: time.map((value, index) => ({
+        time: value,
+        sourceTime: value,
+        x: gazeTimeseries.gx_clean[index],
+        y: gazeTimeseries.gy_clean[index],
+      })),
+      series: [
+        { key: "x", label: "Posición X", color: "#2563EB", unit: "%" },
+        { key: "y", label: "Posición Y", color: "#7C3AED", unit: "%" },
+      ],
+      legend: [
+        { label: "Posición X", color: "#2563EB" },
+        { label: "Posición Y", color: "#7C3AED" },
+      ],
+      peaks: [],
+      annotations: [],
+      synchronized: true,
+      height: 320,
+    },
+    {
+      id: "distance",
+      title: "Distancia al dispositivo",
+      x_label: "Tiempo (s)",
+      y_label: "Distancia (cm)",
+      time_basis: "absolute",
+      x_domain: [time[0], time[time.length - 1]],
+      data: time.map((value, index) => ({
+        time: value,
+        sourceTime: value,
+        distance: distanceTimeseries.distance_cm[index],
+      })),
+      series: [
+        { key: "distance", label: "Distancia", color: "#6366F1", unit: "cm" },
+      ],
+      legend: [{ label: "Distancia", color: "#6366F1" }],
+      peaks: [],
+      annotations: [],
+      synchronized: true,
+      height: 320,
+    },
+  ],
+}
+
 const correlationSignals = [
   {
     id: "pupil_avg_mm",
@@ -191,6 +302,10 @@ async function mockDashboardApi(page: Page, gazeAtResponse = instructionGaze) {
     }
     if (/\/analytics\/scenarios$/.test(path)) {
       await route.fulfill({ json: scenarios })
+      return
+    }
+    if (/\/analytics\/comparison\/charts$/.test(path)) {
+      await route.fulfill({ json: comparisonCharts })
       return
     }
     if (/\/analytics\/timeseries\/pupil$/.test(path)) {

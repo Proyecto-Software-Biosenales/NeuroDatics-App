@@ -6,6 +6,7 @@ import type {
   AoiMetricsData,
   AnalyticsParticipant,
   AnalyticsScenario,
+  ComparisonChartsResponse,
   DistanceStatistics,
   DistanceTimeseriesData,
   EegPsdData,
@@ -182,6 +183,60 @@ export function useGazeAt(projectId: string | null, participantCode: string | nu
   }, [])
 
   return { data, loading, fetchGaze, clear }
+}
+
+export function useComparisonCharts(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string = "all",
+  visualizationIds: string[] = [],
+  maxPoints: number = 5000
+) {
+  const [data, setData] = useState<ComparisonChartsResponse | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const visualizationsKey = visualizationIds.join(",")
+
+  useEffect(() => {
+    const requestedVisualizationIds = visualizationsKey
+      ? visualizationsKey.split(",").filter(Boolean)
+      : []
+    if (!projectId || !participantCode || requestedVisualizationIds.length === 0) {
+      setData(null)
+      setLoading(false)
+      setError(null)
+      return
+    }
+
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    AnalyticsApi.getComparisonCharts(
+      projectId,
+      participantCode,
+      scenario,
+      requestedVisualizationIds,
+      maxPoints
+    )
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Error loading comparison charts")
+          setData(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, participantCode, scenario, visualizationsKey, maxPoints])
+
+  return { data, loading, error }
 }
 
 export function useGazeTimeseries(

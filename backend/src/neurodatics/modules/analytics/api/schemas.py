@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -155,6 +155,50 @@ class EegTopographyResponse(BaseModel):
     window_s: float
     overlap_ratio: float
     remove_dc: bool
+
+
+class ComparisonChartSeries(BaseModel):
+    key: str
+    label: str
+    color: str
+    unit: str
+
+
+class ComparisonChartLegendItem(BaseModel):
+    label: str
+    color: str
+
+
+class ComparisonChartPeak(BaseModel):
+    kind: Literal["min", "max"]
+    series_key: str
+    series_label: str
+    value: float
+    time_s: float
+    unit: str
+    color: str
+    line_style: Literal["dotted", "dashed"]
+    label: str
+
+
+class ComparisonChartConfig(BaseModel):
+    id: str
+    title: str
+    x_label: str
+    y_label: str
+    time_basis: Literal["absolute"]
+    x_domain: Optional[List[float]] = None
+    data: List[Dict[str, Optional[float]]]
+    series: List[ComparisonChartSeries]
+    legend: List[ComparisonChartLegendItem]
+    peaks: List[ComparisonChartPeak] = []
+    annotations: List[Dict[str, Any]] = []
+    synchronized: bool = True
+    height: int = 320
+
+
+class ComparisonChartsResponse(BaseModel):
+    charts: List[ComparisonChartConfig]
 
 
 class ScanpathObjective(BaseModel):

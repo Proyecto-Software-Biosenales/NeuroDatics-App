@@ -8,6 +8,7 @@ interface ExportOptionsCardProps {
   onToggleOption: (key: keyof ExportOptions) => void
   onDownload: () => void
   canDownload: boolean
+  loading?: boolean
 }
 
 const exportOptions = [
@@ -29,6 +30,7 @@ export const ExportOptionsCard = ({
   onToggleOption,
   onDownload,
   canDownload,
+  loading = false,
 }: ExportOptionsCardProps) => {
   return (
     <Card
@@ -82,15 +84,15 @@ export const ExportOptionsCard = ({
 
         <button
           onClick={onDownload}
-          disabled={!canDownload}
+          disabled={!canDownload || loading}
           className={`w-full mt-6 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold text-white transition-all duration-200 ${
-            canDownload
+            canDownload && !loading
               ? "bg-gray-950 hover:bg-gray-700 hover:scale-[1.02] active:scale-[0.98]"
               : "bg-gray-400 cursor-not-allowed"
           }`}
         >
-          <Download className="w-5 h-5" />
-          Descargar reporte PDF
+          <Download className={`w-5 h-5 ${loading ? "animate-pulse" : ""}`} />
+          {loading ? "Generando PDF..." : "Descargar reporte PDF"}
         </button>
       </div>
     </Card>
