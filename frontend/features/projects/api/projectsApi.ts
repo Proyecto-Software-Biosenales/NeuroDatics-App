@@ -92,6 +92,17 @@ export type ApiAoiPayload = {
   };
 };
 
+export type ApiScenaryPayload = {
+  name: string;
+  type: string;
+  file_id?: string | null;
+  source_entry_path?: string | null;
+  width?: number | null;
+  height?: number | null;
+  fps?: number | null;
+  duration_ms?: number | null;
+};
+
 export type ApiProjectScenary = {
   id: string;
   name: string;
@@ -220,7 +231,7 @@ export const ProjectsApi = {
       body: JSON.stringify({ participants }),
     }),
 
-  setScenaries: (projectId: string, scenaries: any[]) =>
+  setScenaries: (projectId: string, scenaries: ApiScenaryPayload[]) =>
     apiFetch<void>(`/api/projects/${projectId}/scenaries`, {
       method: "PUT",
       body: JSON.stringify({ scenaries }),
@@ -237,4 +248,11 @@ export const ProjectsApi = {
 
   fetchScenarioImage: (projectId: string, fileId: string) =>
     apiFetchBlob(`/api/projects/${projectId}/files/${fileId}/image`),
+
+  fetchScenarioPreview: (projectId: string, fileId: string, timeS = 0) => {
+    const params = new URLSearchParams();
+    if (timeS > 0) params.set("time_s", String(timeS));
+    const query = params.toString();
+    return apiFetchBlob(`/api/projects/${projectId}/files/${fileId}/preview${query ? `?${query}` : ""}`);
+  },
 };

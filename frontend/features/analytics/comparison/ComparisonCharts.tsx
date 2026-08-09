@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { Fragment, useEffect, useRef } from "react"
 import {
   Bar,
   BarChart,
@@ -8,6 +8,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
@@ -42,6 +43,18 @@ export interface TemporalSeries {
   label: string
   color: string
   unit: string
+}
+
+export interface TemporalPeak {
+  kind: "min" | "max"
+  series_key: string
+  series_label: string
+  value: number
+  time_s: number
+  unit: string
+  color: string
+  line_style: "dotted" | "dashed"
+  label: string
 }
 
 interface TooltipPayloadEntry {
@@ -94,6 +107,9 @@ export function TemporalLineChart({
   data,
   series,
   yLabel,
+  xLabel = "Tiempo (s)",
+  xDomain,
+  peaks = [],
   pinnedTime,
   onPin,
   interactionHint,
@@ -103,6 +119,9 @@ export function TemporalLineChart({
   data: TemporalChartPoint[]
   series: TemporalSeries[]
   yLabel: string
+  xLabel?: string
+  xDomain?: [number, number] | null
+  peaks?: TemporalPeak[]
   pinnedTime: number | null
   onPin?: (point: TemporalChartPoint) => void
   interactionHint?: string
@@ -110,13 +129,13 @@ export function TemporalLineChart({
   height?: number
 }) {
   const domain: [number, number] | ["dataMin", "dataMax"] = data.length
-    ? [data[0].time, data[data.length - 1].time]
+    ? (xDomain ?? [data[0].time, data[data.length - 1].time])
     : ["dataMin", "dataMax"]
 
   return (
     <div
       role="img"
-      aria-label={`${yLabel}. ${data.length} observaciones; eje horizontal en segundos relativos.${interactionHint ? ` ${interactionHint}` : ""}`}
+      aria-label={`${yLabel}. ${data.length} observaciones; eje horizontal en segundos absolutos.${interactionHint ? ` ${interactionHint}` : ""}`}
       className={onPin ? "cursor-crosshair" : undefined}
     >
       <ResponsiveContainer width="100%" height={height}>
@@ -142,7 +161,7 @@ export function TemporalLineChart({
             tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
             tickFormatter={(value) => Number(value).toFixed(0)}
             label={{
-              value: "Tiempo relativo (s)",
+              value: xLabel,
               position: "insideBottom",
               offset: -18,
               fontSize: 11,
@@ -178,6 +197,38 @@ export function TemporalLineChart({
               }}
             />
           ) : null}
+          {peaks.map((peak) => {
+            if (!Number.isFinite(peak.time_s) || !Number.isFinite(peak.value)) {
+              return null
+            }
+            const dasharray =
+              peak.line_style === "dotted" ? "2 3" : "5 3"
+            return (
+              <Fragment key={`${peak.kind}-${peak.series_key}-${peak.time_s}`}>
+                <ReferenceLine
+                  x={peak.time_s}
+                  stroke={peak.color}
+                  strokeDasharray={dasharray}
+                  strokeWidth={1.3}
+                  label={{
+                    value: `${peak.value.toFixed(2)} ${peak.unit} ${peak.label} - ${peak.time_s.toFixed(1)} s`,
+                    position: peak.kind === "max" ? "top" : "bottom",
+                    fill: peak.color,
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}
+                />
+                <ReferenceDot
+                  x={peak.time_s}
+                  y={peak.value}
+                  r={4}
+                  fill={peak.color}
+                  stroke="#FFFFFF"
+                  strokeWidth={2}
+                />
+              </Fragment>
+            )
+          })}
           {series.map((item) => (
             <Line
               key={item.key}

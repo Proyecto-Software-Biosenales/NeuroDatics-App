@@ -3,6 +3,7 @@ import type {
   AoiMetricsData,
   AnalyticsParticipant,
   AnalyticsScenario,
+  ComparisonChartsResponse,
   CorrelationResponse,
   DistanceStatistics,
   DistanceTimeseriesData,
@@ -46,6 +47,26 @@ export const AnalyticsApi = {
     const params = new URLSearchParams({ participant_code: participantCode, scenario })
     return apiFetch<CorrelationResponse>(
       `/api/projects/${projectId}/analytics/correlations?${params}`
+    )
+  },
+
+  getComparisonCharts: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    visualizations: string[] = [],
+    maxPoints: number = 5000
+  ) => {
+    const params = new URLSearchParams({
+      participant_code: participantCode,
+      scenario,
+      max_points: String(maxPoints),
+    })
+    if (visualizations.length > 0) {
+      params.set("visualizations", visualizations.join(","))
+    }
+    return apiFetch<ComparisonChartsResponse>(
+      `/api/projects/${projectId}/analytics/comparison/charts?${params}`
     )
   },
 

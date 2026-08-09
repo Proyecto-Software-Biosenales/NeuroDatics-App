@@ -301,24 +301,16 @@ export const ViewProjectDialog = ({
 
                         {openScenaryId === scenary.id && (
                           <div className="border-t border-border p-4">
-                            {String(scenary.type || "").toLowerCase() === "video" ? (
-                              <div className="flex aspect-video items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
-                                <div className="flex items-center gap-2 text-sm font-medium">
-                                  <Video className="h-4 w-4" />
-                                  Escenario de video
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="relative overflow-hidden rounded-xl border border-border bg-muted aspect-video">
-                                <ScenarioPreviewImage
-                                  projectId={projectId}
-                                  fileId={scenary.file_id}
-                                  fallbackUrl={scenary.file_id ? resolveScenarioImageUrl(filesById.get(scenary.file_id)) : null}
-                                  alt={scenary.name}
-                                  aois={scenary.aois ?? []}
-                                />
-                              </div>
-                            )}
+                            <div className="relative overflow-hidden rounded-xl border border-border bg-muted aspect-video">
+                              <ScenarioPreviewImage
+                                projectId={projectId}
+                                fileId={scenary.file_id}
+                                fallbackUrl={scenary.file_id ? resolveScenarioImageUrl(filesById.get(scenary.file_id)) : null}
+                                alt={scenary.name}
+                                aois={scenary.aois ?? []}
+                                isVideo={String(scenary.type || "").toLowerCase() === "video"}
+                              />
+                            </div>
                           </div>
                         )}
                       </li>
@@ -351,12 +343,14 @@ const ScenarioPreviewImage = ({
   fallbackUrl,
   alt,
   aois = [],
+  isVideo = false,
 }: {
   projectId?: string
   fileId?: string | null
   fallbackUrl?: string | null
   alt: string
   aois?: ApiProjectAoi[]
+  isVideo?: boolean
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
@@ -433,7 +427,9 @@ const ScenarioPreviewImage = ({
       }
 
       try {
-        const blob = await ProjectsApi.fetchScenarioImage(projectId, fileId)
+        const blob = isVideo
+          ? await ProjectsApi.fetchScenarioPreview(projectId, fileId, 0.5)
+          : await ProjectsApi.fetchScenarioImage(projectId, fileId)
         if (cancelled) return
         objectUrl = URL.createObjectURL(blob)
         setBlobUrl(objectUrl)
@@ -457,13 +453,16 @@ const ScenarioPreviewImage = ({
       cancelled = true
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [projectId, fileId, fallbackUrl, hasAnySource])
+  }, [projectId, fileId, fallbackUrl, hasAnySource, isVideo])
 
   const finalSrc = currentSrc
   if (loadError || (!finalSrc && !isLoading)) {
     return (
       <div ref={containerRef} className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-        <ImageIcon className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-sm font-medium">
+          {isVideo ? <Video className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+          {isVideo ? "No se pudo generar la previsualizacion" : "No se pudo cargar la imagen"}
+        </div>
       </div>
     )
   }
@@ -498,6 +497,11 @@ const ScenarioPreviewImage = ({
           }}
         />
       )}
+      {isVideo && !isLoading && finalSrc ? (
+        <div className="pointer-events-none absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background/90 text-muted-foreground shadow-sm backdrop-blur">
+          <Video className="h-4 w-4" />
+        </div>
+      ) : null}
       {letterbox && normalizedAois.length > 0 ? (
         <>
           <svg

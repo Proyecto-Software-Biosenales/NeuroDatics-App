@@ -5,6 +5,7 @@ import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { AnalyticsApi } from "../api/analyticsApi"
 import {
   useAoiMetrics,
+  useComparisonCharts,
   useDistanceTimeseries,
   useEegPsd,
   useEegSpectrogram,
@@ -182,8 +183,23 @@ export function useComparisonData({
   pinnedSourceTime,
 }: UseComparisonDataOptions) {
   const selected = useMemo(() => new Set(selectedIds), [selectedIds])
+  const temporalChartIds = useMemo(
+    () =>
+      selectedIds.filter((id) =>
+        ["pupil", "distance", "gaze", "gsr", "eeg_timeseries"].includes(id)
+      ),
+    [selectedIds]
+  )
   const concreteScenario = Boolean(scenario && scenario.toLowerCase() !== "all")
   const enabledProject = (enabled: boolean) => (enabled ? projectId : null)
+
+  const comparisonCharts = useComparisonCharts(
+    temporalChartIds.length ? projectId : null,
+    participantCode,
+    scenario,
+    temporalChartIds,
+    5000
+  )
 
   // Temporal signals.
   const pupil = usePupilTimeseries(
@@ -357,6 +373,7 @@ export function useComparisonData({
     fixationHistogram,
     eegPsd,
     eegSpectrogram,
+    comparisonCharts,
     fixation,
     heatmap,
     scanpath,

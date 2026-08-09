@@ -23,11 +23,13 @@ from ..application.services.analytics_service import (
     PupilAnalyticsService,
     ScanpathAnalyticsService,
 )
+from ..application.services.comparison_chart_config import ChartConfigBuilder
 from ..application.services.correlation_service import CorrelationAnalyticsService
 from ..application.services.parquet_reader_service import ParquetReaderService
 from ..infrastructure.redis_cache import AnalyticsRedisCache
 from .schemas import (
     AoiMetricsResponse,
+    ComparisonChartsResponse,
     CorrelationsResponse,
     DistanceStatisticsResponse,
     DistanceTimeseriesResponse,
@@ -217,6 +219,43 @@ async def correlations(
         )
     )
     return CorrelationsResponse(**response_data)
+
+
+@router.get("/comparison/charts", response_model=ComparisonChartsResponse)
+async def comparison_charts(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    visualizations: str = Query(default=""),
+    max_points: int = Query(default=5000, ge=1, le=100000),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    await _verify_ownership(db, project_id, current_user)
+
+    requested_visualizations = [
+        item.strip()
+        for item in visualizations.replace(",", " ").split()
+        if item.strip()
+    ] or None
+
+    reader = ParquetReaderService(db)
+    try:
+        df = await reader.read(project_id, participant_code)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    charts = await anyio.to_thread.run_sync(
+        lambda: ChartConfigBuilder.build_many(
+            df,
+            scenario,
+            requested_visualizations,
+            max_points=max_points,
+        )
+    )
+    return ComparisonChartsResponse(charts=charts)
 
 
 @router.get("/timeseries/pupil", response_model=PupilTimeseriesResponse)

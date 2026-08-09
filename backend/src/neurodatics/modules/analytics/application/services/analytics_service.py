@@ -629,6 +629,7 @@ class GsrAnalyticsService:
         scenario: Optional[str] = None,
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
+        absolute_time: bool = False,
     ) -> pd.DataFrame:
         if scenario and scenario != "all" and "scenario" in df.columns:
             df = df[df["scenario"].astype(str).str.strip() == scenario]
@@ -650,7 +651,8 @@ class GsrAnalyticsService:
         smooth = _moving_average(clean["gsr"].to_numpy(dtype=float), win)
         clean["gsr_smooth"] = smooth
 
-        clean["time"] = clean["time"] - clean["time"].min()
+        if not absolute_time:
+            clean["time"] = clean["time"] - clean["time"].min()
         clean = _filter_time_window(clean, start_time_s, end_time_s).reset_index(drop=True)
         if clean.empty:
             return pd.DataFrame(columns=["time", "gsr", "gsr_smooth"])
@@ -663,11 +665,18 @@ class GsrAnalyticsService:
         scenario: Optional[str] = None,
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
+        absolute_time: bool = False,
     ) -> dict:
         """Compute raw and 1-second smoothed GSR timeseries."""
         _empty: dict = {"time": [], "gsr": [], "gsr_smooth": []}
 
-        clean = GsrAnalyticsService._clean_signal(df, scenario, start_time_s, end_time_s)
+        clean = GsrAnalyticsService._clean_signal(
+            df,
+            scenario,
+            start_time_s,
+            end_time_s,
+            absolute_time=absolute_time,
+        )
         if clean.empty:
             return _empty
 
