@@ -1,6 +1,38 @@
 import { ApiError, apiFetch, apiFetchBlob, apiUploadFormWithProgress, type UploadProgress } from "@/lib/api/apiFetch";
 import type { UploadedProjectZip } from "../types";
 import type { FolderSelection } from "../create-project/folderStructure";
+import type { FixationScreenGeometryInput } from "../create-project/types";
+
+export type ApiStimulusDisplayMode = "contain" | "cover" | "crop" | "fullscreen";
+
+export type ApiStimulusViewport = {
+  left_px: number;
+  top_px: number;
+  width_px: number;
+  height_px: number;
+  scroll_x_px?: number;
+  scroll_y_px?: number;
+};
+
+export type ApiStimulusPlacement = {
+  geometry_stability: "static";
+  contract_version: "screen-stimulus-v1";
+  screen_width_px: number;
+  screen_height_px: number;
+  stimulus_left_px: number;
+  stimulus_top_px: number;
+  stimulus_width_px: number;
+  stimulus_height_px: number;
+  display_mode: ApiStimulusDisplayMode;
+  viewport?: ApiStimulusViewport | null;
+  source?: "user_config" | "acquisition_metadata";
+  contract_fingerprint?: string;
+};
+
+export type ApiStimulusPlacementEnvelope = {
+  source_entry_path: string;
+  placement: ApiStimulusPlacement;
+};
 
 /** Mirror of the backend `UploadClarificationResponse` (HTTP 409). */
 export type ApiUploadClarification = {
@@ -46,12 +78,50 @@ const appendSelection = (form: FormData, selection?: FolderSelection | null) => 
   if (selection.allowMissingVideos) form.append("allow_missing_videos", "true");
 };
 
+const appendFixationGeometry = (
+  form: FormData,
+  geometry?: FixationScreenGeometryInput | null,
+) => {
+  if (!geometry?.enabled) return;
+
+  const widthPx = Number(geometry.widthPx);
+  const heightPx = Number(geometry.heightPx);
+  const widthCm = Number(geometry.widthCm);
+  const heightCm = Number(geometry.heightCm);
+  const viewingDistanceCm = Number(geometry.viewingDistanceCm);
+  const values = [widthPx, heightPx, widthCm, heightCm, viewingDistanceCm];
+  if (!values.every((value) => Number.isFinite(value) && value > 0)) {
+    throw new Error("Completa la geometría de pantalla con valores positivos antes de subir.");
+  }
+
+  form.append("screen_width_px", String(Math.round(widthPx)));
+  form.append("screen_height_px", String(Math.round(heightPx)));
+  form.append("screen_width_mm", String(widthCm * 10));
+  form.append("screen_height_mm", String(heightCm * 10));
+  form.append("viewing_distance_mm", String(viewingDistanceCm * 10));
+};
+
+const appendStimulusPlacements = (
+  form: FormData,
+  placements?: ApiStimulusPlacementEnvelope[] | null,
+) => {
+  if (!placements?.length) return;
+  const requestPlacements = placements.map(({ source_entry_path, placement }) => {
+    const requestPlacement = { ...placement };
+    delete requestPlacement.source;
+    delete requestPlacement.contract_fingerprint;
+    return { source_entry_path, placement: requestPlacement };
+  });
+  form.append("stimulus_placements_json", JSON.stringify(requestPlacements));
+};
+
 export type ApiProject = {
   id: string;
   name: string;
   description?: string | null;
   status?: "draft" | "active" | "archived" | string;
   ingestion_status?: string | null;
+  ingestion_generation?: number;
   ingestion_error?: string | null;
   drive_root_folder_id?: string | null;
   drive_root_folder_name?: string | null;
@@ -101,6 +171,7 @@ export type ApiScenaryPayload = {
   height?: number | null;
   fps?: number | null;
   duration_ms?: number | null;
+  stimulus_placement?: ApiStimulusPlacement | null;
 };
 
 export type ApiProjectScenary = {
@@ -110,6 +181,8 @@ export type ApiProjectScenary = {
   file_id?: string | null;
   width?: number | null;
   height?: number | null;
+  source_entry_path?: string | null;
+  stimulus_placement?: ApiStimulusPlacement | null;
   aois?: ApiProjectAoi[];
 };
 
@@ -173,10 +246,19 @@ export const ProjectsApi = {
   delete: (projectId: string) =>
     apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" }),
 
-  uploadZip: (projectId: string, file: File, selection?: FolderSelection | null, signal?: AbortSignal) => {
+  uploadZip: (
+    projectId: string,
+    file: File,
+    selection?: FolderSelection | null,
+    signal?: AbortSignal,
+    fixationGeometry?: FixationScreenGeometryInput | null,
+    stimulusPlacements?: ApiStimulusPlacementEnvelope[] | null,
+  ) => {
     const form = new FormData();
     form.append("file", file);
     appendSelection(form, selection);
+    appendFixationGeometry(form, fixationGeometry);
+    appendStimulusPlacements(form, stimulusPlacements);
     return apiUploadFormWithProgress<UploadedProjectZip>(
       `/api/projects/${projectId}/files/experiment-zip`,
       form,
@@ -191,10 +273,14 @@ export const ProjectsApi = {
     onProgress?: (progress: UploadProgress) => void,
     signal?: AbortSignal,
     selection?: FolderSelection | null,
+    fixationGeometry?: FixationScreenGeometryInput | null,
+    stimulusPlacements?: ApiStimulusPlacementEnvelope[] | null,
   ) => {
     const form = new FormData();
     form.append("file", file);
     appendSelection(form, selection);
+    appendFixationGeometry(form, fixationGeometry);
+    appendStimulusPlacements(form, stimulusPlacements);
     return apiUploadFormWithProgress<UploadedProjectZip>(
       `/api/projects/${projectId}/files/experiment-zip`,
       form,

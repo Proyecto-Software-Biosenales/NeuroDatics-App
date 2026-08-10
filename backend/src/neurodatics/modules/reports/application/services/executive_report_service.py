@@ -37,6 +37,7 @@ from ....analytics.application.services.comparison_chart_config import (
     temporal_visualizations_for_sensors,
 )
 from ....analytics.application.services.parquet_reader_service import ParquetReaderService
+from ....analytics.domain.cache_generation import project_cache_generation
 from ....integrations.google_drive.infrastructure.repository import SystemIntegrationRepository
 from ....projects.domain.entities import Project, ProjectFile
 from ....scenaries.domain.entities import Scenaries
@@ -552,6 +553,14 @@ def _draw_scanpath(base_image: Image.Image, scanpath: Dict[str, Any], aois: Sequ
 
 
 def _draw_heatmap(base_image: Image.Image, overlay_bytes: Optional[bytes]) -> Optional[Image.Image]:
+    """Composite the heatmap over the stimulus, not over the letterboxed canvas.
+
+    The base image is the stimulus centred on a fixed report canvas, so pasting
+    the overlay across the whole canvas would stretch it into the letterbox bars
+    and put every hotspot in the wrong place relative to the scanpath and AOI
+    figures, which draw inside ``_content_box``.
+    """
+
     if not overlay_bytes:
         return None
     try:
@@ -559,8 +568,10 @@ def _draw_heatmap(base_image: Image.Image, overlay_bytes: Optional[bytes]) -> Op
     except Exception:
         return None
     image = base_image.copy()
-    overlay = overlay.resize(image.size, Image.Resampling.LANCZOS)
-    image.alpha_composite(overlay)
+    offset_x, offset_y, content_width, content_height = _content_box(image)
+    if overlay.size != (content_width, content_height):
+        overlay = overlay.resize((content_width, content_height), Image.Resampling.LANCZOS)
+    image.alpha_composite(overlay, (offset_x, offset_y))
     return image
 
 
@@ -739,7 +750,13 @@ def build_spatial_assets(
 
     heatmap_image = None
     try:
-        heatmap_bytes = HeatmapAnalyticsService.compute_heatmap_overlay(combined_df, scenario)
+        _, _, content_width, content_height = _content_box(base_image)
+        heatmap_bytes = HeatmapAnalyticsService.compute_heatmap_overlay(
+            combined_df,
+            scenario,
+            width=content_width,
+            height=content_height,
+        )
         heatmap_image = _draw_heatmap(base_image, heatmap_bytes)
     except Exception as exc:
         logger.info("Executive report heatmap unavailable for %s: %s", scenario, exc)
@@ -1620,7 +1637,14 @@ class ExecutiveReportService:
             )
 
         participant_codes = self._resolve_participant_codes(project, request)
-        frames, data_warnings = await self._read_participant_frames(project.id, participant_codes)
+        # The already loaded project fixes one generation for every participant in
+        # the report, so a re-ingestion mid-render cannot mix two ingestions into
+        # the same PDF or disagree with the dashboard the report was launched from.
+        frames, data_warnings = await self._read_participant_frames(
+            project.id,
+            participant_codes,
+            project_cache_generation(project),
+        )
         if not frames:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -1673,13 +1697,14 @@ class ExecutiveReportService:
         self,
         project_id: UUID,
         participant_codes: Sequence[str],
+        generation: object = None,
     ) -> Tuple[List[ParticipantFrame], List[str]]:
         reader = ParquetReaderService(self._db)
         frames = []
         warnings = []
         for code in participant_codes:
             try:
-                df = await reader.read(project_id, code)
+                df = await reader.read(project_id, code, generation)
                 frames.append(ParticipantFrame(code=code, dataframe=df))
             except Exception as exc:
                 logger.warning("Could not load participant %s for executive report: %s", code, exc)

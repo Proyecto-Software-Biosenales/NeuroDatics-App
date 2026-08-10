@@ -1,5 +1,6 @@
 import type { SensorType, UploadedProjectZip } from "@/features/projects/types"
 import type { ProjectStatus } from "@/features/projects/types"
+import type { StimulusPlacementDraft } from "./stimulusPlacement"
 
 export type { SensorType }
 export type { ProjectStatus }
@@ -9,6 +10,24 @@ export interface ParticipantData {
   sex: "male" | "female" | "other" | null
   age: string
 }
+
+export interface FixationScreenGeometryInput {
+  enabled: boolean
+  widthPx: string
+  heightPx: string
+  widthCm: string
+  heightCm: string
+  viewingDistanceCm: string
+}
+
+export const createEmptyFixationScreenGeometry = (): FixationScreenGeometryInput => ({
+  enabled: false,
+  widthPx: "",
+  heightPx: "",
+  widthCm: "",
+  heightCm: "",
+  viewingDistanceCm: "",
+})
 
 export interface scenaries {
   id: string
@@ -42,4 +61,6 @@ export interface ProjectFormData {
   sensors: SensorType[]
   participants: ParticipantData[]
   scenaries: scenaries[]
+  fixationGeometry?: FixationScreenGeometryInput
+  stimulusPlacements: StimulusPlacementDraft[]
 }

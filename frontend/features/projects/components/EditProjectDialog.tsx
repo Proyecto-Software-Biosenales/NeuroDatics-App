@@ -20,9 +20,21 @@ import { CreateProjectStep3 } from "@/features/projects/create-project/CreatePro
 import { CreateProjectStep4 } from "@/features/projects/create-project/CreateProjectStep4"
 import { ProjectsApi, asUploadClarification, type ApiProjectDetail } from "@/features/projects/api/projectsApi"
 import type { Project, ProjectStatus, SensorType } from "@/features/projects/types"
-import type { ParticipantData, ProjectFormData, scenaries } from "@/features/projects/create-project/types"
+import type {
+  FixationScreenGeometryInput,
+  ParticipantData,
+  ProjectFormData,
+  scenaries,
+} from "@/features/projects/create-project/types"
+import { createEmptyFixationScreenGeometry } from "@/features/projects/create-project/types"
 import { apiAoiToFormAoi, serializeAoisForComparison, serializeScenaryAois } from "@/features/projects/create-project/aoiUtils"
 import { getFileRelativePath, type FolderSelection } from "@/features/projects/create-project/folderStructure"
+import {
+  createEmptyStimulusPlacementDraft,
+  isStimulusPlacementDraftValid,
+  serializeStimulusPlacements,
+  type StimulusPlacementDraft,
+} from "@/features/projects/create-project/stimulusPlacement"
 
 interface EditProjectDialogProps {
   projectId: string
@@ -254,6 +266,8 @@ export const EditProjectDialog = ({
     sensors: [],
     participants: defaultParticipants,
     scenaries: defaultScenaries,
+    fixationGeometry: createEmptyFixationScreenGeometry(),
+    stimulusPlacements: [],
   })
 
   const loadProject = async () => {
@@ -282,6 +296,8 @@ export const EditProjectDialog = ({
         sensors: ((detail.sensors || []).map((s) => s.sensor_type) as SensorType[]) || [],
         participants: participants.length > 0 ? participants : defaultParticipants,
         scenaries: parseScenaries(detail),
+        fixationGeometry: createEmptyFixationScreenGeometry(),
+        stimulusPlacements: [],
       }
 
       setFormData(newFormData)
@@ -306,6 +322,31 @@ export const EditProjectDialog = ({
 
   const updateProjectName = (name: string) => setFormData((prev) => ({ ...prev, projectName: name }))
   const updateDescription = (description: string) => setFormData((prev) => ({ ...prev, description }))
+  const updateFixationGeometry = (fixationGeometry: FixationScreenGeometryInput) =>
+    setFormData((prev) => ({ ...prev, fixationGeometry }))
+  const syncStimulusPlacementPaths = (paths: string[]) =>
+    setFormData((prev) => {
+      const existing = new Map(
+        prev.stimulusPlacements.map((placement) => [placement.sourceEntryPath, placement]),
+      )
+      return {
+        ...prev,
+        stimulusPlacements: paths.map(
+          (path) => existing.get(path) ?? createEmptyStimulusPlacementDraft(path),
+        ),
+      }
+    })
+  const updateStimulusPlacement = (
+    sourceEntryPath: string,
+    update: Partial<StimulusPlacementDraft>,
+  ) => setFormData((prev) => ({
+    ...prev,
+    stimulusPlacements: prev.stimulusPlacements.map((placement) =>
+      placement.sourceEntryPath === sourceEntryPath
+        ? { ...placement, ...update, sourceEntryPath }
+        : placement,
+    ),
+  }))
   const updateFolderPath = (path: string) => setFormData((prev) => ({ ...prev, folderPath: path }))
   const setExperimentFolder = (files: File[] | null) => {
     setFormData((prev) => ({
@@ -354,6 +395,18 @@ export const EditProjectDialog = ({
   }
 
   const canGoNext = () => {
+    const geometry = formData.fixationGeometry
+    const geometryIsValid = !geometry?.enabled || [
+      geometry.widthPx,
+      geometry.heightPx,
+      geometry.widthCm,
+      geometry.heightCm,
+      geometry.viewingDistanceCm,
+    ].every((value) => Number.isFinite(Number(value)) && Number(value) > 0)
+    const placementsAreValid = formData.stimulusPlacements.every(
+      isStimulusPlacementDraftValid,
+    )
+
     switch (currentStep) {
       case 1:
         // While Step 1 still has unanswered structure questions it withholds the
@@ -361,7 +414,10 @@ export const EditProjectDialog = ({
         return (
           formData.projectName.trim() !== "" &&
           (!shouldUpdateFolder ||
-            (Boolean(formData.experimentFolderFiles?.length) && Boolean(folderSelection)))
+            (Boolean(formData.experimentFolderFiles?.length) &&
+              Boolean(folderSelection) &&
+              geometryIsValid &&
+              placementsAreValid))
         )
       case 2:
         return formData.sensors.length > 0
@@ -581,7 +637,9 @@ export const EditProjectDialog = ({
           }
         },
         uploadAbortController.signal,
-        folderSelection
+        folderSelection,
+        formData.fixationGeometry,
+        serializeStimulusPlacements(formData.stimulusPlacements),
       )
 
       clearDriveProgressPolling()
@@ -876,6 +934,11 @@ export const EditProjectDialog = ({
                 folderPath={formData.folderPath}
                 onProjectNameChange={updateProjectName}
                 onDescriptionChange={updateDescription}
+                fixationGeometry={formData.fixationGeometry}
+                onFixationGeometryChange={updateFixationGeometry}
+                stimulusPlacements={formData.stimulusPlacements}
+                onStimulusPathsChange={syncStimulusPlacementPaths}
+                onStimulusPlacementChange={updateStimulusPlacement}
                 onFolderPathChange={updateFolderPath}
                 onFolderSelected={setExperimentFolder}
                 onSelectionChange={setFolderSelection}

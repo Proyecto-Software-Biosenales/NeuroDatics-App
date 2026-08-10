@@ -1,8 +1,10 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 from enum import Enum
+
+from ...scenaries.api.schemas import scenariesResponse
 
 
 class ProjectStatus(str, Enum):
@@ -84,6 +86,8 @@ class UploadedProjectCsvProcessingResponse(BaseModel):
     detected: int
     processed: int
     failed: int
+    block_metadata: List[Dict[str, Any]] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
 
 
 class DetectedParticipantResponse(BaseModel):
@@ -135,6 +139,7 @@ class UploadedProjectZipSummaryResponse(BaseModel):
     selection: ResolvedUploadSelectionResponse = ResolvedUploadSelectionResponse()
     acquisition: AcquisitionSummaryResponse = AcquisitionSummaryResponse()
     excluded_entries: List[str] = []
+    stimulus_placements: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
 
 class UploadClarificationQuestionResponse(BaseModel):
@@ -197,6 +202,7 @@ class ProjectResponse(BaseModel):
     status: ProjectStatus
     created_at: datetime
     ingestion_status: Optional[str] = None
+    ingestion_generation: int = 0
     ingestion_error: Optional[str] = None
     drive_root_folder_id: Optional[str] = None
     drive_root_folder_name: Optional[str] = None
@@ -215,6 +221,7 @@ class ProjectDetailResponse(BaseModel):
     status: ProjectStatus
     created_at: datetime
     ingestion_status: Optional[str] = None
+    ingestion_generation: int = 0
     ingestion_error: Optional[str] = None
     drive_root_folder_id: Optional[str] = None
     drive_root_folder_name: Optional[str] = None
@@ -222,7 +229,7 @@ class ProjectDetailResponse(BaseModel):
     files: List[ProjectFileResponse] = []
     sensors: List[ProjectSensorResponse] = []
     participants: List[ParticipantResponse] = []
-    scenaries: List[dict] = []
+    scenaries: List[scenariesResponse] = Field(default_factory=list)
     
     class Config:
         from_attributes = True

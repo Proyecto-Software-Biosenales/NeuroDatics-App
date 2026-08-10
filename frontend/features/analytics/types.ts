@@ -33,7 +33,40 @@ export interface PupilStatistics {
   raw_baseline: number | null
 }
 
-export interface GazeAtData {
+export interface CoordinateTransformDetails {
+  status: "applied" | "legacy_passthrough_missing" | "mixed"
+  applied: boolean | null
+  contract_version: string | null
+  source_space: "screen_px" | "legacy_screen" | "mixed"
+  output_space: "stimulus_normalized" | "legacy_screen_normalized" | "mixed"
+  contract_fingerprint: string | null
+  rejected_outside_count: number | null
+  rejected_outside_by_reason: Record<string, number> | null
+  warning_codes: string[]
+}
+
+export interface ScenarioCoordinateTransform extends CoordinateTransformDetails {
+  scenario: string
+}
+
+export interface CoordinateTransformProvenance extends CoordinateTransformDetails {
+  scenario_transforms?: ScenarioCoordinateTransform[] | null
+}
+
+export interface StimulusCoordinateResponse {
+  warnings?: string[]
+  coordinate_transform?: CoordinateTransformProvenance | null
+}
+
+export interface HeatmapTransformHeaders {
+  status: "applied" | "legacy_passthrough_missing" | "mixed" | null
+  coordinateSpace: string | null
+  contractVersion: string | null
+  contractFingerprint: string | null
+  warningCodes: string[]
+}
+
+export interface GazeAtData extends StimulusCoordinateResponse {
   requested_time_s: number
   nearest_time_s: number
   scenario: string | null
@@ -44,13 +77,13 @@ export interface GazeAtData {
   scenario_time_s?: number | null
 }
 
-export interface GazeTimeseriesData {
+export interface GazeTimeseriesData extends StimulusCoordinateResponse {
   time: number[]
   gx_clean: number[]
   gy_clean: number[]
 }
 
-export interface GazeStatistics {
+export interface GazeStatistics extends StimulusCoordinateResponse {
   gx_mean: number
   gx_min: number
   gx_max: number
@@ -195,30 +228,56 @@ export interface ComparisonChartsResponse {
   charts: ComparisonChartConfig[]
 }
 
+export const FIXATION_DURATION_OPTIONS_MS = [100, 150, 200, 250, 300] as const
+
+export type FixationDurationMs = (typeof FIXATION_DURATION_OPTIONS_MS)[number]
+
+export const DEFAULT_FIXATION_DURATION_MS: FixationDurationMs = 200
+
 export interface ScanpathObjective {
   id: number
-  cx: number            // normalized 0-1 (horizontal position)
-  cy: number            // normalized 0-1 (vertical position)
-  duration_s: number    // fixation duration in seconds
-  radius_norm: number   // normalized radius (0-1 scale, for rendering)
+  cx: number // normalized 0-1 (horizontal position)
+  cy: number // normalized 0-1 (vertical position)
+  duration_s: number // fixation duration in seconds
+  radius_norm: number // normalized radius (0-1 scale, for rendering)
   t_start: number
   t_end: number
   n_points: number
 }
 
-export interface ScanpathData {
+export interface FixationAlgorithmProvenance extends StimulusCoordinateResponse {
+  algorithm_version?: string | null
+  method?: string | null
+  source?: string | null
+  /** True when the events were rebuilt by the legacy adapter, so every event
+   *  and duration is an estimate rather than detector output. */
+  estimated?: boolean
+  effective_sampling_rate_hz?: number | null
+  available_min_fixation_durations_ms?: FixationDurationMs[]
+}
+
+export interface FixationProvenance extends FixationAlgorithmProvenance {
+  min_fixation_duration_ms?: FixationDurationMs | null
+}
+
+export interface ScanpathData extends FixationProvenance {
   objectives: ScanpathObjective[]
   n_objectives: number
-  total_distance_px: number    // in pixels at 1920x1080 reference resolution
-  avg_duration_s: number       // average fixation duration in seconds
+  total_distance_px: number // in pixels at 1920x1080 reference resolution
+  avg_duration_s: number // average fixation duration in seconds
   scenario_file_id: string | null
 }
 
 export interface FixationPoint {
+  id?: string | null
   x_norm: number
   y_norm: number
   time_s: number
+  t_end_s?: number | null
   duration_s: number
+  detector_sample_count?: number | null
+  source_row_count?: number | null
+  segment_id?: string | null
 }
 
 export interface FixationStats {
@@ -227,10 +286,11 @@ export interface FixationStats {
   avg_duration_s: number
 }
 
-export interface FixationData {
+export interface FixationData extends FixationProvenance {
   fixations: FixationPoint[]
   stats: FixationStats
   scenario_file_id: string | null
+  cache_generation?: number
 }
 
 export interface FixationHistogramBin {
@@ -242,13 +302,29 @@ export interface FixationHistogramBin {
   promedio_ms: number
 }
 
-export interface FixationHistogramData {
+export interface FixationHistogramData extends FixationProvenance {
   bins: FixationHistogramBin[]
   n_fixations: number
   total_duration_ms: number
   mean_duration_ms: number
   min_duration_ms: number
   max_duration_ms: number
+}
+
+export interface FixationSensitivityPoint {
+  min_fixation_duration_ms: FixationDurationMs
+  n_fixations: number
+  total_duration_ms: number
+  mean_duration_ms: number
+  median_duration_ms: number
+  max_duration_ms: number
+  retained_dwell_percent: number
+}
+
+export interface FixationSensitivityData extends FixationAlgorithmProvenance {
+  default_min_fixation_duration_ms: FixationDurationMs
+  available_min_fixation_durations_ms: FixationDurationMs[]
+  points: FixationSensitivityPoint[]
 }
 
 export interface AoiShape {
@@ -303,7 +379,7 @@ export interface AoiEventItem {
   aoi_color: string | null
 }
 
-export interface AoiMetricsData {
+export interface AoiMetricsData extends FixationProvenance {
   scenario: string
   scenario_file_id: string | null
   aois: AoiMetricItem[]

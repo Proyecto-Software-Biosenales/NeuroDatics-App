@@ -11,6 +11,10 @@ from ..domain.entities import Project, ProjectFile, ProjectSensor
 from ..domain.repository import ProjectRepository
 
 
+class ProjectIngestionGenerationError(RuntimeError):
+    """The ingestion generation could not be advanced for a project row."""
+
+
 class SQLProjectRepository(ProjectRepository):
     """SQLAlchemy implementation of ProjectRepository."""
 
@@ -31,6 +35,7 @@ class SQLProjectRepository(ProjectRepository):
                 selectinload(Project.sensors),
                 selectinload(Project.participants),
                 selectinload(Project.scenaries).selectinload(Scenaries.aois),
+                selectinload(Project.scenaries).selectinload(Scenaries.stimulus_placement),
             )
             .where(Project.id == project_id, Project.owner_id == owner_id)
         )
@@ -203,6 +208,32 @@ class SQLProjectRepository(ProjectRepository):
         stmt = update(Project).where(Project.id == project_id).values(**updates)
         await self.session.execute(stmt)
         await self.session.flush()
+
+    # Flush without commit so the bump lands in the caller's transaction alongside the READY
+    # status update: cache identity may only change on a successful atomic swap.
+    async def bump_ingestion_generation(self, project_id: UUID) -> int:
+        stmt = (
+            update(Project)
+            .where(Project.id == project_id)
+            .values(ingestion_generation=Project.ingestion_generation + 1)
+            .returning(Project.ingestion_generation)
+        )
+        result = await self.session.execute(stmt)
+        generation = result.scalar_one_or_none()
+        if generation is None:
+            # No row matched, so the project was deleted under us. Returning 0
+            # would let the caller commit READY and then sweep against
+            # generation 0, wiping the caches of whatever still holds that id.
+            raise ProjectIngestionGenerationError(
+                f"Project {project_id} disappeared before its ingestion generation could advance"
+            )
+        await self.session.flush()
+        return int(generation)
+
+    async def get_ingestion_generation(self, project_id: UUID) -> int:
+        stmt = select(Project.ingestion_generation).where(Project.id == project_id)
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one_or_none() or 0)
 
     async def commit(self) -> None:
         await self.session.commit()

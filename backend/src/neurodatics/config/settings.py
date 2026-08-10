@@ -102,6 +102,16 @@ class Settings(BaseSettings):
     image_cache_dir: str = "/data/image_cache"
     video_cache_dir: str = "/data/video_cache"
     video_frame_cache_dir: str = "/data/video_frame_cache"
+    parquet_cache_keep_previous_generations: int = 1
+    parquet_cache_prune_max_removals: int = 32
+    analytics_redis_stale_generation_max_deletions: int = 5000
+
+    # Media disk caches. Re-uploads mint new file ids, so old entries are never
+    # revisited and would otherwise grow without bound; the caps below bound the
+    # janitor sweep so it can never stall a request path.
+    media_cache_max_bytes: int = 2 * 1024 * 1024 * 1024
+    media_cache_max_age_hours: int = 72
+    media_cache_prune_max_removals: int = 500
 
     @field_validator("debug", mode="before")
     @classmethod

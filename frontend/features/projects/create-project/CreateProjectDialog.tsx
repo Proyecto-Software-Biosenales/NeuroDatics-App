@@ -42,6 +42,9 @@ export const CreateProjectDialog = ({
     setIsOpen,
     updateProjectName,
     updateDescription,
+    updateFixationGeometry,
+    syncStimulusPlacementPaths,
+    updateStimulusPlacement,
     updateFolderPath,
     toggleSensor,
     updateParticipant,
@@ -163,6 +166,11 @@ export const CreateProjectDialog = ({
               uploadedZip={formData.uploadedZip}
               onProjectNameChange={updateProjectName}
               onDescriptionChange={updateDescription}
+              fixationGeometry={formData.fixationGeometry}
+              onFixationGeometryChange={updateFixationGeometry}
+              stimulusPlacements={formData.stimulusPlacements}
+              onStimulusPathsChange={syncStimulusPlacementPaths}
+              onStimulusPlacementChange={updateStimulusPlacement}
               onFolderPathChange={updateFolderPath}
               onFolderSelected={setExperimentFolder}
               onSelectionChange={setFolderStructureSelection}

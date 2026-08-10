@@ -1,9 +1,37 @@
+from copy import deepcopy
+import json
 from typing import Iterable, Optional
 
 import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter
 from scipy.signal import spectrogram, welch
+
+from neurodatics.modules.projects.application.services.fixation_detection_service import (
+    CANONICAL_FIXATION_MIN_DURATION_MS,
+    DEFAULT_FIXATION_MIN_DURATION_MS,
+    FIXATION_DURATION_VARIANT_COLUMNS,
+    FIXATION_MIN_DURATION_COLUMN,
+    SUPPORTED_FIXATION_MIN_DURATIONS_MS,
+    fixation_duration_column,
+)
+
+from ...domain.coordinate_transform import (
+    APPLIED_STATUS,
+    LOCAL_X_COLUMN,
+    LOCAL_Y_COLUMN,
+    applied_transform_mask,
+    attach_transform_provenance,
+    displayed_stimulus_size,
+    hard_stimulus_boundary_mask,
+    valid_stimulus_gaze_mask,
+)
+from ...domain.scenario_identity import (
+    ScenarioResolution,
+    is_all_scenarios,
+    resolve_scenario,
+)
+from ...domain.stimulus_geometry import resolve_output_size
 
 EEG_CHANNELS = ("le", "f4", "c4", "p4", "p3", "c3", "f3")
 EEG_TOPOGRAPHY_CHANNELS = ("f3", "f4", "c3", "c4", "p3", "p4")
@@ -60,6 +88,41 @@ def _robust_baseline(x: np.ndarray) -> float:
     return result if np.isfinite(result) else 0.0
 
 
+def resolve_scenario_in_frame(
+    df: pd.DataFrame,
+    scenario: Optional[str],
+) -> Optional[ScenarioResolution]:
+    """Resolve a requested scenario name against the values the frame stores.
+
+    The caller may hold any of the spellings a scenario has - the media file
+    name, the label the UI shows, the value the CSV importer wrote - so the
+    Parquet's own ``scenario`` column is the authority on which string the rows
+    can actually be compared against.
+    """
+
+    if is_all_scenarios(scenario) or "scenario" not in df.columns:
+        return None
+    stored = pd.unique(df["scenario"].dropna().astype(str))
+    return resolve_scenario(scenario, stored.tolist())
+
+
+def scope_to_scenario(df: pd.DataFrame, scenario: Optional[str]) -> pd.DataFrame:
+    """Restrict a frame to one scenario, whatever spelling the caller used.
+
+    A frame with no ``scenario`` column predates per-scenario storage and is
+    left whole, as it always was. A name that matches nothing yields no rows
+    rather than every row.
+    """
+
+    if is_all_scenarios(scenario) or "scenario" not in df.columns:
+        return df
+    resolution = resolve_scenario_in_frame(df, scenario)
+    if resolution is None:
+        return df.iloc[0:0]
+    stored = df["scenario"].astype(str).str.strip()
+    return df.loc[stored == resolution.value.strip()]
+
+
 def _filter_time_window(
     df: pd.DataFrame,
     start_time_s: Optional[float] = None,
@@ -89,8 +152,7 @@ class PupilAnalyticsService:
         end_time_s: Optional[float] = None,
     ) -> dict:
         """Compute pupil timeseries from DataFrame."""
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
         for col in ("time", "lx_pupil", "rx_pupil"):
             if col not in df.columns:
@@ -165,8 +227,7 @@ class PupilAnalyticsService:
             "raw_baseline": None,
         }
 
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
         if "lx_pupil" not in df.columns or "rx_pupil" not in df.columns:
             return _empty
@@ -254,43 +315,32 @@ class PupilAnalyticsService:
         scenario: Optional[str] = None,
     ) -> dict:
         """Find gaze data at the nearest time, optionally within one scenario."""
-        if scenario and str(scenario).strip().lower() != "all":
-            if "scenario" not in df.columns:
-                df = df.iloc[0:0]
-            else:
-                from pathlib import Path as _Path
+        if not is_all_scenarios(scenario):
+            # A scoped lookup on a frame with no scenario column cannot honour
+            # the scope, so it answers with nothing rather than a point from an
+            # unknown stimulus.
+            df = df.iloc[0:0] if "scenario" not in df.columns else scope_to_scenario(df, scenario)
 
-                scenario_values = df["scenario"].astype(str).str.strip()
-                target = str(scenario).strip()
-                mask = scenario_values == target
-                if not mask.any():
-                    def _norm(name: str) -> str:
-                        return _Path(str(name).strip()).stem.lower().replace(" ", "")
-
-                    target_stem = _norm(target)
-                    mask = scenario_values.map(_norm) == target_stem
-                df = df.loc[mask]
+        def _empty(frame: pd.DataFrame) -> dict:
+            return attach_transform_provenance(
+                {
+                    "requested_time_s": round(t_s, 4),
+                    "nearest_time_s": 0.0,
+                    "scenario": None,
+                    "gx": None,
+                    "gy": None,
+                },
+                frame,
+            )
 
         if "time" not in df.columns or df.empty:
-            return {
-                "requested_time_s": round(t_s, 4),
-                "nearest_time_s": 0.0,
-                "scenario": None,
-                "gx": None,
-                "gy": None,
-            }
+            return _empty(df)
 
         clean = df.copy()
         clean["time"] = pd.to_numeric(clean["time"], errors="coerce")
         clean = clean.dropna(subset=["time"])
         if clean.empty:
-            return {
-                "requested_time_s": round(t_s, 4),
-                "nearest_time_s": 0.0,
-                "scenario": None,
-                "gx": None,
-                "gy": None,
-            }
+            return _empty(clean)
 
         # Resolve the scenario from the original nearest row before cleaning.
         # For an unscoped lookup this prevents interpolation/smoothing across a
@@ -305,11 +355,11 @@ class PupilAnalyticsService:
             scenario_values = clean["scenario"].astype(str).str.strip()
             clean = clean.loc[scenario_values == raw_scenario]
 
-        # The temporal gaze chart uses this same cleaning pipeline. Reusing it
-        # here keeps the point-on-stimulus preview aligned with the clicked
-        # curve and fills the short gaps that otherwise produced a missing dot.
+        # The temporal gaze chart uses this same coordinate-selection seam. For
+        # an applied contract it reads local derivatives and never interpolates
+        # an outside-stimulus row back onto the image.
         clean = clean.sort_values("time").reset_index(drop=True)
-        clean = PupilAnalyticsService._clean_gaze(clean)
+        clean, _ = PupilAnalyticsService._gaze_in_output_space(clean)
         idx = (clean["time"] - t_s).abs().idxmin()
         row = clean.loc[idx]
 
@@ -337,13 +387,13 @@ class PupilAnalyticsService:
             gx = None
             gy = None
 
-        return {
+        return attach_transform_provenance({
             "requested_time_s": round(t_s, 4),
             "nearest_time_s": round(nearest_time, 4),
             "scenario": scenario,
             "gx": round(gx, 2) if gx is not None else None,
             "gy": round(gy, 2) if gy is not None else None,
-        }
+        }, clean.loc[[idx]])
 
     @staticmethod
     def compute_scenario_relative_time(
@@ -353,7 +403,7 @@ class PupilAnalyticsService:
     ) -> Optional[float]:
         """Convert a global sample time to time elapsed within a scenario."""
         if (
-            not scenario
+            is_all_scenarios(scenario)
             or absolute_time_s is None
             or "time" not in df.columns
             or "scenario" not in df.columns
@@ -365,19 +415,7 @@ class PupilAnalyticsService:
         if clean.empty:
             return None
 
-        scenario_values = clean["scenario"].astype(str).str.strip()
-        target = str(scenario).strip()
-        subset = clean[scenario_values == target]
-
-        if subset.empty:
-            from pathlib import Path as _Path
-
-            def _norm(name: str) -> str:
-                return _Path(str(name).strip()).stem.lower().replace(" ", "")
-
-            target_stem = _norm(target)
-            subset = clean[scenario_values.map(_norm) == target_stem]
-
+        subset = scope_to_scenario(clean, scenario)
         if subset.empty:
             return None
 
@@ -455,6 +493,49 @@ class PupilAnalyticsService:
         return df
 
     @staticmethod
+    def _gaze_in_output_space(df: pd.DataFrame) -> tuple[pd.DataFrame, bool]:
+        """Prepare gaze percentages without bridging an off-stimulus row.
+
+        Existing/legacy rows retain the historical cleaning path.  Rows whose
+        persisted transform status is ``applied`` use the authoritative local
+        derivatives and are present only when the ingestion-time eligibility
+        mask and the unclipped ``[0,1]`` bounds both pass.
+        """
+
+        applied = applied_transform_mask(df)
+        if not applied.any():
+            return PupilAnalyticsService._clean_gaze(df), False
+
+        output = df.copy()
+        output["gx_clean"] = np.nan
+        output["gy_clean"] = np.nan
+
+        legacy = ~applied
+        if legacy.any() and {"gx", "gy"}.issubset(output.columns):
+            # Do not smooth one scenario into another in a mixed all-scenario
+            # response. This is numerically identical to the old path for a
+            # concrete legacy scope.
+            if "scenario" in output.columns:
+                groups = output.loc[legacy].groupby("scenario", sort=False, dropna=False)
+                legacy_frames = [
+                    PupilAnalyticsService._clean_gaze(group.copy())
+                    for _, group in groups
+                ]
+                legacy_clean = pd.concat(legacy_frames).sort_index() if legacy_frames else output.iloc[0:0]
+            else:
+                legacy_clean = PupilAnalyticsService._clean_gaze(output.loc[legacy].copy())
+            output.loc[legacy_clean.index, "gx_clean"] = legacy_clean["gx_clean"]
+            output.loc[legacy_clean.index, "gy_clean"] = legacy_clean["gy_clean"]
+
+        eligible = valid_stimulus_gaze_mask(output) & applied
+        if LOCAL_X_COLUMN in output.columns and LOCAL_Y_COLUMN in output.columns:
+            local_x = pd.to_numeric(output[LOCAL_X_COLUMN], errors="coerce") * 100.0
+            local_y = pd.to_numeric(output[LOCAL_Y_COLUMN], errors="coerce") * 100.0
+            output.loc[eligible, "gx_clean"] = local_x.loc[eligible]
+            output.loc[eligible, "gy_clean"] = local_y.loc[eligible]
+        return output, True
+
+    @staticmethod
     def compute_gaze_timeseries(
         df: pd.DataFrame,
         scenario: Optional[str] = None,
@@ -462,30 +543,39 @@ class PupilAnalyticsService:
         end_time_s: Optional[float] = None,
     ) -> dict:
         """Compute cleaned gaze X/Y timeseries."""
-        _empty: dict = {"time": [], "gx_clean": [], "gy_clean": []}
-
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
-
-        if "time" not in df.columns or "gx" not in df.columns or "gy" not in df.columns:
-            return _empty
-
+        df = scope_to_scenario(df, scenario)
         df = _filter_time_window(df, start_time_s, end_time_s)
+        _empty: dict = attach_transform_provenance(
+            {"time": [], "gx_clean": [], "gy_clean": []},
+            df,
+        )
+
+        has_raw = {"gx", "gy"}.issubset(df.columns)
+        has_local = {LOCAL_X_COLUMN, LOCAL_Y_COLUMN}.issubset(df.columns)
+        if "time" not in df.columns or not (has_raw or has_local):
+            return _empty
 
         df = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True)
         if df.empty:
             return _empty
 
-        df = PupilAnalyticsService._clean_gaze(df)
+        scoped_for_provenance = df.copy()
+        df, has_applied = PupilAnalyticsService._gaze_in_output_space(df)
+        if has_applied:
+            # Applied outside rows stay absent. They must not become zero-valued
+            # points or be interpolated back into the trace.
+            applied = applied_transform_mask(df)
+            eligible = (~applied) | valid_stimulus_gaze_mask(df)
+            df = df.loc[eligible].reset_index(drop=True)
 
         def _safe_list(arr: np.ndarray) -> list:
             return [0.0 if not np.isfinite(float(v)) else round(float(v), 4) for v in arr]
 
-        return {
+        return attach_transform_provenance({
             "time": df["time"].astype(float).tolist(),
             "gx_clean": _safe_list(df["gx_clean"].to_numpy(dtype=float)),
             "gy_clean": _safe_list(df["gy_clean"].to_numpy(dtype=float)),
-        }
+        }, scoped_for_provenance)
 
     @staticmethod
     def compute_gaze_statistics(
@@ -495,26 +585,26 @@ class PupilAnalyticsService:
         end_time_s: Optional[float] = None,
     ) -> dict:
         """Compute statistics for cleaned gaze X and Y signals."""
-        _empty: dict = {
+        df = scope_to_scenario(df, scenario)
+        df = _filter_time_window(df, start_time_s, end_time_s)
+        _empty: dict = attach_transform_provenance({
             "gx_mean": 0.0, "gx_min": 0.0, "gx_max": 0.0,
             "gx_std": 0.0, "gx_median": 0.0, "gx_baseline": 0.0,
             "gy_mean": 0.0, "gy_min": 0.0, "gy_max": 0.0,
             "gy_std": 0.0, "gy_median": 0.0, "gy_baseline": 0.0,
-        }
+        }, df)
 
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
-
-        if "time" not in df.columns or "gx" not in df.columns or "gy" not in df.columns:
+        has_raw = {"gx", "gy"}.issubset(df.columns)
+        has_local = {LOCAL_X_COLUMN, LOCAL_Y_COLUMN}.issubset(df.columns)
+        if "time" not in df.columns or not (has_raw or has_local):
             return _empty
-
-        df = _filter_time_window(df, start_time_s, end_time_s)
 
         df = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True)
         if df.empty:
             return _empty
 
-        df = PupilAnalyticsService._clean_gaze(df)
+        scoped_for_provenance = df.copy()
+        df, _ = PupilAnalyticsService._gaze_in_output_space(df)
 
         def _axis_stats(arr: np.ndarray) -> dict:
             finite = arr[np.isfinite(arr)]
@@ -533,12 +623,12 @@ class PupilAnalyticsService:
         gx_s = _axis_stats(df["gx_clean"].to_numpy(dtype=float))
         gy_s = _axis_stats(df["gy_clean"].to_numpy(dtype=float))
 
-        return {
+        return attach_transform_provenance({
             "gx_mean": gx_s["mean"], "gx_min": gx_s["min"], "gx_max": gx_s["max"],
             "gx_std": gx_s["std"], "gx_median": gx_s["median"], "gx_baseline": gx_s["baseline"],
             "gy_mean": gy_s["mean"], "gy_min": gy_s["min"], "gy_max": gy_s["max"],
             "gy_std": gy_s["std"], "gy_median": gy_s["median"], "gy_baseline": gy_s["baseline"],
-        }
+        }, scoped_for_provenance)
 
     @staticmethod
     def compute_distance_timeseries(
@@ -550,8 +640,7 @@ class PupilAnalyticsService:
         """Compute eye-to-screen distance timeseries (mm -> cm)."""
         _empty: dict = {"time": [], "distance_cm": []}
 
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
         if "time" not in df.columns or "distance" not in df.columns:
             return _empty
@@ -583,8 +672,7 @@ class PupilAnalyticsService:
             "mean": 0.0, "min": 0.0, "max": 0.0, "std": 0.0, "median": 0.0, "baseline": 0.0,
         }
 
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
         if "time" not in df.columns or "distance" not in df.columns:
             return _empty
@@ -631,8 +719,7 @@ class GsrAnalyticsService:
         end_time_s: Optional[float] = None,
         absolute_time: bool = False,
     ) -> pd.DataFrame:
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
         if "time" not in df.columns or "gsr" not in df.columns:
             return pd.DataFrame(columns=["time", "gsr", "gsr_smooth"])
@@ -881,8 +968,7 @@ class EegAnalyticsService:
         if not selected_channels:
             return cls._empty(available_channels)
 
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
         if "time" not in df.columns:
             return cls._empty(available_channels)
@@ -948,8 +1034,7 @@ class EegAnalyticsService:
         if not selected_channels:
             return cls._empty_psd(available_channels, use_db)
 
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
         if "time" not in df.columns:
             return cls._empty_psd(available_channels, use_db)
@@ -1049,8 +1134,7 @@ class EegAnalyticsService:
         if not selected_channels:
             return cls._empty_spectrogram(available_channels, use_db, normalize)
 
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
         if "time" not in df.columns:
             return cls._empty_spectrogram(available_channels, use_db, normalize)
@@ -1199,8 +1283,7 @@ class EegAnalyticsService:
                 remove_dc=remove_dc,
             )
 
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
         if "time" not in df.columns:
             return cls._empty_topography(
@@ -1336,6 +1419,974 @@ class EegAnalyticsService:
         }
 
 
+class FixationDurationVariantService:
+    """Select and compare the persisted minimum-duration detector variants.
+
+    Ingestion stores the 200 ms canonical variant under the historical column
+    names and the other variants under deterministic suffixes.  This adapter
+    presents any requested variant through the canonical names so downstream
+    analytics do not need five parallel implementations.
+    """
+
+    AVAILABLE_DURATIONS_FIELD = "available_min_fixation_durations_ms"
+    REQUESTED_DURATION_ATTR = "requested_min_fixation_duration_ms"
+    VARIANT_WARNINGS_ATTR = "fixation_variant_warnings"
+
+    @classmethod
+    def validate_duration(cls, value: object = DEFAULT_FIXATION_MIN_DURATION_MS) -> int:
+        """Return a supported integer duration or raise an API-friendly error."""
+
+        if value is None:
+            value = DEFAULT_FIXATION_MIN_DURATION_MS
+        if isinstance(value, (bool, np.bool_)):
+            parsed = None
+        else:
+            try:
+                numeric = float(str(value).strip().replace(",", "."))
+            except (TypeError, ValueError):
+                parsed = None
+            else:
+                parsed = int(numeric) if np.isfinite(numeric) and numeric.is_integer() else None
+
+        supported = tuple(int(item) for item in SUPPORTED_FIXATION_MIN_DURATIONS_MS)
+        if parsed not in supported:
+            choices = ", ".join(f"{item} ms" for item in supported)
+            raise ValueError(
+                f"Unsupported minimum fixation duration {value!r}. "
+                f"Supported values are: {choices}."
+            )
+        return int(parsed)
+
+    @classmethod
+    def _attrs_containers(cls, df: pd.DataFrame) -> list[dict]:
+        attrs = dict(getattr(df, "attrs", {}) or {})
+        containers = [attrs]
+        for key in ("fixation", "fixation_metadata", "processing_metadata", "metadata"):
+            nested = attrs.get(key)
+            if isinstance(nested, dict):
+                containers.append(nested)
+        return containers
+
+    @classmethod
+    def _metadata_value(cls, df: pd.DataFrame, name: str):
+        for container in cls._attrs_containers(df):
+            if name in container and container[name] is not None:
+                return container[name]
+        if name in df.columns:
+            values = df[name].dropna()
+            if not values.empty:
+                return values.iloc[0]
+        return None
+
+    @classmethod
+    def _is_variant_aware(cls, df: pd.DataFrame) -> bool:
+        if FIXATION_MIN_DURATION_COLUMN in df.columns:
+            return True
+        if cls._metadata_value(df, FIXATION_MIN_DURATION_COLUMN) is not None:
+            return True
+        if cls._metadata_value(df, cls.AVAILABLE_DURATIONS_FIELD) is not None:
+            return True
+        return any(
+            fixation_duration_column(base, duration) in df.columns
+            for duration in SUPPORTED_FIXATION_MIN_DURATIONS_MS
+            if int(duration) != int(CANONICAL_FIXATION_MIN_DURATION_MS)
+            for base in FIXATION_DURATION_VARIANT_COLUMNS
+        )
+
+    @classmethod
+    def available_durations(cls, df: pd.DataFrame) -> list[int]:
+        """Discover complete persisted variants without trusting stale metadata."""
+
+        if not cls._is_variant_aware(df):
+            return []
+        return [
+            int(duration)
+            for duration in SUPPORTED_FIXATION_MIN_DURATIONS_MS
+            if all(
+                fixation_duration_column(base, duration) in df.columns
+                for base in FIXATION_DURATION_VARIANT_COLUMNS
+            )
+        ]
+
+    @classmethod
+    def select_variant(
+        cls,
+        df: pd.DataFrame,
+        min_fixation_duration_ms: object = DEFAULT_FIXATION_MIN_DURATION_MS,
+    ) -> pd.DataFrame:
+        """Return a copied frame whose canonical columns expose one exact variant.
+
+        Files created before duration variants existed are deliberately left
+        untouched.  They do not contain enough provenance to claim that their
+        unsuffixed columns represent any newly requested threshold.
+        """
+
+        requested = cls.validate_duration(min_fixation_duration_ms)
+        # The frame can contain wide EEG/GSR channels.  A shallow structural
+        # copy lets us replace only the five canonical fixation columns without
+        # duplicating every unrelated signal buffer on each request.
+        selected = df.copy(deep=False)
+        selected.attrs = deepcopy(dict(getattr(df, "attrs", {}) or {}))
+        selected.attrs[cls.REQUESTED_DURATION_ATTR] = requested
+
+        if not cls._is_variant_aware(df):
+            if requested != int(DEFAULT_FIXATION_MIN_DURATION_MS):
+                raise ValueError(
+                    f"Requested {requested} ms fixation variant is unavailable for "
+                    "this legacy file. Reprocess the project to generate the "
+                    "100, 150, 200, 250 and 300 ms variants."
+                )
+            warning = (
+                "this legacy file does not advertise persisted duration variants; "
+                "stored fixation columns were used unchanged and their minimum "
+                "duration is unknown. Reprocess the project to enable comparison"
+            )
+            warnings = list(selected.attrs.get(cls.VARIANT_WARNINGS_ATTR, []) or [])
+            selected.attrs[cls.VARIANT_WARNINGS_ATTR] = list(
+                dict.fromkeys([*warnings, warning])
+            )
+            return selected
+
+        available = cls.available_durations(df)
+        if requested not in available:
+            available_text = (
+                ", ".join(f"{duration} ms" for duration in available)
+                if available
+                else "none (the persisted variant columns are incomplete)"
+            )
+            raise ValueError(
+                f"Requested {requested} ms fixation variant is unavailable. "
+                f"Available persisted variants: {available_text}."
+            )
+
+        for base in FIXATION_DURATION_VARIANT_COLUMNS:
+            source = fixation_duration_column(base, requested)
+            if source != base:
+                selected[base] = selected[source].copy()
+
+        selected[FIXATION_MIN_DURATION_COLUMN] = requested
+        selected.attrs[FIXATION_MIN_DURATION_COLUMN] = requested
+        selected.attrs[cls.AVAILABLE_DURATIONS_FIELD] = list(available)
+
+        fixation_metadata = deepcopy(selected.attrs.get("fixation", {}))
+        if not isinstance(fixation_metadata, dict):
+            fixation_metadata = {}
+        fixation_metadata[FIXATION_MIN_DURATION_COLUMN] = requested
+        fixation_metadata[cls.AVAILABLE_DURATIONS_FIELD] = list(available)
+        selected.attrs["fixation"] = fixation_metadata
+        return selected
+
+    @classmethod
+    def compute_sensitivity(
+        cls,
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+    ) -> dict:
+        """Summarise fixation/dwell sensitivity for every persisted duration."""
+
+        available = cls.available_durations(df)
+        if available and 100 not in available:
+            raise ValueError(
+                "Cannot compute fixation-duration sensitivity because the required "
+                "100 ms baseline variant is unavailable."
+            )
+
+        points: list[dict] = []
+        metadata: Optional[dict] = None
+        totals: dict[int, float] = {}
+        for duration in available:
+            events, point_metadata = FixationEventService.build_events(
+                df,
+                scenario=scenario,
+                min_fixation_duration_ms=duration,
+            )
+            if duration == int(DEFAULT_FIXATION_MIN_DURATION_MS) or metadata is None:
+                metadata = point_metadata
+
+            durations_ms = events["duration_s"].to_numpy(dtype=float) * 1000.0
+            total_duration_ms = float(durations_ms.sum()) if durations_ms.size else 0.0
+            totals[duration] = total_duration_ms
+            points.append(
+                {
+                    "min_fixation_duration_ms": duration,
+                    "n_fixations": int(durations_ms.size),
+                    "total_duration_ms": round(total_duration_ms, 2),
+                    "mean_duration_ms": round(float(durations_ms.mean()), 2)
+                    if durations_ms.size
+                    else 0.0,
+                    "median_duration_ms": round(float(np.median(durations_ms)), 2)
+                    if durations_ms.size
+                    else 0.0,
+                    "max_duration_ms": round(float(durations_ms.max()), 2)
+                    if durations_ms.size
+                    else 0.0,
+                }
+            )
+
+        baseline_total = totals.get(100, 0.0)
+        for point in points:
+            retained = (
+                (totals[point["min_fixation_duration_ms"]] / baseline_total) * 100.0
+                if baseline_total > 0.0
+                else 0.0
+            )
+            point["retained_dwell_percent"] = round(float(retained), 2)
+
+        if metadata is None:
+            _, metadata = FixationEventService.build_events(df, scenario=scenario)
+        metadata = dict(metadata)
+        metadata["available_min_fixation_durations_ms"] = list(available)
+        return {
+            "points": points,
+            "default_min_fixation_duration_ms": int(DEFAULT_FIXATION_MIN_DURATION_MS),
+            **metadata,
+        }
+
+
+class FixationEventService:
+    """Build one canonical fixation-event table for every spatial analytic.
+
+    Detector-v2 Parquets are event-labelled sample streams.  Legacy Parquets are
+    adapted through the old proximity semantics, but invalid rows always break an
+    event so missing/saccade intervals are never charged to a neighbouring
+    fixation.
+    """
+
+    EVENT_COLUMNS = [
+        "id",
+        "x_norm",
+        "y_norm",
+        "time_s",
+        "t_end_s",
+        "duration_s",
+        "detector_sample_count",
+        "source_row_count",
+        "segment_id",
+    ]
+    V2_COLUMNS = {
+        "time",
+        "fix_x",
+        "fix_y",
+        "fixation_id",
+        "fixation_segment_id",
+        "fixation_method",
+        "fixation_detector_version",
+    }
+    _GAP_FLOOR_S = 0.100
+    _GAP_MULTIPLIER = 3.0
+    _DEFAULT_BRIDGE_GAP_S = 0.075
+    # A V2 export can never carry a detection rate above its own row grid, so a
+    # declared rate that does is treated as stale metadata and is not used to
+    # rebuild the detector duration.
+    _RATE_CONSISTENCY_TOLERANCE = 0.05
+    # Legacy containment: one isolated row proves a sample, not a fixation, so
+    # it never becomes an event.  Documented in docs/FIXATION_V2.md.
+    _LEGACY_MIN_SOURCE_ROWS = 2
+
+    @classmethod
+    def empty_events(cls) -> pd.DataFrame:
+        return pd.DataFrame(columns=cls.EVENT_COLUMNS)
+
+    @staticmethod
+    def _scope(df: pd.DataFrame, scenario: Optional[str]) -> pd.DataFrame:
+        attrs = dict(getattr(df, "attrs", {}) or {})
+        scoped = scope_to_scenario(df, scenario)
+        scoped = scoped.copy(deep=False)
+        scoped.attrs.update(attrs)
+        return scoped
+
+    @staticmethod
+    def _first_text(df: pd.DataFrame, names: tuple[str, ...]) -> Optional[str]:
+        for name in names:
+            if name not in df.columns:
+                continue
+            values = df[name].dropna().astype(str).str.strip()
+            values = values[~values.str.lower().isin({"", "nan", "none", "null"})]
+            if not values.empty:
+                return str(values.iloc[0])
+        return None
+
+    @staticmethod
+    def _metadata_value(df: pd.DataFrame, names: tuple[str, ...]):
+        attrs = dict(getattr(df, "attrs", {}) or {})
+        containers = [attrs]
+        for key in ("fixation", "fixation_metadata", "processing_metadata", "metadata"):
+            nested = attrs.get(key)
+            if isinstance(nested, dict):
+                containers.append(nested)
+
+        for container in containers:
+            for name in names:
+                if name in container and container[name] is not None:
+                    return container[name]
+
+        for name in names:
+            if name not in df.columns:
+                continue
+            values = df[name].dropna()
+            if not values.empty:
+                return values.iloc[0]
+        return None
+
+    @staticmethod
+    def _as_positive_float(value) -> Optional[float]:
+        if value is None:
+            return None
+        try:
+            parsed = float(str(value).strip().replace(",", "."))
+        except (TypeError, ValueError):
+            return None
+        return parsed if np.isfinite(parsed) and parsed > 0 else None
+
+    @classmethod
+    def _effective_rate(cls, df: pd.DataFrame) -> tuple[Optional[float], bool]:
+        declared = cls._as_positive_float(
+            cls._metadata_value(
+                df,
+                (
+                    "fixation_effective_rate_hz",
+                    "effective_sampling_rate_hz",
+                    "effective_rate_hz",
+                    "file_frequency_hz",
+                    "sampling_frequency_hz",
+                ),
+            )
+        )
+        if declared is not None:
+            return declared, False
+
+        if "time" not in df.columns:
+            return None, False
+        times = pd.to_numeric(df["time"], errors="coerce").to_numpy(dtype=float)
+        times = times[np.isfinite(times)]
+        if times.size < 2:
+            return None, False
+        rate = _infer_fs(times, default=0.0)
+        return (rate, True) if rate > 0 and np.isfinite(rate) else (None, False)
+
+    @staticmethod
+    def _warning_list(value) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return []
+            try:
+                decoded = json.loads(text)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return [text]
+            if isinstance(decoded, list):
+                return [str(item) for item in decoded if str(item).strip()]
+            return [str(decoded)] if str(decoded).strip() else []
+        if isinstance(value, (list, tuple, set)):
+            return [str(item) for item in value if str(item).strip()]
+        return [str(value)]
+
+    @classmethod
+    def _metadata(cls, df: pd.DataFrame, *, is_v2: bool, fallback_source: str = "") -> dict:
+        warnings = cls._warning_list(
+            cls._metadata_value(
+                df,
+                ("fixation_warnings", "fixation_warning", "quality_warnings"),
+            )
+        )
+        warnings.extend(
+            cls._warning_list(
+                cls._metadata_value(
+                    df,
+                    (FixationDurationVariantService.VARIANT_WARNINGS_ATTR,),
+                )
+            )
+        )
+        effective_rate, inferred = cls._effective_rate(df)
+        if inferred:
+            warnings.append("effective sampling rate inferred from timestamps")
+
+        duration_value = cls._metadata_value(df, (FIXATION_MIN_DURATION_COLUMN,))
+        try:
+            min_fixation_duration_ms = (
+                FixationDurationVariantService.validate_duration(duration_value)
+                if duration_value is not None
+                else None
+            )
+        except ValueError:
+            min_fixation_duration_ms = None
+            warnings.append(
+                f"stored {FIXATION_MIN_DURATION_COLUMN} value is invalid and was ignored"
+            )
+        available_durations = FixationDurationVariantService.available_durations(df)
+
+        if is_v2:
+            version = cls._first_text(df, ("fixation_detector_version",)) or str(
+                cls._metadata_value(df, ("fixation_detector_version", "algorithm_version"))
+                or "fixation-v2"
+            )
+            method = cls._first_text(df, ("fixation_method",)) or str(
+                cls._metadata_value(df, ("fixation_method", "method")) or "unknown"
+            )
+            source = "raw_gaze"
+        else:
+            version = "legacy-adapter-v1"
+            method = "legacy_proximity"
+            source = fallback_source or "legacy_fixation_columns"
+            warnings.append(
+                "legacy adapter: these fixation events and their durations are "
+                "estimates rebuilt from stored samples, not detector output"
+            )
+
+        return {
+            "algorithm_version": version,
+            "method": method,
+            "source": source,
+            # False only when the events come from a detector-v2 export; every
+            # legacy event is inferred and must be read as an estimate.
+            "estimated": not is_v2,
+            "effective_sampling_rate_hz": (
+                float(effective_rate) if effective_rate is not None else None
+            ),
+            "min_fixation_duration_ms": min_fixation_duration_ms,
+            "available_min_fixation_durations_ms": available_durations,
+            "warnings": list(dict.fromkeys(warnings)),
+        }
+
+    @staticmethod
+    def _normalise_identifier(value) -> Optional[str]:
+        if value is None or pd.isna(value):
+            return None
+        if isinstance(value, (int, np.integer)):
+            return str(int(value))
+        if isinstance(value, (float, np.floating)) and np.isfinite(value) and float(value).is_integer():
+            return str(int(value))
+        text = str(value).strip()
+        return text if text and text.lower() not in {"nan", "none", "null"} else None
+
+    @classmethod
+    def _normalised_coordinates(
+        cls,
+        df: pd.DataFrame,
+        x_col: str,
+        y_col: str,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+        """Normalise stored fixation coordinates and reject off-screen rows.
+
+        A coordinate outside the screen is evidence that the row is not a
+        usable fixation sample, so it is dropped.  Clamping it to the border
+        instead would move real attention onto an edge it never visited, and
+        the edge would then win AOI hits and heatmap weight.
+        """
+
+        x = pd.to_numeric(df[x_col], errors="coerce").to_numpy(dtype=float)
+        y = pd.to_numeric(df[y_col], errors="coerce").to_numpy(dtype=float)
+        finite = np.isfinite(x) & np.isfinite(y)
+        sentinel = np.isclose(x, -100.0, atol=1e-6) & np.isclose(y, -100.0, atol=1e-6)
+
+        unit = str(
+            cls._metadata_value(
+                df,
+                ("fixation_coordinate_unit", "fixation_coordinate_scale", "coordinate_unit"),
+            )
+            or ""
+        ).strip().lower()
+        if unit in {"normalized", "normalised", "0-1", "fraction"}:
+            scale = 1.0
+        elif unit in {"percent", "percentage", "0-100", "%"}:
+            scale = 100.0
+        else:
+            usable = np.concatenate([np.abs(x[finite & ~sentinel]), np.abs(y[finite & ~sentinel])])
+            scale = 1.0 if usable.size and float(np.nanmax(usable)) <= 1.1 else 100.0
+
+        x_norm = x / scale
+        y_norm = y / scale
+        on_screen = (
+            (x_norm >= 0.0) & (x_norm <= 1.0) & (y_norm >= 0.0) & (y_norm <= 1.0)
+        )
+        candidate = finite & ~sentinel
+        rejected = int(np.count_nonzero(candidate & ~on_screen))
+        return x_norm, y_norm, candidate & on_screen, rejected
+
+    @classmethod
+    def _cadence_by_segment(
+        cls,
+        times: np.ndarray,
+        segments: list[Optional[str]],
+        effective_rate: Optional[float],
+    ) -> dict[Optional[str], float]:
+        fallback = 1.0 / effective_rate if effective_rate and effective_rate > 0 else 0.0
+        cadence: dict[Optional[str], float] = {}
+        for segment in dict.fromkeys(segments):
+            segment_times = np.asarray(
+                [time for time, key in zip(times, segments) if key == segment and np.isfinite(time)],
+                dtype=float,
+            )
+            diffs = np.diff(segment_times)
+            diffs = diffs[(diffs > 0) & np.isfinite(diffs)]
+            cadence[segment] = float(np.median(diffs)) if diffs.size else fallback
+        return cadence
+
+    @staticmethod
+    def _support_runs(
+        positions: np.ndarray,
+        times: np.ndarray,
+        gap_limit_s: Optional[float],
+    ) -> list[tuple[int, int]]:
+        """Split an event wherever its rows stop proving continuous support.
+
+        A dropped source row, a backwards clock and a gap longer than the
+        bridge limit all end a run.  A repeated timestamp does not: it is an
+        export-grid artefact, and restarting a run there would pay its closing
+        period twice.
+        """
+
+        starts = [0]
+        for offset in range(1, int(positions.size)):
+            dt = float(times[positions[offset]] - times[positions[offset - 1]])
+            source_discontinuity = positions[offset] != positions[offset - 1] + 1
+            time_discontinuity = (
+                not np.isfinite(dt)
+                or dt < 0.0
+                or (gap_limit_s is not None and dt > gap_limit_s)
+            )
+            if source_discontinuity or time_discontinuity:
+                starts.append(offset)
+        starts.append(int(positions.size))
+        return list(zip(starts[:-1], starts[1:]))
+
+    @staticmethod
+    def _row_support_seconds(
+        positions: np.ndarray,
+        times: np.ndarray,
+        runs: list[tuple[int, int]],
+        cadence_s: float,
+    ) -> float:
+        """Sum only the support the surviving rows prove, as the detector does.
+
+        Every interval between two consecutive rows contributes at most one
+        sampling period, so a short stretch of absent rows cannot be charged
+        back as dwell, and each run closes with one period for its last row.
+        """
+
+        cadence = max(0.0, float(cadence_s))
+        total = 0.0
+        for start_offset, end_offset in runs:
+            window = positions[start_offset:end_offset]
+            for previous, current in zip(window[:-1], window[1:]):
+                dt = float(times[current] - times[previous])
+                if not np.isfinite(dt) or dt <= 0.0:
+                    continue
+                total += min(dt, cadence) if cadence > 0.0 else dt
+            total += cadence
+        return total
+
+    @classmethod
+    def _event_from_run(
+        cls,
+        run: list[int],
+        *,
+        event_id: str,
+        segment_id: Optional[str],
+        x_norm: np.ndarray,
+        y_norm: np.ndarray,
+        times: np.ndarray,
+        cadence_s: float,
+        detector_counts: Optional[np.ndarray] = None,
+        gap_limit_s: Optional[float] = None,
+        detector_rate_hz: Optional[float] = None,
+        warnings: Optional[list[str]] = None,
+    ) -> dict:
+        positions = np.asarray(run, dtype=int)
+        start = float(times[positions[0]])
+        last = float(times[positions[-1]])
+        cadence = max(0.0, float(cadence_s))
+        end = max(start, last + cadence)
+        source_count = int(positions.size)
+
+        runs = cls._support_runs(positions, times, gap_limit_s)
+        row_support_s = cls._row_support_seconds(positions, times, runs, cadence)
+        span_s = max(0.0, last - start)
+
+        detector_count = source_count
+        counted_by_detector = False
+        if detector_counts is not None:
+            candidates = detector_counts[positions]
+            candidates = candidates[np.isfinite(candidates) & (candidates >= 0)]
+            if candidates.size:
+                stored_count = int(round(float(np.max(candidates))))
+                # Every detector sample is fed by at least one source row, so a
+                # stored count above the rows this event actually kept describes
+                # something wider than the event and is clamped to what is here.
+                detector_count = min(stored_count, source_count)
+                counted_by_detector = True
+                if warnings is not None and stored_count > source_count:
+                    warnings.append(
+                        f"fixation {event_id}: stored detector sample count "
+                        f"({stored_count}) exceeds its {source_count} exported row(s) "
+                        "and was clamped"
+                    )
+
+        duration = row_support_s
+        # Without a stored count the rows are all there is; reading the row
+        # count as a detector count would multiply a resampled event's dwell.
+        if detector_rate_hz and counted_by_detector and detector_count > 0:
+            # The detector reports valid support as a sample count on its own
+            # grid; count / rate is that same support, not a new heuristic.
+            detector_period = 1.0 / float(detector_rate_hz)
+            detector_support_s = float(detector_count) * detector_period
+            # The event's rows span ``span_s`` and its last detector sample
+            # supports one detection period past them, which on a resampled
+            # export is longer than the one exported row the grid cadence buys.
+            detector_wall_s = span_s + max(cadence, detector_period)
+            if np.isfinite(detector_support_s) and (
+                0.0 < detector_support_s <= detector_wall_s + 1e-9
+            ):
+                duration = detector_support_s
+                tolerance = max(cadence, detector_period)
+                if warnings is not None and abs(detector_support_s - row_support_s) > tolerance:
+                    warnings.append(
+                        f"fixation {event_id}: detector support "
+                        f"({detector_support_s * 1000.0:.1f} ms) and exported row support "
+                        f"({row_support_s * 1000.0:.1f} ms) disagree; the detector value was kept"
+                    )
+            elif warnings is not None:
+                warnings.append(
+                    f"fixation {event_id}: stored detector metadata does not fit its "
+                    "timestamps; duration was measured from the exported rows"
+                )
+
+        return {
+            "id": event_id,
+            "x_norm": round(float(np.median(x_norm[positions])), 6),
+            "y_norm": round(float(np.median(y_norm[positions])), 6),
+            "time_s": round(start, 6),
+            "t_end_s": round(end, 6),
+            "duration_s": round(duration, 6),
+            "detector_sample_count": detector_count,
+            "source_row_count": source_count,
+            "segment_id": segment_id,
+        }
+
+    @classmethod
+    def _from_v2(cls, df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+        metadata = cls._metadata(df, is_v2=True)
+        if df.empty:
+            return cls.empty_events(), metadata
+
+        x_norm, y_norm, valid_coordinates, off_screen = cls._normalised_coordinates(
+            df, "fix_x", "fix_y"
+        )
+        if off_screen:
+            metadata["warnings"].append(
+                f"{off_screen} fixation row(s) fell outside the screen and were rejected"
+            )
+        times = pd.to_numeric(df["time"], errors="coerce").to_numpy(dtype=float)
+        fixation_ids = [cls._normalise_identifier(value) for value in df["fixation_id"]]
+        raw_segment_ids = [
+            cls._normalise_identifier(value) for value in df["fixation_segment_id"]
+        ]
+        participant_ids = (
+            [cls._normalise_identifier(value) for value in df["_participant_code"]]
+            if "_participant_code" in df.columns
+            else [None] * len(df)
+        )
+        segment_ids = [
+            (
+                f"{participant_id}:{segment_id}"
+                if participant_id is not None and segment_id is not None
+                else participant_id or segment_id
+            )
+            for participant_id, segment_id in zip(participant_ids, raw_segment_ids)
+        ]
+        valid = valid_coordinates & np.isfinite(times) & np.asarray(
+            [value is not None for value in fixation_ids], dtype=bool
+        )
+        # The ingestion mask is authoritative for an applied transform.  In
+        # particular, a labelled fixation row in a letterbox/cropped region is
+        # not allowed to survive merely because its stored fixation coordinate
+        # looks finite.
+        valid &= valid_stimulus_gaze_mask(df).to_numpy(dtype=bool)
+        hard_boundaries = hard_stimulus_boundary_mask(df)
+        stimulus_epochs = np.cumsum(hard_boundaries.astype(int))
+
+        detector_counts = None
+        for name in ("fixation_detector_sample_count", "detector_sample_count"):
+            if name in df.columns:
+                detector_counts = pd.to_numeric(df[name], errors="coerce").to_numpy(dtype=float)
+                break
+
+        effective_rate = metadata.get("effective_sampling_rate_hz")
+        cadence = cls._cadence_by_segment(times, segment_ids, effective_rate)
+        positive_diffs = np.diff(times[np.isfinite(times)])
+        positive_diffs = positive_diffs[(positive_diffs > 0) & np.isfinite(positive_diffs)]
+        median_dt = float(np.median(positive_diffs)) if positive_diffs.size else 0.0
+        configured_bridge_ms = cls._as_positive_float(
+            cls._metadata_value(
+                df,
+                ("fixation_bridge_gap_ms", "max_bridge_gap_ms", "fixation_max_gap_ms"),
+            )
+        )
+        bridge_floor = (
+            configured_bridge_ms / 1000.0
+            if configured_bridge_ms is not None
+            else cls._DEFAULT_BRIDGE_GAP_S
+        )
+        bridge_gap_limit = max(bridge_floor, cls._GAP_MULTIPLIER * median_dt)
+
+        # Only a rate the export actually declared can stand in for the
+        # detector's own valid support.  A rate inferred from this frame's
+        # timestamps describes the row grid, which for a resampled export is
+        # several times faster than the eye clock the detector ran on.
+        declared_rate, rate_inferred = cls._effective_rate(df)
+        observed_grid_rate = 1.0 / median_dt if median_dt > 0 else None
+        detector_rate: Optional[float] = None
+        if declared_rate is not None and not rate_inferred:
+            if observed_grid_rate is None or declared_rate <= observed_grid_rate * (
+                1.0 + cls._RATE_CONSISTENCY_TOLERANCE
+            ):
+                detector_rate = float(declared_rate)
+            else:
+                metadata["warnings"].append(
+                    "declared effective sampling rate exceeds the exported row grid; "
+                    "fixation durations were measured from the exported rows"
+                )
+
+        grouped_positions: dict[tuple[Optional[str], int, str], list[int]] = {}
+        for position in range(len(df)):
+            if not valid[position] or fixation_ids[position] is None:
+                continue
+            key = (
+                segment_ids[position],
+                int(stimulus_epochs[position]),
+                fixation_ids[position],
+            )
+            grouped_positions.setdefault(key, []).append(position)
+
+        events: list[dict] = []
+        for (raw_segment_id, stimulus_epoch, fixation_id), positions in grouped_positions.items():
+            segment_id = (
+                raw_segment_id
+                if stimulus_epoch == 0
+                else f"{raw_segment_id or 'segment'}:stimulus-span-{stimulus_epoch}"
+            )
+            canonical_id = f"{segment_id}:{fixation_id}" if segment_id is not None else fixation_id
+            event_spans: list[list[int]] = []
+            for position in positions:
+                if not event_spans:
+                    event_spans.append([position])
+                    continue
+                previous = event_spans[-1][-1]
+                dt = times[position] - times[previous]
+                another_event_between = bool(valid[previous + 1 : position].any())
+                off_stimulus_between = bool(
+                    hard_boundaries[previous + 1 : position].any()
+                )
+                # A repeated timestamp is an export-grid artefact, not a second
+                # visit: splitting on it would turn one event into one event per
+                # exported row.  Only a backwards clock is a real break.
+                long_discontinuity = (
+                    not np.isfinite(dt) or dt < 0 or dt > bridge_gap_limit
+                )
+                if another_event_between or off_stimulus_between or long_discontinuity:
+                    event_spans.append([position])
+                else:
+                    event_spans[-1].append(position)
+
+            if len(event_spans) > 1:
+                metadata["warnings"].append(
+                    f"fixation {canonical_id} reappeared after a long discontinuity and was split into {len(event_spans)} events"
+                )
+
+            for span_number, span_positions in enumerate(event_spans, start=1):
+                event_id = canonical_id if span_number == 1 else f"{canonical_id}#span{span_number}"
+                span_segment_id = (
+                    segment_id
+                    if len(event_spans) == 1
+                    else f"{segment_id or 'segment'}:span{span_number}"
+                )
+                short_gaps = sum(
+                    current != previous + 1
+                    for previous, current in zip(span_positions, span_positions[1:])
+                )
+                if short_gaps:
+                    metadata["warnings"].append(
+                        f"fixation {event_id} contains {short_gaps} bridged gap(s); gaps were excluded from duration"
+                    )
+                events.append(
+                    cls._event_from_run(
+                        span_positions,
+                        event_id=event_id,
+                        segment_id=span_segment_id,
+                        x_norm=x_norm,
+                        y_norm=y_norm,
+                        times=times,
+                        cadence_s=cadence.get(raw_segment_id, 0.0),
+                        detector_counts=detector_counts,
+                        gap_limit_s=bridge_gap_limit,
+                        # A stored count describes the whole identifier, so it
+                        # cannot be spread over the spans a defensive split made.
+                        detector_rate_hz=(
+                            detector_rate if len(event_spans) == 1 else None
+                        ),
+                        warnings=metadata["warnings"],
+                    )
+                )
+
+        metadata["warnings"] = list(dict.fromkeys(metadata["warnings"]))
+        event_frame = pd.DataFrame(events, columns=cls.EVENT_COLUMNS)
+        if not event_frame.empty:
+            event_frame = event_frame.sort_values(["time_s", "id"], kind="stable").reset_index(drop=True)
+        return event_frame, metadata
+
+    @classmethod
+    def _legacy_events(
+        cls,
+        df: pd.DataFrame,
+        proximity_threshold: float,
+    ) -> tuple[pd.DataFrame, dict]:
+        if df.empty or "time" not in df.columns:
+            return cls.empty_events(), cls._metadata(
+                df, is_v2=False, fallback_source="legacy_fixation_columns"
+            )
+
+        source = "legacy_fixation_columns"
+        working = df.copy()
+        off_screen = 0
+        if {"fix_x", "fix_y"}.issubset(working.columns):
+            x_norm, y_norm, valid, off_screen = cls._normalised_coordinates(
+                working, "fix_x", "fix_y"
+            )
+        else:
+            valid = np.zeros(len(working), dtype=bool)
+            x_norm = np.full(len(working), np.nan, dtype=float)
+            y_norm = np.full(len(working), np.nan, dtype=float)
+
+        if not valid.any() and {"gx", "gy"}.issubset(working.columns):
+            source = "legacy_gaze_fallback"
+            working, _ = PupilAnalyticsService._gaze_in_output_space(working)
+            x_norm = pd.to_numeric(working["gx_clean"], errors="coerce").to_numpy(dtype=float) / 100.0
+            y_norm = pd.to_numeric(working["gy_clean"], errors="coerce").to_numpy(dtype=float) / 100.0
+            valid = (
+                np.isfinite(x_norm)
+                & np.isfinite(y_norm)
+                & (x_norm >= 0.0)
+                & (x_norm <= 1.0)
+                & (y_norm >= 0.0)
+                & (y_norm <= 1.0)
+            )
+            valid &= valid_stimulus_gaze_mask(working).to_numpy(dtype=bool)
+
+        metadata = cls._metadata(working, is_v2=False, fallback_source=source)
+        if source == "legacy_gaze_fallback":
+            metadata["method"] = "legacy_gaze_proximity"
+            metadata["warnings"].append(
+                "fixation events inferred from cleaned gaze because labelled fixation columns were unavailable"
+            )
+        if off_screen:
+            metadata["warnings"].append(
+                f"{off_screen} legacy fixation row(s) fell outside the screen and were "
+                "rejected instead of being pulled onto the border"
+            )
+
+        times = pd.to_numeric(working["time"], errors="coerce").to_numpy(dtype=float)
+        valid &= np.isfinite(times)
+        effective_rate = metadata.get("effective_sampling_rate_hz")
+        cadence = 1.0 / effective_rate if effective_rate and effective_rate > 0 else 0.0
+        positive_diffs = np.diff(times[np.isfinite(times)])
+        positive_diffs = positive_diffs[(positive_diffs > 0) & np.isfinite(positive_diffs)]
+        median_dt = float(np.median(positive_diffs)) if positive_diffs.size else cadence
+        cadence = median_dt if median_dt > 0 else cadence
+        gap_limit = max(cls._GAP_FLOOR_S, cls._GAP_MULTIPLIER * median_dt)
+
+        events: list[dict] = []
+        run: list[int] = []
+        segment_number = 0
+        event_number = 0
+        isolated_rows = 0
+        cx = cy = 0.0
+
+        def flush() -> None:
+            nonlocal run, event_number, isolated_rows, cx, cy
+            if not run:
+                return
+            # A run this short is a transition sample between two fixations, or
+            # the single survivor of a rejected stretch.  Legacy data carries no
+            # detector labels to tell those apart, so it never becomes an event.
+            if len(run) < cls._LEGACY_MIN_SOURCE_ROWS:
+                isolated_rows += 1
+                run = []
+                cx = cy = 0.0
+                return
+            event_number += 1
+            events.append(
+                cls._event_from_run(
+                    run,
+                    event_id=f"legacy-{event_number}",
+                    segment_id=f"legacy-segment-{segment_number}",
+                    x_norm=x_norm,
+                    y_norm=y_norm,
+                    times=times,
+                    cadence_s=cadence,
+                    gap_limit_s=gap_limit,
+                )
+            )
+            run = []
+            cx = cy = 0.0
+
+        for position in range(len(working)):
+            if not valid[position]:
+                if run:
+                    flush()
+                segment_number += 1
+                continue
+
+            if run:
+                dt = times[position] - times[run[-1]]
+                distance_sq = (float(x_norm[position]) - cx) ** 2 + (float(y_norm[position]) - cy) ** 2
+                if not np.isfinite(dt) or dt <= 0 or dt > gap_limit or distance_sq > proximity_threshold ** 2:
+                    flush()
+                    segment_number += 1
+
+            if not run:
+                segment_number += 1
+                cx = float(x_norm[position])
+                cy = float(y_norm[position])
+            run.append(position)
+            count = len(run)
+            cx += (float(x_norm[position]) - cx) / count
+            cy += (float(y_norm[position]) - cy) / count
+        flush()
+
+        if isolated_rows:
+            metadata["warnings"].append(
+                f"{isolated_rows} isolated legacy row(s) were discarded: an event needs at "
+                f"least {cls._LEGACY_MIN_SOURCE_ROWS} consecutive rows"
+            )
+        metadata["warnings"] = list(dict.fromkeys(metadata["warnings"]))
+        return pd.DataFrame(events, columns=cls.EVENT_COLUMNS), metadata
+
+    @classmethod
+    def build_events(
+        cls,
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        proximity_threshold: float = 0.03,
+        min_fixation_duration_ms: Optional[int] = None,
+    ) -> tuple[pd.DataFrame, dict]:
+        selected = (
+            FixationDurationVariantService.select_variant(
+                df,
+                min_fixation_duration_ms=min_fixation_duration_ms,
+            )
+            if min_fixation_duration_ms is not None
+            else df
+        )
+        scoped = cls._scope(selected, scenario)
+        if cls.V2_COLUMNS.issubset(scoped.columns):
+            events, metadata = cls._from_v2(scoped)
+        else:
+            events, metadata = cls._legacy_events(scoped, proximity_threshold)
+        return events, attach_transform_provenance(metadata, scoped)
+
+
 class ScanpathAnalyticsService:
     """Computes scanpath objectives and statistics from fixation data."""
 
@@ -1350,7 +2401,7 @@ class ScanpathAnalyticsService:
         - Requires fix_x, fix_y, time columns.
         - Removes rows where fix_x == -100 AND fix_y == -100 (sentinel invalid).
         - Auto-normalizes 0-100 range to 0-1 if needed.
-        - Clips to [0.0, 1.0].
+        - Rejects values outside [0.0, 1.0]; never clips them onto an edge.
         - Returns sorted by time with only the three needed columns.
         """
         required = {"fix_x", "fix_y", "time"}
@@ -1376,9 +2427,13 @@ class ScanpathAnalyticsService:
             df["fix_x"] = fx / 100.0
             df["fix_y"] = fy / 100.0
 
-        df["fix_x"] = df["fix_x"].clip(0.0, 1.0)
-        df["fix_y"] = df["fix_y"].clip(0.0, 1.0)
-        return df
+        valid = (
+            np.isfinite(df["fix_x"])
+            & np.isfinite(df["fix_y"])
+            & df["fix_x"].between(0.0, 1.0, inclusive="both")
+            & df["fix_y"].between(0.0, 1.0, inclusive="both")
+        )
+        return df.loc[valid]
 
     @staticmethod
     def _infer_durations(times: np.ndarray) -> np.ndarray:
@@ -1477,6 +2532,7 @@ class ScanpathAnalyticsService:
         df: pd.DataFrame,
         scenario: Optional[str] = None,
         proximity_threshold: float = 0.03,
+        min_fixation_duration_ms: Optional[int] = None,
     ) -> dict:
         """
         Compute scanpath objectives and statistics from fixation data.
@@ -1487,81 +2543,69 @@ class ScanpathAnalyticsService:
         Returns dict with:
         - objectives: list of {id, cx, cy, duration_s, radius_norm, t_start, t_end, n_points}
         - n_objectives: int
-        - total_distance_px: float  (assuming REF_W x REF_H = 1920x1080)
+        - total_distance_px: float (displayed acquisition pixels when available)
         - avg_duration_s: float
         """
+        events, metadata = FixationEventService.build_events(
+            df,
+            scenario=scenario,
+            proximity_threshold=proximity_threshold,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        )
         _empty = {
             "objectives": [],
             "n_objectives": 0,
             "total_distance_px": 0.0,
             "avg_duration_s": 0.0,
+            **metadata,
         }
-
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
-
-        if df.empty:
+        if events.empty:
             return _empty
 
-        # --- Primary: fixation-event columns ---
-        df_fix = cls._filter_fixations(df)
-
-        if not df_fix.empty:
-            xs = df_fix["fix_x"].astype(float).to_numpy()
-            ys = df_fix["fix_y"].astype(float).to_numpy()
-            times = df_fix["time"].astype(float).to_numpy()
-        else:
-            # --- Fallback: cleaned continuous gaze (gx/gy) ---
-            if "time" not in df.columns or "gx" not in df.columns or "gy" not in df.columns:
-                return _empty
-
-            df_gaze = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True).copy()
-            if df_gaze.empty:
-                return _empty
-
-            df_gaze = PupilAnalyticsService._clean_gaze(df_gaze)
-
-            gx_arr = df_gaze["gx_clean"].to_numpy(dtype=float)
-            gy_arr = df_gaze["gy_clean"].to_numpy(dtype=float)
-            t_arr = df_gaze["time"].to_numpy(dtype=float)
-
-            # gx_clean/gy_clean are in 0-100 range; normalize to 0-1 and keep valid points
-            valid = np.isfinite(gx_arr) & np.isfinite(gy_arr)
-            if not valid.any():
-                return _empty
-
-            xs = np.clip(gx_arr[valid] / 100.0, 0.0, 1.0)
-            ys = np.clip(gy_arr[valid] / 100.0, 0.0, 1.0)
-            times = t_arr[valid]
-
-        durs = cls._infer_durations(times)
-        objs = cls._group_objectives(xs, ys, durs, times, proximity_threshold)
-        if not objs:
-            return _empty
-
-        dur_arr = np.array([o["duration_s"] for o in objs], dtype=float)
+        dur_arr = events["duration_s"].to_numpy(dtype=float)
         radii = cls._scale_radius(dur_arr)
 
         objectives_out = []
-        for i, (o, r) in enumerate(zip(objs, radii), start=1):
+        for i, (event, radius) in enumerate(zip(events.to_dict("records"), radii), start=1):
             objectives_out.append({
                 "id": i,
-                "cx": round(float(o["cx"]), 6),
-                "cy": round(float(o["cy"]), 6),
-                "duration_s": round(float(o["duration_s"]), 4),
-                "radius_norm": round(float(r), 6),
-                "t_start": round(float(o["t_start"]), 4),
-                "t_end": round(float(o["t_end"]), 4),
-                "n_points": int(o["n_points"]),
+                "cx": round(float(event["x_norm"]), 6),
+                "cy": round(float(event["y_norm"]), 6),
+                "duration_s": round(float(event["duration_s"]), 4),
+                "radius_norm": round(float(radius), 6),
+                "t_start": round(float(event["time_s"]), 4),
+                "t_end": round(float(event["t_end_s"]), 4),
+                "n_points": int(event["detector_sample_count"]),
             })
 
-        # Total path distance assuming 1920x1080 reference resolution
+        scoped = scope_to_scenario(df, scenario)
+        display_size = displayed_stimulus_size(scoped)
+        transform = metadata.get("coordinate_transform") or {}
+        if display_size is not None:
+            distance_width, distance_height = display_size
+        else:
+            distance_width, distance_height = float(cls.REF_W), float(cls.REF_H)
+            if transform.get("status") == APPLIED_STATUS:
+                metadata["warnings"].append(
+                    "stimulus display size is missing; scanpath pixel distance uses the "
+                    "legacy 1920 x 1080 reference"
+                )
+            else:
+                metadata["warnings"].append(
+                    "legacy scanpath pixel distance assumes a 1920 x 1080 reference; "
+                    "this is not measured acquisition geometry"
+                )
+            metadata["warnings"] = list(dict.fromkeys(metadata["warnings"]))
+
+        # Pixel travel is measured within detector segments only. A rejected
+        # off-stimulus interval therefore cannot create a line across the image.
         total_dist = 0.0
-        for i in range(1, len(objectives_out)):
-            a = objectives_out[i - 1]
-            b = objectives_out[i]
-            dx = (b["cx"] - a["cx"]) * cls.REF_W
-            dy = (b["cy"] - a["cy"]) * cls.REF_H
+        event_records = events.to_dict("records")
+        for a, b in zip(event_records[:-1], event_records[1:]):
+            if a.get("segment_id") != b.get("segment_id"):
+                continue
+            dx = (float(b["x_norm"]) - float(a["x_norm"])) * distance_width
+            dy = (float(b["y_norm"]) - float(a["y_norm"])) * distance_height
             total_dist += float(np.sqrt(dx * dx + dy * dy))
 
         avg_dur = float(np.mean(dur_arr)) if dur_arr.size else 0.0
@@ -1571,6 +2615,7 @@ class ScanpathAnalyticsService:
             "n_objectives": len(objectives_out),
             "total_distance_px": round(total_dist, 1),
             "avg_duration_s": round(avg_dur, 4),
+            **metadata,
         }
 
 
@@ -1582,6 +2627,7 @@ class FixationDataService:
         cls,
         df: pd.DataFrame,
         scenario: Optional[str] = None,
+        min_fixation_duration_ms: Optional[int] = None,
     ) -> dict:
         """
         Extract fixation points with timestamps and compute statistics.
@@ -1593,73 +2639,23 @@ class FixationDataService:
           - fixations: list of {x_norm, y_norm, time_s, duration_s}
           - stats: {n_fixations, max_duration_s, avg_duration_s}
         """
-        _empty = {
-            "fixations": [],
-            "stats": {"n_fixations": 0, "max_duration_s": 0.0, "avg_duration_s": 0.0},
-        }
-
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
-
-        if df.empty:
-            return _empty
-
-        # --- Primary: fixation-event columns ---
-        df_fix = ScanpathAnalyticsService._filter_fixations(df)
-
-        if not df_fix.empty:
-            xs = df_fix["fix_x"].astype(float).to_numpy()
-            ys = df_fix["fix_y"].astype(float).to_numpy()
-            times = df_fix["time"].astype(float).to_numpy()
-        else:
-            # --- Fallback: cleaned continuous gaze (gx/gy) ---
-            if "time" not in df.columns or "gx" not in df.columns or "gy" not in df.columns:
-                return _empty
-
-            df_gaze = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True).copy()
-            if df_gaze.empty:
-                return _empty
-
-            df_gaze = PupilAnalyticsService._clean_gaze(df_gaze)
-            gx_arr = df_gaze["gx_clean"].to_numpy(dtype=float)
-            gy_arr = df_gaze["gy_clean"].to_numpy(dtype=float)
-            t_arr = df_gaze["time"].to_numpy(dtype=float)
-
-            valid = np.isfinite(gx_arr) & np.isfinite(gy_arr)
-            if not valid.any():
-                return _empty
-
-            xs = np.clip(gx_arr[valid] / 100.0, 0.0, 1.0)
-            ys = np.clip(gy_arr[valid] / 100.0, 0.0, 1.0)
-            times = t_arr[valid]
-
-        if xs.size == 0:
-            return _empty
-
-        durs = ScanpathAnalyticsService._infer_durations(times)
-
-        fixations = [
-            {
-                "x_norm": round(float(x), 6),
-                "y_norm": round(float(y), 6),
-                "time_s": round(float(t), 4),
-                "duration_s": round(float(d), 4),
+        events, metadata = FixationEventService.build_events(
+            df,
+            scenario=scenario,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        )
+        if events.empty:
+            return {
+                "fixations": [],
+                "stats": {"n_fixations": 0, "max_duration_s": 0.0, "avg_duration_s": 0.0},
+                **metadata,
             }
-            for x, y, t, d in zip(xs, ys, times, durs)
-        ]
 
-        n = len(fixations)
-
-        # Compute duration stats from grouped objectives (consistent with ScanpathAnalyticsService)
-        objs = ScanpathAnalyticsService._group_objectives(xs, ys, durs, times)
-        if objs:
-            obj_durs = np.array([o["duration_s"] for o in objs], dtype=float)
-            max_dur = float(np.max(obj_durs))
-            avg_dur = float(np.mean(obj_durs))
-        else:
-            dur_arr = np.array([f["duration_s"] for f in fixations], dtype=float)
-            max_dur = float(np.max(dur_arr)) if n > 0 else 0.0
-            avg_dur = float(np.mean(dur_arr)) if n > 0 else 0.0
+        fixations = events.to_dict("records")
+        durations = events["duration_s"].to_numpy(dtype=float)
+        n = len(events)
+        max_dur = float(np.max(durations)) if durations.size else 0.0
+        avg_dur = float(np.mean(durations)) if durations.size else 0.0
 
         return {
             "fixations": fixations,
@@ -1668,6 +2664,7 @@ class FixationDataService:
                 "max_duration_s": round(max_dur, 4),
                 "avg_duration_s": round(avg_dur, 4),
             },
+            **metadata,
         }
 
 
@@ -1800,10 +2797,11 @@ class AoiAnalyticsService:
 
     @classmethod
     def _sample_frame(cls, df: pd.DataFrame, scenario: str) -> tuple[pd.DataFrame, Optional[float], Optional[float]]:
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        df = scope_to_scenario(df, scenario)
 
-        if "time" not in df.columns or "gx" not in df.columns or "gy" not in df.columns:
+        has_raw = {"gx", "gy"}.issubset(df.columns)
+        has_local = {LOCAL_X_COLUMN, LOCAL_Y_COLUMN}.issubset(df.columns)
+        if "time" not in df.columns or not (has_raw or has_local):
             return pd.DataFrame(), None, None
 
         sample_df = (
@@ -1812,7 +2810,11 @@ class AoiAnalyticsService:
         if sample_df.empty:
             return sample_df, None, None
 
-        sample_df = PupilAnalyticsService._clean_gaze(sample_df)
+        sample_df, has_applied = PupilAnalyticsService._gaze_in_output_space(sample_df)
+        if has_applied:
+            applied = applied_transform_mask(sample_df)
+            eligible = (~applied) | valid_stimulus_gaze_mask(sample_df)
+            sample_df = sample_df.loc[eligible].reset_index(drop=True)
 
         pupil_baseline = None
         if "lx_pupil" in sample_df.columns or "rx_pupil" in sample_df.columns:
@@ -2001,9 +3003,19 @@ class AoiAnalyticsService:
         return events
 
     @classmethod
-    def compute_metrics(cls, df: pd.DataFrame, scenario: str, aois: list) -> dict:
+    def compute_metrics(
+        cls,
+        df: pd.DataFrame,
+        scenario: str,
+        aois: list,
+        min_fixation_duration_ms: Optional[int] = None,
+    ) -> dict:
         ordered_aois = sorted(aois, key=lambda item: str(getattr(item, "name", "")).lower())
-        fixation_data = FixationDataService.compute_fixation_data(df, scenario)
+        fixation_data = FixationDataService.compute_fixation_data(
+            df,
+            scenario,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        )
         fixations = fixation_data.get("fixations", [])
         sample_df, pupil_baseline, distance_baseline = cls._sample_frame(df, scenario)
 
@@ -2025,7 +3037,7 @@ class AoiAnalyticsService:
 
         metrics = []
         any_aoi_mask = [False] * total_fixations
-        assigned_sequence: list[Optional[str]] = []
+        assigned_sequence: list[tuple[Optional[str], Optional[str]]] = []
 
         for fixation_index, fix in enumerate(fixations):
             x_norm = float(fix.get("x_norm", np.nan))
@@ -2036,7 +3048,7 @@ class AoiAnalyticsService:
                     any_aoi_mask[fixation_index] = True
                     if assigned is None:
                         assigned = aoi_def["name"]
-            assigned_sequence.append(assigned)
+            assigned_sequence.append((fix.get("segment_id"), assigned))
 
         unique_aoi_dwell_time_ms = float(
             sum(
@@ -2099,7 +3111,11 @@ class AoiAnalyticsService:
             for source in aoi_names
         }
         previous = None
-        for current in assigned_sequence:
+        previous_segment = None
+        for segment_id, current in assigned_sequence:
+            if segment_id != previous_segment:
+                previous = None
+                previous_segment = segment_id
             if current is None:
                 continue
             if previous is not None and previous != current:
@@ -2128,14 +3144,41 @@ class AoiAnalyticsService:
                 else 0.0,
                 2,
             ),
+            "algorithm_version": fixation_data.get("algorithm_version", "legacy-adapter-v1"),
+            "method": fixation_data.get("method", "legacy_proximity"),
+            "source": fixation_data.get("source", "legacy_fixation_columns"),
+            "estimated": bool(fixation_data.get("estimated", True)),
+            "effective_sampling_rate_hz": fixation_data.get("effective_sampling_rate_hz"),
+            "min_fixation_duration_ms": fixation_data.get("min_fixation_duration_ms"),
+            "available_min_fixation_durations_ms": fixation_data.get(
+                "available_min_fixation_durations_ms", []
+            ),
+            "warnings": fixation_data.get("warnings", []),
+            "coordinate_transform": fixation_data.get("coordinate_transform"),
         }
 
 
 class HeatmapAnalyticsService:
-    """Generates a heatmap PNG overlay from fixation/gaze data."""
+    """Generates a heatmap PNG overlay from fixation/gaze data.
 
-    REF_W: int = 1920
-    REF_H: int = 1080
+    The overlay is rendered at the stimulus' own pixel dimensions in the
+    top-left coordinate convention documented in
+    :mod:`...domain.stimulus_geometry`, so a client can lay it over the
+    stimulus one-to-one and it agrees with the scanpath and AOI overlays on
+    where any given fixation is.
+    """
+
+    # Longest edge of the density grid the histogram is accumulated on. The
+    # grid is scaled from the output size, so its cells stay square whatever
+    # the stimulus aspect ratio is and the smoothing kernel stays circular.
+    GRID_MAX_EDGE: int = 900
+
+    # Smoothing radius as a fraction of the stimulus' short edge. The legacy
+    # renderer blurred by 21 cells of a 200-cell grid, which on a 1080 px short
+    # edge is ~113 px; keeping that fraction preserves the established look
+    # while making the kernel isotropic instead of stretching it with the
+    # aspect ratio.
+    SIGMA_SHORT_EDGE_FRACTION: float = 0.105
 
     @classmethod
     def compute_heatmap_overlay(
@@ -2145,74 +3188,95 @@ class HeatmapAnalyticsService:
         gamma: float = 0.7,
         threshold: float = 0.10,
         alpha: float = 0.75,
-        flip_y: bool = True,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        min_fixation_duration_ms: Optional[int] = None,
     ) -> Optional[bytes]:
+        png_bytes, _ = cls.compute_heatmap_overlay_with_metadata(
+            df,
+            scenario=scenario,
+            gamma=gamma,
+            threshold=threshold,
+            alpha=alpha,
+            width=width,
+            height=height,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        )
+        return png_bytes
+
+    @classmethod
+    def compute_heatmap_overlay_with_metadata(
+        cls,
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        gamma: float = 0.7,
+        threshold: float = 0.10,
+        alpha: float = 0.75,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        min_fixation_duration_ms: Optional[int] = None,
+    ) -> tuple[Optional[bytes], dict]:
+        """Render the heatmap at the stimulus' intrinsic size.
+
+        ``width``/``height`` are the stimulus' intrinsic pixel dimensions as
+        captured at ingestion. When they are unknown the reference resolution
+        stands in; when they exceed the safe ceiling the overlay is shrunk
+        proportionally, so it still overlays exactly. Returns the RGBA PNG
+        bytes plus the canonical fixation provenance used to build it.
         """
-        Returns a REF_W x REF_H RGBA PNG (bytes) with a jet-colormap heatmap overlay,
-        or None if there is no usable data.
-        """
+        events, metadata = FixationEventService.build_events(
+            df,
+            scenario=scenario,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        )
+        if events.empty:
+            return None, metadata
+
         import io
         from scipy.ndimage import gaussian_filter
         import matplotlib.cm as cm
         from PIL import Image
 
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
+        out_w, out_h = resolve_output_size(width, height)
 
-        if df.empty:
-            return None
+        durations = events["duration_s"].to_numpy(dtype=float)
+        positive_durations = durations[np.isfinite(durations) & (durations > 0)]
+        fallback_weight = float(np.median(positive_durations)) if positive_durations.size else 1.0
+        weights = np.where(np.isfinite(durations) & (durations > 0), durations, fallback_weight)
 
-        # --- Data source: prefer fixations, fallback to cleaned gaze ---
-        df_fix = ScanpathAnalyticsService._filter_fixations(df)
+        # --- Normalised (top-left origin) to stimulus pixels. No Y inversion:
+        # y_norm already grows downwards, exactly as scanpath and AOIs read it.
+        x_px = events["x_norm"].to_numpy(dtype=float) * out_w
+        y_px = events["y_norm"].to_numpy(dtype=float) * out_h
 
-        if not df_fix.empty:
-            # fix_x / fix_y are normalized 0-1 after _filter_fixations
-            x_pct = df_fix["fix_x"].astype(float).to_numpy() * 100.0
-            y_pct = df_fix["fix_y"].astype(float).to_numpy() * 100.0
-        else:
-            if "time" not in df.columns or "gx" not in df.columns or "gy" not in df.columns:
-                return None
-            df_gaze = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True).copy()
-            if df_gaze.empty:
-                return None
-            df_gaze = PupilAnalyticsService._clean_gaze(df_gaze)
-            gx = df_gaze["gx_clean"].to_numpy(dtype=float)
-            gy = df_gaze["gy_clean"].to_numpy(dtype=float)
-            valid = np.isfinite(gx) & np.isfinite(gy)
-            if not valid.any():
-                return None
-            x_pct = gx[valid]  # already in 0-100 range from _clean_gaze
-            y_pct = gy[valid]
-
-        # --- Convert percent to pixels ---
-        x_px = x_pct * cls.REF_W / 100.0
-        y_px = y_pct * cls.REF_H / 100.0
-        if flip_y:
-            y_px = cls.REF_H - y_px
-
-        # --- Clip to image bounds ---
+        # --- Reject points outside image bounds; never clip them to an edge ---
         valid = (
             np.isfinite(x_px) & np.isfinite(y_px)
-            & (x_px >= 0) & (x_px <= cls.REF_W)
-            & (y_px >= 0) & (y_px <= cls.REF_H)
+            & (x_px >= 0) & (x_px <= out_w)
+            & (y_px >= 0) & (y_px <= out_h)
         )
         x_px = x_px[valid]
         y_px = y_px[valid]
+        weights = weights[valid]
 
         if x_px.size == 0:
-            return None
+            return None, metadata
 
-        # --- Auto bins and sigma based on reference resolution ---
-        bins = int(np.clip(min(cls.REF_W, cls.REF_H) / 6, 200, 900))
-        sigma = int(np.clip(min(cls.REF_W, cls.REF_H) / 50, 8, 60))
+        # --- Density grid with square cells, so the blur below is circular ---
+        grid_scale = min(1.0, cls.GRID_MAX_EDGE / max(out_w, out_h))
+        grid_w = max(2, int(round(out_w * grid_scale)))
+        grid_h = max(2, int(round(out_h * grid_scale)))
+        sigma_px = cls.SIGMA_SHORT_EDGE_FRACTION * min(out_w, out_h)
+        sigma = float(np.clip(sigma_px * grid_h / out_h, 1.0, min(grid_w, grid_h) / 2.0))
 
-        # --- 2D histogram (shape will be bins x bins) ---
+        # --- 2D histogram, transposed to (row=y, col=x) image order ---
         H, _, _ = np.histogram2d(
             x_px, y_px,
-            bins=bins,
-            range=[[0, cls.REF_W], [0, cls.REF_H]],
+            bins=[grid_w, grid_h],
+            range=[[0, out_w], [0, out_h]],
+            weights=weights,
         )
-        H = H.T  # transpose: shape (bins, bins) -> (H_axis, W_axis)
+        H = H.T  # (grid_w, grid_h) -> (grid_h, grid_w)
 
         # --- Gaussian smoothing ---
         H = gaussian_filter(H, sigma=sigma)
@@ -2228,18 +3292,18 @@ class HeatmapAnalyticsService:
             H = H / H.max()
 
         # --- Colorize with jet colormap ---
-        rgba_f = cm.jet(H)  # shape (bins, bins, 4), float 0-1
+        rgba_f = cm.jet(H)  # shape (grid_h, grid_w, 4), float 0-1
         # Set alpha: transparent where H==0, else `alpha`
         rgba_f[:, :, 3] = np.where(H > 0, alpha, 0.0)
 
-        # --- Convert to uint8 and resize to REF_W x REF_H ---
+        # --- Convert to uint8 and resize to the stimulus dimensions ---
         rgba_u8 = (rgba_f * 255).astype(np.uint8)
         img = Image.fromarray(rgba_u8, "RGBA")
-        img = img.resize((cls.REF_W, cls.REF_H), Image.LANCZOS)
+        img = img.resize((out_w, out_h), Image.LANCZOS)
 
         buf = io.BytesIO()
         img.save(buf, format="PNG", optimize=False)
-        return buf.getvalue()
+        return buf.getvalue(), metadata
 
 
 class FixationHistogramService:
@@ -2250,8 +3314,14 @@ class FixationHistogramService:
         cls,
         df: pd.DataFrame,
         scenario: Optional[str] = None,
+        min_fixation_duration_ms: Optional[int] = None,
     ) -> dict:
         """Compute a Sturges-binned histogram of fixation durations in milliseconds."""
+        events, metadata = FixationEventService.build_events(
+            df,
+            scenario=scenario,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        )
         _empty = {
             "bins": [],
             "n_fixations": 0,
@@ -2259,23 +3329,9 @@ class FixationHistogramService:
             "mean_duration_ms": 0.0,
             "min_duration_ms": 0.0,
             "max_duration_ms": 0.0,
+            **metadata,
         }
-
-        if scenario and scenario != "all" and "scenario" in df.columns:
-            df = df[df["scenario"].astype(str).str.strip() == scenario]
-
-        df_clean = ScanpathAnalyticsService._filter_fixations(df)
-        if df_clean.empty:
-            return _empty
-
-        times = df_clean["time"].astype(float).to_numpy()
-        xs = df_clean["fix_x"].astype(float).to_numpy()
-        ys = df_clean["fix_y"].astype(float).to_numpy()
-
-        durs_s = ScanpathAnalyticsService._infer_durations(times)
-        objs = ScanpathAnalyticsService._group_objectives(xs, ys, durs_s, times)
-
-        durations_ms = np.array([o["duration_s"] * 1000.0 for o in objs], dtype=float)
+        durations_ms = events["duration_s"].to_numpy(dtype=float) * 1000.0
         if durations_ms.size == 0:
             return _empty
 
@@ -2314,4 +3370,5 @@ class FixationHistogramService:
             "mean_duration_ms": float(round(float(durations_ms.mean()), 2)),
             "min_duration_ms": float(round(float(durations_ms.min()), 2)),
             "max_duration_ms": float(round(float(durations_ms.max()), 2)),
+            **metadata,
         }
