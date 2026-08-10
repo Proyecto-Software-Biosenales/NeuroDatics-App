@@ -11,6 +11,7 @@ from neurodatics.modules.analytics.application.services.correlation_service impo
     CORRELATION_SIGNAL_IDS,
     CorrelationAnalyticsService,
 )
+from neurodatics.modules.analytics.domain.scenario_identity import ScenarioAmbiguityError
 
 
 PROJECT_ID = uuid4()
@@ -21,10 +22,12 @@ class FakeCache:
     def __init__(self, cached=None):
         self.cached = cached
         self.key_args = None
+        self.key_kwargs = None
         self.writes = []
 
-    def build_key(self, *args):
+    def build_key(self, *args, **kwargs):
         self.key_args = args
+        self.key_kwargs = kwargs
         return "|".join(str(value) for value in args)
 
     def get_json(self, key):
@@ -134,38 +137,71 @@ async def test_correlations_returns_404_for_unknown_scenario(monkeypatch):
     assert exc_info.value.detail == "Scenario not found"
 
 
+class _ScenariesDb:
+    """Answers the resolver's single "every scenario in the project" query."""
+
+    def __init__(self, *candidates):
+        self._candidates = list(candidates)
+        self.queries = 0
+
+    async def execute(self, statement):
+        self.queries += 1
+        return SimpleNamespace(
+            scalars=lambda: SimpleNamespace(all=lambda: list(self._candidates))
+        )
+
+
 @pytest.mark.asyncio
 async def test_scenario_resolver_accepts_normalized_name_and_file_stem():
     candidate = SimpleNamespace(name="Instruction 1.png", file_id=None)
+    db = _ScenariesDb(candidate)
 
-    class Result:
-        def __init__(self, exact=None, candidates=None):
-            self._exact = exact
-            self._candidates = candidates or []
+    resolved = await routes._resolve_scenary_for_analytics(db, PROJECT_ID, "instruction1")
 
-        def scalar_one_or_none(self):
-            return self._exact
+    assert resolved is candidate
+    assert db.queries == 1
 
-        def scalars(self):
-            return self
 
-        def all(self):
-            return self._candidates
-
-    class FakeDb:
-        def __init__(self):
-            self.results = [Result(), Result(candidates=[candidate])]
-
-        async def execute(self, statement):
-            return self.results.pop(0)
+@pytest.mark.asyncio
+async def test_scenario_resolver_matches_media_name_against_stored_label():
+    candidate = SimpleNamespace(name="Crem Helado", file_id=None)
 
     resolved = await routes._resolve_scenary_for_analytics(
-        FakeDb(),
+        _ScenariesDb(candidate),
         PROJECT_ID,
-        "instruction1",
+        "Crem helado.jpeg",
     )
 
     assert resolved is candidate
+
+
+@pytest.mark.asyncio
+async def test_scenario_resolver_prefers_the_exact_label_over_a_normalized_one():
+    exact = SimpleNamespace(name="Escena 1", file_id=None)
+    normalized_twin = SimpleNamespace(name="escena1.png", file_id=None)
+
+    # The twin is listed first so a first-match-wins resolver would return it.
+    resolved = await routes._resolve_scenary_for_analytics(
+        _ScenariesDb(normalized_twin, exact),
+        PROJECT_ID,
+        "Escena 1",
+    )
+
+    assert resolved is exact
+
+
+@pytest.mark.asyncio
+async def test_scenario_resolver_rejects_a_name_two_scenarios_share():
+    db = _ScenariesDb(
+        SimpleNamespace(name="Crem Helado", file_id=None),
+        SimpleNamespace(name="crem helado.jpeg", file_id=None),
+    )
+
+    with pytest.raises(ScenarioAmbiguityError) as exc_info:
+        await routes._resolve_scenary_for_analytics(db, PROJECT_ID, "CREM  HELADO")
+
+    assert "Crem Helado" in str(exc_info.value)
+    assert "crem helado.jpeg" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
@@ -178,7 +214,7 @@ async def test_correlations_uses_canonical_scenario_and_writes_versioned_15_minu
         def __init__(self, db):
             pass
 
-        async def read(self, project_id, participant_code):
+        async def read(self, project_id, participant_code, generation=None):
             return _partial_df()
 
     monkeypatch.setattr(routes, "_verify_ownership", _allow_ownership)
@@ -250,7 +286,7 @@ async def test_correlations_maps_parquet_errors(
         def __init__(self, db):
             pass
 
-        async def read(self, project_id, participant_code):
+        async def read(self, project_id, participant_code, generation=None):
             raise reader_error
 
     monkeypatch.setattr(routes, "_verify_ownership", _allow_ownership)

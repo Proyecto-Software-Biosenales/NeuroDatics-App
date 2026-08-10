@@ -9,6 +9,7 @@ from neurodatics.modules.analytics.api import routes
 from neurodatics.modules.analytics.application.services.analytics_service import (
     PupilAnalyticsService,
 )
+from neurodatics.modules.analytics.domain.coordinate_transform import transform_cache_token
 
 
 PROJECT_ID = uuid4()
@@ -18,10 +19,12 @@ CURRENT_USER = str(uuid4())
 class FakeCache:
     def __init__(self):
         self.key_args = None
+        self.key_kwargs = None
         self.writes = []
 
-    def build_key(self, *args):
+    def build_key(self, *args, **kwargs):
         self.key_args = args
+        self.key_kwargs = kwargs
         return "|".join(str(value) for value in args)
 
     def get_json(self, key):
@@ -123,7 +126,7 @@ async def test_gaze_at_route_uses_canonical_scenario_for_filter_and_cache(monkey
         def __init__(self, db):
             pass
 
-        async def read_from_cache_only(self, project_id, participant_code):
+        async def read_from_cache_only(self, project_id, participant_code, generation=None):
             return _overlapping_time_df()
 
     monkeypatch.setattr(routes, "_verify_ownership", allow_ownership)
@@ -146,10 +149,11 @@ async def test_gaze_at_route_uses_canonical_scenario_for_filter_and_cache(monkey
     assert response.scenario_file_id == str(scenario_file_id)
     assert response.scenario_type == "video"
     assert response.scenario_time_s == 0.0
+    token = transform_cache_token(_overlapping_time_df())
     assert cache.key_args == (
         PROJECT_ID,
         "P-01",
-        "gaze_at_v4:0.5",
+        f"gaze_at_v5:stimulus-v1:{token}:0.5",
         "Scenario B",
     )
     assert len(cache.writes) == 1
@@ -169,7 +173,7 @@ async def test_gaze_at_without_scenario_preserves_unscoped_cache_contract(monkey
         def __init__(self, db):
             pass
 
-        async def read_from_cache_only(self, project_id, participant_code):
+        async def read_from_cache_only(self, project_id, participant_code, generation=None):
             return pd.DataFrame({"time": [0.5], "gx": [25.0], "gy": [75.0]})
 
     monkeypatch.setattr(routes, "_verify_ownership", allow_ownership)
@@ -189,7 +193,14 @@ async def test_gaze_at_without_scenario_preserves_unscoped_cache_contract(monkey
     assert response.gx == 25.0
     assert response.gy == 75.0
     assert response.scenario is None
-    assert cache.key_args == (PROJECT_ID, "P-01", "gaze_at_v3", "0.5")
+    frame = pd.DataFrame({"time": [0.5], "gx": [25.0], "gy": [75.0]})
+    token = transform_cache_token(frame)
+    assert cache.key_args == (
+        PROJECT_ID,
+        "P-01",
+        f"gaze_at_v5:stimulus-v1:{token}",
+        "0.5",
+    )
 
 
 @pytest.mark.asyncio
@@ -204,17 +215,22 @@ async def test_gaze_at_without_scenario_resolves_stimulus_for_global_time(
         file_id=scenario_file_id,
     )
 
+    resolved_for = []
+
     async def allow_ownership(*args, **kwargs):
         return SimpleNamespace(id=PROJECT_ID)
 
-    async def should_not_resolve_requested_scenario(*args, **kwargs):
-        raise AssertionError("the all-scenarios lookup must remain unscoped")
+    async def resolve_derived_scenario(db, project_id, scenario, **kwargs):
+        # The stimulus is looked up for the name the samples carry, never for a
+        # scope the caller did not ask for.
+        resolved_for.append(scenario)
+        return scenary
 
     class Reader:
         def __init__(self, db):
             pass
 
-        async def read_from_cache_only(self, project_id, participant_code):
+        async def read_from_cache_only(self, project_id, participant_code, generation=None):
             return pd.DataFrame(
                 {
                     "time": [3.0, 20.0, 25.0],
@@ -224,15 +240,11 @@ async def test_gaze_at_without_scenario_resolves_stimulus_for_global_time(
                 }
             )
 
-    class FakeDb:
-        async def execute(self, statement):
-            return SimpleNamespace(scalar_one_or_none=lambda: scenary)
-
     monkeypatch.setattr(routes, "_verify_ownership", allow_ownership)
     monkeypatch.setattr(
         routes,
         "_resolve_scenary_for_analytics",
-        should_not_resolve_requested_scenario,
+        resolve_derived_scenario,
     )
     monkeypatch.setattr(routes, "ParquetReaderService", Reader)
     monkeypatch.setattr(routes, "_redis", cache)
@@ -242,10 +254,11 @@ async def test_gaze_at_without_scenario_resolves_stimulus_for_global_time(
         participant_code="P-01",
         t_s=24.9001,
         scenario=None,
-        db=FakeDb(),
+        db=object(),
         current_user=CURRENT_USER,
     )
 
+    assert resolved_for == ["Scenario B"]
     assert response.nearest_time_s == 25.0
     assert response.scenario == "Scenario B"
     assert response.gx == 82.0
@@ -253,7 +266,21 @@ async def test_gaze_at_without_scenario_resolves_stimulus_for_global_time(
     assert response.scenario_file_id == str(scenario_file_id)
     assert response.scenario_type == "video"
     assert response.scenario_time_s == 5.0
-    assert cache.key_args == (PROJECT_ID, "P-01", "gaze_at_v3", "24.9001")
+    frame = pd.DataFrame(
+        {
+            "time": [3.0, 20.0, 25.0],
+            "scenario": ["Scenario A", "Scenario B", "Scenario B"],
+            "gx": [10.0, 82.0, 82.0],
+            "gy": [20.0, 62.0, 62.0],
+        }
+    )
+    token = transform_cache_token(frame)
+    assert cache.key_args == (
+        PROJECT_ID,
+        "P-01",
+        f"gaze_at_v5:stimulus-v1:{token}",
+        "24.9001",
+    )
 
 
 @pytest.mark.asyncio

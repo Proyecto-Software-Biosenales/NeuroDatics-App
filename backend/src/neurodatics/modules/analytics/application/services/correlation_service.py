@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -12,6 +11,7 @@ from .analytics_service import (
     PupilAnalyticsService,
     _infer_fs,
     _moving_average,
+    scope_to_scenario,
 )
 
 
@@ -40,10 +40,6 @@ class CorrelationAnalyticsService:
         "eeg_broadband_power_db": ("Potencia EEG de banda ancha", "dB"),
     }
 
-    @staticmethod
-    def _normalize_scenario(value: object) -> str:
-        return Path(str(value).strip()).stem.lower().replace(" ", "")
-
     @classmethod
     def _scenario_frame(cls, df: pd.DataFrame, scenario: str) -> pd.DataFrame:
         def _empty_frame() -> pd.DataFrame:
@@ -55,14 +51,7 @@ class CorrelationAnalyticsService:
         if "scenario" not in df.columns or "time" not in df.columns:
             return _empty_frame()
 
-        scenario_values = df["scenario"].astype(str).str.strip()
-        target = str(scenario).strip()
-        mask = scenario_values == target
-        if not mask.any():
-            target_normalized = cls._normalize_scenario(target)
-            mask = scenario_values.map(cls._normalize_scenario) == target_normalized
-
-        clean = df.loc[mask].copy()
+        clean = scope_to_scenario(df, scenario).copy()
         clean["time"] = pd.to_numeric(clean["time"], errors="coerce")
         finite_time = np.isfinite(clean["time"].to_numpy(dtype=float))
         clean = clean.loc[finite_time].sort_values("time").reset_index(drop=True)

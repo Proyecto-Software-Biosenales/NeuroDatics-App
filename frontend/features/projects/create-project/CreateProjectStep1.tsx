@@ -8,6 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { UploadedProjectZip } from "@/features/projects/types"
+import type { FixationScreenGeometryInput } from "./types"
+import { StimulusPlacementEditor } from "./components/StimulusPlacementEditor"
+import {
+  selectedStimulusPaths,
+  type StimulusPlacementDraft,
+} from "./stimulusPlacement"
 import {
   analyzeFolderStructure,
   buildStructureQuestions,
@@ -31,6 +37,14 @@ interface CreateProjectStep1Props {
   onFolderPathChange: (path: string) => void
   onFolderSelected: (files: File[] | null) => void
   onSelectionChange?: (selection: FolderSelection | null) => void
+  fixationGeometry?: FixationScreenGeometryInput
+  onFixationGeometryChange?: (geometry: FixationScreenGeometryInput) => void
+  stimulusPlacements?: StimulusPlacementDraft[]
+  onStimulusPathsChange?: (paths: string[]) => void
+  onStimulusPlacementChange?: (
+    sourceEntryPath: string,
+    update: Partial<StimulusPlacementDraft>,
+  ) => void
   zipRequired?: boolean
   isEditMode?: boolean
   shouldUpdateFolder?: boolean
@@ -47,6 +61,11 @@ export const CreateProjectStep1 = ({
   onFolderPathChange,
   onFolderSelected,
   onSelectionChange,
+  fixationGeometry,
+  onFixationGeometryChange,
+  stimulusPlacements = [],
+  onStimulusPathsChange,
+  onStimulusPlacementChange,
   zipRequired = true,
   isEditMode = false,
   shouldUpdateFolder = false,
@@ -78,11 +97,15 @@ export const CreateProjectStep1 = ({
     if (questions.length > 0) {
       onFolderSelected(null)
       onSelectionChange?.(null)
+      onStimulusPathsChange?.([])
       return
     }
 
-    onFolderSelected(filterRelevantFiles(files, rootFolderName))
-    onSelectionChange?.(resolveSelection(nextStructure, nextSelection))
+    const resolved = resolveSelection(nextStructure, nextSelection)
+    const relevantFiles = filterRelevantFiles(files, rootFolderName)
+    onFolderSelected(relevantFiles)
+    onSelectionChange?.(resolved)
+    onStimulusPathsChange?.(selectedStimulusPaths(relevantFiles, rootFolderName, resolved))
   }
 
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
@@ -105,6 +128,7 @@ export const CreateProjectStep1 = ({
       setPendingRoot("")
       onFolderSelected(null)
       onSelectionChange?.(null)
+      onStimulusPathsChange?.([])
       onFolderPathChange("")
     }
 
@@ -219,6 +243,7 @@ export const CreateProjectStep1 = ({
     setPendingRoot("")
     onFolderSelected(null)
     onSelectionChange?.(null)
+    onStimulusPathsChange?.([])
     onFolderPathChange("")
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
@@ -231,6 +256,22 @@ export const CreateProjectStep1 = ({
     uploadedZip?.ingestion_status === "PROCESSING" ||
     uploadedZip?.ingestion_status === "PENDING"
   const ingestionFailed = ingestionStatus === "FAILED"
+  const geometry = fixationGeometry ?? {
+    enabled: false,
+    widthPx: "",
+    heightPx: "",
+    widthCm: "",
+    heightCm: "",
+    viewingDistanceCm: "",
+  }
+  const geometryDisabled =
+    disableProjectMetadataEditing || (isEditMode && !shouldUpdateFolder)
+  const updateGeometry = (
+    field: keyof FixationScreenGeometryInput,
+    value: string | boolean,
+  ) => {
+    onFixationGeometryChange?.({ ...geometry, [field]: value })
+  }
 
   return (
     <div className="space-y-6">
@@ -247,6 +288,101 @@ export const CreateProjectStep1 = ({
             onChange={(e) => onProjectNameChange(e.target.value)}
             disabled={disableProjectMetadataEditing}
           />
+        </div>
+
+        <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="usar-geometria-pantalla"
+              checked={geometry.enabled}
+              onCheckedChange={(checked) => updateGeometry("enabled", checked === true)}
+              disabled={geometryDisabled}
+              className="mt-0.5 cursor-pointer border-gray-400"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="usar-geometria-pantalla" className="cursor-pointer text-base">
+                Usar geometría física para la detección ocular
+              </Label>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Actívala si conoces la pantalla usada en el experimento. Permite calcular
+                velocidad visual en grados. Si la dejas desactivada, se usará el detector
+                normalizado, que no necesita estas medidas.
+              </p>
+            </div>
+          </div>
+
+          {geometry.enabled && (
+            <div className="grid gap-3 pt-1 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="screen-width-px">Resolución horizontal (px)</Label>
+                <Input
+                  id="screen-width-px"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="1920"
+                  value={geometry.widthPx}
+                  onChange={(event) => updateGeometry("widthPx", event.target.value)}
+                  disabled={geometryDisabled}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="screen-height-px">Resolución vertical (px)</Label>
+                <Input
+                  id="screen-height-px"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="1080"
+                  value={geometry.heightPx}
+                  onChange={(event) => updateGeometry("heightPx", event.target.value)}
+                  disabled={geometryDisabled}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="screen-width-cm">Ancho físico (cm)</Label>
+                <Input
+                  id="screen-width-cm"
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  placeholder="53.1"
+                  value={geometry.widthCm}
+                  onChange={(event) => updateGeometry("widthCm", event.target.value)}
+                  disabled={geometryDisabled}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="screen-height-cm">Alto físico (cm)</Label>
+                <Input
+                  id="screen-height-cm"
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  placeholder="29.9"
+                  value={geometry.heightCm}
+                  onChange={(event) => updateGeometry("heightCm", event.target.value)}
+                  disabled={geometryDisabled}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                <Label htmlFor="viewing-distance-cm">Distancia ojo-pantalla (cm)</Label>
+                <Input
+                  id="viewing-distance-cm"
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  placeholder="62"
+                  value={geometry.viewingDistanceCm}
+                  onChange={(event) => updateGeometry("viewingDistanceCm", event.target.value)}
+                  disabled={geometryDisabled}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se usa como respaldo si el CSV no trae Distance.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -565,6 +701,15 @@ export const CreateProjectStep1 = ({
           )}
         </div>
       </div>
+
+      <StimulusPlacementEditor
+        placements={stimulusPlacements}
+        fixationGeometry={fixationGeometry}
+        disabled={disableProjectMetadataEditing || (isEditMode && !shouldUpdateFolder)}
+        onChange={(sourceEntryPath, update) =>
+          onStimulusPlacementChange?.(sourceEntryPath, update)
+        }
+      />
 
       <div className="flex items-center gap-3 rounded-xl bg-muted px-4 py-3 xl:gap-4 xl:px-5 xl:py-4">
         <div className="shrink-0 rounded-lg bg-black p-1.5 text-white">

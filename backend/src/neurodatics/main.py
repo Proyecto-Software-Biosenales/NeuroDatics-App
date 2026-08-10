@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from .api.router import include_routes
@@ -8,6 +8,7 @@ from .config.logging import configure_logging
 from .infra.db.base import Base
 from .infra.db.session import engine
 from .infra.health.readiness import collect_readiness
+from .modules.analytics.domain.scenario_identity import ScenarioAmbiguityError
 
 # Create FastAPI app
 app = FastAPI(
@@ -32,6 +33,17 @@ register_middlewares(app)
 
 # Include routes
 include_routes(app)
+
+
+@app.exception_handler(ScenarioAmbiguityError)
+async def scenario_ambiguity_handler(request: Request, exc: ScenarioAmbiguityError):
+    """Two scenarios normalize to one name: say so instead of picking one.
+
+    Any endpoint that scopes to a scenario can hit this, so it is answered once
+    here rather than wrapped around every analytics and report route.
+    """
+
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.on_event("startup")

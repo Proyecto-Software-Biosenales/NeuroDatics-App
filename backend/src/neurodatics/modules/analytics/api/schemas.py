@@ -39,6 +39,28 @@ class PupilStatisticsResponse(BaseModel):
     raw_baseline: Optional[float] = None
 
 
+class CoordinateTransformDetails(BaseModel):
+    status: Literal["applied", "legacy_passthrough_missing", "mixed"]
+    applied: Optional[bool] = None
+    contract_version: Optional[str] = None
+    source_space: Literal["screen_px", "legacy_screen", "mixed"]
+    output_space: Literal[
+        "stimulus_normalized", "legacy_screen_normalized", "mixed"
+    ]
+    contract_fingerprint: Optional[str] = None
+    rejected_outside_count: Optional[int] = None
+    rejected_outside_by_reason: Optional[Dict[str, int]] = None
+    warning_codes: List[str] = []
+
+
+class ScenarioCoordinateTransform(CoordinateTransformDetails):
+    scenario: str
+
+
+class CoordinateTransformProvenance(CoordinateTransformDetails):
+    scenario_transforms: Optional[List[ScenarioCoordinateTransform]] = None
+
+
 class GazeAtResponse(BaseModel):
     requested_time_s: float
     nearest_time_s: float
@@ -48,12 +70,16 @@ class GazeAtResponse(BaseModel):
     scenario_file_id: Optional[str] = None
     scenario_type: Optional[str] = None
     scenario_time_s: Optional[float] = None
+    warnings: List[str] = []
+    coordinate_transform: Optional[CoordinateTransformProvenance] = None
 
 
 class GazeTimeseriesResponse(BaseModel):
     time: List[float]
     gx_clean: List[float]
     gy_clean: List[float]
+    warnings: List[str] = []
+    coordinate_transform: Optional[CoordinateTransformProvenance] = None
 
 
 class GazeStatisticsResponse(BaseModel):
@@ -69,6 +95,8 @@ class GazeStatisticsResponse(BaseModel):
     gy_std: float
     gy_median: float
     gy_baseline: float
+    warnings: List[str] = []
+    coordinate_transform: Optional[CoordinateTransformProvenance] = None
 
 
 class DistanceTimeseriesResponse(BaseModel):
@@ -218,13 +246,27 @@ class ScanpathResponse(BaseModel):
     total_distance_px: float
     avg_duration_s: float
     scenario_file_id: Optional[str] = None
+    algorithm_version: Optional[str] = None
+    method: Optional[str] = None
+    source: Optional[str] = None
+    estimated: bool = False
+    effective_sampling_rate_hz: Optional[float] = None
+    min_fixation_duration_ms: Optional[int] = None
+    available_min_fixation_durations_ms: List[int] = []
+    warnings: List[str] = []
+    coordinate_transform: Optional[CoordinateTransformProvenance] = None
 
 
 class FixationPoint(BaseModel):
+    id: Optional[str] = None
     x_norm: float
     y_norm: float
     time_s: float
+    t_end_s: Optional[float] = None
     duration_s: float
+    detector_sample_count: Optional[int] = None
+    source_row_count: Optional[int] = None
+    segment_id: Optional[str] = None
 
 
 class FixationStats(BaseModel):
@@ -237,6 +279,18 @@ class FixationDataResponse(BaseModel):
     fixations: List[FixationPoint]
     stats: FixationStats
     scenario_file_id: Optional[str] = None
+    algorithm_version: Optional[str] = None
+    method: Optional[str] = None
+    source: Optional[str] = None
+    estimated: bool = False
+    effective_sampling_rate_hz: Optional[float] = None
+    min_fixation_duration_ms: Optional[int] = None
+    available_min_fixation_durations_ms: List[int] = []
+    warnings: List[str] = []
+    coordinate_transform: Optional[CoordinateTransformProvenance] = None
+    # Lets the overlay client vary its heatmap URL after a re-ingestion without
+    # spending a round trip asking which generation this data came from.
+    cache_generation: int = 0
 
 
 class FixationHistogramBin(BaseModel):
@@ -255,6 +309,39 @@ class FixationHistogramResponse(BaseModel):
     mean_duration_ms: float
     min_duration_ms: float
     max_duration_ms: float
+    algorithm_version: Optional[str] = None
+    method: Optional[str] = None
+    source: Optional[str] = None
+    estimated: bool = False
+    effective_sampling_rate_hz: Optional[float] = None
+    min_fixation_duration_ms: Optional[int] = None
+    available_min_fixation_durations_ms: List[int] = []
+    warnings: List[str] = []
+    coordinate_transform: Optional[CoordinateTransformProvenance] = None
+
+
+class FixationDurationSensitivityPoint(BaseModel):
+    min_fixation_duration_ms: int
+    n_fixations: int
+    total_duration_ms: float
+    mean_duration_ms: float
+    median_duration_ms: float
+    max_duration_ms: float
+    retained_dwell_percent: float
+
+
+class FixationDurationSensitivityResponse(BaseModel):
+    points: List[FixationDurationSensitivityPoint]
+    default_min_fixation_duration_ms: int
+    min_fixation_duration_ms: Optional[int] = None
+    available_min_fixation_durations_ms: List[int] = []
+    algorithm_version: Optional[str] = None
+    method: Optional[str] = None
+    source: Optional[str] = None
+    estimated: bool = False
+    effective_sampling_rate_hz: Optional[float] = None
+    warnings: List[str] = []
+    coordinate_transform: Optional[CoordinateTransformProvenance] = None
 
 
 class AoiPoint(BaseModel):
@@ -324,6 +411,15 @@ class AoiMetricsResponse(BaseModel):
     total_dwell_time_ms: float
     observed_aoi_dwell_time_ms: float
     observed_aoi_dwell_time_percent: float
+    algorithm_version: Optional[str] = None
+    method: Optional[str] = None
+    source: Optional[str] = None
+    estimated: bool = False
+    effective_sampling_rate_hz: Optional[float] = None
+    min_fixation_duration_ms: Optional[int] = None
+    available_min_fixation_durations_ms: List[int] = []
+    warnings: List[str] = []
+    coordinate_transform: Optional[CoordinateTransformProvenance] = None
 
 
 class CorrelationSignal(BaseModel):

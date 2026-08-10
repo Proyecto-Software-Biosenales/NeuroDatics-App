@@ -6,10 +6,11 @@ from typing import List, Optional, Tuple
 from uuid import UUID
 from datetime import datetime, timezone
 from collections import OrderedDict
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import asyncio
 import hashlib
 import io
+import json
 import logging
 import os
 import subprocess
@@ -32,10 +33,12 @@ from ..application.use_cases.delete_project import DeleteProjectUseCase
 from ..application.use_cases.upload_experiment_zip import (
     GoogleDriveConfigurationError,
     GoogleDriveReconnectRequiredError,
+    StimulusPlacementUploadError,
     UploadCanceledError,
     UploadExperimentZipUseCase,
 )
 from ..application.services.drive_upload_progress_registry import drive_upload_progress_registry
+from ..application.services.fixation_detection_service import ScreenGeometry
 from ..application.services.upload_throttle import UploadRejected, upload_admission_control
 from ..application.services.zip_extraction_service import ZipExtractionService
 from ..application.services.zip_validation_service import UploadSelection, ZipValidationService
@@ -76,6 +79,144 @@ def _clean_form_value(value: Optional[str]) -> Optional[str]:
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def _build_screen_geometry(
+    screen_width_px: Optional[int],
+    screen_height_px: Optional[int],
+    screen_width_mm: Optional[float],
+    screen_height_mm: Optional[float],
+    viewing_distance_mm: Optional[float],
+) -> Optional[ScreenGeometry]:
+    """Build physical screen geometry only when the complete tuple is supplied."""
+
+    values = (
+        screen_width_px,
+        screen_height_px,
+        screen_width_mm,
+        screen_height_mm,
+        viewing_distance_mm,
+    )
+    supplied = tuple(value is not None for value in values)
+    if not any(supplied):
+        return None
+    if not all(supplied):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Screen geometry requires screen_width_px, screen_height_px, "
+                "screen_width_mm, screen_height_mm and viewing_distance_mm together"
+            ),
+        )
+    if any(value <= 0 for value in values if value is not None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="All screen geometry values must be greater than zero",
+        )
+
+    return ScreenGeometry(
+        width_px=screen_width_px,
+        height_px=screen_height_px,
+        width_mm=screen_width_mm,
+        height_mm=screen_height_mm,
+        viewing_distance_mm=viewing_distance_mm,
+    )
+
+
+def _parse_stimulus_placements_json(value: Optional[str]) -> List[dict]:
+    """Parse the versioned per-media placement envelope from multipart input."""
+
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return []
+    if not isinstance(value, str):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "invalid_stimulus_placements",
+                "message": "stimulus_placements_json must be a JSON array",
+            },
+        )
+
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "invalid_stimulus_placements",
+                "message": f"stimulus_placements_json is not valid JSON: {exc.msg}",
+            },
+        ) from exc
+
+    if not isinstance(payload, list):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "invalid_stimulus_placements",
+                "message": "stimulus_placements_json must be a JSON array",
+            },
+        )
+
+    parsed: List[dict] = []
+    seen_paths: set[str] = set()
+    for index, item in enumerate(payload):
+        if not isinstance(item, dict):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"placement entry {index} must be an object",
+                },
+            )
+        source_entry_path = item.get("source_entry_path")
+        placement = item.get("placement")
+        if not isinstance(source_entry_path, str) or not source_entry_path.strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"placement entry {index} requires source_entry_path",
+                },
+            )
+        if not isinstance(placement, dict):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"placement entry {index} requires a placement object",
+                },
+            )
+        if "source" in placement or "contract_fingerprint" in placement:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": "source and contract_fingerprint are backend-assigned",
+                },
+            )
+
+        normalized_path = ZipValidationService.normalize_entry_path(source_entry_path)
+        if not normalized_path or any(part == ".." for part in PurePosixPath(normalized_path).parts):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"placement entry {index} has an invalid source_entry_path",
+                },
+            )
+        path_key = normalized_path.casefold()
+        if path_key in seen_paths:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"duplicate stimulus placement path: {normalized_path}",
+                },
+            )
+        seen_paths.add(path_key)
+        parsed.append({"source_entry_path": normalized_path, "placement": placement})
+
+    return parsed
 
 
 def _hashed_cache_id(cache_key: str) -> str:
@@ -396,7 +537,9 @@ async def _compute_video_frame_time_s(
     scenario: Optional[str],
     absolute_time_s: float,
 ) -> float:
-    if not participant_code or not scenario or scenario == "all":
+    from ...analytics.domain.scenario_identity import is_all_scenarios
+
+    if not participant_code or is_all_scenarios(scenario):
         return max(0.0, absolute_time_s)
 
     try:
@@ -404,9 +547,13 @@ async def _compute_video_frame_time_s(
         from ...analytics.application.services.parquet_reader_service import ParquetReaderService
 
         reader = ParquetReaderService(db)
-        df = await reader.read_from_cache_only(project_id, participant_code)
+        # Resolved once and passed to both reads: a re-ingestion landing between
+        # them would otherwise have the miss fall back onto a different generation
+        # than the lookup that missed.
+        generation = await reader.resolve_cache_generation(project_id)
+        df = await reader.read_from_cache_only(project_id, participant_code, generation)
         if df is None:
-            df = await reader.read(project_id, participant_code)
+            df = await reader.read(project_id, participant_code, generation)
         relative_time = await anyio.to_thread.run_sync(
             lambda: PupilAnalyticsService.compute_scenario_relative_time(
                 df,
@@ -816,9 +963,15 @@ async def get_project(
                 "height": s.height,
                 "fps": s.fps,
                 "duration_ms": s.duration_ms,
+                "stimulus_placement": (
+                    s.stimulus_placement.to_contract().to_snapshot()
+                    if s.stimulus_placement is not None
+                    else None
+                ),
                 "aois": [
                     {
                         "id": a.id,
+                        "scenaries_id": a.scenaries_id,
                         "name": a.name,
                         "color": a.color,
                         "shape_type": a.shape_type,
@@ -992,6 +1145,12 @@ async def upload_experiment_zip(
     selected_acquisition_folder: Optional[str] = Form(default=None),
     allow_missing_images: bool = Form(default=False),
     allow_missing_videos: bool = Form(default=False),
+    stimulus_placements_json: Optional[str] = Form(default=None),
+    screen_width_px: Optional[int] = Form(default=None, gt=0),
+    screen_height_px: Optional[int] = Form(default=None, gt=0),
+    screen_width_mm: Optional[float] = Form(default=None, gt=0),
+    screen_height_mm: Optional[float] = Form(default=None, gt=0),
+    viewing_distance_mm: Optional[float] = Form(default=None, gt=0),
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -1014,6 +1173,14 @@ async def upload_experiment_zip(
         allow_missing_images=bool(allow_missing_images),
         allow_missing_videos=bool(allow_missing_videos),
     )
+    screen_geometry = _build_screen_geometry(
+        screen_width_px=screen_width_px,
+        screen_height_px=screen_height_px,
+        screen_width_mm=screen_width_mm,
+        screen_height_mm=screen_height_mm,
+        viewing_distance_mm=viewing_distance_mm,
+    )
+    stimulus_placements = _parse_stimulus_placements_json(stimulus_placements_json)
 
     logger.info("Processing ZIP upload for project %s, file: %s", project_id, filename)
 
@@ -1040,6 +1207,8 @@ async def upload_experiment_zip(
                     filename=filename,
                     mime_type=mime_type,
                     selection=selection,
+                    screen_geometry=screen_geometry,
+                    stimulus_placements=stimulus_placements,
                 )
     except UploadRejected as exc:
         raise HTTPException(
@@ -1064,6 +1233,11 @@ async def upload_experiment_zip(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
+        ) from exc
+    except StimulusPlacementUploadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": exc.code, "message": str(exc)},
         ) from exc
     except ValueError as e:
         logger.error(f"Project access denied: {e}")

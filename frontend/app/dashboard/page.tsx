@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AuthGuard } from "@/features/auth/components/AuthGuard"
-import { ProjectsApi, type ApiProject } from "@/features/projects/api/projectsApi"
+import {
+  ProjectsApi,
+  type ApiProject,
+} from "@/features/projects/api/projectsApi"
 import { AnalyticsSidebar } from "@/features/analytics/components/AnalyticsSidebar"
 import { FiltersBar } from "@/features/analytics/components/FiltersBar"
 import { PlaceholderTab } from "@/features/analytics/components/PlaceholderTab"
@@ -15,11 +18,17 @@ import { ScanpathTab } from "@/features/analytics/components/ScanpathTab"
 import { HeatmapTab } from "@/features/analytics/components/HeatmapTab"
 import { FixationHistogramTab } from "@/features/analytics/components/FixationHistogramTab"
 import { AoiComparisonTab } from "@/features/analytics/components/AoiComparisonTab"
+import { FixationDurationControl } from "@/features/analytics/components/FixationDurationControl"
 import { ComparisonTab } from "@/features/analytics/comparison/ComparisonTab"
 import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
+  useFixationSensitivity,
 } from "@/features/analytics/hooks/useAnalyticsData"
+import {
+  DEFAULT_FIXATION_DURATION_MS,
+  type FixationDurationMs,
+} from "@/features/analytics/types"
 
 type SensorSelection = "EyeTracker" | "EEG" | "GSR" | "Comparativas"
 
@@ -44,6 +53,13 @@ const ANALYTICS_TABS: Array<{ key: AnalyticsTabKey; label: string }> = [
   { key: "aoi_comparison", label: "Comparativa AOIs" },
 ]
 
+const FIXATION_DERIVED_TABS = new Set<AnalyticsTabKey>([
+  "fixation_histogram",
+  "heatmap",
+  "scanpath",
+  "aoi_comparison",
+])
+
 const EEG_TABS: Array<{ key: EegTabKey; label: string }> = [
   { key: "timeseries", label: "EEG por canal" },
   { key: "psd", label: "Densidad espectral" },
@@ -53,18 +69,28 @@ const EEG_TABS: Array<{ key: EegTabKey; label: string }> = [
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<ApiProject[]>([])
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
-  const [selectedSensor, setSelectedSensor] = useState<SensorSelection>("EyeTracker")
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  )
+  const [selectedSensor, setSelectedSensor] =
+    useState<SensorSelection>("EyeTracker")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState<AnalyticsTabKey>("pupil_dilation")
+  const [minFixationDurationMs, setMinFixationDurationMs] =
+    useState<FixationDurationMs>(DEFAULT_FIXATION_DURATION_MS)
   const [activeEegTab, setActiveEegTab] = useState<EegTabKey>("timeseries")
-  const [selectedParticipantOverride, setSelectedParticipantOverride] = useState<string | null>(null)
+  const [selectedParticipantOverride, setSelectedParticipantOverride] =
+    useState<string | null>(null)
   const [selectedScenario, setSelectedScenario] = useState("all")
-  const [participantDataProjectId, setParticipantDataProjectId] = useState<string | null>(null)
+  const [participantDataProjectId, setParticipantDataProjectId] = useState<
+    string | null
+  >(null)
   const sawParticipantLoading = useRef(false)
 
-  const { participants, loading: participantsLoading } = useAnalyticsParticipants(selectedProjectId)
-  const { scenarios, loading: scenariosLoading } = useAnalyticsScenarios(selectedProjectId)
+  const { participants, loading: participantsLoading } =
+    useAnalyticsParticipants(selectedProjectId)
+  const { scenarios, loading: scenariosLoading } =
+    useAnalyticsScenarios(selectedProjectId)
 
   useEffect(() => {
     if (participantsLoading) {
@@ -101,26 +127,57 @@ export default function DashboardPage() {
   }, [])
 
   const selectedParticipant = useMemo(() => {
-    if (participantDataProjectId !== selectedProjectId || participants.length === 0) {
+    if (
+      participantDataProjectId !== selectedProjectId ||
+      participants.length === 0
+    ) {
       return null
     }
 
     if (
       selectedParticipantOverride &&
       participants.some(
-        (participant) => participant.participant_code === selectedParticipantOverride
+        (participant) =>
+          participant.participant_code === selectedParticipantOverride
       )
     ) {
       return selectedParticipantOverride
     }
 
     return participants[0].participant_code
-  }, [participantDataProjectId, participants, selectedParticipantOverride, selectedProjectId])
+  }, [
+    participantDataProjectId,
+    participants,
+    selectedParticipantOverride,
+    selectedProjectId,
+  ])
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
     [projects, selectedProjectId]
   )
+
+  const fixationDurationViewActive =
+    selectedSensor === "EyeTracker" && FIXATION_DERIVED_TABS.has(activeTab)
+  const {
+    data: fixationSensitivityData,
+    loading: fixationSensitivityLoading,
+    error: fixationSensitivityError,
+  } = useFixationSensitivity(
+    fixationDurationViewActive ? selectedProjectId : null,
+    fixationDurationViewActive ? selectedParticipant : null,
+    selectedScenario
+  )
+  const availableFixationDurations =
+    fixationSensitivityData?.available_min_fixation_durations_ms
+  const effectiveMinFixationDurationMs =
+    availableFixationDurations &&
+    availableFixationDurations.length > 0 &&
+    !availableFixationDurations.includes(minFixationDurationMs)
+      ? (availableFixationDurations.find(
+          (duration) => duration === DEFAULT_FIXATION_DURATION_MS
+        ) ?? availableFixationDurations[0])
+      : minFixationDurationMs
 
   const availableSensors = useMemo(
     () => (selectedProject?.sensors ?? []).map((sensor) => sensor.sensor_type),
@@ -133,6 +190,7 @@ export default function DashboardPage() {
       setParticipantDataProjectId(null)
       setSelectedParticipantOverride(null)
       setSelectedScenario("all")
+      setMinFixationDurationMs(DEFAULT_FIXATION_DURATION_MS)
     }
     setSelectedProjectId(projectId)
   }
@@ -184,7 +242,7 @@ export default function DashboardPage() {
               />
             ) : selectedSensor === "EEG" ? (
               <>
-                <div className="dashboard-tab-list flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-2 text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:gap-2 2xl:px-5">
+                <div className="dashboard-tab-list flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-2 text-muted-foreground [scrollbar-width:none] 2xl:gap-2 2xl:px-5 [&::-webkit-scrollbar]:hidden">
                   {EEG_TABS.map((tab) => {
                     const isActive = activeEegTab === tab.key
                     return (
@@ -194,8 +252,8 @@ export default function DashboardPage() {
                         onClick={() => setActiveEegTab(tab.key)}
                         className={
                           isActive
-                            ? "dashboard-tab-button dashboard-tab-button-active shrink-0 whitespace-nowrap border-b-2 border-foreground px-3 py-2.5 text-sm font-semibold leading-5 text-foreground"
-                            : "dashboard-tab-button shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm leading-5 text-muted-foreground hover:text-foreground"
+                            ? "dashboard-tab-button dashboard-tab-button-active shrink-0 border-b-2 border-foreground px-3 py-2.5 text-sm leading-5 font-semibold whitespace-nowrap text-foreground"
+                            : "dashboard-tab-button shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm leading-5 whitespace-nowrap text-muted-foreground hover:text-foreground"
                         }
                       >
                         {tab.label}
@@ -214,7 +272,7 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <div className="dashboard-tab-list flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-2 text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:gap-2 2xl:px-5">
+                <div className="dashboard-tab-list flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-2 text-muted-foreground [scrollbar-width:none] 2xl:gap-2 2xl:px-5 [&::-webkit-scrollbar]:hidden">
                   {ANALYTICS_TABS.map((tab) => {
                     const isActive = activeTab === tab.key
                     return (
@@ -224,8 +282,8 @@ export default function DashboardPage() {
                         onClick={() => setActiveTab(tab.key)}
                         className={
                           isActive
-                            ? "dashboard-tab-button dashboard-tab-button-active shrink-0 whitespace-nowrap border-b-2 border-foreground px-3 py-2.5 text-sm font-semibold leading-5 text-foreground"
-                            : "dashboard-tab-button shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm leading-5 text-muted-foreground hover:text-foreground"
+                            ? "dashboard-tab-button dashboard-tab-button-active shrink-0 border-b-2 border-foreground px-3 py-2.5 text-sm leading-5 font-semibold whitespace-nowrap text-foreground"
+                            : "dashboard-tab-button shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm leading-5 whitespace-nowrap text-muted-foreground hover:text-foreground"
                         }
                       >
                         {tab.label}
@@ -233,6 +291,19 @@ export default function DashboardPage() {
                     )
                   })}
                 </div>
+
+                {FIXATION_DERIVED_TABS.has(activeTab) &&
+                  selectedParticipant && (
+                    <div className="flex min-w-0 items-center justify-end border-b border-border bg-muted/10 px-4 py-2 xl:px-6">
+                      <FixationDurationControl
+                        value={effectiveMinFixationDurationMs}
+                        onChange={setMinFixationDurationMs}
+                        availableDurations={availableFixationDurations}
+                        loading={fixationSensitivityLoading}
+                        error={fixationSensitivityError}
+                      />
+                    </div>
+                  )}
 
                 {activeTab === "pupil_dilation" ? (
                   <PupilDilationTab
@@ -261,6 +332,7 @@ export default function DashboardPage() {
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}
                     scenario={selectedScenario}
+                    minFixationDurationMs={effectiveMinFixationDurationMs}
                   />
                 ) : activeTab === "heatmap" ? (
                   <HeatmapTab
@@ -268,6 +340,7 @@ export default function DashboardPage() {
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}
                     scenario={selectedScenario}
+                    minFixationDurationMs={effectiveMinFixationDurationMs}
                   />
                 ) : activeTab === "fixation_histogram" ? (
                   <FixationHistogramTab
@@ -275,6 +348,11 @@ export default function DashboardPage() {
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}
                     scenario={selectedScenario}
+                    minFixationDurationMs={effectiveMinFixationDurationMs}
+                    onMinFixationDurationChange={setMinFixationDurationMs}
+                    sensitivityData={fixationSensitivityData}
+                    sensitivityLoading={fixationSensitivityLoading}
+                    sensitivityError={fixationSensitivityError}
                   />
                 ) : activeTab === "aoi_comparison" ? (
                   <AoiComparisonTab
@@ -282,11 +360,15 @@ export default function DashboardPage() {
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}
                     scenario={selectedScenario}
+                    minFixationDurationMs={effectiveMinFixationDurationMs}
                   />
                 ) : (
                   <div className="py-6">
                     <PlaceholderTab
-                      label={ANALYTICS_TABS.find((tab) => tab.key === activeTab)?.label ?? "Analitica"}
+                      label={
+                        ANALYTICS_TABS.find((tab) => tab.key === activeTab)
+                          ?.label ?? "Analitica"
+                      }
                     />
                   </div>
                 )}

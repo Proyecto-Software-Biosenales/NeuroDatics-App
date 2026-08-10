@@ -16,11 +16,13 @@ import {
   useFixationData,
   useHeatmapOverlay,
 } from "../hooks/useAnalyticsData"
+import type { FixationDurationMs } from "../types"
 import {
   AoiContextPanel,
   AoiLegend,
   AoiOverlay,
   AoiToggleButton,
+  containedImageBoxStyle,
   getContainedImageBox,
   type ContainedImageBox,
 } from "./AoiOverlay"
@@ -29,12 +31,14 @@ interface HeatmapTabProps {
   projectId: string
   participantCode: string | null
   scenario: string
+  minFixationDurationMs: FixationDurationMs
 }
 
 export function HeatmapTab({
   projectId,
   participantCode,
   scenario,
+  minFixationDurationMs,
 }: HeatmapTabProps) {
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showPurple, setShowPurple] = useState(false)
@@ -44,25 +48,47 @@ export function HeatmapTab({
   const imageRef = useRef<HTMLImageElement>(null)
 
   // Fixation stats (for KPI cards)
-  const { data: fixData, loading: fixLoading } = useFixationData(projectId, participantCode, scenario)
+  const { data: fixData, loading: fixLoading } = useFixationData(
+    projectId,
+    participantCode,
+    scenario,
+    minFixationDurationMs
+  )
+  const transformToken =
+    fixData?.coordinate_transform?.contract_fingerprint ??
+    fixData?.coordinate_transform?.status ??
+    "screen-stimulus-v1"
+  // null means "not resolved yet", which gates the overlay request. A loaded
+  // response missing the field is an older backend, not an unresolved one, so it
+  // falls back to 0 rather than blocking the heatmap forever.
+  const cacheGeneration = fixData ? (fixData.cache_generation ?? 0) : null
 
   // PNG heatmap overlay from backend
-  const { overlayUrl, loading: heatmapLoading, error: heatmapError } = useHeatmapOverlay(
+  const {
+    overlayUrl,
+    loading: heatmapLoading,
+    error: heatmapError,
+  } = useHeatmapOverlay(
     projectId,
     participantCode,
-    scenario
+    scenario,
+    transformToken,
+    cacheGeneration,
+    minFixationDurationMs
   )
-  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
-    projectId,
-    participantCode,
-    scenario
-  )
+  const {
+    data: aoiData,
+    loading: aoiLoading,
+    error: aoiError,
+  } = useAoiMetrics(projectId, participantCode, scenario, minFixationDurationMs)
 
   const loading = fixLoading || heatmapLoading
   const aois = aoiData?.aois ?? []
 
   const computeLetterbox = useCallback(() => {
-    setLetterbox(getContainedImageBox(imageRef.current, imageContainerRef.current))
+    setLetterbox(
+      getContainedImageBox(imageRef.current, imageContainerRef.current)
+    )
   }, [])
 
   // Load scenario background image
@@ -119,13 +145,17 @@ export function HeatmapTab({
           <CardHeader>
             <CardTitle>Mapa de calor</CardTitle>
             <CardDescription>
-              Representación visual de la densidad de atención sobre el estímulo basada en la duración y frecuencia de las fijaciones.
+              Representación visual de la densidad de atención sobre el estímulo
+              basada en la duración y frecuencia de las fijaciones.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
               <Flame className="h-8 w-8 text-muted-foreground/40" />
-              <span>Selecciona un escenario específico para visualizar el mapa de calor</span>
+              <span>
+                Selecciona un escenario específico para visualizar el mapa de
+                calor
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -139,7 +169,8 @@ export function HeatmapTab({
         <CardHeader>
           <CardTitle>Mapa de calor</CardTitle>
           <CardDescription>
-            Representación visual de la densidad de atención sobre el estímulo basada en la duración y frecuencia de las fijaciones.
+            Representación visual de la densidad de atención sobre el estímulo
+            basada en la duración y frecuencia de las fijaciones.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -212,7 +243,10 @@ export function HeatmapTab({
                 </div>
               ) : (
                 <>
-                  <div className="relative overflow-hidden rounded-lg" ref={imageContainerRef}>
+                  <div
+                    className="relative overflow-hidden rounded-lg"
+                    ref={imageContainerRef}
+                  >
                     {/* Background scenario image */}
                     {!scenarioImageUrl ? (
                       <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
@@ -226,14 +260,17 @@ export function HeatmapTab({
                       />
                     )}
 
-                    {/* Heatmap PNG overlay — matches image exactly via object-contain */}
-                    {overlayUrl && scenarioImageUrl && (
+                    {/* Heatmap PNG overlay, pinned to the measured stimulus box */}
+                    {overlayUrl && scenarioImageUrl && letterbox && (
                       <img
                         src={overlayUrl}
                         alt="Mapa de calor"
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 h-full w-full object-contain"
-                        style={{ opacity: 0.82 }}
+                        className="pointer-events-none z-10"
+                        style={{
+                          ...containedImageBoxStyle(letterbox),
+                          opacity: 0.82,
+                        }}
                       />
                     )}
 
@@ -248,9 +285,7 @@ export function HeatmapTab({
                       />
                     )}
 
-                    {showAois && (
-                      <AoiOverlay aois={aois} box={letterbox} />
-                    )}
+                    {showAois && <AoiOverlay aois={aois} box={letterbox} />}
                   </div>
 
                   {/* Controls bar */}

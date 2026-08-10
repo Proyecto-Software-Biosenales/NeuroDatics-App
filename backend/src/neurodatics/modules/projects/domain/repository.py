@@ -78,6 +78,14 @@ class ProjectRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def bump_ingestion_generation(self, project_id: UUID) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_ingestion_generation(self, project_id: UUID) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
     async def commit(self) -> None:
         raise NotImplementedError
 

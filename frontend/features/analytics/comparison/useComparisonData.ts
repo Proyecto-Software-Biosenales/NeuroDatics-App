@@ -278,7 +278,11 @@ export function useComparisonData({
   const heatmap = useHeatmapOverlay(
     enabledProject(heatmapEnabled),
     participantCode,
-    scenario
+    scenario,
+    fixation.data?.coordinate_transform?.contract_fingerprint ??
+      fixation.data?.coordinate_transform?.status ??
+      "screen-stimulus-v1",
+    fixation.data ? fixation.data.cache_generation ?? 0 : null
   )
   const scanpath = useScanpathData(
     enabledProject(scanpathEnabled),

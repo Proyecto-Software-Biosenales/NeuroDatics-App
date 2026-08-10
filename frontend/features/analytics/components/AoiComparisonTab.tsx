@@ -27,7 +27,7 @@ import {
   useGazeTimeseries,
   usePupilTimeseries,
 } from "../hooks/useAnalyticsData"
-import type { AoiEventItem, AoiMetricItem } from "../types"
+import type { AoiEventItem, AoiMetricItem, FixationDurationMs } from "../types"
 import {
   AoiLegend,
   AoiOverlay,
@@ -41,6 +41,7 @@ interface AoiComparisonTabProps {
   projectId: string
   participantCode: string | null
   scenario: string
+  minFixationDurationMs: FixationDurationMs
 }
 
 const formatMs = (value: number | null | undefined) => (
@@ -112,13 +113,19 @@ export function AoiComparisonTab({
   projectId,
   participantCode,
   scenario,
+  minFixationDurationMs,
 }: AoiComparisonTabProps) {
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
-  const { data, loading, error } = useAoiMetrics(projectId, participantCode, scenario)
+  const { data, loading, error } = useAoiMetrics(
+    projectId,
+    participantCode,
+    scenario,
+    minFixationDurationMs
+  )
   const { data: pupilSeries } = usePupilTimeseries(projectId, participantCode, scenario)
   const { data: gazeSeries } = useGazeTimeseries(projectId, participantCode, scenario)
   const { data: distanceSeries } = useDistanceTimeseries(projectId, participantCode, scenario)

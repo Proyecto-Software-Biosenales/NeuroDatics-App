@@ -10,51 +10,17 @@ import {
 } from "@/components/ui/Card"
 import { cn } from "@/lib/utils"
 import type { AoiMetricItem, AoiMetricsData } from "../types"
+import type { ContainedImageBox } from "./stimulusGeometry"
 
-export type ContainedImageBox = {
-  cW: number
-  cH: number
-  renderedW: number
-  renderedH: number
-  offsetX: number
-  offsetY: number
-}
-
-export function getContainedImageBox(
-  img: HTMLImageElement | null,
-  container: HTMLElement | null
-): ContainedImageBox | null {
-  if (!img || !container) return null
-
-  const cW = container.clientWidth
-  const cH = container.clientHeight
-  const iW = img.naturalWidth
-  const iH = img.naturalHeight
-  if (!cW || !cH || !iW || !iH) return null
-
-  const scale = Math.min(cW / iW, cH / iH)
-  const renderedW = iW * scale
-  const renderedH = iH * scale
-  return {
-    cW,
-    cH,
-    renderedW,
-    renderedH,
-    offsetX: (cW - renderedW) / 2,
-    offsetY: (cH - renderedH) / 2,
-  }
-}
-
-export function imagePointToContainerPercent(
-  box: ContainedImageBox,
-  xPercent: number,
-  yPercent: number
-) {
-  return {
-    x: ((box.offsetX + (xPercent / 100) * box.renderedW) / box.cW) * 100,
-    y: ((box.offsetY + (yPercent / 100) * box.renderedH) / box.cH) * 100,
-  }
-}
+// The stimulus geometry lives in a JSX-free module so it can be unit tested,
+// and is re-exported here because every overlay already reaches for it through
+// this file.
+export {
+  containedImageBoxStyle,
+  getContainedImageBox,
+  imagePointToContainerPercent,
+} from "./stimulusGeometry"
+export type { ContainedImageBox } from "./stimulusGeometry"
 
 function normalizedShapePoints(aoi: AoiMetricItem) {
   const points = aoi.shape.points || []

@@ -1,11 +1,23 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { ProjectFormData, SensorType, ParticipantData } from "./types";
+import type {
+  ProjectFormData,
+  SensorType,
+  ParticipantData,
+  FixationScreenGeometryInput,
+} from "./types";
+import { createEmptyFixationScreenGeometry } from "./types";
 import type { Project, DetectedParticipant } from "@/features/projects/types";
 import { ProjectsApi, asUploadClarification, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
 import { apiAoiToFormAoi, serializeScenaryAois } from "./aoiUtils";
 import { getFileRelativePath, type FolderSelection } from "./folderStructure";
+import {
+  createEmptyStimulusPlacementDraft,
+  isStimulusPlacementDraftValid,
+  serializeStimulusPlacements,
+  type StimulusPlacementDraft,
+} from "./stimulusPlacement";
 import { toast } from "sonner";
 
 const STEP1_LOADING_TOAST_ID = "create-project-step1-drive-sync";
@@ -151,6 +163,8 @@ export const useCreateProjectWizard = (
     participants: initialParticipants,
     scenaries: initialscenaries,
     experimentFolderFiles: null,
+    fixationGeometry: createEmptyFixationScreenGeometry(),
+    stimulusPlacements: [],
   });
 
   const updateProjectName = (name: string) => {
@@ -161,6 +175,41 @@ export const useCreateProjectWizard = (
   const updateDescription = (description: string) => {
     clearStep1RetryState();
     setFormData(prev => ({ ...prev, description }));
+  };
+
+  const updateFixationGeometry = (fixationGeometry: FixationScreenGeometryInput) => {
+    clearStep1RetryState();
+    setFormData((prev) => ({ ...prev, fixationGeometry }));
+  };
+
+  const syncStimulusPlacementPaths = (paths: string[]) => {
+    clearStep1RetryState();
+    setFormData((prev) => {
+      const existing = new Map(
+        prev.stimulusPlacements.map((placement) => [placement.sourceEntryPath, placement]),
+      );
+      return {
+        ...prev,
+        stimulusPlacements: paths.map(
+          (path) => existing.get(path) ?? createEmptyStimulusPlacementDraft(path),
+        ),
+      };
+    });
+  };
+
+  const updateStimulusPlacement = (
+    sourceEntryPath: string,
+    update: Partial<StimulusPlacementDraft>,
+  ) => {
+    clearStep1RetryState();
+    setFormData((prev) => ({
+      ...prev,
+      stimulusPlacements: prev.stimulusPlacements.map((placement) =>
+        placement.sourceEntryPath === sourceEntryPath
+          ? { ...placement, ...update, sourceEntryPath }
+          : placement,
+      ),
+    }));
   };
 
   const updateFolderPath = (path: string) => {
@@ -225,6 +274,18 @@ export const useCreateProjectWizard = (
   };
 
   const canGoNext = () => {
+    const geometry = formData.fixationGeometry;
+    const geometryIsValid = !geometry?.enabled || [
+      geometry.widthPx,
+      geometry.heightPx,
+      geometry.widthCm,
+      geometry.heightCm,
+      geometry.viewingDistanceCm,
+    ].every((value) => Number.isFinite(Number(value)) && Number(value) > 0);
+    const placementsAreValid = formData.stimulusPlacements.every(
+      isStimulusPlacementDraftValid,
+    );
+
     switch (currentStep) {
       case 1:
         // `experimentFolderFiles` stays null while Step 1 still has unanswered
@@ -232,7 +293,9 @@ export const useCreateProjectWizard = (
         return (
           formData.projectName.trim() !== "" &&
           !!formData.experimentFolderFiles?.length &&
-          !!folderSelection
+          !!folderSelection &&
+          geometryIsValid &&
+          placementsAreValid
         )
       case 2:
         return formData.sensors.length > 0;
@@ -441,6 +504,8 @@ export const useCreateProjectWizard = (
         },
         uploadAbortController.signal,
         folderSelection,
+        formData.fixationGeometry,
+        serializeStimulusPlacements(formData.stimulusPlacements),
       );
 
       clearDriveProgressPolling();
@@ -605,6 +670,8 @@ export const useCreateProjectWizard = (
       participants: initialParticipants,
       scenaries: initialscenaries,
       experimentFolderFiles: null,
+      fixationGeometry: createEmptyFixationScreenGeometry(),
+      stimulusPlacements: [],
     });
     setDraftProjectId(null);
     setIsResumedDraft(false);
@@ -654,6 +721,8 @@ export const useCreateProjectWizard = (
         sensors: [],
         participants: initialParticipants,
         scenaries: initialscenaries,
+        fixationGeometry: createEmptyFixationScreenGeometry(),
+        stimulusPlacements: [],
       });
       setCurrentStep(1);
       // isResumedDraft=true prevents deletion on cancel (project already existed)
@@ -681,6 +750,8 @@ export const useCreateProjectWizard = (
       sensors: [],
       participants: [],
       scenaries: [],
+      fixationGeometry: createEmptyFixationScreenGeometry(),
+      stimulusPlacements: [],
     };
 
     try {
@@ -836,6 +907,9 @@ export const useCreateProjectWizard = (
     setIsOpen,
     updateProjectName,
     updateDescription,
+    updateFixationGeometry,
+    syncStimulusPlacementPaths,
+    updateStimulusPlacement,
     updateFolderPath,
     toggleSensor,
     updateParticipant,

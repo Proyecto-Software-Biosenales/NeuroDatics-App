@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button"
 import {
   AoiOverlay,
+  containedImageBoxStyle,
   findAoiAtPoint,
   getContainedImageBox,
   imagePointToContainerPercent,
@@ -376,13 +377,14 @@ export function HeatmapPanel({
         alt="Mapa de calor del escenario"
         renderOverlay={(box) => (
           <>
-            {overlayUrl ? (
+            {overlayUrl && box ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={overlayUrl}
                 alt=""
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 z-10 h-full w-full object-contain opacity-80"
+                className="pointer-events-none z-10 opacity-80"
+                style={containedImageBoxStyle(box)}
               />
             ) : null}
             <AoiOverlay aois={aoi?.aois ?? []} box={box} />

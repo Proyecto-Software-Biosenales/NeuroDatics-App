@@ -12,6 +12,7 @@ import {
 import { KpiCard } from "@/components/ui/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { useAoiMetrics, useScanpathData } from "../hooks/useAnalyticsData"
+import type { FixationDurationMs } from "../types"
 import {
   AoiContextPanel,
   AoiLegend,
@@ -25,12 +26,14 @@ interface ScanpathTabProps {
   projectId: string
   participantCode: string | null
   scenario: string
+  minFixationDurationMs: FixationDurationMs
 }
 
 export function ScanpathTab({
   projectId,
   participantCode,
   scenario,
+  minFixationDurationMs,
 }: ScanpathTabProps) {
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
@@ -41,11 +44,17 @@ export function ScanpathTab({
   const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
   const [visibleCount, setVisibleCount] = useState<number | null>(null)
 
-  const { data, loading, error } = useScanpathData(projectId, participantCode, scenario)
+  const { data, loading, error } = useScanpathData(
+    projectId,
+    participantCode,
+    scenario,
+    minFixationDurationMs
+  )
   const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
     projectId,
     participantCode,
-    scenario
+    scenario,
+    minFixationDurationMs
   )
   const aois = aoiData?.aois ?? []
 

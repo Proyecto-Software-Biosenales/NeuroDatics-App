@@ -9,11 +9,12 @@ const SESSION_EXPIRED_MESSAGE = "Sesion expirada. Por favor, inicia sesion nueva
 
 type BlobCacheEntry = {
   blob: Blob;
+  headers: Record<string, string>;
   expiresAt: number;
 };
 
 const blobCache = new Map<string, BlobCacheEntry>();
-const inflightBlobRequests = new Map<string, Promise<Blob>>();
+const inflightBlobRequests = new Map<string, Promise<BlobCacheEntry>>();
 
 /**
  * Error that preserves the parsed `detail` payload.
@@ -306,24 +307,41 @@ export async function apiUploadFormWithProgress<T>(
   return res.json() as Promise<T>;
 }
 
-export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Promise<Blob> {
+export type ApiBlobResponse = {
+  blob: Blob;
+  headers: Headers;
+};
+
+export async function apiFetchBlobWithHeaders(
+  path: string,
+  init: ApiRequestInit = {},
+): Promise<ApiBlobResponse> {
   const { timeoutMs = API_REQUEST_TIMEOUT_MS, ...requestInit } = init;
 
   ensureAccessTokenIsValid();
 
   const token = getAccessToken();
+  const method = (requestInit.method ?? "GET").toUpperCase();
+  // Only GET is addressed entirely by its URL. A POST carries its parameters in
+  // the body, which never reached this key, so caching one would hand the next
+  // caller someone else's document — the executive report is posted to a single
+  // constant path for every project.
+  const isCacheable = method === "GET";
   const cacheKey = `${token ?? "anon"}:${path}`;
   const now = Date.now();
   pruneBlobCache(now);
 
-  const cached = blobCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
-    return cached.blob;
-  }
+  if (isCacheable) {
+    const cached = blobCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return { blob: cached.blob, headers: new Headers(cached.headers) };
+    }
 
-  const inflight = inflightBlobRequests.get(cacheKey);
-  if (inflight) {
-    return inflight;
+    const inflight = inflightBlobRequests.get(cacheKey);
+    if (inflight) {
+      const entry = await inflight;
+      return { blob: entry.blob, headers: new Headers(entry.headers) };
+    }
   }
 
   const headers = new Headers(requestInit.headers);
@@ -331,7 +349,7 @@ export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Pro
 
   const cacheMode = requestInit.cache ?? "default";
 
-  const blobPromise = (async (): Promise<Blob> => {
+  const blobPromise = (async (): Promise<BlobCacheEntry> => {
     let res: Response;
     try {
       res = await fetchWithTimeout(`${BASE}${path}`, { ...requestInit, headers, cache: cacheMode }, timeoutMs);
@@ -354,14 +372,59 @@ export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Pro
     }
 
     const blob = await res.blob();
-    blobCache.set(cacheKey, { blob, expiresAt: Date.now() + BLOB_CACHE_TTL_MS });
-    pruneBlobCache(Date.now());
-    return blob;
+    const responseHeaders: Record<string, string> = {};
+    res.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
+    const entry = {
+      blob,
+      headers: responseHeaders,
+      expiresAt: Date.now() + BLOB_CACHE_TTL_MS,
+    };
+    if (isCacheable) {
+      blobCache.set(cacheKey, entry);
+      pruneBlobCache(Date.now());
+    }
+    return entry;
   })().finally(() => {
-    inflightBlobRequests.delete(cacheKey);
+    if (isCacheable) inflightBlobRequests.delete(cacheKey);
   });
 
-  inflightBlobRequests.set(cacheKey, blobPromise);
+  if (isCacheable) inflightBlobRequests.set(cacheKey, blobPromise);
 
-  return blobPromise;
+  const entry = await blobPromise;
+  return { blob: entry.blob, headers: new Headers(entry.headers) };
+}
+
+export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Promise<Blob> {
+  return (await apiFetchBlobWithHeaders(path, init)).blob;
+}
+
+/**
+ * Evict cached blobs without waiting out the TTL.
+ *
+ * An upload that replaces a project's data invalidates every blob derived from
+ * it, but those entries stay servable for up to 5 more minutes. Callers that
+ * know the data changed drop them immediately. Keys are `<token>:<path>`, so
+ * the prefix is matched against the path part only — otherwise a per-project
+ * prefix would never match.
+ */
+export function clearBlobCache(pathPrefix?: string): void {
+  if (!pathPrefix) {
+    blobCache.clear();
+    inflightBlobRequests.clear();
+    return;
+  }
+
+  const matchesPrefix = (key: string) => {
+    const separator = key.indexOf(":");
+    return separator >= 0 && key.slice(separator + 1).startsWith(pathPrefix);
+  };
+
+  for (const key of blobCache.keys()) {
+    if (matchesPrefix(key)) blobCache.delete(key);
+  }
+  for (const key of inflightBlobRequests.keys()) {
+    if (matchesPrefix(key)) inflightBlobRequests.delete(key);
+  }
 }
