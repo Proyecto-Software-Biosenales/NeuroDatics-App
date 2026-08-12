@@ -77,6 +77,10 @@ SENSOR_COLORS = {
 }
 STIMULUS_CANVAS_SIZE = (2560, 1440)
 STIMULUS_REFERENCE_SIZE = (1280, 720)
+SCANPATH_RADIUS_CAP_MS = float(getattr(ScanpathAnalyticsService, "RADIUS_CAP_MS", 2000.0))
+SCANPATH_RADIUS_MIN_PX = 13.0
+SCANPATH_RADIUS_MAX_PX = 34.0
+SCANPATH_LEGEND_REFERENCE_DURATIONS_MS = (200.0, 1000.0)
 EYE_TRACKER_VISUALS = {
     "pupil",
     "gaze",
@@ -514,6 +518,60 @@ def _draw_aois(base_image: Image.Image, aois: Sequence[Any]) -> Image.Image:
     return image
 
 
+def _scanpath_radius_cap_ms(radius_scale: Any = None) -> float:
+    try:
+        cap_ms = float((radius_scale or {}).get("cap_ms", SCANPATH_RADIUS_CAP_MS))
+    except (AttributeError, TypeError, ValueError):
+        cap_ms = SCANPATH_RADIUS_CAP_MS
+    if not np.isfinite(cap_ms) or cap_ms <= 0.0:
+        return SCANPATH_RADIUS_CAP_MS
+    return cap_ms
+
+
+def _scanpath_radius(duration_s: Any, scale: float = 1.0, cap_ms: Optional[float] = None) -> float:
+    """Return an area-proportional report radius on the shared absolute scale."""
+
+    try:
+        duration_ms = float(duration_s) * 1000.0
+    except (TypeError, ValueError):
+        duration_ms = 0.0
+    if not np.isfinite(duration_ms):
+        duration_ms = 0.0
+
+    resolved_cap_ms = (
+        _scanpath_radius_cap_ms({"cap_ms": cap_ms})
+        if cap_ms is not None
+        else SCANPATH_RADIUS_CAP_MS
+    )
+    fraction = float(np.clip(duration_ms / resolved_cap_ms, 0.0, 1.0))
+    radius_squared = (
+        SCANPATH_RADIUS_MIN_PX ** 2
+        + fraction * (SCANPATH_RADIUS_MAX_PX ** 2 - SCANPATH_RADIUS_MIN_PX ** 2)
+    )
+    return float(np.sqrt(radius_squared) * max(float(scale), 0.0))
+
+
+def _scanpath_total_duration_s(scanpath: Dict[str, Any]) -> float:
+    """Use API total dwell when valid, with an objective sum for older payloads."""
+
+    try:
+        total = float(scanpath.get("total_duration_s"))
+    except (TypeError, ValueError):
+        total = float("nan")
+    if np.isfinite(total) and total >= 0.0:
+        return total
+
+    durations: List[float] = []
+    for item in scanpath.get("objectives") or []:
+        try:
+            duration = float(item.get("duration_s"))
+        except (AttributeError, TypeError, ValueError):
+            continue
+        if np.isfinite(duration) and duration > 0.0:
+            durations.append(duration)
+    return float(np.sum(durations)) if durations else 0.0
+
+
 def _draw_scanpath(base_image: Image.Image, scanpath: Dict[str, Any], aois: Sequence[Any]) -> Image.Image:
     image = base_image.copy()
     draw = ImageDraw.Draw(image, "RGBA")
@@ -530,6 +588,7 @@ def _draw_scanpath(base_image: Image.Image, scanpath: Dict[str, Any], aois: Sequ
         _draw_aoi_shape(draw, aoi, (offset_x, offset_y, rendered_width, rendered_height), fill=False)
 
     objectives = list(scanpath.get("objectives") or [])
+    radius_cap_ms = _scanpath_radius_cap_ms(scanpath.get("radius_scale"))
     points = [
         (
             offset_x + float(item.get("cx", 0.0)) * rendered_width,
@@ -540,7 +599,7 @@ def _draw_scanpath(base_image: Image.Image, scanpath: Dict[str, Any], aois: Sequ
     for start, end in zip(points, points[1:]):
         draw.line((*start, *end), fill=(244, 63, 94, 210), width=line_width)
     for index, (point, item) in enumerate(zip(points, objectives), start=1):
-        radius = max(13 * scale, min(34 * scale, float(item.get("radius_norm", 0.4)) * 36 * scale))
+        radius = _scanpath_radius(item.get("duration_s"), scale, radius_cap_ms)
         x, y = point
         draw.ellipse(
             (x - radius, y - radius, x + radius, y + radius),
@@ -549,6 +608,12 @@ def _draw_scanpath(base_image: Image.Image, scanpath: Dict[str, Any], aois: Sequ
             width=circle_outline_width,
         )
         draw.text((x - 5 * scale, y - 7 * scale), str(index), fill=(255, 255, 255, 255), font=point_font)
+    image.info["scanpath_total_duration_s"] = _scanpath_total_duration_s(scanpath)
+    image.info["scanpath_radius_scale"] = {
+        "version": "absolute-area-v1",
+        "encoding": "area",
+        "cap_ms": int(radius_cap_ms) if radius_cap_ms.is_integer() else radius_cap_ms,
+    }
     return image
 
 
@@ -1369,6 +1434,142 @@ def _image_axis(fig: Any, image: Image.Image, title: str, bounds: Tuple[float, f
         spine.set_visible(False)
 
 
+def _scanpath_image_axis(
+    fig: Any,
+    image: Image.Image,
+    title: str,
+    bounds: Tuple[float, float, float, float],
+) -> None:
+    """Render a scanpath with a non-overlapping, print-friendly caption row."""
+
+    x, y, width, height = bounds
+    caption_height = min(0.074, max(0.062, height * 0.22))
+    caption_top = y + caption_height
+    image_gap = 0.006
+
+    _rounded_rect(
+        fig,
+        x - 0.010,
+        y - 0.020,
+        width + 0.020,
+        height + 0.052,
+        facecolor=REPORT_SURFACE,
+        edgecolor=REPORT_BORDER,
+        radius=0.014,
+    )
+    _fig_text(fig, x, y + height + 0.020, title, size=9.5, weight="bold", color=REPORT_TEXT)
+
+    image_ax = fig.add_axes((x, caption_top + image_gap, width, height - caption_height - image_gap))
+    image_ax.set_zorder(5)
+    image_ax.imshow(image.convert("RGB"), interpolation="lanczos", resample=True)
+    image_ax.set_xticks([])
+    image_ax.set_yticks([])
+    image_ax.set_facecolor(REPORT_SURFACE)
+    for spine in image_ax.spines.values():
+        spine.set_visible(False)
+
+    fig.lines.append(
+        Line2D(
+            [x, x + width],
+            [caption_top, caption_top],
+            transform=fig.transFigure,
+            color=REPORT_BORDER,
+            linewidth=0.7,
+        )
+    )
+
+    legend_width = width * 0.64
+    legend_ax = fig.add_axes((x + 0.008, y + 0.004, legend_width - 0.008, caption_height - 0.008))
+    legend_ax.set_zorder(6)
+    legend_ax.set_xlim(0.0, 1.0)
+    legend_ax.set_ylim(0.0, 1.0)
+    legend_ax.axis("off")
+    legend_ax.text(
+        0.0,
+        0.96,
+        "Tamaño por duración · misma escala entre participantes",
+        fontsize=5.9,
+        fontweight="bold",
+        color=REPORT_SOFT_TEXT,
+        va="top",
+        fontfamily="Poppins",
+    )
+    radius_scale = image.info.get("scanpath_radius_scale")
+    radius_cap_ms = _scanpath_radius_cap_ms(radius_scale)
+    marker_positions = (0.035, 0.355, 0.675)
+    cap_label = (
+        f"≥ {radius_cap_ms / 1000.0:g} s"
+        if radius_cap_ms >= 1000.0
+        else f"≥ {radius_cap_ms:g} ms"
+    )
+    marker_labels = ("200 ms", "1 s", cap_label)
+    label_offsets = (0.070, 0.085, 0.105)
+    legend_durations_ms = (*SCANPATH_LEGEND_REFERENCE_DURATIONS_MS, radius_cap_ms)
+    for marker_x, label, label_offset, duration_ms in zip(
+        marker_positions,
+        marker_labels,
+        label_offsets,
+        legend_durations_ms,
+    ):
+        radius = _scanpath_radius(duration_ms / 1000.0, cap_ms=radius_cap_ms)
+        legend_ax.scatter(
+            [marker_x],
+            [0.34],
+            s=(radius * 0.82) ** 2,
+            facecolor="#F43F5E",
+            edgecolor="#FFFFFF",
+            linewidth=0.8,
+            zorder=2,
+        )
+        legend_ax.text(
+            marker_x + label_offset,
+            0.34,
+            label,
+            fontsize=6.0,
+            color=REPORT_SOFT_TEXT,
+            va="center",
+            fontfamily="Poppins",
+        )
+
+    try:
+        total_duration_s = float(image.info.get("scanpath_total_duration_s", 0.0))
+    except (TypeError, ValueError):
+        total_duration_s = 0.0
+    if not np.isfinite(total_duration_s) or total_duration_s < 0.0:
+        total_duration_s = 0.0
+    total_x = x + width - 0.008
+    _fig_text(
+        fig,
+        total_x,
+        y + caption_height - 0.010,
+        "TIEMPO FIJADO",
+        size=5.9,
+        weight="bold",
+        color=REPORT_MUTED,
+        ha="right",
+    )
+    _fig_text(
+        fig,
+        total_x,
+        y + caption_height - 0.030,
+        f"{total_duration_s:.2f} s",
+        size=10.5,
+        weight="bold",
+        color=REPORT_TEXT,
+        ha="right",
+    )
+    _fig_text(
+        fig,
+        total_x,
+        y + 0.010,
+        "Excluye sacadas, mirada inválida y fuera del estímulo",
+        size=5.1,
+        color=REPORT_MUTED,
+        ha="right",
+        va="bottom",
+    )
+
+
 def _safe_filename(value: str) -> str:
     safe = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "-" for ch in value.strip().lower())
     while "--" in safe:
@@ -1469,7 +1670,7 @@ def build_executive_report_pdf(data: Dict[str, Any]) -> bytes:
             else:
                 _draw_status_card(fig, 0.075, 0.700, 0.850, "Mapa de calor", "Sin datos suficientes.", "#94A3B8")
             if spatial.scanpath:
-                _image_axis(fig, spatial.scanpath, "Mapa de recorridos", (0.065, 0.095, 0.870, 0.315))
+                _scanpath_image_axis(fig, spatial.scanpath, "Mapa de recorridos", (0.065, 0.095, 0.870, 0.315))
             else:
                 _draw_status_card(fig, 0.075, 0.365, 0.850, "Mapa de recorridos", "Sin datos suficientes.", "#94A3B8")
             if not has_spatial_visuals and "EyeTracker" in data["sensors"] and not spatial.aoi:

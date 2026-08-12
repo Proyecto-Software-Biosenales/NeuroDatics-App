@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { MapPin, Route, Ruler, Clock } from "lucide-react"
+import { Clock, MapPin, Route, Ruler, Timer } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -12,6 +12,12 @@ import {
 import { KpiCard } from "@/components/ui/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { useAoiMetrics, useScanpathData } from "../hooks/useAnalyticsData"
+import {
+  formatScanpathObjectiveDetails,
+  resolveScanpathRadiusCapMs,
+  resolveScanpathTotalDurationS,
+  scanpathRadiusForDuration,
+} from "../scanpathScale"
 import type { FixationDurationMs } from "../types"
 import {
   AoiContextPanel,
@@ -21,6 +27,10 @@ import {
   getContainedImageBox,
   type ContainedImageBox,
 } from "./AoiOverlay"
+import { ScanpathDurationLegend } from "./ScanpathDurationLegend"
+
+const MAIN_SCANPATH_MIN_RADIUS = 12
+const MAIN_SCANPATH_MAX_RADIUS = 40
 
 interface ScanpathTabProps {
   projectId: string
@@ -57,6 +67,10 @@ export function ScanpathTab({
     minFixationDurationMs
   )
   const aois = aoiData?.aois ?? []
+  const radiusCapMs = resolveScanpathRadiusCapMs(data?.radius_scale)
+  const totalDurationS = data
+    ? resolveScanpathTotalDurationS(data.total_duration_s, data.objectives)
+    : null
 
   const computeLetterbox = useCallback(() => {
     setLetterbox(getContainedImageBox(imageRef.current, imageContainerRef.current))
@@ -112,7 +126,8 @@ export function ScanpathTab({
           <CardHeader>
             <CardTitle>Mapa de recorridos</CardTitle>
             <CardDescription>
-              Recorrido visual del participante sobre el estímulo: nodos numerados por orden de fijación, tamaño proporcional a la duración.
+              Recorrido visual con nodos numerados por orden de fijación. El
+              mismo tamaño representa la misma duración entre participantes.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -132,7 +147,8 @@ export function ScanpathTab({
         <CardHeader>
           <CardTitle>Mapa de recorridos</CardTitle>
           <CardDescription>
-            Recorrido visual del participante sobre el estímulo: nodos numerados por orden de fijación, tamaño proporcional a la duración.
+            Recorrido visual con nodos numerados por orden de fijación. El mismo
+            tamaño representa la misma duración entre participantes.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -142,7 +158,7 @@ export function ScanpathTab({
             </div>
           ) : (
             <>
-              <div className="analytics-kpi-grid">
+              <div className="analytics-kpi-grid analytics-kpi-grid-four">
                 <KpiCard
                   label="Recorridos"
                   value={data?.n_objectives}
@@ -185,6 +201,20 @@ export function ScanpathTab({
                   labelColorClass="text-rose-600 dark:text-rose-400"
                   decimals={0}
                 />
+                <KpiCard
+                  label="Tiempo fijado"
+                  value={totalDurationS}
+                  unit="s"
+                  description="Suma de fijaciones válidas"
+                  tooltip="Tiempo total de permanencia en fijaciones válidas; excluye sacadas, mirada inválida y tiempo fuera del estímulo"
+                  Icon={Timer}
+                  loading={loading}
+                  bgClass="bg-card"
+                  iconBgClass="bg-sky-100 dark:bg-sky-900/30"
+                  iconColorClass="text-sky-500"
+                  labelColorClass="text-sky-600 dark:text-sky-400"
+                  decimals={2}
+                />
               </div>
 
               {loading ? (
@@ -206,6 +236,14 @@ export function ScanpathTab({
                   const total = data.objectives.length
                   const shown = visibleCount ?? total
                   const visibleObjectives = data.objectives.slice(0, shown)
+                  const radiusFor = (durationS: number) => {
+                    return scanpathRadiusForDuration(
+                      durationS,
+                      MAIN_SCANPATH_MIN_RADIUS,
+                      MAIN_SCANPATH_MAX_RADIUS,
+                      radiusCapMs
+                    )
+                  }
 
                   return (
                     <>
@@ -249,50 +287,62 @@ export function ScanpathTab({
                               )
                             })}
                             {/* Nodes */}
-                            {(() => {
-                              const durations = visibleObjectives.map((o) => o.duration_s)
-                              const sorted = [...durations].sort((a, b) => a - b)
-                              const p5 = sorted[Math.max(0, Math.floor(sorted.length * 0.05))]
-                              const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]
-                              const range = p95 - p5
-                              return visibleObjectives.map((obj) => {
-                                const cx = letterbox.offsetX + obj.cx * letterbox.renderedW
-                                const cy = letterbox.offsetY + obj.cy * letterbox.renderedH
-                                const norm = range > 0 ? Math.max(0, Math.min(1, (obj.duration_s - p5) / range)) : 0.5
-                                const r = Math.round(12 + norm * 28)
-                                const fontSize = Math.max(9, Math.min(Math.round(r * 0.55), 16))
-                                return (
-                                  <g key={`node-${obj.id}`}>
-                                    <circle
-                                      cx={cx}
-                                      cy={cy}
-                                      r={r}
-                                      fill="rgba(0, 122, 255, 0.55)"
-                                      stroke="rgba(255,255,255,0.95)"
-                                      strokeWidth={2.5}
-                                    />
-                                    <text
-                                      x={cx}
-                                      y={cy}
-                                      textAnchor="middle"
-                                      dominantBaseline="central"
-                                      fill="white"
-                                      fontSize={fontSize}
-                                      fontWeight="bold"
-                                      style={{
-                                        paintOrder: "stroke",
-                                        stroke: "rgba(0,0,0,0.5)",
-                                        strokeWidth: 2,
-                                      }}
-                                    >
-                                      {obj.id}
-                                    </text>
-                                  </g>
-                                )
-                              })
-                            })()}
+                            {visibleObjectives.map((obj) => {
+                              const cx = letterbox.offsetX + obj.cx * letterbox.renderedW
+                              const cy = letterbox.offsetY + obj.cy * letterbox.renderedH
+                              const r = radiusFor(obj.duration_s)
+                              const fontSize = Math.max(9, Math.min(Math.round(r * 0.55), 16))
+                              const details = formatScanpathObjectiveDetails(obj)
+                              return (
+                                <g
+                                  key={`node-${obj.id}`}
+                                  data-testid={`scanpath-fixation-${obj.id}`}
+                                  data-duration-ms={Math.round(obj.duration_s * 1_000)}
+                                  data-radius={r}
+                                  role="img"
+                                  tabIndex={0}
+                                  aria-label={details}
+                                  className="group pointer-events-auto cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                >
+                                  <title>{details}</title>
+                                  <circle
+                                    cx={cx}
+                                    cy={cy}
+                                    r={r}
+                                    fill="rgba(0, 122, 255, 0.55)"
+                                    stroke="rgba(255,255,255,0.95)"
+                                    strokeWidth={2.5}
+                                    className="transition-[stroke-width] group-focus-visible:stroke-[4]"
+                                  />
+                                  <text
+                                    x={cx}
+                                    y={cy}
+                                    textAnchor="middle"
+                                    dominantBaseline="central"
+                                    fill="white"
+                                    fontSize={fontSize}
+                                    fontWeight="bold"
+                                    style={{
+                                      paintOrder: "stroke",
+                                      stroke: "rgba(0,0,0,0.5)",
+                                      strokeWidth: 2,
+                                    }}
+                                  >
+                                    {obj.id}
+                                  </text>
+                                </g>
+                              )
+                            })}
                           </svg>
                         )}
+                      </div>
+                      <div className="mt-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
+                        <ScanpathDurationLegend
+                          capMs={radiusCapMs}
+                          minRadius={MAIN_SCANPATH_MIN_RADIUS}
+                          maxRadius={MAIN_SCANPATH_MAX_RADIUS}
+                          color="rgb(0, 122, 255)"
+                        />
                       </div>
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
                         <AoiLegend aois={showAois ? aois : []} />
