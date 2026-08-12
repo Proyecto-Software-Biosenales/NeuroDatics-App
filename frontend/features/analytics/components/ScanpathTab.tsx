@@ -27,7 +27,6 @@ import {
   getContainedImageBox,
   type ContainedImageBox,
 } from "./AoiOverlay"
-import { ScanpathDurationLegend } from "./ScanpathDurationLegend"
 
 const MAIN_SCANPATH_MIN_RADIUS = 12
 const MAIN_SCANPATH_MAX_RADIUS = 40
@@ -335,14 +334,6 @@ export function ScanpathTab({
                             })}
                           </svg>
                         )}
-                      </div>
-                      <div className="mt-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
-                        <ScanpathDurationLegend
-                          capMs={radiusCapMs}
-                          minRadius={MAIN_SCANPATH_MIN_RADIUS}
-                          maxRadius={MAIN_SCANPATH_MAX_RADIUS}
-                          color="rgb(0, 122, 255)"
-                        />
                       </div>
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
                         <AoiLegend aois={showAois ? aois : []} />
