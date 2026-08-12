@@ -73,6 +73,82 @@ const emptyAoiMetrics = {
   observed_aoi_dwell_time_percent: 0,
 }
 
+const scanpathsByParticipant = {
+  P01: {
+    objectives: [
+      {
+        id: 1,
+        cx: 0.3,
+        cy: 0.4,
+        duration_s: 0.2,
+        radius_norm: Math.sqrt(0.1),
+        t_start: 0,
+        t_end: 0.2,
+        n_points: 12,
+      },
+      {
+        id: 2,
+        cx: 0.6,
+        cy: 0.55,
+        duration_s: 0.5,
+        radius_norm: 0.5,
+        t_start: 0.25,
+        t_end: 0.75,
+        n_points: 30,
+      },
+    ],
+    n_objectives: 2,
+    total_distance_px: 342,
+    avg_duration_s: 0.35,
+    total_duration_s: 0.7,
+    radius_scale: {
+      version: "absolute-area-v1",
+      encoding: "area",
+      cap_ms: 2_000,
+    },
+    scenario_file_id: "scenario-image",
+  },
+  P02: {
+    objectives: [
+      {
+        id: 1,
+        cx: 0.4,
+        cy: 0.3,
+        duration_s: 0.5,
+        radius_norm: 0.5,
+        t_start: 1,
+        t_end: 1.5,
+        n_points: 30,
+      },
+      {
+        id: 2,
+        cx: 0.7,
+        cy: 0.65,
+        duration_s: 2,
+        radius_norm: 1,
+        t_start: 2,
+        t_end: 4,
+        n_points: 120,
+      },
+    ],
+    n_objectives: 2,
+    total_distance_px: 510,
+    avg_duration_s: 1.25,
+    total_duration_s: 2.5,
+    radius_scale: {
+      version: "absolute-area-v1",
+      encoding: "area",
+      cap_ms: 2_000,
+    },
+    scenario_file_id: "scenario-image",
+  },
+}
+
+const onePixelPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64"
+)
+
 const distanceTimeseries = {
   time,
   distance_cm: time.map((value) => 61 + Math.sin(value / 4) * 3),
@@ -324,12 +400,29 @@ async function mockDashboardApi(page: Page, gazeAtResponse = instructionGaze) {
       await route.fulfill({ json: gazeAtResponse })
       return
     }
+    if (/\/analytics\/scanpath$/.test(path)) {
+      const participantCode = url.searchParams.get("participant_code") ?? "P01"
+      await route.fulfill({
+        json:
+          scanpathsByParticipant[
+            participantCode as keyof typeof scanpathsByParticipant
+          ] ?? scanpathsByParticipant.P01,
+      })
+      return
+    }
     if (/\/analytics\/aois$/.test(path)) {
       await route.fulfill({ json: emptyAoiMetrics })
       return
     }
     if (/\/analytics\/correlations$/.test(path)) {
       await route.fulfill({ json: correlations })
+      return
+    }
+    if (/\/files\/[^/]+\/image$/.test(path)) {
+      await route.fulfill({
+        body: onePixelPng,
+        contentType: "image/png",
+      })
       return
     }
 
@@ -403,6 +496,64 @@ async function expectCompactGenericImage(image: Locator) {
 
 test.beforeEach(async ({ page }) => {
   await installAuthenticatedSession(page)
+})
+
+test("uses comparable absolute fixation sizes across participants", async ({
+  page,
+}) => {
+  const unhandledRequests = await mockDashboardApi(page)
+  await openComparisonDashboard(page)
+
+  await page.getByRole("button", { name: /Gráficas a comparar/ }).click()
+  await page.getByRole("button", { name: "Limpiar", exact: true }).click()
+  await page.getByRole("checkbox", { name: "Mapa de recorridos" }).click()
+  await page.getByRole("button", { name: "Aplicar selección" }).click()
+
+  const panel = page.locator("#comparison-panel-scanpath")
+  await expect(panel.getByText("Tiempo fijado", { exact: true })).toBeVisible()
+  await expect(panel).toContainText("0.70 s")
+  await expect(panel.getByTestId("scanpath-duration-legend")).toContainText(
+    "≥ 2 s"
+  )
+
+  const participantOneHalfSecond = panel.getByTestId("scanpath-fixation-2")
+  await expect(participantOneHalfSecond).toHaveAttribute(
+    "aria-label",
+    "Fijación 2: 500 ms; inicio 0.250 s; fin 0.750 s."
+  )
+  await expect(participantOneHalfSecond.locator("title")).toHaveText(
+    "Fijación 2: 500 ms; inicio 0.250 s; fin 0.750 s."
+  )
+  await participantOneHalfSecond.hover()
+  await participantOneHalfSecond.focus()
+  await expect(participantOneHalfSecond).toBeFocused()
+
+  const participantOneRadius = Number(
+    await participantOneHalfSecond.getAttribute("data-radius")
+  )
+  expect(participantOneRadius).toBeLessThan(28)
+
+  const participantTrigger = page
+    .locator('[data-slot="combobox-trigger"]')
+    .nth(1)
+  await participantTrigger.click()
+  await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()
+
+  await expect(panel).toContainText("2.50 s")
+  const participantTwoHalfSecond = panel.getByTestId("scanpath-fixation-1")
+  await expect(participantTwoHalfSecond).toHaveAttribute(
+    "data-duration-ms",
+    "500"
+  )
+  const participantTwoRadius = Number(
+    await participantTwoHalfSecond.getAttribute("data-radius")
+  )
+  expect(participantTwoRadius).toBeCloseTo(participantOneRadius, 10)
+  await expect(panel.getByTestId("scanpath-fixation-2")).toHaveAttribute(
+    "data-radius",
+    "28"
+  )
+  expect(unhandledRequests).toEqual([])
 })
 
 test("renders a generic stimulus in the single-sensor view for a fileless moment", async ({

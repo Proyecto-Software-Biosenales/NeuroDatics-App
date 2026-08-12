@@ -325,6 +325,34 @@ Los endpoints relevantes, bajo
 - `GET /heatmap`: imagen ponderada por duración del evento;
 - `GET /aois`: conteos, dwell y transiciones por eventos canónicos.
 
+`GET /scanpath` usa una escala absoluta común para que el tamaño sea
+comparable entre participantes. Cada objetivo conserva su `duration_s` exacta
+y publica `radius_norm = sqrt(clamp(duration_s / 2.0, 0, 1))`. Por tanto, dos
+fijaciones con la misma duración reciben el mismo valor aunque pertenezcan a
+participantes distintos; una fijación de dos segundos o más llega al máximo
+visual sin que se recorte la duración informada.
+
+La respuesta también incluye:
+
+```json
+{
+  "total_duration_s": 1.53,
+  "radius_scale": {
+    "version": "absolute-area-v1",
+    "encoding": "area",
+    "cap_ms": 2000
+  }
+}
+```
+
+`total_duration_s` suma solo el dwell de los eventos de fijación válidos. No
+incluye sacadas, huecos de mirada inválida ni tiempo fuera del estímulo. El
+metadato `radius_scale` permite que cada renderer aplique sus límites físicos
+de radio manteniendo el área proporcional al tiempo; si faltan los campos en
+una respuesta histórica, el contrato seguro es cero segundos y esta misma
+escala de 2000 ms. La identidad de caché de scanpath es `scanpath_v4`, por lo
+que las respuestas participant-relative de `scanpath_v3` no se reutilizan.
+
 `participant_code` y `scenario` seleccionan los datos; fijaciones y heatmap
 requieren un escenario concreto. Heatmap devuelve la procedencia en los headers
 `X-Fixation-Algorithm-Version`, `X-Fixation-Method`, `X-Fixation-Source`,

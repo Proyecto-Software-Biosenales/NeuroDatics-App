@@ -239,10 +239,16 @@ export interface ScanpathObjective {
   cx: number // normalized 0-1 (horizontal position)
   cy: number // normalized 0-1 (vertical position)
   duration_s: number // fixation duration in seconds
-  radius_norm: number // normalized radius (0-1 scale, for rendering)
+  radius_norm: number // sqrt(clamp(duration / cap, 0-1)); absolute area scale
   t_start: number
   t_end: number
   n_points: number
+}
+
+export interface ScanpathRadiusScale {
+  version: "absolute-area-v1"
+  encoding: "area"
+  cap_ms: number
 }
 
 export interface FixationAlgorithmProvenance extends StimulusCoordinateResponse {
@@ -265,6 +271,10 @@ export interface ScanpathData extends FixationProvenance {
   n_objectives: number
   total_distance_px: number // in pixels at 1920x1080 reference resolution
   avg_duration_s: number // average fixation duration in seconds
+  /** Summed valid fixation dwell. Optional while older API instances roll out. */
+  total_duration_s?: number
+  /** Absolute duration encoding metadata. Missing metadata falls back to 2 s. */
+  radius_scale?: ScanpathRadiusScale | null
   scenario_file_id: string | null
 }
 

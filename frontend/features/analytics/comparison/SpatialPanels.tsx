@@ -42,6 +42,16 @@ import {
 } from "../components/stimulusState"
 import { MissingStimulusImage } from "../components/MissingStimulusImage"
 import { AnalyticsChartShell } from "../components/AnalyticsChartShell"
+import { ScanpathDurationLegend } from "../components/ScanpathDurationLegend"
+import {
+  formatScanpathObjectiveDetails,
+  resolveScanpathRadiusCapMs,
+  resolveScanpathTotalDurationS,
+  scanpathRadiusForDuration,
+} from "../scanpathScale"
+
+const COMPARISON_SCANPATH_MIN_RADIUS = 10
+const COMPARISON_SCANPATH_MAX_RADIUS = 28
 
 interface ImageState {
   url: string | null
@@ -425,9 +435,19 @@ export function ScanpathPanel({
       <MessageSurface>No hay recorridos para este escenario.</MessageSurface>
     )
 
+  const radiusCapMs = resolveScanpathRadiusCapMs(data.radius_scale)
+  const totalDurationS = resolveScanpathTotalDurationS(
+    data.total_duration_s,
+    data.objectives
+  )
+
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <p className="text-xs text-muted-foreground">
+        Los círculos usan una escala absoluta: el mismo tamaño representa la
+        misma duración entre participantes.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MiniMetric label="Objetivos" value={String(data.n_objectives)} />
         <MiniMetric
           label="Distancia"
@@ -436,6 +456,10 @@ export function ScanpathPanel({
         <MiniMetric
           label="Duración media"
           value={`${(data.avg_duration_s * 1000).toFixed(0)} ms`}
+        />
+        <MiniMetric
+          label="Tiempo fijado"
+          value={`${totalDurationS.toFixed(2)} s`}
         />
       </div>
       <StimulusSurface
@@ -467,16 +491,27 @@ export function ScanpathPanel({
                 ))}
                 {data.objectives.map((objective, index) => {
                   const point = points[index]
-                  const radius = Math.max(
-                    10,
-                    Math.min(
-                      28,
-                      objective.radius_norm *
-                        Math.min(box.renderedW, box.renderedH)
-                    )
+                  const radius = scanpathRadiusForDuration(
+                    objective.duration_s,
+                    COMPARISON_SCANPATH_MIN_RADIUS,
+                    COMPARISON_SCANPATH_MAX_RADIUS,
+                    radiusCapMs
                   )
+                  const details = formatScanpathObjectiveDetails(objective)
                   return (
-                    <g key={objective.id}>
+                    <g
+                      key={objective.id}
+                      data-testid={`scanpath-fixation-${objective.id}`}
+                      data-duration-ms={Math.round(
+                        objective.duration_s * 1_000
+                      )}
+                      data-radius={radius}
+                      role="img"
+                      tabIndex={0}
+                      aria-label={details}
+                      className="group pointer-events-auto cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                      <title>{details}</title>
                       <circle
                         cx={point.x}
                         cy={point.y}
@@ -485,6 +520,7 @@ export function ScanpathPanel({
                         fillOpacity="0.72"
                         stroke="white"
                         strokeWidth="2"
+                        className="transition-[stroke-width] group-focus-visible:stroke-[3]"
                       />
                       <text
                         x={point.x}
@@ -494,7 +530,7 @@ export function ScanpathPanel({
                         fontSize="11"
                         fontWeight="700"
                       >
-                        {index + 1}
+                        {objective.id}
                       </text>
                     </g>
                   )
@@ -504,6 +540,14 @@ export function ScanpathPanel({
           )
         }}
       />
+      <div className="rounded-xl border border-border bg-muted/20 px-4 py-3">
+        <ScanpathDurationLegend
+          capMs={radiusCapMs}
+          minRadius={COMPARISON_SCANPATH_MIN_RADIUS}
+          maxRadius={COMPARISON_SCANPATH_MAX_RADIUS}
+          color="#F43F5E"
+        />
+      </div>
     </div>
   )
 }

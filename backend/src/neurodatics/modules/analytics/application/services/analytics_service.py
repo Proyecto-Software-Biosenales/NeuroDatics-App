@@ -2393,6 +2393,9 @@ class ScanpathAnalyticsService:
     # Reference resolution assumed for all images (screen resolution during experiment)
     REF_W: int = 1920
     REF_H: int = 1080
+    RADIUS_SCALE_VERSION: str = "absolute-area-v1"
+    RADIUS_SCALE_ENCODING: str = "area"
+    RADIUS_CAP_MS: int = 2000
 
     @staticmethod
     def _filter_fixations(df: pd.DataFrame) -> pd.DataFrame:
@@ -2452,17 +2455,33 @@ class ScanpathAnalyticsService:
     @staticmethod
     def _scale_radius(durations: np.ndarray) -> np.ndarray:
         """
-        Normalize fixation durations to [0, 1] using robust p5-p95 percentile scaling.
-        Returns 0.0 for the shortest fixations and 1.0 for the longest.
-        When all durations are equal (p95 <= p5), returns 0.5 for all.
+        Encode fixation duration on one absolute, area-proportional scale.
+
+        radius_norm is the square root of the fraction of the two-second cap.
+        It is therefore cohort-independent: the same duration produces the
+        same value for every participant. Renderers use the duration and their
+        own minimum/maximum radii to preserve area proportionality. Invalid and
+        negative durations map to zero; durations at or above the cap map to
+        one.
         """
         d = np.asarray(durations, dtype=float)
         if d.size == 0:
             return np.array([], dtype=float)
-        p5, p95 = np.percentile(d, [5, 95])
-        if p95 <= p5:
-            return np.full_like(d, 0.5)
-        return np.clip((d - p5) / (p95 - p5), 0.0, 1.0)
+        valid_durations = np.where(np.isfinite(d) & (d > 0.0), d, 0.0)
+        fraction = np.clip(
+            valid_durations / (ScanpathAnalyticsService.RADIUS_CAP_MS / 1000.0),
+            0.0,
+            1.0,
+        )
+        return np.sqrt(fraction)
+
+    @classmethod
+    def _radius_scale_metadata(cls) -> dict:
+        return {
+            "version": cls.RADIUS_SCALE_VERSION,
+            "encoding": cls.RADIUS_SCALE_ENCODING,
+            "cap_ms": cls.RADIUS_CAP_MS,
+        }
 
     @staticmethod
     def _group_objectives(
@@ -2545,6 +2564,8 @@ class ScanpathAnalyticsService:
         - n_objectives: int
         - total_distance_px: float (displayed acquisition pixels when available)
         - avg_duration_s: float
+        - total_duration_s: float (summed valid fixation dwell)
+        - radius_scale: absolute area-encoding metadata
         """
         events, metadata = FixationEventService.build_events(
             df,
@@ -2557,13 +2578,20 @@ class ScanpathAnalyticsService:
             "n_objectives": 0,
             "total_distance_px": 0.0,
             "avg_duration_s": 0.0,
+            "total_duration_s": 0.0,
+            "radius_scale": cls._radius_scale_metadata(),
             **metadata,
         }
         if events.empty:
             return _empty
 
         dur_arr = events["duration_s"].to_numpy(dtype=float)
-        radii = cls._scale_radius(dur_arr)
+        valid_durations = np.where(
+            np.isfinite(dur_arr) & (dur_arr > 0.0),
+            dur_arr,
+            0.0,
+        )
+        radii = cls._scale_radius(valid_durations)
 
         objectives_out = []
         for i, (event, radius) in enumerate(zip(events.to_dict("records"), radii), start=1):
@@ -2608,13 +2636,16 @@ class ScanpathAnalyticsService:
             dy = (float(b["y_norm"]) - float(a["y_norm"])) * distance_height
             total_dist += float(np.sqrt(dx * dx + dy * dy))
 
-        avg_dur = float(np.mean(dur_arr)) if dur_arr.size else 0.0
+        avg_dur = float(np.mean(valid_durations)) if valid_durations.size else 0.0
+        total_dur = float(np.sum(valid_durations)) if valid_durations.size else 0.0
 
         return {
             "objectives": objectives_out,
             "n_objectives": len(objectives_out),
             "total_distance_px": round(total_dist, 1),
             "avg_duration_s": round(avg_dur, 4),
+            "total_duration_s": round(total_dur, 4),
+            "radius_scale": cls._radius_scale_metadata(),
             **metadata,
         }
 

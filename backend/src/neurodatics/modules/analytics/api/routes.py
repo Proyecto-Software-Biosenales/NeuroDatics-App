@@ -1134,7 +1134,7 @@ async def scanpath(
         project_id,
         participant_code,
         (
-            f"scanpath_v3:stimulus-v1:{transform_token}:"
+            f"scanpath_v4:stimulus-v1:{transform_token}:"
             f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
         ),
         scenario,

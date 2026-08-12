@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ParticipantItem(BaseModel):
@@ -240,11 +240,19 @@ class ScanpathObjective(BaseModel):
     n_points: int
 
 
+class ScanpathRadiusScale(BaseModel):
+    version: Literal["absolute-area-v1"] = "absolute-area-v1"
+    encoding: Literal["area"] = "area"
+    cap_ms: int = 2000
+
+
 class ScanpathResponse(BaseModel):
     objectives: List[ScanpathObjective]
     n_objectives: int
     total_distance_px: float
     avg_duration_s: float
+    total_duration_s: float = 0.0
+    radius_scale: ScanpathRadiusScale = Field(default_factory=ScanpathRadiusScale)
     scenario_file_id: Optional[str] = None
     algorithm_version: Optional[str] = None
     method: Optional[str] = None

@@ -128,11 +128,13 @@ _EYE_COLUMNS = {
 _KNOWN_NUMERIC_COLUMNS = {
     "time",
     "gsr",
-    "arousal",
     *_EEG_COLUMNS,
     *_EYE_COLUMNS,
 }
-_STANDARD_COLUMNS = _KNOWN_NUMERIC_COLUMNS | {"scenario"}
+# Arousal exports may contain categorical labels (Low/Med/High) or numeric values.
+# Leave its type inference to _convert_numeric_columns instead of validating it
+# as a sensor channel that must always be numeric.
+_STANDARD_COLUMNS = _KNOWN_NUMERIC_COLUMNS | {"scenario", "arousal"}
 _NULL_TOKENS = {"", "na", "n/a", "nan", "null", "none"}
 
 

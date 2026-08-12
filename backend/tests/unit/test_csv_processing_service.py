@@ -222,6 +222,38 @@ def test_duplicate_alias_columns_raise_on_conflicting_values():
         )
 
 
+def test_categorical_arousal_labels_are_preserved_as_standard_values():
+    parsed = CsvProcessingService._build_dataframe_with_info(
+        [
+            "Time;Arousal;",
+            "0;Low;",
+            "0,1;Med;",
+            "0,2;High;",
+        ],
+        ";",
+    )
+
+    assert parsed.dataframe["arousal"].tolist() == ["Low", "Med", "High"]
+    assert not pd.api.types.is_numeric_dtype(parsed.dataframe["arousal"])
+    assert "arousal" not in parsed.extra_columns
+
+
+def test_numeric_arousal_values_are_still_converted_to_numbers():
+    parsed = CsvProcessingService._build_dataframe_with_info(
+        [
+            "Time;Arousal;",
+            "0;1;",
+            "0,1;2;",
+            "0,2;3;",
+        ],
+        ";",
+    )
+
+    assert parsed.dataframe["arousal"].tolist() == pytest.approx([1.0, 2.0, 3.0])
+    assert pd.api.types.is_numeric_dtype(parsed.dataframe["arousal"])
+    assert "arousal" not in parsed.extra_columns
+
+
 @pytest.mark.parametrize(
     "lines,expected",
     [
