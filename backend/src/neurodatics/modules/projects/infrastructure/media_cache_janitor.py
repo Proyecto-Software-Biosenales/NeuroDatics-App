@@ -160,14 +160,14 @@ def prune_media_cache_dir(
 def prune_media_caches() -> list[MediaCachePruneResult]:
     """Sweep the image, video and video-frame caches. Each gets its own budget."""
 
-    max_bytes = int(getattr(settings, "media_cache_max_bytes", 2 * 1024 * 1024 * 1024))
-    max_age_seconds = int(getattr(settings, "media_cache_max_age_hours", 72)) * 3600
-    max_removals = int(getattr(settings, "media_cache_prune_max_removals", 500))
+    max_bytes = int(settings.media_cache_max_bytes)
+    max_age_seconds = int(settings.media_cache_max_age_hours) * 3600
+    max_removals = int(settings.media_cache_prune_max_removals)
 
     directories = (
-        getattr(settings, "image_cache_dir", "/data/image_cache"),
-        getattr(settings, "video_cache_dir", "/data/video_cache"),
-        getattr(settings, "video_frame_cache_dir", "/data/video_frame_cache"),
+        settings.image_cache_dir,
+        settings.video_cache_dir,
+        settings.video_frame_cache_dir,
     )
 
     results: list[MediaCachePruneResult] = []

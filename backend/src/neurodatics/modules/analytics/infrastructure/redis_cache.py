@@ -84,7 +84,7 @@ class AnalyticsRedisCache:
         try:
             from ....config.settings import settings
 
-            _ttl = ttl or getattr(settings, "analytics_redis_ttl_seconds", self.TTL_SECONDS)
+            _ttl = ttl or settings.analytics_redis_ttl_seconds
             self.client.set(key, json.dumps(data), ex=_ttl)
         except Exception:
             logger.warning("Redis write failed for key %s", key, exc_info=True)
@@ -102,7 +102,7 @@ class AnalyticsRedisCache:
         try:
             from ....config.settings import settings
 
-            _ttl = ttl or getattr(settings, "analytics_redis_ttl_seconds", self.TTL_SECONDS)
+            _ttl = ttl or settings.analytics_redis_ttl_seconds
             self.client.set(key, data, ex=_ttl)
         except Exception:
             logger.warning("Redis write failed for key %s", key, exc_info=True)
