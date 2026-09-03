@@ -59,8 +59,8 @@ class ParquetCacheService:
     """Local disk cache for participant Parquet files."""
 
     def __init__(self) -> None:
-        self._cache_dir = Path(getattr(settings, "parquet_cache_dir", "/data/parquet_cache"))
-        ttl_hours = getattr(settings, "parquet_cache_ttl_hours", 4)
+        self._cache_dir = Path(settings.parquet_cache_dir)
+        ttl_hours = settings.parquet_cache_ttl_hours
         self._ttl_seconds = int(ttl_hours) * 3600
 
     def _generation_dir(self, project_id: UUID, generation: object = 0) -> Path:
