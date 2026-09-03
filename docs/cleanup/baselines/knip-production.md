@@ -1,0 +1,119 @@
+# Knip report
+
+## Unused files (13)
+
+| Name                                                       | Location                                                   | Severity |
+| :--------------------------------------------------------- | :--------------------------------------------------------- | :------- |
+| features/reports/select-report-content/useReportContent.ts | features/reports/select-report-content/useReportContent.ts | error    |
+| features/projects/select-project/useSelectedProject.ts     | features/projects/select-project/useSelectedProject.ts     | error    |
+| features/reports/select-sensors/useSelectedSensors.ts      | features/reports/select-sensors/useSelectedSensors.ts      | error    |
+| features/reports/select-report-type/useReportType.ts       | features/reports/select-report-type/useReportType.ts       | error    |
+| features/analytics/components/PupilStatsSection.tsx        | features/analytics/components/PupilStatsSection.tsx        | error    |
+| features/reports/components/ReportContentCard.tsx          | features/reports/components/ReportContentCard.tsx          | error    |
+| features/projects/hooks/useProjectApi.ts                   | features/projects/hooks/useProjectApi.ts                   | error    |
+| components/ui/SelectTrigger.tsx                            | components/ui/SelectTrigger.tsx                            | error    |
+| components/ui/SelectOption.tsx                             | components/ui/SelectOption.tsx                             | error    |
+| components/ui/MetricCard.tsx                               | components/ui/MetricCard.tsx                               | error    |
+| components/ui/PeaksTable.tsx                               | components/ui/PeaksTable.tsx                               | error    |
+| components/ui/separator.tsx                                | components/ui/separator.tsx                                | error    |
+| components/ui/item.tsx                                     | components/ui/item.tsx                                     | error    |
+
+## Unused exports (47)
+
+| Name                              | Location                                                      | Severity |
+| :-------------------------------- | :------------------------------------------------------------ | :------- |
+| StimulusPreviewScreen             | features/analytics/components/StimulusFixationCard.tsx:203:17 | error    |
+| comparisonPreferencesKey          | features/analytics/comparison/comparisonPreferences.ts:36:17  | error    |
+| COMPARISON_PREFERENCES_KEY_PREFIX | features/analytics/comparison/comparisonPreferences.ts:4:14   | error    |
+| COMPARISON_PREFERENCES_VERSION    | features/analytics/comparison/comparisonPreferences.ts:3:14   | error    |
+| ACQUISITION_FOLDER_NAME           | features/projects/create-project/folderStructure.ts:16:14     | error    |
+| IMAGES_FOLDER_NAME                | features/projects/create-project/folderStructure.ts:14:14     | error    |
+| VIDEOS_FOLDER_NAME                | features/projects/create-project/folderStructure.ts:15:14     | error    |
+| toArchivePath                     | features/projects/create-project/folderStructure.ts:72:14     | error    |
+| EEG_CHANNEL_COLORS                | features/analytics/comparison/ComparisonCharts.tsx:25:14      | error    |
+| hasGazeCoordinates                | features/analytics/components/stimulusState.ts:133:17         | error    |
+| usePupilStatistics                | features/analytics/hooks/useAnalyticsData.ts:130:17           | error    |
+| normalizeAvailableSensors         | features/analytics/comparison/registry.ts:188:17              | error    |
+| scanpathDurationFraction          | features/analytics/scanpathScale.ts:36:17                     | error    |
+| scanpathRadiusNorm                | features/analytics/scanpathScale.ts:53:17                     | error    |
+| DEFAULT_SCANPATH_RADIUS_CAP_MS    | features/analytics/scanpathScale.ts:1:14                      | error    |
+| DropdownMenuCheckboxItem          | components/ui/dropdown-menu.tsx:261:3                         | error    |
+| DropdownMenuRadioGroup            | components/ui/dropdown-menu.tsx:262:3                         | error    |
+| DropdownMenuSubTrigger            | components/ui/dropdown-menu.tsx:267:3                         | error    |
+| DropdownMenuSubContent            | components/ui/dropdown-menu.tsx:268:3                         | error    |
+| DropdownMenuRadioItem             | components/ui/dropdown-menu.tsx:263:3                         | error    |
+| DropdownMenuSeparator             | components/ui/dropdown-menu.tsx:264:3                         | error    |
+| DropdownMenuShortcut              | components/ui/dropdown-menu.tsx:265:3                         | error    |
+| DropdownMenuPortal                | components/ui/dropdown-menu.tsx:255:3                         | error    |
+| DropdownMenuGroup                 | components/ui/dropdown-menu.tsx:258:3                         | error    |
+| DropdownMenuLabel                 | components/ui/dropdown-menu.tsx:259:3                         | error    |
+| DropdownMenuSub                   | components/ui/dropdown-menu.tsx:266:3                         | error    |
+| AlertDialogOverlay                | components/ui/alert-dialog.tsx:195:3                          | error    |
+| AlertDialogPortal                 | components/ui/alert-dialog.tsx:196:3                          | error    |
+| AlertDialogMedia                  | components/ui/alert-dialog.tsx:194:3                          | error    |
+| InputGroupTextarea                | components/ui/input-group.tsx:155:3                           | error    |
+| InputGroupText                    | components/ui/input-group.tsx:153:3                           | error    |
+| ComboboxCollection                | components/ui/combobox.tsx:290:3                              | error    |
+| ComboboxChipsInput                | components/ui/combobox.tsx:295:3                              | error    |
+| ComboboxSeparator                 | components/ui/combobox.tsx:292:3                              | error    |
+| useComboboxAnchor                 | components/ui/combobox.tsx:298:3                              | error    |
+| ComboboxInput                     | components/ui/combobox.tsx:284:3                              | error    |
+| ComboboxGroup                     | components/ui/combobox.tsx:288:3                              | error    |
+| ComboboxLabel                     | components/ui/combobox.tsx:289:3                              | error    |
+| ComboboxEmpty                     | components/ui/combobox.tsx:291:3                              | error    |
+| ComboboxChips                     | components/ui/combobox.tsx:293:3                              | error    |
+| ComboboxChip                      | components/ui/combobox.tsx:294:3                              | error    |
+| getAuthSessionStorageKey          | lib/auth/sessionStore.ts:23:17                                | error    |
+| buttonVariants                    | components/ui/button.tsx:67:18                                | error    |
+| DialogOverlay                     | components/ui/dialog.tsx:161:3                                | error    |
+| DialogPortal                      | components/ui/dialog.tsx:162:3                                | error    |
+| DialogClose                       | components/ui/dialog.tsx:156:3                                | error    |
+| clearBlobCache                    | lib/api/apiFetch.ts:412:17                                    | error    |
+
+## Unused exported types (42)
+
+| Name                            | Location                                                   | Severity |
+| :------------------------------ | :--------------------------------------------------------- | :------- |
+| AnalyticsChartLegendItem        | features/analytics/components/AnalyticsChartShell.tsx:4:18 | error    |
+| AcquisitionRecording            | features/projects/create-project/folderStructure.ts:22:13  | error    |
+| MissingStimulusCategory         | features/analytics/components/stimulusState.ts:25:13       | error    |
+| SensorType                      | features/projects/components/SensorBadge.tsx:5:15          | error    |
+| ComparisonSensor                | features/analytics/comparison/registry.ts:32:13            | error    |
+| ProjectStatus                   | features/projects/create-project/types.ts:6:15             | error    |
+| ApiProjectParticipant           | features/projects/api/projectsApi.ts:135:13                | error    |
+| ApiProjectScenary               | features/projects/api/projectsApi.ts:177:13                | error    |
+| ApiStimulusPlacement            | features/projects/api/projectsApi.ts:17:13                 | error    |
+| ApiStimulusViewport             | features/projects/api/projectsApi.ts:8:13                  | error    |
+| FixationAlgorithmProvenance     | features/analytics/types.ts:254:18                         | error    |
+| ComparisonChartLegendItem       | features/analytics/types.ts:194:18                         | error    |
+| FixationSensitivityPoint        | features/analytics/types.ts:324:18                         | error    |
+| ComparisonChartSeries           | features/analytics/types.ts:187:18                         | error    |
+| ComparisonChartPeak             | features/analytics/types.ts:199:18                         | error    |
+| ScanpathRadiusScale             | features/analytics/types.ts:248:18                         | error    |
+| FixationProvenance              | features/analytics/types.ts:265:18                         | error    |
+| ScanpathObjective               | features/analytics/types.ts:237:18                         | error    |
+| AoiTransitionRow                | features/analytics/types.ts:371:18                         | error    |
+| FixationPoint                   | features/analytics/types.ts:281:18                         | error    |
+| FixationStats                   | features/analytics/types.ts:293:18                         | error    |
+| ColorDomain                     | features/analytics/types.ts:155:18                         | error    |
+| AoiShape                        | features/analytics/types.ts:340:18                         | error    |
+| CoordinateTransformProvenance   | features/analytics/types.ts:52:18                          | error    |
+| ScenarioCoordinateTransform     | features/analytics/types.ts:48:18                          | error    |
+| CoordinateTransformDetails      | features/analytics/types.ts:36:18                          | error    |
+| StimulusCoordinateResponse      | features/analytics/types.ts:56:18                          | error    |
+| UploadedProjectZipSummary       | features/projects/types.ts:117:18                          | error    |
+| ResolvedUploadSelection         | features/projects/types.ts:110:18                          | error    |
+| AcquisitionSummary              | features/projects/types.ts:101:18                          | error    |
+| UploadedProjectZipCsvProcessing | features/projects/types.ts:75:18                           | error    |
+| CsvChannelProcessingMetadata    | features/projects/types.ts:39:18                           | error    |
+| AcquisitionRecordingSummary     | features/projects/types.ts:89:18                           | error    |
+| CsvBlockProcessingMetadata      | features/projects/types.ts:47:18                           | error    |
+| UploadedProjectZipCounts        | features/projects/types.ts:29:18                           | error    |
+| UploadedProjectFile             | features/projects/types.ts:19:18                           | error    |
+| ReportContent                   | features/reports/types.ts:31:18                            | error    |
+| ContentType                     | features/reports/types.ts:26:13                            | error    |
+| ReportType                      | features/reports/types.ts:6:13                             | error    |
+| IconName                        | components/ui/Icon.tsx:10:13                               | error    |
+| SignUpResult                    | features/auth/auth.ts:21:18                                | error    |
+| AuthSource                      | features/auth/auth.ts:1:13                                 | error    |
+

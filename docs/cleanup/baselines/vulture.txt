@@ -1,0 +1,8 @@
+src\neurodatics\workers\entrypoint.py:56: unused variable 'signum' (100% confidence, 1 line)
+src\neurodatics\workers\tasks\generate_report_pdf.py:2: unused variable 'report_id' (100% confidence, 1 line)
+tests\unit\test_network_preflight.py:29: unused variable 'exc_type' (100% confidence, 1 line)
+tests\unit\test_network_preflight.py:29: unused variable 'traceback' (100% confidence, 1 line)
+tests\unit\test_readiness.py:16: unused variable 'exc_type' (100% confidence, 1 line)
+tests\unit\test_readiness.py:16: unused variable 'traceback' (100% confidence, 1 line)
+tests\unit\test_readiness.py:46: unused variable 'exc_type' (100% confidence, 1 line)
+tests\unit\test_readiness.py:46: unused variable 'traceback' (100% confidence, 1 line)
