@@ -11,7 +11,6 @@ handler.  To switch to background processing, enqueue this task via::
 """
 
 import logging
-from uuid import UUID
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,7 @@
 from typing import List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select
 from ..domain.repository import ParticipantRepository
 from ..domain.entities import Participant, Sex
 

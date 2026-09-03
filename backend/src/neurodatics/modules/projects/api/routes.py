@@ -9,7 +9,6 @@ from collections import OrderedDict
 from pathlib import Path, PurePosixPath
 import asyncio
 import hashlib
-import io
 import json
 import logging
 import os

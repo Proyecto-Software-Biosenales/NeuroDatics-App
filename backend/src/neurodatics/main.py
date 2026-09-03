@@ -5,8 +5,6 @@ from .api.router import include_routes
 from .api.middlewares import register_middlewares
 from .config.settings import settings
 from .config.logging import configure_logging
-from .infra.db.base import Base
-from .infra.db.session import engine
 from .infra.health.readiness import collect_readiness
 from .modules.analytics.domain.scenario_identity import ScenarioAmbiguityError
 
