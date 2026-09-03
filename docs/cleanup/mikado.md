@@ -51,3 +51,14 @@ nothing about dynamic ones.
 ---
 
 *(Add new goals as they arise. A leaf that turns out to have children becomes `[~]`.)*
+
+
+## 2026-09-03 findings during execution
+
+- [x] Build a synthetic multimodal numerical/HTTP net and validate an isolated mutation.
+- [~] Real-experiment acceptance: no approved real ZIP/CSV/parquet is available locally.
+- [~] Split analytics classes only after resolving their real mutual dependency.
+  - [ ] `FixationDurationVariantService` calls `FixationEventService`, which calls back into `FixationDurationVariantService`; separate files would introduce a real import cycle.
+  - [ ] Design and characterize that boundary in a dedicated change before claiming a class-per-file split is mechanical.
+- [~] Tier B deletion: logging implemented and verified locally; deployed Docker engine is unavailable and observation has not started.
+- [~] Numeric alternative units: see `evidence/numeric-review.md`; define persisted units and existing-parquet compatibility before changing calculations.
