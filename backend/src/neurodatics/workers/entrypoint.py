@@ -7,6 +7,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from rq import Worker
 
+from ..config.logging import tombstone
 from ..infra.queue.redis_connection import get_redis_client, get_redis_worker_client
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ class WorkerManager:
     """Manages the RQ worker lifecycle with graceful shutdown."""
 
     def start(self) -> None:
+        tombstone("workers.entrypoint")
         redis_conn = get_redis_worker_client()
         worker = Worker(queues=["default"], connection=redis_conn)
 

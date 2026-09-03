@@ -1,6 +1,27 @@
 import logging
+import os
 import sys
+from threading import Lock
 from ..config.settings import settings
+
+
+_tombstones_seen = set()
+_tombstones_lock = Lock()
+
+
+def tombstone(name: str) -> None:
+    """Record a candidate's use once per process, without changing its behavior."""
+    process_id = os.getpid()
+    key = (process_id, name)
+    with _tombstones_lock:
+        if key in _tombstones_seen:
+            return
+        _tombstones_seen.add(key)
+    caller = sys._getframe(1)
+    logging.getLogger("neurodatics.tombstones").warning(
+        "TOMBSTONE 2026-09-03 codex %s caller=%s:%d pid=%d",
+        name, caller.f_code.co_filename, caller.f_lineno, process_id,
+    )
 
 
 def configure_logging():
