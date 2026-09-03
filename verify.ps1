@@ -1,4 +1,4 @@
-param([int]$MaxLintErrors = 25, [int]$MaxLintWarnings = 15)
+param([int]$MaxLintErrors = 7, [int]$MaxLintWarnings = 8)
 
 $ErrorActionPreference = 'Stop'
 $taskPython = Join-Path $PSScriptRoot '.venv/Scripts/python.exe'
@@ -15,6 +15,10 @@ try {
     try {
         & $taskPython -m pytest -q --disable-warnings
         Assert-Exit 'Backend tests'
+        & $taskPython -m ruff check src
+        Assert-Exit 'Backend lint'
+        & $taskPython -m vulture src tests vulture_whitelist.py --min-confidence 100
+        Assert-Exit 'Backend dead-code ratchet'
         $env:PYTHONPATH = 'src'
         & $taskPython -c "import runpy; runpy.run_path('tests/conftest.py'); from neurodatics.main import app; print('App boot: %s routes' % len(app.routes))"
         Assert-Exit 'App boot'
@@ -26,6 +30,8 @@ try {
         Assert-Exit 'TypeScript'
         & npm.cmd run test:comparison-click
         Assert-Exit 'Frontend tests'
+        & npm.cmd run test:hooks
+        Assert-Exit 'React hook browser regressions (install Chromium with npx playwright install chromium)'
         $taskLintJson = & npx.cmd --no-install eslint . --format json
         $taskLintExit = $LASTEXITCODE
         if ($taskLintExit -gt 1) { throw "ESLint could not run (exit $taskLintExit)" }
