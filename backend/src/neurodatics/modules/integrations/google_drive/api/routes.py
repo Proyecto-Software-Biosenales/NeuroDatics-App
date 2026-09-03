@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .....api.deps import get_db, get_current_user
 from .....config.settings import settings
+from .....config.logging import tombstone
 from ..application.service import GoogleDriveIntegrationService
 from ..application.sync_tasks import (
     create_sync_task,
@@ -63,6 +64,7 @@ async def authorize_google_drive(
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
+    tombstone("gdrive.authorize_google_drive")
     service = _service_from_db(db)
     authorization_url = service.build_authorization_url()
     return GoogleDriveAuthorizeResponse(authorization_url=authorization_url)
@@ -82,6 +84,7 @@ async def google_drive_callback(
     verifies the HMAC signature and TTL of `state` before doing anything, so
     this cannot be driven by a caller who does not hold `AUTH_JWT_SECRET`.
     """
+    tombstone("gdrive.google_drive_callback")
     if error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -110,6 +113,7 @@ async def google_drive_status(
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
+    tombstone("gdrive.google_drive_status")
     service = _service_from_db(db)
     payload = await service.get_status()
     return GoogleDriveStatusResponse(**payload)
@@ -120,6 +124,7 @@ async def disconnect_google_drive(
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
 ):
+    tombstone("gdrive.disconnect_google_drive")
     service = _service_from_db(db)
     payload = await service.disconnect()
     return GoogleDriveDisconnectResponse(**payload)
@@ -133,6 +138,7 @@ async def create_google_drive_folder(
     current_user: str = Depends(get_current_user),
 ):
     """Create a new folder in Google Drive."""
+    tombstone("gdrive.create_google_drive_folder")
     service = _service_from_db(db)
     payload = await service.create_folder(folder_name=folder_name, parent_id=parent_id)
     return GoogleDriveFolderCreateResponse(**payload)
@@ -152,6 +158,7 @@ async def sync_local_folder_to_drive(
     The path is confined to `GDRIVE_SYNC_ALLOWED_ROOT`; the endpoint is disabled
     entirely when that setting is empty.
     """
+    tombstone("gdrive.sync_local_folder_to_drive")
     _require_sync_enabled()
     service = _service_from_db(db)
     payload = await service.sync_folder_to_drive(
@@ -175,6 +182,7 @@ async def schedule_folder_sync(
     Subject to the same `GDRIVE_SYNC_ALLOWED_ROOT` confinement as `/sync-folder`;
     the path is re-validated inside the task before anything is read.
     """
+    tombstone("gdrive.schedule_folder_sync")
     _require_sync_enabled()
     service = _service_from_db(db)
 
@@ -209,6 +217,7 @@ async def get_sync_task_status(
     - result: sync results (if completed)
     - error: error message (if failed)
     """
+    tombstone("gdrive.get_sync_task_status")
     task = get_sync_task(task_id)
     if not task:
         raise HTTPException(
@@ -227,6 +236,7 @@ async def list_all_sync_tasks(
     List all scheduled sync tasks.
     Shows pending, running, completed, and failed tasks.
     """
+    tombstone("gdrive.list_all_sync_tasks")
     tasks = list_sync_tasks()
     return {
         "total_tasks": len(tasks),
