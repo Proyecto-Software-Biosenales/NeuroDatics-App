@@ -1,0 +1,6 @@
+34	ARG001	[ ] unused-function-argument
+10	F401  	[*] unused-import
+ 3	F841  	[ ] unused-variable
+ 1	ERA001	[ ] commented-out-code
+Found 48 errors.
+[*] 10 fixable with the `--fix` option (3 hidden fixes can be enabled with the `--unsafe-fixes` option).
