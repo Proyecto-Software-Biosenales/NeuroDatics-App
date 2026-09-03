@@ -29,6 +29,14 @@ also occur as ordinary prose/types, with no import path into either candidate.
 The shipped Compose file starts the real API and worker; it does not name these
 modules. Frozen delivery artifacts remain unchanged.
 
+Because `delivery/` is Git-ignored, the tracked-file search above was also
+repeated with `rg -l --hidden --no-ignore` directly over `delivery/`, excluding
+binary `*.tar.gz` and `*.zip` images. The combined D1/D6 symbol expression
+produced zero matching filenames, including when scanning hidden environment
+files. Filename-only output avoids printing any secret values. A separate
+`GDRIVE_REFRESH_TOKEN` scan matched `.env` and `docker-compose.yml`, supporting
+the D4 deferral below.
+
 ## D6: seven worker placeholders
 
 The candidates are `tasks/process_experiment_folder.py`,
