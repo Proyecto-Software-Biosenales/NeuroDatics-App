@@ -1,0 +1,3969 @@
+# serializer version: 1
+# name: test_successful_analytics_contract[/aois]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'aois': list([
+        dict({
+          'avg_distance_cm': 'number',
+          'avg_fixation_duration_ms': 'number',
+          'avg_pupil_mm': 'number',
+          'color': 'str',
+          'distance_delta_from_baseline_cm': 'number',
+          'distance_delta_percent': 'number',
+          'distance_sample_count': 'number',
+          'fixation_count': 'number',
+          'fixations_to_target': 'number',
+          'hit_rate_percent': 'number',
+          'id': 'str',
+          'name': 'str',
+          'pupil_delta_from_baseline_mm': 'number',
+          'pupil_delta_percent': 'number',
+          'pupil_sample_count': 'number',
+          'shape': dict({
+            'height': 'number',
+            'points': 'NoneType',
+            'width': 'number',
+            'x': 'number',
+            'y': 'number',
+          }),
+          'shape_type': 'str',
+          'total_dwell_time_ms': 'number',
+          'total_dwell_time_percent': 'number',
+          'ttff_ms': 'number',
+        }),
+      ]),
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'events': list([
+        dict({
+          'aoi_color': 'str',
+          'aoi_id': 'str',
+          'aoi_name': 'str',
+          'gx': 'number',
+          'gy': 'number',
+          'id': 'str',
+          'kind': 'str',
+          'label': 'str',
+          'metric': 'str',
+          'time_s': 'number',
+          'unit': 'str',
+          'value': 'number',
+        }),
+      ]),
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'observed_aoi_dwell_time_ms': 'number',
+      'observed_aoi_dwell_time_percent': 'number',
+      'scenario': 'str',
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'total_dwell_time_ms': 'number',
+      'total_fixations': 'number',
+      'transitions': list([
+        dict({
+          'counts': dict({
+            'Left region': 'number',
+            'Right region': 'number',
+          }),
+          'from_aoi': 'str',
+          'total': 'number',
+        }),
+      ]),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'aois': list([
+        dict({
+          'avg_distance_cm': 'number',
+          'avg_fixation_duration_ms': 'number',
+          'avg_pupil_mm': 'number',
+          'color': 'str',
+          'distance_delta_from_baseline_cm': 'number',
+          'distance_delta_percent': 'number',
+          'distance_sample_count': 'number',
+          'fixation_count': 'number',
+          'fixations_to_target': 'number',
+          'hit_rate_percent': 'number',
+          'id': 'str',
+          'name': 'str',
+          'pupil_delta_from_baseline_mm': 'number',
+          'pupil_delta_percent': 'number',
+          'pupil_sample_count': 'number',
+          'shape': dict({
+            'height': 'number',
+            'points': 'NoneType',
+            'width': 'number',
+            'x': 'number',
+            'y': 'number',
+          }),
+          'shape_type': 'str',
+          'total_dwell_time_ms': 'number',
+          'total_dwell_time_percent': 'number',
+          'ttff_ms': 'number',
+        }),
+      ]),
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'events': list([
+        dict({
+          'aoi_color': 'str',
+          'aoi_id': 'str',
+          'aoi_name': 'str',
+          'gx': 'number',
+          'gy': 'number',
+          'id': 'str',
+          'kind': 'str',
+          'label': 'str',
+          'metric': 'str',
+          'time_s': 'number',
+          'unit': 'str',
+          'value': 'number',
+        }),
+      ]),
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'observed_aoi_dwell_time_ms': 'number',
+      'observed_aoi_dwell_time_percent': 'number',
+      'scenario': 'str',
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'total_dwell_time_ms': 'number',
+      'total_fixations': 'number',
+      'transitions': list([
+        dict({
+          'counts': dict({
+            'Left region': 'number',
+            'Right region': 'number',
+          }),
+          'from_aoi': 'str',
+          'total': 'number',
+        }),
+      ]),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'aois': list([
+        dict({
+          'avg_distance_cm': 'number',
+          'avg_fixation_duration_ms': 'number',
+          'avg_pupil_mm': 'number',
+          'color': 'str',
+          'distance_delta_from_baseline_cm': 'number',
+          'distance_delta_percent': 'number',
+          'distance_sample_count': 'number',
+          'fixation_count': 'number',
+          'fixations_to_target': 'number',
+          'hit_rate_percent': 'number',
+          'id': 'str',
+          'name': 'str',
+          'pupil_delta_from_baseline_mm': 'number',
+          'pupil_delta_percent': 'number',
+          'pupil_sample_count': 'number',
+          'shape': dict({
+            'height': 'number',
+            'points': 'NoneType',
+            'width': 'number',
+            'x': 'number',
+            'y': 'number',
+          }),
+          'shape_type': 'str',
+          'total_dwell_time_ms': 'number',
+          'total_dwell_time_percent': 'number',
+          'ttff_ms': 'number',
+        }),
+      ]),
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'events': list([
+        dict({
+          'aoi_color': 'str',
+          'aoi_id': 'str',
+          'aoi_name': 'str',
+          'gx': 'number',
+          'gy': 'number',
+          'id': 'str',
+          'kind': 'str',
+          'label': 'str',
+          'metric': 'str',
+          'time_s': 'number',
+          'unit': 'str',
+          'value': 'number',
+        }),
+      ]),
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'observed_aoi_dwell_time_ms': 'number',
+      'observed_aoi_dwell_time_percent': 'number',
+      'scenario': 'str',
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'total_dwell_time_ms': 'number',
+      'total_fixations': 'number',
+      'transitions': list([
+        dict({
+          'counts': dict({
+            'Left region': 'number',
+            'Right region': 'number',
+          }),
+          'from_aoi': 'str',
+          'total': 'number',
+        }),
+      ]),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'aois': list([
+        dict({
+          'avg_distance_cm': 'number',
+          'avg_fixation_duration_ms': 'number',
+          'avg_pupil_mm': 'number',
+          'color': 'str',
+          'distance_delta_from_baseline_cm': 'number',
+          'distance_delta_percent': 'number',
+          'distance_sample_count': 'number',
+          'fixation_count': 'number',
+          'fixations_to_target': 'number',
+          'hit_rate_percent': 'number',
+          'id': 'str',
+          'name': 'str',
+          'pupil_delta_from_baseline_mm': 'number',
+          'pupil_delta_percent': 'number',
+          'pupil_sample_count': 'number',
+          'shape': dict({
+            'height': 'number',
+            'points': 'NoneType',
+            'width': 'number',
+            'x': 'number',
+            'y': 'number',
+          }),
+          'shape_type': 'str',
+          'total_dwell_time_ms': 'number',
+          'total_dwell_time_percent': 'number',
+          'ttff_ms': 'number',
+        }),
+      ]),
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'events': list([
+        dict({
+          'aoi_color': 'str',
+          'aoi_id': 'str',
+          'aoi_name': 'str',
+          'gx': 'number',
+          'gy': 'number',
+          'id': 'str',
+          'kind': 'str',
+          'label': 'str',
+          'metric': 'str',
+          'time_s': 'number',
+          'unit': 'str',
+          'value': 'number',
+        }),
+      ]),
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'observed_aoi_dwell_time_ms': 'number',
+      'observed_aoi_dwell_time_percent': 'number',
+      'scenario': 'str',
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'total_dwell_time_ms': 'number',
+      'total_fixations': 'number',
+      'transitions': list([
+        dict({
+          'counts': dict({
+            'Left region': 'number',
+            'Right region': 'number',
+          }),
+          'from_aoi': 'str',
+          'total': 'number',
+        }),
+      ]),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/comparison/charts]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'charts': list([
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'c3': 'number',
+              'c4': 'number',
+              'f3': 'number',
+              'f4': 'number',
+              'le': 'number',
+              'p3': 'number',
+              'p4': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'distance': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'gsr': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'left': 'number',
+              'right': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'sourceTime': 'number',
+              'time': 'number',
+              'x': 'number',
+              'y': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'charts': list([
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'c3': 'number',
+              'c4': 'number',
+              'f3': 'number',
+              'f4': 'number',
+              'le': 'number',
+              'p3': 'number',
+              'p4': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'distance': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'gsr': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'left': 'number',
+              'right': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'sourceTime': 'number',
+              'time': 'number',
+              'x': 'number',
+              'y': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'charts': list([
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'c3': 'number',
+              'c4': 'number',
+              'f3': 'number',
+              'f4': 'number',
+              'le': 'number',
+              'p3': 'number',
+              'p4': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'distance': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'gsr': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'left': 'number',
+              'right': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'sourceTime': 'number',
+              'time': 'number',
+              'x': 'number',
+              'y': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'charts': list([
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'c3': 'number',
+              'c4': 'number',
+              'f3': 'number',
+              'f4': 'number',
+              'le': 'number',
+              'p3': 'number',
+              'p4': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'distance': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'gsr': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'left': 'number',
+              'right': 'number',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+        dict({
+          'annotations': list([
+          ]),
+          'data': list([
+            dict({
+              'sourceTime': 'number',
+              'time': 'number',
+              'x': 'number',
+              'y': 'number',
+            }),
+          ]),
+          'height': 'number',
+          'id': 'str',
+          'legend': list([
+            dict({
+              'color': 'str',
+              'label': 'str',
+            }),
+          ]),
+          'peaks': list([
+            dict({
+              'color': 'str',
+              'kind': 'str',
+              'label': 'str',
+              'line_style': 'str',
+              'series_key': 'str',
+              'series_label': 'str',
+              'time_s': 'number',
+              'unit': 'str',
+              'value': 'number',
+            }),
+          ]),
+          'series': list([
+            dict({
+              'color': 'str',
+              'key': 'str',
+              'label': 'str',
+              'unit': 'str',
+            }),
+          ]),
+          'synchronized': 'bool',
+          'time_basis': 'str',
+          'title': 'str',
+          'x_domain': list([
+            'number',
+          ]),
+          'x_label': 'str',
+          'y_label': 'str',
+        }),
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/correlations]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'bin_size_s': 'number',
+      'duration_s': 'number',
+      'matrix': list([
+        list([
+          dict({
+            'coefficient': 'number',
+            'coverage': 'number',
+            'n_samples': 'number',
+            'signal_x': 'str',
+            'signal_y': 'str',
+            'status': 'str',
+          }),
+        ]),
+      ]),
+      'method': 'str',
+      'min_pair_samples': 'number',
+      'participant_code': 'str',
+      'scenario': 'str',
+      'signals': list([
+        dict({
+          'available': 'bool',
+          'coverage': 'number',
+          'id': 'str',
+          'label': 'str',
+          'source_columns': list([
+            'str',
+          ]),
+          'unavailable_reason': 'NoneType',
+          'unit': 'str',
+          'valid_bins': 'number',
+        }),
+      ]),
+      'time_basis': 'str',
+      'total_bins': 'number',
+    }),
+    'SYN-01/stimulus-b': dict({
+      'bin_size_s': 'number',
+      'duration_s': 'number',
+      'matrix': list([
+        list([
+          dict({
+            'coefficient': 'number',
+            'coverage': 'number',
+            'n_samples': 'number',
+            'signal_x': 'str',
+            'signal_y': 'str',
+            'status': 'str',
+          }),
+        ]),
+      ]),
+      'method': 'str',
+      'min_pair_samples': 'number',
+      'participant_code': 'str',
+      'scenario': 'str',
+      'signals': list([
+        dict({
+          'available': 'bool',
+          'coverage': 'number',
+          'id': 'str',
+          'label': 'str',
+          'source_columns': list([
+            'str',
+          ]),
+          'unavailable_reason': 'NoneType',
+          'unit': 'str',
+          'valid_bins': 'number',
+        }),
+      ]),
+      'time_basis': 'str',
+      'total_bins': 'number',
+    }),
+    'SYN-02/stimulus-a': dict({
+      'bin_size_s': 'number',
+      'duration_s': 'number',
+      'matrix': list([
+        list([
+          dict({
+            'coefficient': 'number',
+            'coverage': 'number',
+            'n_samples': 'number',
+            'signal_x': 'str',
+            'signal_y': 'str',
+            'status': 'str',
+          }),
+        ]),
+      ]),
+      'method': 'str',
+      'min_pair_samples': 'number',
+      'participant_code': 'str',
+      'scenario': 'str',
+      'signals': list([
+        dict({
+          'available': 'bool',
+          'coverage': 'number',
+          'id': 'str',
+          'label': 'str',
+          'source_columns': list([
+            'str',
+          ]),
+          'unavailable_reason': 'NoneType',
+          'unit': 'str',
+          'valid_bins': 'number',
+        }),
+      ]),
+      'time_basis': 'str',
+      'total_bins': 'number',
+    }),
+    'SYN-02/stimulus-b': dict({
+      'bin_size_s': 'number',
+      'duration_s': 'number',
+      'matrix': list([
+        list([
+          dict({
+            'coefficient': 'number',
+            'coverage': 'number',
+            'n_samples': 'number',
+            'signal_x': 'str',
+            'signal_y': 'str',
+            'status': 'str',
+          }),
+        ]),
+      ]),
+      'method': 'str',
+      'min_pair_samples': 'number',
+      'participant_code': 'str',
+      'scenario': 'str',
+      'signals': list([
+        dict({
+          'available': 'bool',
+          'coverage': 'number',
+          'id': 'str',
+          'label': 'str',
+          'source_columns': list([
+            'str',
+          ]),
+          'unavailable_reason': 'NoneType',
+          'unit': 'str',
+          'valid_bins': 'number',
+        }),
+      ]),
+      'time_basis': 'str',
+      'total_bins': 'number',
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/fixations/histogram]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'bins': list([
+        dict({
+          'conteo': 'number',
+          'label': 'str',
+          'porcentaje': 'number',
+          'promedio_ms': 'number',
+          'rango_max': 'number',
+          'rango_min': 'number',
+        }),
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'max_duration_ms': 'number',
+      'mean_duration_ms': 'number',
+      'method': 'str',
+      'min_duration_ms': 'number',
+      'min_fixation_duration_ms': 'number',
+      'n_fixations': 'number',
+      'source': 'str',
+      'total_duration_ms': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'bins': list([
+        dict({
+          'conteo': 'number',
+          'label': 'str',
+          'porcentaje': 'number',
+          'promedio_ms': 'number',
+          'rango_max': 'number',
+          'rango_min': 'number',
+        }),
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'max_duration_ms': 'number',
+      'mean_duration_ms': 'number',
+      'method': 'str',
+      'min_duration_ms': 'number',
+      'min_fixation_duration_ms': 'number',
+      'n_fixations': 'number',
+      'source': 'str',
+      'total_duration_ms': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'bins': list([
+        dict({
+          'conteo': 'number',
+          'label': 'str',
+          'porcentaje': 'number',
+          'promedio_ms': 'number',
+          'rango_max': 'number',
+          'rango_min': 'number',
+        }),
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'max_duration_ms': 'number',
+      'mean_duration_ms': 'number',
+      'method': 'str',
+      'min_duration_ms': 'number',
+      'min_fixation_duration_ms': 'number',
+      'n_fixations': 'number',
+      'source': 'str',
+      'total_duration_ms': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'bins': list([
+        dict({
+          'conteo': 'number',
+          'label': 'str',
+          'porcentaje': 'number',
+          'promedio_ms': 'number',
+          'rango_max': 'number',
+          'rango_min': 'number',
+        }),
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'max_duration_ms': 'number',
+      'mean_duration_ms': 'number',
+      'method': 'str',
+      'min_duration_ms': 'number',
+      'min_fixation_duration_ms': 'number',
+      'n_fixations': 'number',
+      'source': 'str',
+      'total_duration_ms': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/fixations/sensitivity]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'default_min_fixation_duration_ms': 'number',
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'points': list([
+        dict({
+          'max_duration_ms': 'number',
+          'mean_duration_ms': 'number',
+          'median_duration_ms': 'number',
+          'min_fixation_duration_ms': 'number',
+          'n_fixations': 'number',
+          'retained_dwell_percent': 'number',
+          'total_duration_ms': 'number',
+        }),
+      ]),
+      'source': 'str',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'default_min_fixation_duration_ms': 'number',
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'points': list([
+        dict({
+          'max_duration_ms': 'number',
+          'mean_duration_ms': 'number',
+          'median_duration_ms': 'number',
+          'min_fixation_duration_ms': 'number',
+          'n_fixations': 'number',
+          'retained_dwell_percent': 'number',
+          'total_duration_ms': 'number',
+        }),
+      ]),
+      'source': 'str',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'default_min_fixation_duration_ms': 'number',
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'points': list([
+        dict({
+          'max_duration_ms': 'number',
+          'mean_duration_ms': 'number',
+          'median_duration_ms': 'number',
+          'min_fixation_duration_ms': 'number',
+          'n_fixations': 'number',
+          'retained_dwell_percent': 'number',
+          'total_duration_ms': 'number',
+        }),
+      ]),
+      'source': 'str',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'default_min_fixation_duration_ms': 'number',
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'points': list([
+        dict({
+          'max_duration_ms': 'number',
+          'mean_duration_ms': 'number',
+          'median_duration_ms': 'number',
+          'min_fixation_duration_ms': 'number',
+          'n_fixations': 'number',
+          'retained_dwell_percent': 'number',
+          'total_duration_ms': 'number',
+        }),
+      ]),
+      'source': 'str',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/fixations]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'cache_generation': 'number',
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'fixations': list([
+        dict({
+          'detector_sample_count': 'number',
+          'duration_s': 'number',
+          'id': 'str',
+          'segment_id': 'str',
+          'source_row_count': 'number',
+          't_end_s': 'number',
+          'time_s': 'number',
+          'x_norm': 'number',
+          'y_norm': 'number',
+        }),
+      ]),
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'stats': dict({
+        'avg_duration_s': 'number',
+        'max_duration_s': 'number',
+        'n_fixations': 'number',
+      }),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'cache_generation': 'number',
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'fixations': list([
+        dict({
+          'detector_sample_count': 'number',
+          'duration_s': 'number',
+          'id': 'str',
+          'segment_id': 'str',
+          'source_row_count': 'number',
+          't_end_s': 'number',
+          'time_s': 'number',
+          'x_norm': 'number',
+          'y_norm': 'number',
+        }),
+      ]),
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'stats': dict({
+        'avg_duration_s': 'number',
+        'max_duration_s': 'number',
+        'n_fixations': 'number',
+      }),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'cache_generation': 'number',
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'fixations': list([
+        dict({
+          'detector_sample_count': 'number',
+          'duration_s': 'number',
+          'id': 'str',
+          'segment_id': 'str',
+          'source_row_count': 'number',
+          't_end_s': 'number',
+          'time_s': 'number',
+          'x_norm': 'number',
+          'y_norm': 'number',
+        }),
+      ]),
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'stats': dict({
+        'avg_duration_s': 'number',
+        'max_duration_s': 'number',
+        'n_fixations': 'number',
+      }),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'cache_generation': 'number',
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'fixations': list([
+        dict({
+          'detector_sample_count': 'number',
+          'duration_s': 'number',
+          'id': 'str',
+          'segment_id': 'str',
+          'source_row_count': 'number',
+          't_end_s': 'number',
+          'time_s': 'number',
+          'x_norm': 'number',
+          'y_norm': 'number',
+        }),
+      ]),
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'stats': dict({
+        'avg_duration_s': 'number',
+        'max_duration_s': 'number',
+        'n_fixations': 'number',
+      }),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/gaze-at]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx': 'number',
+      'gy': 'number',
+      'nearest_time_s': 'number',
+      'requested_time_s': 'number',
+      'scenario': 'str',
+      'scenario_file_id': 'str',
+      'scenario_time_s': 'number',
+      'scenario_type': 'str',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx': 'number',
+      'gy': 'number',
+      'nearest_time_s': 'number',
+      'requested_time_s': 'number',
+      'scenario': 'str',
+      'scenario_file_id': 'str',
+      'scenario_time_s': 'number',
+      'scenario_type': 'str',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx': 'number',
+      'gy': 'number',
+      'nearest_time_s': 'number',
+      'requested_time_s': 'number',
+      'scenario': 'str',
+      'scenario_file_id': 'str',
+      'scenario_time_s': 'number',
+      'scenario_type': 'str',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx': 'number',
+      'gy': 'number',
+      'nearest_time_s': 'number',
+      'requested_time_s': 'number',
+      'scenario': 'str',
+      'scenario_file_id': 'str',
+      'scenario_time_s': 'number',
+      'scenario_type': 'str',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/heatmap]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'headers': list([
+        'cache-control',
+        'content-type',
+        'etag',
+        'vary',
+        'x-fixation-algorithm-version',
+        'x-fixation-available-min-durations-ms',
+        'x-fixation-effective-rate-hz',
+        'x-fixation-estimated',
+        'x-fixation-method',
+        'x-fixation-min-duration-ms',
+        'x-fixation-source',
+        'x-fixation-warnings',
+        'x-stimulus-coordinate-space',
+        'x-stimulus-transform-fingerprint',
+        'x-stimulus-transform-status',
+        'x-stimulus-transform-version',
+        'x-stimulus-transform-warnings',
+      ]),
+      'media_type': 'image/png',
+    }),
+    'SYN-01/stimulus-b': dict({
+      'headers': list([
+        'cache-control',
+        'content-type',
+        'etag',
+        'vary',
+        'x-fixation-algorithm-version',
+        'x-fixation-available-min-durations-ms',
+        'x-fixation-effective-rate-hz',
+        'x-fixation-estimated',
+        'x-fixation-method',
+        'x-fixation-min-duration-ms',
+        'x-fixation-source',
+        'x-fixation-warnings',
+        'x-stimulus-coordinate-space',
+        'x-stimulus-transform-fingerprint',
+        'x-stimulus-transform-status',
+        'x-stimulus-transform-version',
+        'x-stimulus-transform-warnings',
+      ]),
+      'media_type': 'image/png',
+    }),
+    'SYN-02/stimulus-a': dict({
+      'headers': list([
+        'cache-control',
+        'content-type',
+        'etag',
+        'vary',
+        'x-fixation-algorithm-version',
+        'x-fixation-available-min-durations-ms',
+        'x-fixation-effective-rate-hz',
+        'x-fixation-estimated',
+        'x-fixation-method',
+        'x-fixation-min-duration-ms',
+        'x-fixation-source',
+        'x-fixation-warnings',
+        'x-stimulus-coordinate-space',
+        'x-stimulus-transform-fingerprint',
+        'x-stimulus-transform-status',
+        'x-stimulus-transform-version',
+        'x-stimulus-transform-warnings',
+      ]),
+      'media_type': 'image/png',
+    }),
+    'SYN-02/stimulus-b': dict({
+      'headers': list([
+        'cache-control',
+        'content-type',
+        'etag',
+        'vary',
+        'x-fixation-algorithm-version',
+        'x-fixation-available-min-durations-ms',
+        'x-fixation-effective-rate-hz',
+        'x-fixation-estimated',
+        'x-fixation-method',
+        'x-fixation-min-duration-ms',
+        'x-fixation-source',
+        'x-fixation-warnings',
+        'x-stimulus-coordinate-space',
+        'x-stimulus-transform-fingerprint',
+        'x-stimulus-transform-status',
+        'x-stimulus-transform-version',
+        'x-stimulus-transform-warnings',
+      ]),
+      'media_type': 'image/png',
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/participants]
+  dict({
+    'SYN-01/stimulus-a': list([
+      dict({
+        'participant_code': 'str',
+        'user_index': 'number',
+      }),
+    ]),
+    'SYN-01/stimulus-b': list([
+      dict({
+        'participant_code': 'str',
+        'user_index': 'number',
+      }),
+    ]),
+    'SYN-02/stimulus-a': list([
+      dict({
+        'participant_code': 'str',
+        'user_index': 'number',
+      }),
+    ]),
+    'SYN-02/stimulus-b': list([
+      dict({
+        'participant_code': 'str',
+        'user_index': 'number',
+      }),
+    ]),
+  })
+# ---
+# name: test_successful_analytics_contract[/psd/eeg]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'frequency': list([
+        'number',
+      ]),
+      'power': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'unit': 'str',
+      'use_db': 'bool',
+    }),
+    'SYN-01/stimulus-b': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'frequency': list([
+        'number',
+      ]),
+      'power': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'unit': 'str',
+      'use_db': 'bool',
+    }),
+    'SYN-02/stimulus-a': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'frequency': list([
+        'number',
+      ]),
+      'power': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'unit': 'str',
+      'use_db': 'bool',
+    }),
+    'SYN-02/stimulus-b': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'frequency': list([
+        'number',
+      ]),
+      'power': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'unit': 'str',
+      'use_db': 'bool',
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/scanpath]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'avg_duration_s': 'number',
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'n_objectives': 'number',
+      'objectives': list([
+        dict({
+          'cx': 'number',
+          'cy': 'number',
+          'duration_s': 'number',
+          'id': 'number',
+          'n_points': 'number',
+          'radius_norm': 'number',
+          't_end': 'number',
+          't_start': 'number',
+        }),
+      ]),
+      'radius_scale': dict({
+        'cap_ms': 'number',
+        'encoding': 'str',
+        'version': 'str',
+      }),
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'total_distance_px': 'number',
+      'total_duration_s': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'avg_duration_s': 'number',
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'n_objectives': 'number',
+      'objectives': list([
+        dict({
+          'cx': 'number',
+          'cy': 'number',
+          'duration_s': 'number',
+          'id': 'number',
+          'n_points': 'number',
+          'radius_norm': 'number',
+          't_end': 'number',
+          't_start': 'number',
+        }),
+      ]),
+      'radius_scale': dict({
+        'cap_ms': 'number',
+        'encoding': 'str',
+        'version': 'str',
+      }),
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'total_distance_px': 'number',
+      'total_duration_s': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'avg_duration_s': 'number',
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'n_objectives': 'number',
+      'objectives': list([
+        dict({
+          'cx': 'number',
+          'cy': 'number',
+          'duration_s': 'number',
+          'id': 'number',
+          'n_points': 'number',
+          'radius_norm': 'number',
+          't_end': 'number',
+          't_start': 'number',
+        }),
+      ]),
+      'radius_scale': dict({
+        'cap_ms': 'number',
+        'encoding': 'str',
+        'version': 'str',
+      }),
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'total_distance_px': 'number',
+      'total_duration_s': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'algorithm_version': 'str',
+      'available_min_fixation_durations_ms': list([
+        'number',
+      ]),
+      'avg_duration_s': 'number',
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'effective_sampling_rate_hz': 'number',
+      'estimated': 'bool',
+      'method': 'str',
+      'min_fixation_duration_ms': 'number',
+      'n_objectives': 'number',
+      'objectives': list([
+        dict({
+          'cx': 'number',
+          'cy': 'number',
+          'duration_s': 'number',
+          'id': 'number',
+          'n_points': 'number',
+          'radius_norm': 'number',
+          't_end': 'number',
+          't_start': 'number',
+        }),
+      ]),
+      'radius_scale': dict({
+        'cap_ms': 'number',
+        'encoding': 'str',
+        'version': 'str',
+      }),
+      'scenario_file_id': 'str',
+      'source': 'str',
+      'total_distance_px': 'number',
+      'total_duration_s': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/scenarios]
+  dict({
+    'SYN-01/stimulus-a': list([
+      dict({
+        'file_id': 'str',
+        'name': 'str',
+        'type': 'str',
+      }),
+    ]),
+    'SYN-01/stimulus-b': list([
+      dict({
+        'file_id': 'str',
+        'name': 'str',
+        'type': 'str',
+      }),
+    ]),
+    'SYN-02/stimulus-a': list([
+      dict({
+        'file_id': 'str',
+        'name': 'str',
+        'type': 'str',
+      }),
+    ]),
+    'SYN-02/stimulus-b': list([
+      dict({
+        'file_id': 'str',
+        'name': 'str',
+        'type': 'str',
+      }),
+    ]),
+  })
+# ---
+# name: test_successful_analytics_contract[/spectrogram/eeg]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'color_domain': dict({
+        'max': 'number',
+        'min': 'number',
+      }),
+      'frequency': list([
+        'number',
+      ]),
+      'normalize': 'str',
+      'power': dict({
+        'c3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'c4': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'f3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'f4': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'le': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'p3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'p4': list([
+          list([
+            'number',
+          ]),
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'time': list([
+        'number',
+      ]),
+      'unit': 'str',
+      'use_db': 'bool',
+    }),
+    'SYN-01/stimulus-b': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'color_domain': dict({
+        'max': 'number',
+        'min': 'number',
+      }),
+      'frequency': list([
+        'number',
+      ]),
+      'normalize': 'str',
+      'power': dict({
+        'c3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'c4': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'f3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'f4': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'le': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'p3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'p4': list([
+          list([
+            'number',
+          ]),
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'time': list([
+        'number',
+      ]),
+      'unit': 'str',
+      'use_db': 'bool',
+    }),
+    'SYN-02/stimulus-a': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'color_domain': dict({
+        'max': 'number',
+        'min': 'number',
+      }),
+      'frequency': list([
+        'number',
+      ]),
+      'normalize': 'str',
+      'power': dict({
+        'c3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'c4': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'f3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'f4': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'le': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'p3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'p4': list([
+          list([
+            'number',
+          ]),
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'time': list([
+        'number',
+      ]),
+      'unit': 'str',
+      'use_db': 'bool',
+    }),
+    'SYN-02/stimulus-b': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'color_domain': dict({
+        'max': 'number',
+        'min': 'number',
+      }),
+      'frequency': list([
+        'number',
+      ]),
+      'normalize': 'str',
+      'power': dict({
+        'c3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'c4': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'f3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'f4': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'le': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'p3': list([
+          list([
+            'number',
+          ]),
+        ]),
+        'p4': list([
+          list([
+            'number',
+          ]),
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'time': list([
+        'number',
+      ]),
+      'unit': 'str',
+      'use_db': 'bool',
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/statistics/distance]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'std': 'number',
+    }),
+    'SYN-01/stimulus-b': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'std': 'number',
+    }),
+    'SYN-02/stimulus-a': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'std': 'number',
+    }),
+    'SYN-02/stimulus-b': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'std': 'number',
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/statistics/gaze]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx_baseline': 'number',
+      'gx_max': 'number',
+      'gx_mean': 'number',
+      'gx_median': 'number',
+      'gx_min': 'number',
+      'gx_std': 'number',
+      'gy_baseline': 'number',
+      'gy_max': 'number',
+      'gy_mean': 'number',
+      'gy_median': 'number',
+      'gy_min': 'number',
+      'gy_std': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx_baseline': 'number',
+      'gx_max': 'number',
+      'gx_mean': 'number',
+      'gx_median': 'number',
+      'gx_min': 'number',
+      'gx_std': 'number',
+      'gy_baseline': 'number',
+      'gy_max': 'number',
+      'gy_mean': 'number',
+      'gy_median': 'number',
+      'gy_min': 'number',
+      'gy_std': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx_baseline': 'number',
+      'gx_max': 'number',
+      'gx_mean': 'number',
+      'gx_median': 'number',
+      'gx_min': 'number',
+      'gx_std': 'number',
+      'gy_baseline': 'number',
+      'gy_max': 'number',
+      'gy_mean': 'number',
+      'gy_median': 'number',
+      'gy_min': 'number',
+      'gy_std': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx_baseline': 'number',
+      'gx_max': 'number',
+      'gx_mean': 'number',
+      'gx_median': 'number',
+      'gx_min': 'number',
+      'gx_std': 'number',
+      'gy_baseline': 'number',
+      'gy_max': 'number',
+      'gy_mean': 'number',
+      'gy_median': 'number',
+      'gy_min': 'number',
+      'gy_std': 'number',
+      'warnings': list([
+        'str',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/statistics/gsr]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'raw_baseline': 'number',
+      'raw_max': 'number',
+      'raw_mean': 'number',
+      'raw_median': 'number',
+      'raw_min': 'number',
+      'raw_std': 'number',
+      'std': 'number',
+    }),
+    'SYN-01/stimulus-b': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'raw_baseline': 'number',
+      'raw_max': 'number',
+      'raw_mean': 'number',
+      'raw_median': 'number',
+      'raw_min': 'number',
+      'raw_std': 'number',
+      'std': 'number',
+    }),
+    'SYN-02/stimulus-a': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'raw_baseline': 'number',
+      'raw_max': 'number',
+      'raw_mean': 'number',
+      'raw_median': 'number',
+      'raw_min': 'number',
+      'raw_std': 'number',
+      'std': 'number',
+    }),
+    'SYN-02/stimulus-b': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'raw_baseline': 'number',
+      'raw_max': 'number',
+      'raw_mean': 'number',
+      'raw_median': 'number',
+      'raw_min': 'number',
+      'raw_std': 'number',
+      'std': 'number',
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/statistics/pupil]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'raw_baseline': 'number',
+      'raw_max': 'number',
+      'raw_mean': 'number',
+      'raw_median': 'number',
+      'raw_min': 'number',
+      'raw_std': 'number',
+      'std': 'number',
+    }),
+    'SYN-01/stimulus-b': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'raw_baseline': 'number',
+      'raw_max': 'number',
+      'raw_mean': 'number',
+      'raw_median': 'number',
+      'raw_min': 'number',
+      'raw_std': 'number',
+      'std': 'number',
+    }),
+    'SYN-02/stimulus-a': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'raw_baseline': 'number',
+      'raw_max': 'number',
+      'raw_mean': 'number',
+      'raw_median': 'number',
+      'raw_min': 'number',
+      'raw_std': 'number',
+      'std': 'number',
+    }),
+    'SYN-02/stimulus-b': dict({
+      'baseline': 'number',
+      'max': 'number',
+      'mean': 'number',
+      'median': 'number',
+      'min': 'number',
+      'raw_baseline': 'number',
+      'raw_max': 'number',
+      'raw_mean': 'number',
+      'raw_median': 'number',
+      'raw_min': 'number',
+      'raw_std': 'number',
+      'std': 'number',
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/timeseries/distance]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'distance_cm': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'distance_cm': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'distance_cm': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'distance_cm': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/timeseries/eeg]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'raw': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'smooth': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'raw': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'smooth': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'raw': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'smooth': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'raw': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'sampling_rate_hz': 'number',
+      'smooth': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'le': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'time': list([
+        'number',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/timeseries/gaze]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx_clean': list([
+        'number',
+      ]),
+      'gy_clean': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx_clean': list([
+        'number',
+      ]),
+      'gy_clean': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx_clean': list([
+        'number',
+      ]),
+      'gy_clean': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'coordinate_transform': dict({
+        'applied': 'bool',
+        'contract_fingerprint': 'NoneType',
+        'contract_version': 'NoneType',
+        'output_space': 'str',
+        'rejected_outside_by_reason': 'NoneType',
+        'rejected_outside_count': 'NoneType',
+        'scenario_transforms': 'NoneType',
+        'source_space': 'str',
+        'status': 'str',
+        'warning_codes': list([
+          'str',
+        ]),
+      }),
+      'gx_clean': list([
+        'number',
+      ]),
+      'gy_clean': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+      'warnings': list([
+        'str',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/timeseries/gsr]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'gsr': list([
+        'number',
+      ]),
+      'gsr_smooth': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'gsr': list([
+        'number',
+      ]),
+      'gsr_smooth': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'gsr': list([
+        'number',
+      ]),
+      'gsr_smooth': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'gsr': list([
+        'number',
+      ]),
+      'gsr_smooth': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/timeseries/pupil]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'average': list([
+        'number',
+      ]),
+      'left': list([
+        'number',
+      ]),
+      'right': list([
+        'number',
+      ]),
+      'smooth_left': list([
+        'number',
+      ]),
+      'smooth_right': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-01/stimulus-b': dict({
+      'average': list([
+        'number',
+      ]),
+      'left': list([
+        'number',
+      ]),
+      'right': list([
+        'number',
+      ]),
+      'smooth_left': list([
+        'number',
+      ]),
+      'smooth_right': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-02/stimulus-a': dict({
+      'average': list([
+        'number',
+      ]),
+      'left': list([
+        'number',
+      ]),
+      'right': list([
+        'number',
+      ]),
+      'smooth_left': list([
+        'number',
+      ]),
+      'smooth_right': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+    'SYN-02/stimulus-b': dict({
+      'average': list([
+        'number',
+      ]),
+      'left': list([
+        'number',
+      ]),
+      'right': list([
+        'number',
+      ]),
+      'smooth_left': list([
+        'number',
+      ]),
+      'smooth_right': list([
+        'number',
+      ]),
+      'time': list([
+        'number',
+      ]),
+    }),
+  })
+# ---
+# name: test_successful_analytics_contract[/topography/eeg]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'color_domain': dict({
+        'max': 'number',
+        'min': 'number',
+      }),
+      'overlap_ratio': 'number',
+      'positions': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'power': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'remove_dc': 'bool',
+      'sampling_rate_hz': 'number',
+      'time': list([
+        'number',
+      ]),
+      'unit': 'str',
+      'window_s': 'number',
+    }),
+    'SYN-01/stimulus-b': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'color_domain': dict({
+        'max': 'number',
+        'min': 'number',
+      }),
+      'overlap_ratio': 'number',
+      'positions': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'power': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'remove_dc': 'bool',
+      'sampling_rate_hz': 'number',
+      'time': list([
+        'number',
+      ]),
+      'unit': 'str',
+      'window_s': 'number',
+    }),
+    'SYN-02/stimulus-a': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'color_domain': dict({
+        'max': 'number',
+        'min': 'number',
+      }),
+      'overlap_ratio': 'number',
+      'positions': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'power': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'remove_dc': 'bool',
+      'sampling_rate_hz': 'number',
+      'time': list([
+        'number',
+      ]),
+      'unit': 'str',
+      'window_s': 'number',
+    }),
+    'SYN-02/stimulus-b': dict({
+      'available_channels': list([
+        'str',
+      ]),
+      'channels': list([
+        'str',
+      ]),
+      'color_domain': dict({
+        'max': 'number',
+        'min': 'number',
+      }),
+      'overlap_ratio': 'number',
+      'positions': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'power': dict({
+        'c3': list([
+          'number',
+        ]),
+        'c4': list([
+          'number',
+        ]),
+        'f3': list([
+          'number',
+        ]),
+        'f4': list([
+          'number',
+        ]),
+        'p3': list([
+          'number',
+        ]),
+        'p4': list([
+          'number',
+        ]),
+      }),
+      'remove_dc': 'bool',
+      'sampling_rate_hz': 'number',
+      'time': list([
+        'number',
+      ]),
+      'unit': 'str',
+      'window_s': 'number',
+    }),
+  })
+# ---
