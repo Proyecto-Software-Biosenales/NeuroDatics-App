@@ -207,7 +207,7 @@ class GoogleDriveIntegrationService:
             )
 
         try:
-            credentials = await self.build_google_drive_credentials()
+            await self.build_google_drive_credentials()
         except RuntimeError as exc:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -252,7 +252,7 @@ class GoogleDriveIntegrationService:
             Dict with folder_id and folder_name
         """
         try:
-            credentials = await self.build_google_drive_credentials()
+            await self.build_google_drive_credentials()
         except RuntimeError as exc:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -359,7 +359,7 @@ class GoogleDriveIntegrationService:
         folder_path = self.resolve_syncable_folder(local_folder_path)
 
         try:
-            credentials = await self.build_google_drive_credentials()
+            await self.build_google_drive_credentials()
         except RuntimeError as exc:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
