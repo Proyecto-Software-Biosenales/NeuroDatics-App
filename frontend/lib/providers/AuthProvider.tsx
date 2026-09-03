@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     throw new Error('El inicio de sesion con correo y contrasena no esta disponible en este flujo.')
   }
 
-  const signUpWithPassword = async (_fullName: string, _email: string, _password: string) => {
+  const signUpWithPassword: AuthContextType['signUpWithPassword'] = async () => {
     throw new Error('El registro con correo y contrasena no esta disponible en este flujo.')
   }
 

@@ -171,8 +171,7 @@ export default function LineWaves({
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
 
-    let program: Program;
-    let currentMouse = [0.5, 0.5];
+    const currentMouse = [0.5, 0.5];
     let targetMouse = [0.5, 0.5];
 
     function handleMouseMove(e: MouseEvent) {
@@ -187,19 +186,11 @@ export default function LineWaves({
       targetMouse = [0.5, 0.5];
     }
 
-    function resize() {
-      renderer.setSize(container.offsetWidth, container.offsetHeight);
-      if (program) {
-        program.uniforms.uResolution.value = [gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height];
-      }
-    }
-    window.addEventListener('resize', resize);
-
-    resize();
+    renderer.setSize(container.offsetWidth, container.offsetHeight);
 
     const geometry = new Triangle(gl);
     const rotationRad = (rotation * Math.PI) / 180;
-    program = new Program(gl, {
+    const program = new Program(gl, {
       vertex: vertexShader,
       fragment: fragmentShader,
       uniforms: {
@@ -221,6 +212,12 @@ export default function LineWaves({
         uEnableMouse: { value: enableMouseInteraction }
       }
     });
+
+    function resize() {
+      renderer.setSize(container.offsetWidth, container.offsetHeight);
+      program.uniforms.uResolution.value = [gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height];
+    }
+    window.addEventListener('resize', resize);
 
     const mesh = new Mesh(gl, { geometry, program });
     container.appendChild(gl.canvas);
