@@ -425,7 +425,7 @@ def _read_tkhd(payload: bytes, state: _IsoTrackState) -> None:
     if len(payload) < 4:
         return
     version = payload[0]
-    # version/flags(4) + times & ids(20 or 32) + reserved(8) + layer/group/volume(8)
+    # Skip version/flags (4 bytes), times and IDs (20 or 32), then two 8-byte fields.
     matrix_start = 4 + (32 if version == 1 else 20) + 8 + 8
     size_start = matrix_start + 36
     if len(payload) < size_start + 8:
