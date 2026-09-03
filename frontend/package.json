@@ -10,6 +10,7 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "test:comparison-click": "node --test \"features/**/*.test.mjs\"",
+    "test:hooks": "node --test tests/hooks/*.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:comparison": "playwright test tests/e2e/comparison-dashboard.spec.ts",
     "typecheck": "tsc --noEmit"

@@ -3,82 +3,84 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { AnalyticsApi } from "../api/analyticsApi"
 import { DEFAULT_FIXATION_DURATION_MS } from "../types"
-import type {
-  AoiMetricsData,
-  AnalyticsParticipant,
-  AnalyticsScenario,
-  ComparisonChartsResponse,
-  DistanceStatistics,
-  DistanceTimeseriesData,
-  EegPsdData,
-  EegSpectrogramData,
-  EegTopographyData,
-  EegTimeseriesData,
-  FixationData,
-  FixationDurationMs,
-  FixationHistogramData,
-  FixationSensitivityData,
-  GazeAtData,
-  GazeStatistics,
-  GazeTimeseriesData,
-  HeatmapTransformHeaders,
-  GsrStatistics,
-  GsrTimeseriesData,
-  PupilStatistics,
-  PupilTimeseriesData,
-  ScanpathData,
-} from "../types"
+import type { AnalyticsParticipant, AnalyticsScenario, FixationDurationMs, GazeAtData, HeatmapTransformHeaders } from "../types"
+
+const EMPTY_PARTICIPANTS: AnalyticsParticipant[] = []
+const EMPTY_SCENARIOS: AnalyticsScenario[] = []
+
+type RequestState<T> = {
+  request: object | null
+  data: T | null
+  loading: boolean
+  error: string | null
+}
+
+function pendingRequest<T>(request: object | null): RequestState<T> {
+  return { request, data: null, loading: request !== null, error: null }
+}
+
+function useRequestState<T>(request: object | null) {
+  const [state, setState] = useState(() => pendingRequest<T>(request))
+  // Reset before children render a different selection. A request's identity is
+  // its memoized callback, including every API argument and disabled selection.
+  if (state.request !== request) {
+    const next = pendingRequest<T>(request)
+    setState(next)
+    return [next, setState] as const
+  }
+  return [state, setState] as const
+}
+
+function useAnalyticsRequest<T>(
+  request: (() => Promise<T>) | null,
+  errorMessage = "Error loading analytics"
+) {
+  const [state, setState] = useRequestState<T>(request)
+  useEffect(() => {
+    if (!request) return
+    let cancelled = false
+    request().then(
+      (data) => {
+        if (!cancelled) setState({ request, data, loading: false, error: null })
+      },
+      (error: unknown) => {
+        if (!cancelled) setState({
+          request,
+          data: null,
+          loading: false,
+          error: error instanceof Error && error.message ? error.message : errorMessage,
+        })
+      }
+    )
+    return () => { cancelled = true }
+  }, [request, errorMessage, setState])
+  return { data: state.data, loading: state.loading, error: state.error }
+}
 
 export function useAnalyticsParticipants(projectId: string | null) {
-  const [participants, setParticipants] = useState<AnalyticsParticipant[]>([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!projectId) return
-    let cancelled = false
-    setLoading(true)
-    AnalyticsApi.getParticipants(projectId)
-      .then((data) => {
-        if (!cancelled) setParticipants(data)
-      })
-      .catch(() => {
-        if (!cancelled) setParticipants([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  return { participants, loading }
+  const load = useCallback(
+    () => AnalyticsApi.getParticipants(
+      projectId!
+    ),
+    [projectId]
+  )
+  const { data, loading } = useAnalyticsRequest(
+    projectId ? load : null
+  )
+  return { participants: data ?? EMPTY_PARTICIPANTS, loading }
 }
 
 export function useAnalyticsScenarios(projectId: string | null) {
-  const [scenarios, setScenarios] = useState<AnalyticsScenario[]>([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!projectId) return
-    let cancelled = false
-    setLoading(true)
-    AnalyticsApi.getScenarios(projectId)
-      .then((data) => {
-        if (!cancelled) setScenarios(data)
-      })
-      .catch(() => {
-        if (!cancelled) setScenarios([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId])
-
-  return { scenarios, loading }
+  const load = useCallback(
+    () => AnalyticsApi.getScenarios(
+      projectId!
+    ),
+    [projectId]
+  )
+  const { data, loading } = useAnalyticsRequest(
+    projectId ? load : null
+  )
+  return { scenarios: data ?? EMPTY_SCENARIOS, loading }
 }
 
 export function usePupilTimeseries(
@@ -88,42 +90,19 @@ export function usePupilTimeseries(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<PupilTimeseriesData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    AnalyticsApi.getPupilTimeseries(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getPupilTimeseries(
+      projectId!,
+      participantCode!,
       scenario,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading timeseries")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
-
+    ),
+    [projectId, participantCode, scenario, startTimeS, endTimeS]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading timeseries"
+  )
   return { data, loading, error }
 }
 
@@ -134,37 +113,19 @@ export function usePupilStatistics(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<PupilStatistics | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    AnalyticsApi.getPupilStatistics(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getPupilStatistics(
+      projectId!,
+      participantCode!,
       scenario,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch(() => {
-        if (!cancelled) setData(null)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
-
+    ),
+    [projectId, participantCode, scenario, startTimeS, endTimeS]
+  )
+  const { data, loading } = useAnalyticsRequest(
+    projectId && participantCode ? load : null
+  )
   return { data, loading }
 }
 
@@ -215,56 +176,20 @@ export function useComparisonCharts(
   visualizationIds: string[] = [],
   maxPoints: number = 5000
 ) {
-  const [data, setData] = useState<ComparisonChartsResponse | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const visualizationsKey = visualizationIds.join(",")
-
-  useEffect(() => {
-    const requestedVisualizationIds = visualizationsKey
-      ? visualizationsKey.split(",").filter(Boolean)
-      : []
-    if (
-      !projectId ||
-      !participantCode ||
-      requestedVisualizationIds.length === 0
-    ) {
-      setData(null)
-      setLoading(false)
-      setError(null)
-      return
-    }
-
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    AnalyticsApi.getComparisonCharts(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getComparisonCharts(
+      projectId!,
+      participantCode!,
       scenario,
-      requestedVisualizationIds,
+      visualizationsKey.split(",").filter(Boolean),
       maxPoints
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(
-            e instanceof Error ? e.message : "Error loading comparison charts"
-          )
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, visualizationsKey, maxPoints])
-
+    ),
+    [projectId, participantCode, scenario, visualizationsKey, maxPoints]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode && visualizationsKey ? load : null, "Error loading comparison charts"
+  )
   return { data, loading, error }
 }
 
@@ -275,42 +200,19 @@ export function useGazeTimeseries(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<GazeTimeseriesData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    AnalyticsApi.getGazeTimeseries(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getGazeTimeseries(
+      projectId!,
+      participantCode!,
       scenario,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading gaze timeseries")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
-
+    ),
+    [projectId, participantCode, scenario, startTimeS, endTimeS]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading gaze timeseries"
+  )
   return { data, loading, error }
 }
 
@@ -321,37 +223,19 @@ export function useGazeStatistics(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<GazeStatistics | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    AnalyticsApi.getGazeStatistics(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getGazeStatistics(
+      projectId!,
+      participantCode!,
       scenario,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch(() => {
-        if (!cancelled) setData(null)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
-
+    ),
+    [projectId, participantCode, scenario, startTimeS, endTimeS]
+  )
+  const { data, loading } = useAnalyticsRequest(
+    projectId && participantCode ? load : null
+  )
   return { data, loading }
 }
 
@@ -362,42 +246,19 @@ export function useDistanceTimeseries(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<DistanceTimeseriesData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    AnalyticsApi.getDistanceTimeseries(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getDistanceTimeseries(
+      projectId!,
+      participantCode!,
       scenario,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading distance timeseries")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
-
+    ),
+    [projectId, participantCode, scenario, startTimeS, endTimeS]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading distance timeseries"
+  )
   return { data, loading, error }
 }
 
@@ -408,37 +269,19 @@ export function useDistanceStatistics(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<DistanceStatistics | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    AnalyticsApi.getDistanceStatistics(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getDistanceStatistics(
+      projectId!,
+      participantCode!,
       scenario,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch(() => {
-        if (!cancelled) setData(null)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
-
+    ),
+    [projectId, participantCode, scenario, startTimeS, endTimeS]
+  )
+  const { data, loading } = useAnalyticsRequest(
+    projectId && participantCode ? load : null
+  )
   return { data, loading }
 }
 
@@ -449,42 +292,19 @@ export function useGsrTimeseries(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<GsrTimeseriesData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    AnalyticsApi.getGsrTimeseries(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getGsrTimeseries(
+      projectId!,
+      participantCode!,
       scenario,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading GSR timeseries")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
-
+    ),
+    [projectId, participantCode, scenario, startTimeS, endTimeS]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading GSR timeseries"
+  )
   return { data, loading, error }
 }
 
@@ -495,37 +315,19 @@ export function useGsrStatistics(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<GsrStatistics | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    AnalyticsApi.getGsrStatistics(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getGsrStatistics(
+      projectId!,
+      participantCode!,
       scenario,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch(() => {
-        if (!cancelled) setData(null)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, startTimeS, endTimeS])
-
+    ),
+    [projectId, participantCode, scenario, startTimeS, endTimeS]
+  )
+  const { data, loading } = useAnalyticsRequest(
+    projectId && participantCode ? load : null
+  )
   return { data, loading }
 }
 
@@ -539,65 +341,24 @@ export function useEegTimeseries(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<EegTimeseriesData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const channelsKey = channels.join(",")
-  const canLoad = Boolean(projectId && participantCode)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) return
-
-    let cancelled = false
-    const requestedChannels = channelsKey ? channelsKey.split(",") : []
-
-    Promise.resolve().then(() => {
-      if (cancelled) return
-      setLoading(true)
-      setError(null)
-    })
-
-    AnalyticsApi.getEegTimeseries(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getEegTimeseries(
+      projectId!,
+      participantCode!,
       scenario,
-      requestedChannels,
+      channelsKey ? channelsKey.split(",") : [],
       smoothWindowS,
       maxPoints,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading EEG timeseries")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [
-    projectId,
-    participantCode,
-    scenario,
-    channelsKey,
-    smoothWindowS,
-    maxPoints,
-    startTimeS,
-    endTimeS,
-  ])
-
-  return {
-    data: canLoad ? data : null,
-    loading: canLoad ? loading : false,
-    error: canLoad ? error : null,
-  }
+    ),
+    [projectId, participantCode, scenario, channelsKey, smoothWindowS, maxPoints, startTimeS, endTimeS]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading EEG timeseries"
+  )
+  return { data, loading, error }
 }
 
 export function useEegPsd(
@@ -611,67 +372,25 @@ export function useEegPsd(
   startTimeS: number | null = null,
   endTimeS: number | null = null
 ) {
-  const [data, setData] = useState<EegPsdData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const channelsKey = channels.join(",")
-  const canLoad = Boolean(projectId && participantCode)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) return
-
-    let cancelled = false
-    const requestedChannels = channelsKey ? channelsKey.split(",") : []
-
-    Promise.resolve().then(() => {
-      if (cancelled) return
-      setLoading(true)
-      setError(null)
-    })
-
-    AnalyticsApi.getEegPsd(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getEegPsd(
+      projectId!,
+      participantCode!,
       scenario,
-      requestedChannels,
+      channelsKey ? channelsKey.split(",") : [],
       maxFreqHz,
       useDb,
       maxPoints,
       startTimeS,
       endTimeS
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading EEG PSD")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [
-    projectId,
-    participantCode,
-    scenario,
-    channelsKey,
-    maxFreqHz,
-    useDb,
-    maxPoints,
-    startTimeS,
-    endTimeS,
-  ])
-
-  return {
-    data: canLoad ? data : null,
-    loading: canLoad ? loading : false,
-    error: canLoad ? error : null,
-  }
+    ),
+    [projectId, participantCode, scenario, channelsKey, maxFreqHz, useDb, maxPoints, startTimeS, endTimeS]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading EEG PSD"
+  )
+  return { data, loading, error }
 }
 
 export function useEegSpectrogram(
@@ -685,67 +404,25 @@ export function useEegSpectrogram(
   maxTimeBins: number = 600,
   maxFrequencyBins: number = 256
 ) {
-  const [data, setData] = useState<EegSpectrogramData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const channelsKey = channels.join(",")
-  const canLoad = Boolean(projectId && participantCode)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) return
-
-    let cancelled = false
-    const requestedChannels = channelsKey ? channelsKey.split(",") : []
-
-    Promise.resolve().then(() => {
-      if (cancelled) return
-      setLoading(true)
-      setError(null)
-    })
-
-    AnalyticsApi.getEegSpectrogram(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getEegSpectrogram(
+      projectId!,
+      participantCode!,
       scenario,
-      requestedChannels,
+      channelsKey ? channelsKey.split(",") : [],
       maxFreqHz,
       useDb,
       normalize,
       maxTimeBins,
       maxFrequencyBins
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading EEG spectrogram")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [
-    projectId,
-    participantCode,
-    scenario,
-    channelsKey,
-    maxFreqHz,
-    useDb,
-    normalize,
-    maxTimeBins,
-    maxFrequencyBins,
-  ])
-
-  return {
-    data: canLoad ? data : null,
-    loading: canLoad ? loading : false,
-    error: canLoad ? error : null,
-  }
+    ),
+    [projectId, participantCode, scenario, channelsKey, maxFreqHz, useDb, normalize, maxTimeBins, maxFrequencyBins]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading EEG spectrogram"
+  )
+  return { data, loading, error }
 }
 
 export function useEegTopography(
@@ -758,65 +435,24 @@ export function useEegTopography(
   removeDc: boolean = true,
   maxFrames: number = 5000
 ) {
-  const [data, setData] = useState<EegTopographyData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const channelsKey = channels.join(",")
-  const canLoad = Boolean(projectId && participantCode)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) return
-
-    let cancelled = false
-    const requestedChannels = channelsKey ? channelsKey.split(",") : []
-
-    Promise.resolve().then(() => {
-      if (cancelled) return
-      setLoading(true)
-      setError(null)
-    })
-
-    AnalyticsApi.getEegTopography(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getEegTopography(
+      projectId!,
+      participantCode!,
       scenario,
-      requestedChannels,
+      channelsKey ? channelsKey.split(",") : [],
       windowS,
       overlapRatio,
       removeDc,
       maxFrames
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading EEG topography")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [
-    projectId,
-    participantCode,
-    scenario,
-    channelsKey,
-    windowS,
-    overlapRatio,
-    removeDc,
-    maxFrames,
-  ])
-
-  return {
-    data: canLoad ? data : null,
-    loading: canLoad ? loading : false,
-    error: canLoad ? error : null,
-  }
+    ),
+    [projectId, participantCode, scenario, channelsKey, windowS, overlapRatio, removeDc, maxFrames]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading EEG topography"
+  )
+  return { data, loading, error }
 }
 
 export function useScanpathData(
@@ -825,41 +461,18 @@ export function useScanpathData(
   scenario: string,
   minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
 ) {
-  const [data, setData] = useState<ScanpathData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!projectId || !participantCode || !scenario || scenario === "all") {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    AnalyticsApi.getScanpath(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getScanpath(
+      projectId!,
+      participantCode!,
       scenario,
       minFixationDurationMs
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e: Error) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading scanpath data")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, minFixationDurationMs])
-
+    ),
+    [projectId, participantCode, scenario, minFixationDurationMs]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode && scenario && scenario !== "all" ? load : null, "Error loading scanpath data"
+  )
   return { data, loading, error }
 }
 
@@ -869,41 +482,18 @@ export function useFixationData(
   scenario: string,
   minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
 ) {
-  const [data, setData] = useState<FixationData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!projectId || !participantCode || !scenario || scenario === "all") {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    AnalyticsApi.getFixationData(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getFixationData(
+      projectId!,
+      participantCode!,
       scenario,
       minFixationDurationMs
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e: Error) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading fixation data")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, minFixationDurationMs])
-
+    ),
+    [projectId, participantCode, scenario, minFixationDurationMs]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode && scenario && scenario !== "all" ? load : null, "Error loading fixation data"
+  )
   return { data, loading, error }
 }
 
@@ -915,78 +505,71 @@ export function useHeatmapOverlay(
   cacheGeneration: number | null = null,
   minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
 ) {
-  const [overlayUrl, setOverlayUrl] = useState<string | null>(null)
-  const [coordinateTransform, setCoordinateTransform] =
-    useState<HeatmapTransformHeaders | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setOverlayUrl(null)
-    setCoordinateTransform(null)
-    if (!projectId || !participantCode || !scenario || scenario === "all")
-      return
-    // Wait for the generation. Firing before it is known would request a URL with
-    // no generation in it, which the blob cache can answer from the previous
-    // ingestion — the exact staleness this parameter exists to prevent.
-    if (cacheGeneration == null) return
-
-    let cancelled = false
-    let currentUrl: string | null = null
-    setLoading(true)
-    setError(null)
-
-    AnalyticsApi.getHeatmapOverlay(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getHeatmapOverlay(
+      projectId!,
+      participantCode!,
       scenario,
       transformToken,
       cacheGeneration,
       minFixationDurationMs
-    )
+    ),
+    [projectId, participantCode, scenario, transformToken, cacheGeneration, minFixationDurationMs]
+  )
+  const request = projectId && participantCode && scenario && scenario !== "all" && cacheGeneration != null ? load : null
+  const [state, setState] = useRequestState<{
+    overlayUrl: string
+    coordinateTransform: HeatmapTransformHeaders
+  }>(request)
+
+  useEffect(() => {
+    // A generation is required: generation-free URLs can hit an older ingestion.
+    if (!request) return
+    let cancelled = false
+    let currentUrl: string | null = null
+    request()
       .then(({ blob, headers }) => {
         if (cancelled) return
         currentUrl = URL.createObjectURL(blob)
-        setOverlayUrl(currentUrl)
         const warnings = headers.get("X-Stimulus-Transform-Warnings")
         const version = headers.get("X-Stimulus-Transform-Version")
         const fingerprint = headers.get("X-Stimulus-Transform-Fingerprint")
-        setCoordinateTransform({
-          status: headers.get(
-            "X-Stimulus-Transform-Status"
-          ) as HeatmapTransformHeaders["status"],
-          coordinateSpace: headers.get("X-Stimulus-Coordinate-Space"),
-          contractVersion: version && version !== "none" ? version : null,
-          contractFingerprint:
-            fingerprint && fingerprint !== "none" ? fingerprint : null,
-          warningCodes: warnings ? warnings.split(",").filter(Boolean) : [],
+        setState({
+          request,
+          loading: false,
+          error: null,
+          data: {
+            overlayUrl: currentUrl,
+            coordinateTransform: {
+              status: headers.get("X-Stimulus-Transform-Status") as HeatmapTransformHeaders["status"],
+              coordinateSpace: headers.get("X-Stimulus-Coordinate-Space"),
+              contractVersion: version && version !== "none" ? version : null,
+              contractFingerprint: fingerprint && fingerprint !== "none" ? fingerprint : null,
+              warningCodes: warnings ? warnings.split(",").filter(Boolean) : [],
+            },
+          },
         })
       })
-      .catch((e: Error) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading heatmap")
-          setOverlayUrl(null)
-          setCoordinateTransform(null)
-        }
+      .catch((error: unknown) => {
+        if (!cancelled) setState({
+          request,
+          data: null,
+          loading: false,
+          error: error instanceof Error && error.message ? error.message : "Error loading heatmap",
+        })
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
     return () => {
       cancelled = true
       if (currentUrl) URL.revokeObjectURL(currentUrl)
     }
-  }, [
-    projectId,
-    participantCode,
-    scenario,
-    transformToken,
-    cacheGeneration,
-    minFixationDurationMs,
-  ])
+  }, [request, setState])
 
-  return { overlayUrl, coordinateTransform, loading, error }
+  return {
+    overlayUrl: state.data?.overlayUrl ?? null,
+    coordinateTransform: state.data?.coordinateTransform ?? null,
+    loading: state.loading,
+    error: state.error,
+  }
 }
 
 export function useFixationHistogram(
@@ -995,41 +578,18 @@ export function useFixationHistogram(
   scenario: string = "all",
   minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
 ) {
-  const [data, setData] = useState<FixationHistogramData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) {
-      setData(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    AnalyticsApi.getFixationHistogram(
-      projectId,
-      participantCode,
+  const load = useCallback(
+    () => AnalyticsApi.getFixationHistogram(
+      projectId!,
+      participantCode!,
       scenario,
       minFixationDurationMs
-    )
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading histogram")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario, minFixationDurationMs])
-
+    ),
+    [projectId, participantCode, scenario, minFixationDurationMs]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading histogram"
+  )
   return { data, loading, error }
 }
 
@@ -1038,45 +598,18 @@ export function useFixationSensitivity(
   participantCode: string | null,
   scenario: string = "all"
 ) {
-  const [data, setData] = useState<FixationSensitivityData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const canLoad = Boolean(projectId && participantCode)
-
-  useEffect(() => {
-    if (!projectId || !participantCode) return
-
-    let cancelled = false
-    Promise.resolve().then(() => {
-      if (cancelled) return
-      setData(null)
-      setLoading(true)
-      setError(null)
-    })
-    AnalyticsApi.getFixationSensitivity(projectId, participantCode, scenario)
-      .then((result) => {
-        if (!cancelled) setData(result)
-      })
-      .catch((e: Error) => {
-        if (!cancelled) {
-          setError(e.message || "Error loading fixation sensitivity")
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [projectId, participantCode, scenario])
-
-  return {
-    data: canLoad ? data : null,
-    loading: canLoad ? loading : false,
-    error: canLoad ? error : null,
-  }
+  const load = useCallback(
+    () => AnalyticsApi.getFixationSensitivity(
+      projectId!,
+      participantCode!,
+      scenario
+    ),
+    [projectId, participantCode, scenario]
+  )
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode ? load : null, "Error loading fixation sensitivity"
+  )
+  return { data, loading, error }
 }
 
 export function useAoiMetrics(
@@ -1085,48 +618,18 @@ export function useAoiMetrics(
   scenario: string,
   minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
 ) {
-  const [data, setData] = useState<AoiMetricsData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const canLoad = Boolean(
-    projectId && participantCode && scenario && scenario !== "all"
+  const load = useCallback(
+    () => AnalyticsApi.getAoiMetrics(
+      projectId!,
+      participantCode!,
+      scenario,
+      minFixationDurationMs
+    ),
+    [projectId, participantCode, scenario, minFixationDurationMs]
   )
-
-  useEffect(() => {
-    if (!canLoad || !projectId || !participantCode) return
-
-    let cancelled = false
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const result = await AnalyticsApi.getAoiMetrics(
-          projectId,
-          participantCode,
-          scenario,
-          minFixationDurationMs
-        )
-        if (!cancelled) setData(result)
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Error loading AOI metrics")
-          setData(null)
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    void load()
-
-    return () => {
-      cancelled = true
-    }
-  }, [canLoad, projectId, participantCode, scenario, minFixationDurationMs])
-
-  return {
-    data: canLoad ? data : null,
-    loading: canLoad ? loading : false,
-    error: canLoad ? error : null,
-  }
+  const { data, loading, error } = useAnalyticsRequest(
+    projectId && participantCode && scenario && scenario !== "all" ? load : null, "Error loading AOI metrics"
+  )
+  return { data, loading, error }
 }
+
