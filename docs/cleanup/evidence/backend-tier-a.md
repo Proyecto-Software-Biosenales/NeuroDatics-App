@@ -68,6 +68,21 @@ source, tests, scripts, or migrations. Preserve `python-jose`, `cryptography`,
 `backend/poetry.lock` is tracked. Relock without regenerating it so existing
 versions remain stable wherever compatible. Preserve the Python `^3.9` range.
 
+Relock completed without changing any previously locked package version. Ten
+new lock entries supply the six development tools and their dependencies
+(including two Python-specific Grimp versions). The explicit PyJWT dependency
+was removed, but the package correctly remains transitive: the existing
+`redis 5.3.1` requires `PyJWT >=2.9.0`, confirmed by
+`poetry show --why --tree pyjwt`. Do not delete its lock entry or uninstall it.
+
+Development tool pins preserve Python 3.9 and pytest 7 compatibility:
+`ruff 0.16.6`, `vulture 2.16`, `deptry 0.23.1`,
+`pytest-regressions 2.8.3`, `syrupy 4.6.1`, and `import-linter 2.5.2`.
+Compatibility was checked against each distribution's `Requires-Python` and
+dependency metadata. `poetry check` passes with only pre-existing legacy
+metadata deprecation warnings. No packages were installed or removed from the
+running virtual environment during this manifest/lock update.
+
 ## D4: defer the refresh-token setting deletion
 
 The audit's zero-reference claim was incomplete: `GDRIVE_REFRESH_TOKEN` appears
