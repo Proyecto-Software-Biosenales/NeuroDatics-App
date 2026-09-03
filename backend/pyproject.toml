@@ -45,3 +45,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 dev = "neurodatics.main:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
