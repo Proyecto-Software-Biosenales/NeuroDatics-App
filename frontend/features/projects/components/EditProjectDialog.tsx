@@ -11,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { CreateProjectStep1 } from "@/features/projects/create-project/CreateProjectStep1"
@@ -198,7 +197,6 @@ const getCurrentZipFilename = (project: ApiProjectDetail): string => {
 
 export const EditProjectDialog = ({
   projectId,
-  projectName,
   onProjectUpdated,
   isOpen: controlledIsOpen,
   onOpenChange: controlledOnOpenChange,

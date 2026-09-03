@@ -132,7 +132,7 @@ export const useProjectsStorage = () => {
         setProjects(formattedProjects)
         // Sync to localStorage for offline support
         localStorage.setItem(STORAGE_KEY, JSON.stringify(formattedProjects))
-      } catch (err) {
+      } catch {
         // If backend fails, try localStorage fallback
         try {
           const stored = localStorage.getItem(STORAGE_KEY)
