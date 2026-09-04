@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/Card"
 import { KpiCard } from "@/components/ui/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import { useAoiMetrics, useScanpathData } from "../hooks/useAnalyticsData"
 import {
   formatScanpathObjectiveDetails,
@@ -89,7 +90,7 @@ export function ScanpathTab({
       }
     }
 
-    apiFetchBlob(`/api/projects/${projectId}/files/${data.scenario_file_id}/image`)
+    apiFetchBlob(getStimulusImageUrl(projectId, data.scenario_file_id))
       .then((blob) => {
         if (cancelled) return
         currentUrl = URL.createObjectURL(blob)

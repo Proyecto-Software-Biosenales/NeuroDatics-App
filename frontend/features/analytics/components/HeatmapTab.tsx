@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/Card"
 import { KpiCard } from "@/components/ui/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import {
   useAoiMetrics,
   useFixationData,
@@ -108,7 +109,7 @@ export function HeatmapTab({
       }
     }
 
-    apiFetchBlob(`/api/projects/${projectId}/files/${fileId}/image`)
+    apiFetchBlob(getStimulusImageUrl(projectId, fileId))
       .then((blob) => {
         if (cancelled) return
         currentUrl = URL.createObjectURL(blob)
