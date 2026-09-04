@@ -108,7 +108,6 @@ async def google_drive_callback(
     return GoogleDriveCallbackResponse(**payload)
 
 
-@router.get("/status", response_model=GoogleDriveStatusResponse)
 async def google_drive_status(
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
@@ -119,7 +118,6 @@ async def google_drive_status(
     return GoogleDriveStatusResponse(**payload)
 
 
-@router.delete("", response_model=GoogleDriveDisconnectResponse)
 async def disconnect_google_drive(
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
@@ -130,7 +128,6 @@ async def disconnect_google_drive(
     return GoogleDriveDisconnectResponse(**payload)
 
 
-@router.post("/create-folder", response_model=GoogleDriveFolderCreateResponse)
 async def create_google_drive_folder(
     folder_name: str = Query(..., description="Name for the new folder"),
     parent_id: Optional[str] = Query(None, description="Parent folder ID (optional, uses GDRIVE_FOLDER_ID if not provided)"),
@@ -144,7 +141,6 @@ async def create_google_drive_folder(
     return GoogleDriveFolderCreateResponse(**payload)
 
 
-@router.post("/sync-folder", response_model=GoogleDriveSyncResponse)
 async def sync_local_folder_to_drive(
     local_folder_path: str = Query(..., description="Path to a local folder inside GDRIVE_SYNC_ALLOWED_ROOT"),
     target_folder_id: Optional[str] = Query(None, description="Target Google Drive folder ID"),
@@ -168,7 +164,6 @@ async def sync_local_folder_to_drive(
     return GoogleDriveSyncResponse(**payload)
 
 
-@router.post("/sync-folder-scheduled", status_code=202)
 async def schedule_folder_sync(
     local_folder_path: str = Query(..., description="Path to a local folder inside GDRIVE_SYNC_ALLOWED_ROOT"),
     target_folder_id: Optional[str] = Query(None, description="Target Google Drive folder ID"),
@@ -204,7 +199,6 @@ async def schedule_folder_sync(
     }
 
 
-@router.get("/sync-status/{task_id}")
 async def get_sync_task_status(
     task_id: str,
     current_user: str = Depends(get_current_user),
@@ -228,7 +222,6 @@ async def get_sync_task_status(
     return task.to_dict()
 
 
-@router.get("/sync-tasks")
 async def list_all_sync_tasks(
     current_user: str = Depends(get_current_user),
 ):
