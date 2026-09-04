@@ -1,26 +1,10 @@
 "use client"
 
+import { EegTimeseriesView } from "./eeg/EegTimeseriesView"
+import { EegPsdView } from "./eeg/EegPsdView"
+
 import { useMemo, useState, type ChangeEvent } from "react"
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
-import {
-  Activity,
-  Brain,
-  Clock,
-  Gauge,
-  Radio,
-  TrendingDown,
-  TrendingUp,
-  Waves,
-} from "lucide-react"
+import { Activity, Brain, Clock, Radio, TrendingUp, Waves } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -32,18 +16,8 @@ import { KpiCard } from "@/components/ui/KpiCard"
 import { cn } from "@/lib/utils"
 import { useEegPsd, useEegSpectrogram, useEegTimeseries, useEegTopography } from "../hooks/useAnalyticsData"
 import { StimulusFixationCard } from "./StimulusFixationCard"
-import {
-  EMPTY_TIME_WINDOW,
-  EMPTY_TIME_WINDOW_DRAFT,
-  parseTimeWindowValue,
-  TimeWindowControls,
-  validateTimeWindowDraft,
-  type TimeWindow,
-  type TimeWindowDraft,
-} from "./TimeWindowControls"
-import { AnalyticsChartShell } from "./AnalyticsChartShell"
-import { EegStatsTable, PsdStatsTable, SpectrogramStatsTable } from "./eeg/EegStatsTables"
-import { EegTooltip, PsdTooltip } from "./eeg/EegTooltips"
+import { EMPTY_TIME_WINDOW, EMPTY_TIME_WINDOW_DRAFT, parseTimeWindowValue, validateTimeWindowDraft, type TimeWindow, type TimeWindowDraft } from "./TimeWindowControls"
+import { SpectrogramStatsTable } from "./eeg/EegStatsTables"
 import { SpectrogramPanel, TopographyScene } from "./eeg/EegCanvasPanels"
 import { EEG_CHANNELS, TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, type SignalMode, type EegTabProps, type EegChartPoint, type EegPsdChartPoint, type PsdStats, type SpectrogramStats } from "./eeg/eegViewShared"
 import {
@@ -522,488 +496,68 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
 
   return (
     <div className="analytics-stack">
-      {view === "timeseries" ? (
-      <Card>
-        <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Brain className="h-5 w-5" />
-              EEG por canal
-            </CardTitle>
-            <CardDescription>
-              Trazas de electroencefalografia por canal en el tiempo registrado.
-            </CardDescription>
-          </div>
+      <EegTimeseriesView
+        availableChannels={availableChannels}
+        channelStats={channelStats}
+        chartData={chartData}
+        chartDomain={chartDomain}
+        eegChartLegend={eegChartLegend}
+        handleApplyTimeseriesWindow={handleApplyTimeseriesWindow}
+        handleChannelToggle={handleChannelToggle}
+        handleChartClick={handleChartClick}
+        handleResetTimeseriesWindow={handleResetTimeseriesWindow}
+        participantCode={participantCode}
+        projectId={projectId}
+        scenario={scenario}
+        selectedChannels={selectedChannels}
+        selectedEegValue={selectedEegValue}
+        selectedPoint={selectedPoint}
+        selectedTime={selectedTime}
+        setSelectedTime={setSelectedTime}
+        setSignalMode={setSignalMode}
+        setTimeseriesWindowDraft={setTimeseriesWindowDraft}
+        setTimeseriesWindowError={setTimeseriesWindowError}
+        signalMode={signalMode}
+        timeExtremePoints={timeExtremePoints}
+        timeRepresentativeStats={timeRepresentativeStats}
+        timeseriesData={timeseriesData}
+        timeseriesError={timeseriesError}
+        timeseriesLoading={timeseriesLoading}
+        timeseriesWindow={timeseriesWindow}
+        timeseriesWindowDraft={timeseriesWindowDraft}
+        timeseriesWindowError={timeseriesWindowError}
+        view={view}
+        visibleChannels={visibleChannels}
+      />
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex overflow-hidden rounded-lg border border-border">
-              {[
-                { key: "smooth", label: "Suavizada" },
-                { key: "raw", label: "Cruda" },
-                { key: "both", label: "Ambas" },
-              ].map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setSignalMode(option.key as SignalMode)}
-                  className={cn(
-                    "px-3 py-1.5 text-sm",
-                    signalMode === option.key
-                      ? "bg-foreground text-background"
-                      : "bg-background text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </CardHeader>
+      
 
-        <CardContent>
-          <TimeWindowControls
-            draftStart={timeseriesWindowDraft.start}
-            draftEnd={timeseriesWindowDraft.end}
-            appliedWindow={timeseriesWindow}
-            error={timeseriesWindowError}
-            loading={timeseriesLoading}
-            onDraftStartChange={(value) => {
-              setTimeseriesWindowDraft((current) => ({ ...current, start: value }))
-              setTimeseriesWindowError(null)
-            }}
-            onDraftEndChange={(value) => {
-              setTimeseriesWindowDraft((current) => ({ ...current, end: value }))
-              setTimeseriesWindowError(null)
-            }}
-            onApply={handleApplyTimeseriesWindow}
-            onReset={handleResetTimeseriesWindow}
-          />
+      
 
-          <div className="mb-5 flex flex-wrap gap-2">
-            {EEG_CHANNELS.map((channel) => {
-              const isActive = selectedChannels.includes(channel)
-              const isAvailable = availableChannels.includes(channel)
-              return (
-                <button
-                  key={channel}
-                  type="button"
-                  onClick={() => handleChannelToggle(channel)}
-                  disabled={!isAvailable}
-                  className={cn(
-                    "inline-flex min-w-12 items-center justify-center rounded-md border px-3 py-1.5 text-sm font-medium transition",
-                    isActive && isAvailable
-                      ? "border-transparent text-white"
-                      : "border-border bg-background text-muted-foreground hover:bg-muted",
-                    !isAvailable && "cursor-not-allowed opacity-40"
-                  )}
-                  style={isActive && isAvailable ? { backgroundColor: CHANNEL_COLORS[channel] } : undefined}
-                >
-                  {formatChannel(channel)}
-                </button>
-              )
-            })}
-          </div>
+      <EegPsdView
+        availableChannels={availableChannels}
+        handleApplyPsdWindow={handleApplyPsdWindow}
+        handleChannelToggle={handleChannelToggle}
+        handleResetPsdWindow={handleResetPsdWindow}
+        psdChartData={psdChartData}
+        psdChartLegend={psdChartLegend}
+        psdData={psdData}
+        psdDomain={psdDomain}
+        psdError={psdError}
+        psdLoading={psdLoading}
+        psdRepresentativeStats={psdRepresentativeStats}
+        psdStats={psdStats}
+        psdWindow={psdWindow}
+        psdWindowDraft={psdWindowDraft}
+        psdWindowError={psdWindowError}
+        selectedChannels={selectedChannels}
+        setPsdWindowDraft={setPsdWindowDraft}
+        setPsdWindowError={setPsdWindowError}
+        view={view}
+        visiblePsdChannels={visiblePsdChannels}
+      />
 
-          <div className="analytics-kpi-grid">
-            <KpiCard
-              label="Media"
-              value={timeRepresentativeStats.meanValue}
-              unit="uV"
-              decimals={4}
-              description="Promedio suavizado visible"
-              Icon={Activity}
-              loading={timeseriesLoading}
-              iconBgClass="bg-emerald-100 dark:bg-emerald-900/40"
-              iconColorClass="text-emerald-600 dark:text-emerald-400"
-              labelColorClass="text-emerald-700 dark:text-emerald-400"
-            />
-            <KpiCard
-              label="Mínimo"
-              value={timeRepresentativeStats.minValue}
-              unit="uV"
-              decimals={4}
-              description="Valor más bajo visible"
-              Icon={TrendingDown}
-              loading={timeseriesLoading}
-              onClick={timeExtremePoints.minPoint ? () => setSelectedTime(timeExtremePoints.minPoint?.time ?? null) : undefined}
-              active={selectedTime === timeExtremePoints.minPoint?.time}
-              hoverBgClass="hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-              activeBgClass="bg-emerald-50 dark:bg-emerald-950/30"
-              iconBgClass="bg-emerald-100 dark:bg-emerald-900/40"
-              iconColorClass="text-emerald-600 dark:text-emerald-400"
-              labelColorClass="text-emerald-700 dark:text-emerald-400"
-            />
-            <KpiCard
-              label="Máximo"
-              value={timeRepresentativeStats.maxValue}
-              unit="uV"
-              decimals={4}
-              description="Valor más alto visible"
-              Icon={TrendingUp}
-              loading={timeseriesLoading}
-              onClick={timeExtremePoints.maxPoint ? () => setSelectedTime(timeExtremePoints.maxPoint?.time ?? null) : undefined}
-              active={selectedTime === timeExtremePoints.maxPoint?.time}
-              hoverBgClass="hover:bg-rose-50 dark:hover:bg-rose-950/30"
-              activeBgClass="bg-rose-50 dark:bg-rose-950/30"
-              iconBgClass="bg-rose-100 dark:bg-rose-900/40"
-              iconColorClass="text-rose-600 dark:text-rose-400"
-              labelColorClass="text-rose-700 dark:text-rose-400"
-            />
-          </div>
-
-          <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-            {[
-              {
-                label: "Muestras",
-                value: chartData.length.toLocaleString(),
-                sub: "puntos renderizados",
-                Icon: Activity,
-                bg: "bg-blue-50 dark:bg-blue-950/40",
-                iconColor: "text-blue-500",
-              },
-              {
-                label: "Frecuencia",
-                value: `${(timeseriesData?.sampling_rate_hz ?? 0).toFixed(2)}`,
-                sub: "Hz estimados",
-                Icon: Gauge,
-                bg: "bg-emerald-50 dark:bg-emerald-950/40",
-                iconColor: "text-emerald-500",
-              },
-              {
-                label: "Canales",
-                value: String(visibleChannels.length),
-                sub: selectedChannels.map(formatChannel).join(", "),
-                Icon: Brain,
-                bg: "bg-violet-50 dark:bg-violet-950/40",
-                iconColor: "text-violet-500",
-              },
-            ].map(({ label, value, sub, Icon, bg, iconColor }) => (
-              <div
-                key={label}
-                className="flex min-h-24 items-center gap-3 rounded-lg border border-border bg-card px-4 py-4"
-              >
-                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", bg)}>
-                  <Icon className={cn("h-5 w-5", iconColor)} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
-                    {label}
-                  </p>
-                  <p className="mt-1 text-2xl font-bold leading-tight text-foreground">
-                    {value}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">{sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {timeseriesLoading ? (
-            <div className="analytics-state-frame-eeg w-full animate-pulse rounded-lg bg-muted" />
-          ) : timeseriesError ? (
-            <div className="analytics-state-frame-eeg flex items-center justify-center text-sm text-muted-foreground">
-              No se pudo cargar la senal EEG.
-            </div>
-          ) : chartData.length === 0 || visibleChannels.length === 0 ? (
-            <div className="analytics-state-frame-eeg flex items-center justify-center text-sm text-muted-foreground">
-              No hay datos de EEG para los filtros seleccionados.
-            </div>
-          ) : (
-            <AnalyticsChartShell legend={eegChartLegend} variant="eeg">
-            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
-              <LineChart
-                data={chartData}
-                onClick={handleChartClick}
-                margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis
-                  dataKey="time"
-                  type="number"
-                  domain={chartDomain}
-                  tickFormatter={(value) => String(Math.round(Number(value)))}
-                  tickMargin={8}
-                />
-                <YAxis
-                  width={80}
-                  label={{ value: "EEG (uV)", angle: -90, position: "insideLeft", offset: 4, style: { textAnchor: "middle" } }}
-                />
-                <RechartsTooltip content={<EegTooltip />} />
-
-                {selectedTime != null ? (
-                  <ReferenceLine
-                    x={selectedTime}
-                    stroke="#374151"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 3"
-                    label={{ value: `${selectedTime.toFixed(1)}s`, position: "top", fontSize: 11, fill: "#374151" }}
-                  />
-                ) : null}
-
-                {visibleChannels.map((channel) =>
-                  signalMode === "smooth" || signalMode === "both" ? (
-                    <Line
-                      key={`${channel}-smooth`}
-                      type="linear"
-                      dataKey={`${channel}_smooth`}
-                      name={`${formatChannel(channel)} suavizada`}
-                      stroke={CHANNEL_COLORS[channel] ?? "#4B5563"}
-                      strokeWidth={1.8}
-                      dot={false}
-                      activeDot={{ r: 3 }}
-                      isAnimationActive={false}
-                    />
-                  ) : null
-                )}
-
-                {visibleChannels.map((channel) =>
-                  signalMode === "raw" || signalMode === "both" ? (
-                    <Line
-                      key={`${channel}-raw`}
-                      type="linear"
-                      dataKey={`${channel}_raw`}
-                      name={`${formatChannel(channel)} cruda`}
-                      stroke={CHANNEL_COLORS[channel] ?? "#4B5563"}
-                      strokeWidth={signalMode === "raw" ? 1.4 : 0.9}
-                      strokeOpacity={signalMode === "raw" ? 1 : 0.36}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  ) : null
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-            </AnalyticsChartShell>
-          )}
-        </CardContent>
-      </Card>
-      ) : null}
-
-      {view === "timeseries" ? (
-        <StimulusFixationCard
-          projectId={projectId}
-          participantCode={participantCode}
-          scenario={scenario}
-          selectedTime={selectedTime}
-          selectedValue={selectedEegValue}
-          selectedValueLabel="EEG"
-          selectedValueSub="uV promedio"
-          selectedValueDecimals={4}
-          totalDurationS={chartData[chartData.length - 1]?.time ?? null}
-          description="Ubicación de la mirada del participante durante el instante seleccionado de la señal EEG."
-          emptyText="Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante"
-          metricDescription="la amplitud EEG promedio"
-          onClearSelection={() => setSelectedTime(null)}
-        />
-      ) : null}
-
-      {view === "timeseries" ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Estadísticas EEG por canal</CardTitle>
-            <CardDescription>
-              Resumen de la señal suavizada para los canales seleccionados.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {timeseriesLoading ? (
-              <div className="h-52 w-full animate-pulse rounded-lg bg-muted" />
-            ) : channelStats.length === 0 ? (
-              <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">
-                No hay datos suficientes para calcular estadísticas.
-              </div>
-            ) : (
-              <EegStatsTable rows={channelStats} />
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {view === "psd" ? (
-      <Card>
-        <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Radio className="h-5 w-5" />
-              Densidad espectral de potencia
-            </CardTitle>
-            <CardDescription>
-              Potencia por frecuencia de los canales EEG seleccionados.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-6 text-sm">
-            <div>
-              <span className="block text-xs uppercase tracking-widest text-muted-foreground">Unidad</span>
-              <span className="font-semibold text-foreground">{psdData?.unit ?? "dB"}</span>
-            </div>
-            <div>
-              <span className="block text-xs uppercase tracking-widest text-muted-foreground">Bins</span>
-              <span className="font-semibold text-foreground">{psdChartData.length.toLocaleString()}</span>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <TimeWindowControls
-            draftStart={psdWindowDraft.start}
-            draftEnd={psdWindowDraft.end}
-            appliedWindow={psdWindow}
-            error={psdWindowError}
-            loading={psdLoading}
-            onDraftStartChange={(value) => {
-              setPsdWindowDraft((current) => ({ ...current, start: value }))
-              setPsdWindowError(null)
-            }}
-            onDraftEndChange={(value) => {
-              setPsdWindowDraft((current) => ({ ...current, end: value }))
-              setPsdWindowError(null)
-            }}
-            onApply={handleApplyPsdWindow}
-            onReset={handleResetPsdWindow}
-          />
-
-              <div className="analytics-kpi-grid">
-            <KpiCard
-              label="Frecuencia pico"
-              value={psdRepresentativeStats.peakFrequency}
-              unit="Hz"
-              decimals={2}
-              description="Máxima potencia observada"
-              Icon={Radio}
-              loading={psdLoading}
-              iconBgClass="bg-violet-100 dark:bg-violet-900/40"
-              iconColorClass="text-violet-600 dark:text-violet-400"
-              labelColorClass="text-violet-700 dark:text-violet-400"
-            />
-            <KpiCard
-              label="Potencia pico"
-              value={psdRepresentativeStats.peakPower}
-              unit={psdData?.unit ?? "dB"}
-              decimals={4}
-              description="Mayor PSD entre canales"
-              Icon={TrendingUp}
-              loading={psdLoading}
-              iconBgClass="bg-rose-100 dark:bg-rose-900/40"
-              iconColorClass="text-rose-600 dark:text-rose-400"
-              labelColorClass="text-rose-700 dark:text-rose-400"
-            />
-            <KpiCard
-              label="Potencia media"
-              value={psdRepresentativeStats.meanPower}
-              unit={psdData?.unit ?? "dB"}
-              decimals={4}
-              description="Promedio espectral visible"
-              Icon={Waves}
-              loading={psdLoading}
-              iconBgClass="bg-emerald-100 dark:bg-emerald-900/40"
-              iconColorClass="text-emerald-600 dark:text-emerald-400"
-              labelColorClass="text-emerald-700 dark:text-emerald-400"
-            />
-          </div>
-
-          <div className="mb-5 flex flex-wrap gap-2">
-            {EEG_CHANNELS.map((channel) => {
-              const isActive = selectedChannels.includes(channel)
-              const isAvailable = availableChannels.includes(channel)
-              return (
-                <button
-                  key={channel}
-                  type="button"
-                  onClick={() => handleChannelToggle(channel)}
-                  disabled={!isAvailable}
-                  className={cn(
-                    "inline-flex min-w-12 items-center justify-center rounded-md border px-3 py-1.5 text-sm font-medium transition",
-                    isActive && isAvailable
-                      ? "border-transparent text-white"
-                      : "border-border bg-background text-muted-foreground hover:bg-muted",
-                    !isAvailable && "cursor-not-allowed opacity-40"
-                  )}
-                  style={isActive && isAvailable ? { backgroundColor: CHANNEL_COLORS[channel] } : undefined}
-                >
-                  {formatChannel(channel)}
-                </button>
-              )
-            })}
-          </div>
-
-          {psdLoading ? (
-            <div className="analytics-state-frame-mid w-full animate-pulse rounded-lg bg-muted" />
-          ) : psdError ? (
-            <div className="analytics-state-frame-mid flex items-center justify-center text-sm text-muted-foreground">
-              No se pudo cargar la PSD de EEG.
-            </div>
-          ) : psdChartData.length === 0 || visiblePsdChannels.length === 0 ? (
-            <div className="analytics-state-frame-mid flex items-center justify-center text-sm text-muted-foreground">
-              No hay datos suficientes para calcular la PSD.
-            </div>
-          ) : (
-            <AnalyticsChartShell legend={psdChartLegend} xAxisLabel="Frecuencia (Hz)" variant="mid">
-            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
-              <LineChart
-                data={psdChartData}
-                margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis
-                  dataKey="frequency"
-                  type="number"
-                  domain={psdDomain}
-                  tickFormatter={(value) => Number(value).toFixed(1)}
-                  tickMargin={8}
-                />
-                <YAxis
-                  width={92}
-                  label={{
-                    value: `PSD (${psdData?.unit ?? "dB"})`,
-                    angle: -90,
-                    position: "insideLeft",
-                    offset: 4,
-                    style: { textAnchor: "middle" },
-                  }}
-                />
-                <RechartsTooltip content={<PsdTooltip unit={psdData?.unit ?? "dB"} />} />
-
-                {visiblePsdChannels.map((channel) => (
-                  <Line
-                    key={`${channel}-psd`}
-                    type="linear"
-                    dataKey={channel}
-                    name={formatChannel(channel)}
-                    stroke={CHANNEL_COLORS[channel] ?? "#4B5563"}
-                    strokeWidth={1.6}
-                    dot={false}
-                    activeDot={{ r: 3 }}
-                    isAnimationActive={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-            </AnalyticsChartShell>
-          )}
-        </CardContent>
-      </Card>
-      ) : null}
-
-      {view === "psd" ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Estadísticas de densidad espectral</CardTitle>
-            <CardDescription>
-              Resumen de potencia y frecuencia pico para los canales seleccionados.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {psdLoading ? (
-              <div className="h-52 w-full animate-pulse rounded-lg bg-muted" />
-            ) : psdStats.length === 0 ? (
-              <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">
-                No hay datos suficientes para calcular estadísticas espectrales.
-              </div>
-            ) : (
-              <PsdStatsTable rows={psdStats} unit={psdData?.unit ?? "dB"} />
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
+      
 
       {view === "spectrogram" ? (
         <Card>
@@ -1381,56 +935,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         </Card>
       ) : null}
 
-      {view === "timeseries" && selectedPoint ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="h-4 w-4" />
-              Punto seleccionado
-            </CardTitle>
-            <CardDescription>
-              Lectura puntual de los canales visibles en el segundo seleccionado.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 text-sm text-muted-foreground">
-              Tiempo: <span className="font-medium text-foreground">{selectedPoint.time.toFixed(2)}s</span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {visibleChannels.map((channel) => {
-                const raw = selectedPoint[`${channel}_raw`]
-                const smooth = selectedPoint[`${channel}_smooth`]
-                return (
-                  <div
-                    key={channel}
-                    className="rounded-lg border border-border bg-card px-4 py-3"
-                  >
-                    <div className="mb-2 flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: CHANNEL_COLORS[channel] ?? "#4B5563" }}
-                      />
-                      <span className="text-sm font-semibold text-foreground">
-                        {formatChannel(channel)}
-                      </span>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-muted-foreground">Suavizada</span>
-                        <span className="font-medium">{smooth.toFixed(4)} uV</span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-muted-foreground">Cruda</span>
-                        <span className="font-medium">{raw.toFixed(4)} uV</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
+      
 
     </div>
   )
