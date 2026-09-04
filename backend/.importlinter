@@ -1,0 +1,26 @@
+[importlinter]
+root_package = neurodatics
+
+[importlinter:contract:analytics-processing]
+name = Analytics must not depend on project application code
+type = forbidden
+source_modules =
+    neurodatics.modules.analytics
+forbidden_modules =
+    neurodatics.modules.projects.application
+
+[importlinter:contract:processing-analytics]
+name = Project processing services must not depend on analytics
+type = forbidden
+source_modules =
+    neurodatics.modules.projects.application.services
+forbidden_modules =
+    neurodatics.modules.analytics
+
+[importlinter:contract:shared-neutral]
+name = Shared contracts must remain independent of feature modules
+type = forbidden
+source_modules =
+    neurodatics.shared
+forbidden_modules =
+    neurodatics.modules
