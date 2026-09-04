@@ -1,4 +1,5 @@
 import { ApiError, apiFetch, apiFetchBlob, apiUploadFormWithProgress, type UploadProgress } from "@/lib/api/apiFetch";
+import { getStimulusImageUrl, getStimulusPreviewUrl } from "./stimulusUrls";
 import type { UploadedProjectZip } from "../types";
 import type { FolderSelection } from "../create-project/folderStructure";
 import type { FixationScreenGeometryInput } from "../create-project/types";
@@ -333,12 +334,9 @@ export const ProjectsApi = {
     apiFetch<void>(`/api/projects/${projectId}/finalize`, { method: "POST" }),
 
   fetchScenarioImage: (projectId: string, fileId: string) =>
-    apiFetchBlob(`/api/projects/${projectId}/files/${fileId}/image`),
+    apiFetchBlob(getStimulusImageUrl(projectId, fileId)),
 
   fetchScenarioPreview: (projectId: string, fileId: string, timeS = 0) => {
-    const params = new URLSearchParams();
-    if (timeS > 0) params.set("time_s", String(timeS));
-    const query = params.toString();
-    return apiFetchBlob(`/api/projects/${projectId}/files/${fileId}/preview${query ? `?${query}` : ""}`);
+    return apiFetchBlob(getStimulusPreviewUrl(projectId, fileId, { timeS: timeS > 0 ? timeS : undefined }));
   },
 };
