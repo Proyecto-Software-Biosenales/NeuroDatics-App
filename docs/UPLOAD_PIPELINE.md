@@ -27,6 +27,11 @@ Two other modules look like upload paths but are dead code: `modules/uploads/*`
 `r2_storage_adapter.py` is `class R2StorageAdapter: pass`) and
 `workers/tasks/process_experiment_zip.py` (logs "stub, not implemented").
 
+Cleanup update (2026-09-03): the unmounted `modules/uploads/` and
+`modules/processing/` placeholders have been removed after reference checks and
+verification. The ZIP worker stub remains pending the product/runtime decision;
+see [the cleanup ledger](cleanup/LEDGER.md).
+
 The single most serious finding in this review was unrelated to the ZIP endpoint
 itself: the entire Google Drive integration router had no authentication, and one of
 its endpoints uploaded an arbitrary server-side directory to Drive. That is now fixed
