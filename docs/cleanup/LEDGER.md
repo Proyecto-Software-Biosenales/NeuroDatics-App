@@ -226,4 +226,5 @@ resolved in the continuation session below.
 | Protected goldens | unchanged |
 
 The frozen delivery release, real environment files and pre-existing untracked
-`docs/presentation/` remain untouched. No deployment or remote push was performed.
+`docs/presentation/` remain untouched. Local `dashboard` was fast-forwarded after the
+final green gate. No deployment or remote push was performed.

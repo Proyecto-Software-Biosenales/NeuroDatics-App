@@ -105,8 +105,8 @@ explicitly.
 
 ## Executed campaign status — 2026-09-04
 
-The campaign is complete on `codex/cleanup-campaign` and ready to fast-forward into
-`dashboard`. `LEDGER.md` contains the final decisions, rollback commands and evidence.
+The campaign was fast-forwarded from `codex/cleanup-campaign` into local `dashboard`
+on 2026-09-04. `LEDGER.md` contains the final decisions, rollback commands and evidence.
 
 `verify.ps1` now runs backend tests, Ruff, Vulture (required-protocol whitelist),
 application boot, three import-linter contracts, TypeScript, all frontend helper
