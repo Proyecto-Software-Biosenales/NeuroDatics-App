@@ -31,6 +31,7 @@ import {
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { getStimulusPreviewUrl } from "@/features/projects/api/stimulusUrls"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/KpiCard"
 import { StatisticsTable } from "@/components/ui/StatisticsTable"
@@ -469,13 +470,11 @@ export function PupilDilationTab({
       setScenarioPreviewError(null)
     })
 
-    const params = new URLSearchParams({
-      time_s: String(gazeData.nearest_time_s),
-    })
-    if (participantCode) params.set("participant_code", participantCode)
-    if (gazeData.scenario) params.set("scenario", gazeData.scenario)
-
-    apiFetchBlob(`/api/projects/${projectId}/files/${gazeData.scenario_file_id}/preview?${params}`)
+    apiFetchBlob(getStimulusPreviewUrl(projectId, gazeData.scenario_file_id, {
+      timeS: gazeData.nearest_time_s,
+      participantCode,
+      scenario: gazeData.scenario,
+    }))
       .then((blob) => {
         if (cancelled) return
         currentUrl = URL.createObjectURL(blob)
