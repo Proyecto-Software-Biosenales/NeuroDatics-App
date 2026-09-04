@@ -76,9 +76,9 @@ async def get_current_user_id(credentials: Optional[HTTPAuthorizationCredentials
     """Extract user_id from JWT token"""
     import logging
     logger = logging.getLogger(__name__)
-    
+
     logger.debug(f"Auth check - credentials present: {credentials is not None}, scheme: {credentials.scheme.lower() if credentials else 'None'}")
-    
+
     if credentials is None or not credentials.credentials:
         logger.warning("Missing Authorization header in request")
         raise HTTPException(

@@ -23,6 +23,6 @@ class ParticipantResponse(BaseModel):
     participant_code: str
     age: Optional[int]
     sex: Optional[str]
-    
+
     class Config:
         from_attributes = True

@@ -22,18 +22,18 @@ async def update_participants(
     # Verify project ownership
     project_repo = SQLProjectRepository(db)
     project = await project_repo.get_basic_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     # Update participants
     participant_repo = SQLParticipantRepository(db)
     participants_data = [p.dict() for p in request.participants]
     participants = await participant_repo.upsert_participants(project_id, participants_data)
-    
+
     return [
         ParticipantResponse(
             participant_code=p.participant_code,

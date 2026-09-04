@@ -57,7 +57,7 @@ class ProjectFileResponse(BaseModel):
     drive_web_view_link: Optional[str] = None
     drive_download_link: Optional[str] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -180,7 +180,7 @@ class DriveUploadProgressResponse(BaseModel):
 class ProjectSensorResponse(BaseModel):
     id: UUID
     sensor_type: str
-    
+
     class Config:
         from_attributes = True
 
@@ -190,7 +190,7 @@ class ParticipantResponse(BaseModel):
     participant_code: str
     age: Optional[int]
     sex: Optional[str]
-    
+
     class Config:
         from_attributes = True
 
@@ -209,7 +209,7 @@ class ProjectResponse(BaseModel):
     drive_root_folder_url: Optional[str] = None
     sensors: List[ProjectSensorResponse] = []
     participants_count: int = 0
-    
+
     class Config:
         from_attributes = True
 
@@ -230,7 +230,7 @@ class ProjectDetailResponse(BaseModel):
     sensors: List[ProjectSensorResponse] = []
     participants: List[ParticipantResponse] = []
     scenaries: List[scenariesResponse] = Field(default_factory=list)
-    
+
     class Config:
         from_attributes = True
 

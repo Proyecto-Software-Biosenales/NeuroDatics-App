@@ -842,14 +842,14 @@ async def create_project(
             status_code=status.HTTP_409_CONFLICT,
             detail="Ya existe un proyecto con ese nombre"
         )
-    
+
     project = await use_case.execute(
         owner_id=UUID(current_user),
         name=request.name,
         description=request.description,
         status=request.status or ProjectStatus.DRAFT,
     )
-    
+
     return ProjectResponse(
         id=project.id,
         name=project.name,
@@ -874,9 +874,9 @@ async def list_projects(
     """List all projects for current user"""
     repository = SQLProjectRepository(db)
     use_case = ListProjectsUseCase(repository)
-    
+
     projects = await use_case.execute(owner_id=UUID(current_user))
-    
+
     return [
         ProjectResponse(
             id=project.id,
@@ -905,13 +905,13 @@ async def get_project(
     """Get project details"""
     repository = SQLProjectRepository(db)
     project = await repository.get_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     return ProjectDetailResponse(
         id=project.id,
         name=project.name,
@@ -990,13 +990,13 @@ async def update_project(
     """Update project"""
     repository = SQLProjectRepository(db)
     project = await repository.get_basic_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     if request.name is not None:
         existing = await repository.get_by_owner_and_name(UUID(current_user), request.name)
         if existing and existing.id != project.id:
@@ -1031,7 +1031,7 @@ async def update_project(
         project.description = request.description
     if request.status is not None:
         project.status = request.status
-    
+
     await repository.update(project)
 
     # Re-load only lightweight relationships needed by ProjectResponse.
@@ -1067,7 +1067,7 @@ async def delete_project(
     """Delete project"""
     repository = SQLProjectRepository(db)
     use_case = DeleteProjectUseCase(repository, db=db)
-    
+
     try:
         result = await use_case.execute(project_id, UUID(current_user))
     except Exception as exc:
@@ -1075,7 +1075,7 @@ async def delete_project(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo eliminar el proyecto en base de datos"
         ) from exc
-    
+
     if not result.get("deleted"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1371,22 +1371,22 @@ async def delete_experiment_zip(
     """Delete experiment zip file"""
     repository = SQLProjectRepository(db)
     project = await repository.get_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     # Delete from database
     deleted = await repository.delete_file_by_kind(project_id, "experiment_zip")
-    
+
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Experiment zip file not found"
         )
-    
+
     return {"message": "Experiment zip file deleted successfully"}
 
 
@@ -1400,15 +1400,15 @@ async def update_sensors(
     """Update project sensors"""
     repository = SQLProjectRepository(db)
     project = await repository.get_basic_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     sensors = await repository.update_sensors(project_id, request.sensors)
-    
+
     return [{"id": s.id, "sensor_type": s.sensor_type} for s in sensors]
 
 
@@ -1421,20 +1421,20 @@ async def finalize_project(
     """Finalize project (validate and set to active)"""
     repository = SQLProjectRepository(db)
     project = await repository.get_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     # Validate project
     if not project.name.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Project name is required"
         )
-    
+
     has_active_files = any(f.deleted_at is None for f in project.files)
     has_ready_ingestion = (project.ingestion_status or "").upper() == "READY"
     if not has_active_files and not has_ready_ingestion:
@@ -1442,17 +1442,17 @@ async def finalize_project(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Debes cargar y procesar un ZIP del experimento antes de finalizar"
         )
-    
+
     if not project.sensors:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one csv file is required"
         )
-    
+
     # Update status to active
     project.status = ProjectStatus.ACTIVE
     updated_project = await repository.update(project)
-    
+
     return {"message": "Project finalized successfully", "status": updated_project.status}
 def register_project_routes(app):
     pass

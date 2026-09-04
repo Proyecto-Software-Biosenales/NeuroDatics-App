@@ -632,4 +632,3 @@ export function useAoiMetrics(
   )
   return { data, loading, error }
 }
-

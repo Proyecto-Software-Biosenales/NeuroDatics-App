@@ -72,5 +72,3 @@ test("EEG click extraction preserves payload priority and numeric labels", () =>
   assert.equal(readClickedTime({ activeLabel: "invalid" }), null)
   assert.equal(readClickedTime({ activePayload: [{ payload: { time: Infinity } }], activeLabel: "9" }), null)
 })
-
-
