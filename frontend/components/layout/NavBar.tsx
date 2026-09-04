@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { LoaderCircle, Moon, Sun, User } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -62,9 +63,11 @@ export const NavBar = () => {
         <div className="flex h-full items-center justify-between">
           <div className="flex min-w-0 items-center gap-4 2xl:gap-10">
             <Link href="/" className="flex items-center gap-3 group">
-              <img
-                src="assets/NeuroDatics-logo.png"
+              <Image
+                src="/assets/NeuroDatics-logo.png"
                 alt="NeuroDatics Logo"
+                width={30}
+                height={32}
                 className="h-8 w-auto transition-transform group-hover:scale-105 2xl:h-10"
               />
               <span className="text-base font-semibold tracking-tight text-foreground 2xl:text-lg">
