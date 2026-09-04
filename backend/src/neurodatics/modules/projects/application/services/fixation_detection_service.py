@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 
-from neurodatics.modules.analytics.domain.scenario_identity import (
+from neurodatics.shared.scenario_identity import (
     ScenarioAmbiguityError,
     resolve_scenario,
     scenario_key,

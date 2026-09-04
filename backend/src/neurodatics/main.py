@@ -6,7 +6,7 @@ from .api.middlewares import register_middlewares
 from .config.settings import settings
 from .config.logging import configure_logging
 from .infra.health.readiness import collect_readiness
-from .modules.analytics.domain.scenario_identity import ScenarioAmbiguityError
+from .shared.scenario_identity import ScenarioAmbiguityError
 
 # Create FastAPI app
 app = FastAPI(

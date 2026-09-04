@@ -37,7 +37,7 @@ from ....analytics.application.services.comparison_chart_config import (
     temporal_visualizations_for_sensors,
 )
 from ....analytics.application.services.parquet_reader_service import ParquetReaderService
-from ....analytics.domain.cache_generation import project_cache_generation
+from neurodatics.shared.cache_generation import project_cache_generation
 from ....integrations.google_drive.infrastructure.repository import SystemIntegrationRepository
 from ....projects.domain.entities import Project, ProjectFile
 from ....scenaries.domain.entities import Scenaries

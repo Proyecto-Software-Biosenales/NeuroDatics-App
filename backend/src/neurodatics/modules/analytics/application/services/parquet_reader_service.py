@@ -12,7 +12,7 @@ from .....infra.storage.gdrive_oauth_credentials import build_google_drive_oauth
 from ....integrations.google_drive.infrastructure.repository import SystemIntegrationRepository
 from ....participants.domain.entities import Participant
 from ....projects.domain.entities import Project, ProjectFile
-from ...domain.cache_generation import normalize_generation
+from neurodatics.shared.cache_generation import normalize_generation
 from ...infrastructure.parquet_cache import ParquetCacheService
 
 logger = logging.getLogger(__name__)
