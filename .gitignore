@@ -34,6 +34,9 @@ data/
 backend/data/
 output/
 
+# Local participant recordings for opt-in cleanup acceptance
+docs/RefererenceExperiments/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db
