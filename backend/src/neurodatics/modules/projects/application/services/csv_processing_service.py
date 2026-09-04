@@ -799,15 +799,20 @@ class CsvProcessingService:
         units = {
             unit for name in ("gx", "gy") if (unit := cls._channel_unit(channels, name))
         }
-        if any(unit in {"%", "percent", "percentage", "porcentaje"} for unit in units):
-            return "percent"
-        if any(unit in {"px", "pixel", "pixels", "píxel", "píxeles"} for unit in units):
-            return "pixels"
-        if any(
-            unit in {"normalized", "normalised", "normalizado", "0-1"} for unit in units
-        ):
-            return "normalized"
-        return "auto"
+        aliases = {
+            "percent": {"%", "percent", "percentage", "porcentaje"},
+            "pixels": {"px", "pixel", "pixels", "píxel", "píxeles"},
+            "normalized": {"normalized", "normalised", "normalizado", "0-1"},
+        }
+        resolved = set()
+        for unit in units:
+            canonical = next((key for key, values in aliases.items() if unit in values), None)
+            if canonical is None:
+                raise CsvProcessingError(f"Unidad de coordenadas no soportada: {unit}")
+            resolved.add(canonical)
+        if len(resolved) > 1:
+            raise CsvProcessingError("Unidades incompatibles entre las coordenadas X e Y")
+        return next(iter(resolved), "auto")
 
     @classmethod
     def _distance_unit(cls, channels: Sequence[ChannelMetadata]) -> str:
@@ -815,6 +820,49 @@ class CsvProcessingService:
         if unit in {"mm", "cm", "m"}:
             return str(unit)
         return "auto"
+
+    @classmethod
+    def _normalize_declared_units(
+        cls, dataframe: pd.DataFrame, channels: Sequence[ChannelMetadata]
+    ) -> Tuple[pd.DataFrame, Dict[str, Any], str]:
+        """New storage uses seconds/mm; undeclared exports retain legacy assumptions.
+
+        Source channel metadata remains unchanged for provenance. Existing parquet
+        files are never rewritten or reinterpreted by this ingestion boundary.
+        """
+        source = {name: cls._channel_unit(channels, name) for name in ("time", "distance")}
+        time_factors = {
+            "s": 1.0, "sec": 1.0, "second": 1.0, "seconds": 1.0,
+            "segundo": 1.0, "segundos": 1.0,
+            "ms": 1e-3, "millisecond": 1e-3, "milliseconds": 1e-3,
+            "milisegundo": 1e-3, "milisegundos": 1e-3,
+            "us": 1e-6, "µs": 1e-6, "μs": 1e-6,
+            "microsecond": 1e-6, "microseconds": 1e-6,
+            "microsegundo": 1e-6, "microsegundos": 1e-6,
+        }
+        distance_factors = {"mm": 1.0, "cm": 10.0, "m": 1000.0}
+        normalized = dataframe.copy()
+        for name, factors in (("time", time_factors), ("distance", distance_factors)):
+            if name not in normalized.columns:
+                continue
+            unit = source[name]
+            if unit is not None and unit not in factors:
+                raise CsvProcessingError(f"Unidad de {name} no soportada: {unit}")
+            factor = factors.get(unit, 1.0)
+            if factor != 1.0:
+                converted = pd.to_numeric(normalized[name], errors="coerce") * factor
+                if np.isinf(converted.to_numpy(dtype=float)).any():
+                    raise CsvProcessingError(f"Normalizacion de unidades fuera de rango: {name}")
+                normalized[name] = converted
+        if (np.diff(normalized["time"].to_numpy(dtype=float)) <= 0).any():
+            raise CsvProcessingError("Normalizacion de unidades produjo tiempos no crecientes")
+        contract = {
+            "version": 1,
+            "source": source,
+            "stored": {name: unit for name, unit in (("time", "seconds"), ("distance", "mm")) if name in normalized},
+            "undeclared_policy": "legacy_seconds_mm",
+        }
+        return normalized, contract, "mm" if source["distance"] else "auto"
 
     @staticmethod
     def _screen_geometry(
@@ -880,6 +928,7 @@ class CsvProcessingService:
             Mapping[str, Mapping[str, Any]]
         ] = None,
         physical_screen_geometry: Optional[Mapping[str, float]] = None,
+        recording_units: Optional[Mapping[str, Any]] = None,
     ) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str, str]]]:
         base_dir = pathlib.Path(output_dir).resolve() / f"user{user_index}"
         base_dir.mkdir(parents=True, exist_ok=True)
@@ -894,6 +943,8 @@ class CsvProcessingService:
         }
         if physical_screen_geometry is not None:
             user_metadata["physical_screen_geometry"] = dict(physical_screen_geometry)
+        if recording_units is not None:
+            user_metadata["recording_units"] = dict(recording_units)
         cls._write_parquet_with_metadata(df, user_path, user_metadata)
 
         user_parquet_paths: List[Tuple[int, str]] = [(user_index, str(user_path))]
@@ -917,6 +968,8 @@ class CsvProcessingService:
                     scenario_series.astype("string").str.strip() == scenario_name
                 ]
                 scenario_metadata: Dict[str, Any] = {}
+                if recording_units is not None:
+                    scenario_metadata["recording_units"] = dict(recording_units)
                 placement_resolution = resolve_scenario(
                     scenario_name, placement_map.keys()
                 )
@@ -1043,6 +1096,10 @@ class CsvProcessingService:
                     spec.metadata_lines,
                     rename_vendor_fixations=rename_vendor_fixations,
                 )
+                normalized_df, recording_units, detector_distance_unit = cls._normalize_declared_units(
+                    parsed.dataframe, channels
+                )
+                gaze_units = cls._gaze_units(channels)
 
                 participant_code = cls._extract_participant_code(spec.metadata_lines)
                 if not participant_code:
@@ -1060,7 +1117,7 @@ class CsvProcessingService:
                         all_detected_sensors.append(sensor)
 
                 observed_grid_rate_hz, rate_warnings = cls._derive_observed_rate(
-                    parsed.dataframe,
+                    normalized_df,
                     declared_file_rate_hz,
                 )
                 declared_gaze_rate_hz, gaze_warnings = cls._derive_gaze_rate(channels)
@@ -1088,7 +1145,7 @@ class CsvProcessingService:
                         "gaze channel rate differs from observed file grid; values may be resampled"
                     )
 
-                cleaned_df = parsed.dataframe.copy()
+                cleaned_df = normalized_df
                 fixation_available = False
                 fixation_method: Optional[str] = None
                 fixation_detector_version: Optional[str] = None
@@ -1109,8 +1166,8 @@ class CsvProcessingService:
                         metadata=FixationDetectionMetadata(
                             eye_sampling_rate_hz=declared_gaze_rate_hz,
                             grid_sampling_rate_hz=observed_grid_rate_hz,
-                            gaze_units=cls._gaze_units(channels),
-                            distance_unit=cls._distance_unit(channels),
+                            gaze_units=gaze_units,
+                            distance_unit=detector_distance_unit,
                             screen_geometry=detector_geometry,
                             stimulus_placements_by_scenario=(
                                 stimulus_placements_by_scenario
@@ -1182,6 +1239,7 @@ class CsvProcessingService:
                     output_dir=output_dir,
                     stimulus_placements_by_scenario=block_stimulus_placements,
                     physical_screen_geometry=physical_geometry_snapshot,
+                    recording_units=recording_units,
                 )
                 all_user_paths.extend(user_paths)
                 all_scenario_paths.extend(scenario_paths)
