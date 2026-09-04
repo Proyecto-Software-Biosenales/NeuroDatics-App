@@ -3,7 +3,13 @@
 from typing import Optional
 import numpy as np
 import pandas as pd
-from ...domain.coordinate_transform import LOCAL_X_COLUMN, LOCAL_Y_COLUMN, applied_transform_mask, attach_transform_provenance, valid_stimulus_gaze_mask
+from ...domain.coordinate_transform import (
+    LOCAL_X_COLUMN,
+    LOCAL_Y_COLUMN,
+    applied_transform_mask,
+    attach_transform_provenance,
+    valid_stimulus_gaze_mask,
+)
 from neurodatics.shared.scenario_identity import is_all_scenarios
 from .numeric_helpers import _filter_time_window
 from .numeric_helpers import _infer_fs
