@@ -67,16 +67,3 @@ def test_cors_origins_are_explicit_and_normalized():
     )
 
     assert settings.cors_origins == ["https://app.example.edu", "https://admin.example.edu"]
-
-
-def test_worker_redis_socket_timeout_defaults_above_rq_dequeue_timeout():
-    settings = make_production_settings()
-
-    assert settings.redis_socket_timeout_seconds == 3.0
-    assert settings.redis_worker_socket_timeout_seconds == 450.0
-
-
-def test_worker_redis_socket_timeout_can_be_disabled():
-    settings = make_production_settings(redis_worker_socket_timeout_seconds="none")
-
-    assert settings.redis_worker_socket_timeout_seconds is None

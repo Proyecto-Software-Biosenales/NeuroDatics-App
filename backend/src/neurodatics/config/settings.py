@@ -66,7 +66,6 @@ class Settings(BaseSettings):
     google_application_credentials: Optional[str] = None
     gdrive_service_account_json: Optional[str] = None
     gdrive_folder_id: Optional[str] = None
-    gdrive_refresh_token: Optional[str] = None
     gdrive_http_timeout_seconds: int = 300
     gdrive_request_retries: int = 5
     project_zip_max_size_mb: int = 500
@@ -74,7 +73,6 @@ class Settings(BaseSettings):
 
     # Google Drive folder sync. Empty means the sync-folder endpoints are disabled;
     # any other value is the only directory tree they are allowed to read from.
-    gdrive_sync_allowed_root: Optional[str] = None
 
     # ZIP decompression guards (zip-bomb defence). The compressed cap above is not
     # enough on its own: a small archive can expand without bound.
@@ -93,7 +91,6 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     redis_socket_connect_timeout_seconds: float = 3.0
     redis_socket_timeout_seconds: float = 3.0
-    redis_worker_socket_timeout_seconds: Optional[float] = 450.0
 
     # Analytics cache
     parquet_cache_dir: str = "/data/parquet_cache"
@@ -124,12 +121,6 @@ class Settings(BaseSettings):
                 return True
         return value
 
-    @field_validator("redis_worker_socket_timeout_seconds", mode="before")
-    @classmethod
-    def parse_optional_worker_redis_timeout(cls, value: Any) -> Any:
-        if isinstance(value, str) and value.strip().lower() in {"", "none", "null"}:
-            return None
-        return value
 
     @property
     def cors_origins(self) -> list[str]:
