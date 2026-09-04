@@ -19,6 +19,9 @@ import time
 import anyio
 
 from ....api.deps import get_db, get_current_user
+from neurodatics.shared.scenario_identity import is_all_scenarios
+from ...analytics.application.services.analytics_service import PupilAnalyticsService
+from ...analytics.application.services.parquet_reader_service import ParquetReaderService
 from ....config.settings import settings
 from ....infra.storage.gdrive_oauth_credentials import build_google_drive_oauth_credentials
 from ....infra.storage.gdrive_client import gdrive_client
@@ -224,7 +227,6 @@ def _hashed_cache_id(cache_key: str) -> str:
 
 def _disk_cache_path(file_id: UUID) -> "Path":
     """Return the path for the disk-cached image file."""
-    from pathlib import Path
     base = Path(_IMAGE_DISK_CACHE_DIR)
     base.mkdir(parents=True, exist_ok=True)
     return base / str(file_id)
@@ -232,7 +234,6 @@ def _disk_cache_path(file_id: UUID) -> "Path":
 
 def _disk_cache_mime_path(file_id: UUID) -> "Path":
     """Return the path for the disk-cached mime type file."""
-    from pathlib import Path
     base = Path(_IMAGE_DISK_CACHE_DIR)
     return base / f"{file_id}.mime"
 
@@ -536,15 +537,10 @@ async def _compute_video_frame_time_s(
     scenario: Optional[str],
     absolute_time_s: float,
 ) -> float:
-    from ...analytics.domain.scenario_identity import is_all_scenarios
-
     if not participant_code or is_all_scenarios(scenario):
         return max(0.0, absolute_time_s)
 
     try:
-        from ...analytics.application.services.analytics_service import PupilAnalyticsService
-        from ...analytics.application.services.parquet_reader_service import ParquetReaderService
-
         reader = ParquetReaderService(db)
         # Resolved once and passed to both reads: a re-ingestion landing between
         # them would otherwise have the miss fall back onto a different generation

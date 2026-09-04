@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.ndimage import gaussian_filter
 from scipy.signal import spectrogram, welch
 
-from neurodatics.modules.projects.application.services.fixation_detection_service import (
+from neurodatics.shared.fixation_contract import (
     CANONICAL_FIXATION_MIN_DURATION_MS,
     DEFAULT_FIXATION_MIN_DURATION_MS,
     FIXATION_DURATION_VARIANT_COLUMNS,
@@ -26,7 +26,7 @@ from ...domain.coordinate_transform import (
     hard_stimulus_boundary_mask,
     valid_stimulus_gaze_mask,
 )
-from ...domain.scenario_identity import (
+from neurodatics.shared.scenario_identity import (
     ScenarioResolution,
     is_all_scenarios,
     resolve_scenario,

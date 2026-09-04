@@ -6,7 +6,7 @@ from uuid import UUID
 import redis as redis_lib
 
 from ....infra.queue.redis_connection import get_redis_client
-from ..domain.cache_generation import (
+from neurodatics.shared.cache_generation import (
     CACHE_GENERATION_PREFIX,
     generation_token,
     is_generation_token,

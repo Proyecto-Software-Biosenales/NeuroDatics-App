@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .....config.settings import settings
 from .....infra.storage.gdrive_client import gdrive_client
 from ....integrations.google_drive.infrastructure.configure_client import configure_gdrive_client_with_oauth
-from ....analytics.domain.scenario_identity import scenario_key
+from neurodatics.shared.scenario_identity import scenario_key
 from ....analytics.infrastructure.parquet_cache import ParquetCacheService
 from ....analytics.infrastructure.redis_cache import AnalyticsRedisCache
 from ....scenaries.domain.entities import Scenaries, StimulusPlacement

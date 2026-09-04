@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from ....api.deps import get_current_user, get_db
 from ...participants.domain.entities import Participant
 from ...projects.domain.entities import Project
-from ...projects.application.services.fixation_detection_service import (
+from neurodatics.shared.fixation_contract import (
     DEFAULT_FIXATION_MIN_DURATION_MS,
 )
 from ...scenaries.domain.entities import Scenaries
@@ -31,9 +31,9 @@ from ..application.services.analytics_service import (
 from ..application.services.comparison_chart_config import ChartConfigBuilder
 from ..application.services.correlation_service import CorrelationAnalyticsService
 from ..application.services.parquet_reader_service import ParquetReaderService
-from ..domain.cache_generation import project_cache_generation
+from neurodatics.shared.cache_generation import project_cache_generation
 from ..domain.coordinate_transform import transform_cache_token
-from ..domain.scenario_identity import is_all_scenarios, resolve_scenario
+from neurodatics.shared.scenario_identity import is_all_scenarios, resolve_scenario
 from ..infrastructure.redis_cache import AnalyticsRedisCache
 from .schemas import (
     AoiMetricsResponse,

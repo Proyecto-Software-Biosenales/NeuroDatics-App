@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 import numpy as np
 import pandas as pd
 
-from neurodatics.modules.analytics.domain.scenario_identity import resolve_scenario
+from neurodatics.shared.scenario_identity import resolve_scenario
 
 from .fixation_detection_service import (
     FixationDetectionMetadata,

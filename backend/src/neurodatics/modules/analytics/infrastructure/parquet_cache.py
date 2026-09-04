@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 import pandas as pd
 
 from ....config.settings import settings
-from ..domain.cache_generation import (
+from neurodatics.shared.cache_generation import (
     CACHE_GENERATION_PREFIX,
     generation_token,
     is_generation_token,
