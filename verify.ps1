@@ -1,4 +1,4 @@
-param([int]$MaxLintErrors = 7, [int]$MaxLintWarnings = 8)
+param([int]$MaxLintErrors = 0, [int]$MaxLintWarnings = 8)
 
 $ErrorActionPreference = 'Stop'
 $taskPython = Join-Path $PSScriptRoot '.venv/Scripts/python.exe'
