@@ -211,7 +211,8 @@ export const EditProjectDialog = ({
     }
   }
   const [currentStep, setCurrentStep] = useState(1)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(isOpen)
+  const [loadRequest, setLoadRequest] = useState({ isOpen, projectId })
   const [isSaving, setIsSaving] = useState(false)
   const [isSaveCompleted, setIsSaveCompleted] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -268,55 +269,65 @@ export const EditProjectDialog = ({
     stimulusPlacements: [],
   })
 
-  const loadProject = async () => {
-    setIsLoading(true)
-    setSaveError(null)
-    try {
-      const detail = await ProjectsApi.get(projectId)
-
-      // Extract name and ID suffix
-      const { name: extractedName, id: idSuffix } = extractProjectNameAndId(detail.name || "")
-      projectNameIdSuffixRef.current = idSuffix
-
-      const participants: ParticipantData[] = (detail.participants || []).map((p) => ({
-        id: p.participant_code,
-        age: p.age != null ? String(p.age) : "",
-        sex: toParticipantSex(p.sex),
-      }))
-
-      const newFormData = {
-        projectName: extractedName,
-        description: detail.description || "",
-        status: toProjectStatus(detail.status),
-        experimentFolderFiles: null,
-        folderPath: getCurrentZipFilename(detail),
-        uploadedZip: null,
-        sensors: ((detail.sensors || []).map((s) => s.sensor_type) as SensorType[]) || [],
-        participants: participants.length > 0 ? participants : defaultParticipants,
-        scenaries: parseScenaries(detail),
-        fixationGeometry: createEmptyFixationScreenGeometry(),
-        stimulusPlacements: [],
-      }
-
-      setFormData(newFormData)
-      setHasProcessedFolderUpdate(false)
-      originalFormDataRef.current = JSON.parse(JSON.stringify(newFormData))
-      originalCreatedAtRef.current = detail.created_at
-        ? new Date(detail.created_at).toLocaleDateString("es-ES")
-        : ""
-    } catch (error) {
-      console.error("[EditProjectDialog] loadProject failed", { projectId, error })
-      setSaveError("No se pudo cargar la información del proyecto para editar.")
-    } finally {
-      setIsLoading(false)
+  // Reset loading before rendering a different project or reopening the form.
+  if (loadRequest.isOpen !== isOpen || loadRequest.projectId !== projectId) {
+    setLoadRequest({ isOpen, projectId })
+    if (isOpen) {
+      setIsLoading(true)
+      setSaveError(null)
+      setShouldUpdateFolder(false)
     }
   }
 
   useEffect(() => {
     if (!isOpen) return
+    let cancelled = false
+    const loadProject = async () => {
+      try {
+        const detail = await ProjectsApi.get(projectId)
+        if (cancelled) return
+
+        // Extract name and ID suffix
+        const { name: extractedName, id: idSuffix } = extractProjectNameAndId(detail.name || "")
+        projectNameIdSuffixRef.current = idSuffix
+
+        const participants: ParticipantData[] = (detail.participants || []).map((p) => ({
+          id: p.participant_code,
+          age: p.age != null ? String(p.age) : "",
+          sex: toParticipantSex(p.sex),
+        }))
+
+        const newFormData = {
+          projectName: extractedName,
+          description: detail.description || "",
+          status: toProjectStatus(detail.status),
+          experimentFolderFiles: null,
+          folderPath: getCurrentZipFilename(detail),
+          uploadedZip: null,
+          sensors: ((detail.sensors || []).map((s) => s.sensor_type) as SensorType[]) || [],
+          participants: participants.length > 0 ? participants : defaultParticipants,
+          scenaries: parseScenaries(detail),
+          fixationGeometry: createEmptyFixationScreenGeometry(),
+          stimulusPlacements: [],
+        }
+
+        setFormData(newFormData)
+        setHasProcessedFolderUpdate(false)
+        originalFormDataRef.current = JSON.parse(JSON.stringify(newFormData))
+        originalCreatedAtRef.current = detail.created_at
+          ? new Date(detail.created_at).toLocaleDateString("es-ES")
+          : ""
+      } catch (error) {
+        if (cancelled) return
+        console.error("[EditProjectDialog] loadProject failed", { projectId, error })
+        setSaveError("No se pudo cargar la información del proyecto para editar.")
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
     void loadProject()
-    setShouldUpdateFolder(false)
-  }, [isOpen])
+    return () => { cancelled = true }
+  }, [isOpen, projectId])
 
   const updateProjectName = (name: string) => setFormData((prev) => ({ ...prev, projectName: name }))
   const updateDescription = (description: string) => setFormData((prev) => ({ ...prev, description }))
