@@ -23,15 +23,14 @@ client = TestClient(app, raise_server_exceptions=False)
 # Every route that used to be reachable with no credentials at all.
 GUARDED_ROUTES = [
     ("GET", "/api/integrations/google-drive/authorize", {}),
+]
+
+RETIRED_ROUTES = [
     ("GET", "/api/integrations/google-drive/status", {}),
     ("DELETE", "/api/integrations/google-drive", {}),
     ("POST", "/api/integrations/google-drive/create-folder", {"folder_name": "x"}),
     ("POST", "/api/integrations/google-drive/sync-folder", {"local_folder_path": "/data"}),
-    (
-        "POST",
-        "/api/integrations/google-drive/sync-folder-scheduled",
-        {"local_folder_path": "/etc"},
-    ),
+    ("POST", "/api/integrations/google-drive/sync-folder-scheduled", {"local_folder_path": "/data"}),
     ("GET", "/api/integrations/google-drive/sync-status/sync_1", {}),
     ("GET", "/api/integrations/google-drive/sync-tasks", {}),
 ]
@@ -49,6 +48,12 @@ def test_google_drive_routes_reject_a_forged_bearer_token(method, path, params):
         method, path, params=params, headers={"Authorization": "Bearer not-a-real-token"}
     )
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize("method,path,params", RETIRED_ROUTES)
+def test_retired_google_drive_routes_are_not_mounted(method, path, params):
+    response = client.request(method, path, params=params)
+    assert response.status_code == 404
 
 
 def test_oauth_callback_stays_reachable_without_a_token():
