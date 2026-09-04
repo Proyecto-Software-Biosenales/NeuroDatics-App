@@ -68,7 +68,7 @@ export function FiltersBar({
         disabled={participantsLoading || participants.length === 0}
       >
         <ComboboxTrigger className="flex w-40 shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-44 2xl:py-2">
-          <ComboboxValue placeholder="Sin sujetos" />
+          <ComboboxValue placeholder="Sin sujetos">{selectedParticipant ?? undefined}</ComboboxValue>
         </ComboboxTrigger>
         <ComboboxContent>
           <ComboboxList>

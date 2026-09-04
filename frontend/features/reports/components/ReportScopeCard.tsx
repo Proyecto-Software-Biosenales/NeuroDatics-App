@@ -75,7 +75,9 @@ export const ReportScopeCard = ({
                 disabled={loading || !hasParticipants}
               >
                 <ComboboxTrigger className="flex w-full max-w-md items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50">
-                  <ComboboxValue placeholder={loading ? "Cargando..." : "Selecciona un participante"} />
+                  <ComboboxValue placeholder={loading ? "Cargando..." : "Selecciona un participante"}>
+                    {selectedParticipant || undefined}
+                  </ComboboxValue>
                 </ComboboxTrigger>
                 <ComboboxContent>
                   <ComboboxList>
