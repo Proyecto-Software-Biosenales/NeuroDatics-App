@@ -19,6 +19,8 @@ try {
         Assert-Exit 'Backend lint'
         & $taskPython -m vulture src tests vulture_whitelist.py --min-confidence 100
         Assert-Exit 'Backend dead-code ratchet'
+        & $taskPython -m deptry .
+        Assert-Exit 'Backend dependency declarations'
         $env:PYTHONPATH = 'src'
         & $taskPython -c "import runpy; runpy.run_path('tests/conftest.py'); from fastapi.routing import APIRoute; from neurodatics.main import app; print('App boot: %s HTTP operations' % sum(len(route.methods or []) for route in app.routes if isinstance(route, APIRoute)))"
         Assert-Exit 'App boot'
