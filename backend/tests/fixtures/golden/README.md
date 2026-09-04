@@ -33,6 +33,9 @@ HTTP snapshots pin recursive serialized keys and types independently of the resp
 PNG bytes are never snapshotted.
 
 The initial baseline used pytest-regressions 2.11.0 and syrupy 4.6.1.
+The committed baselines were also verified unchanged with the Python 3.9-compatible
+dependency pins pytest-regressions 2.8.3 and syrupy 4.6.1: 64 tests and 24 snapshots
+passed; the isolated mutation was detected again.
 Syrupy 4.6.1 has no `--snapshot-update-new-only` option. Its one initial
 `--snapshot-update` invocation was guarded by absence of all `.ambr` files in the isolated
 new test directory. Subsequent verification uses no update flags.
@@ -46,6 +49,7 @@ Run from `backend` with the root virtual environment:
 
 `check_mutation.py` changes the smoothing window by one sample in its own process,
 runs one characterization case without any update flag, and succeeds only if that case fails.
+It first runs the suite's offline environment setup, so no local `.env` is required.
 The script never modifies production files or goldens.
 
 Verification on 2026-09-03: 64 tests and all 24 snapshots passed without update
