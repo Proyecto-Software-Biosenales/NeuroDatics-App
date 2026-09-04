@@ -16,11 +16,11 @@ Solicitudes que TI debería permitir:
 
 | Origen | Destino | Puerto | Uso |
 | --- | --- | --- | --- |
-| Backend y worker Docker | Host configurado en `DATABASE_URL` | TCP `5432` | PostgreSQL/Supabase con TLS usando pooler de sesion |
+| Backend Docker | Host configurado en `DATABASE_URL` | TCP `5432` | PostgreSQL/Supabase con TLS usando pooler de sesion |
 | Navegador del usuario | `accounts.google.com` | HTTPS `443` | Inicio OAuth |
-| Backend y worker Docker | `oauth2.googleapis.com` | HTTPS `443` | Canje y renovación de tokens |
+| Backend Docker | `oauth2.googleapis.com` | HTTPS `443` | Canje y renovación de tokens |
 | Backend Docker | `openidconnect.googleapis.com` | HTTPS `443` | Perfil OAuth |
-| Backend y worker Docker | `www.googleapis.com` | HTTPS `443` | Google Drive |
+| Backend Docker | `www.googleapis.com` | HTTPS `443` | Google Drive |
 
 Solicita reglas de salida por FQDN cuando el firewall lo permita; no fijes las
 IP observadas en una prueba. PostgreSQL no se transporta por `HTTPS_PROXY`: si
@@ -38,7 +38,6 @@ POSTGRES_PASSWORD=<secreto-url-safe-unico>
 DATABASE_URL=postgresql+psycopg://USER:PASSWORD@aws-REGION.pooler.supabase.com:5432/postgres?sslmode=require
 CORS_ALLOWED_ORIGINS=https://neurodatics.universidad.edu
 REDIS_SOCKET_TIMEOUT_SECONDS=3
-REDIS_WORKER_SOCKET_TIMEOUT_SECONDS=450
 ```
 
 `sslmode=verify-full` es preferible cuando el certificado CA de Supabase está
@@ -47,9 +46,8 @@ de datos externa sin TLS explícito o un secreto JWT de ejemplo/corto.
 El Compose actual también inicia PostgreSQL local, de modo que
 `POSTGRES_PASSWORD` sigue siendo obligatorio y no debe ser `postgres`.
 
-Mantén `REDIS_SOCKET_TIMEOUT_SECONDS` corto para API/cache y
-`REDIS_WORKER_SOCKET_TIMEOUT_SECONDS` por encima del timeout de espera de RQ
-para que el worker pueda permanecer idle sin reiniciarse.
+Mantén `REDIS_SOCKET_TIMEOUT_SECONDS` corto para API/cache. La ingesta se
+ejecuta dentro del backend; el stack ya no inicia un worker RQ.
 
 Si TI provee un proxy explícito para HTTPS, define `HTTP_PROXY`, `HTTPS_PROXY`
 y, si hace falta, amplía `NO_PROXY`. No copies esas credenciales a variables
@@ -60,12 +58,11 @@ Para un dominio que no sea localhost, registra las URL HTTPS equivalentes de
 
 ## Preflight Antes De Abrir El Caso Con TI
 
-Después de levantar el stack, ejecuta los dos comandos. No imprimen
+Después de levantar el stack, ejecuta el siguiente comando. No imprimen
 contraseñas, tokens ni la URL completa de base de datos:
 
 ```powershell
 docker compose exec -T backend python -m neurodatics.diagnostics.network_preflight
-docker compose exec -T worker python -m neurodatics.diagnostics.network_preflight
 ```
 
 El preflight valida TCP y `SELECT 1` contra la base de datos, además de DNS,

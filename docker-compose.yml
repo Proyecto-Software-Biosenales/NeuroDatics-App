@@ -6,16 +6,15 @@ x-backend-environment: &backend-environment
   REDIS_URL: ${REDIS_URL:-redis://redis:6379}
   REDIS_SOCKET_CONNECT_TIMEOUT_SECONDS: ${REDIS_SOCKET_CONNECT_TIMEOUT_SECONDS:-3}
   REDIS_SOCKET_TIMEOUT_SECONDS: ${REDIS_SOCKET_TIMEOUT_SECONDS:-3}
-  REDIS_WORKER_SOCKET_TIMEOUT_SECONDS: ${REDIS_WORKER_SOCKET_TIMEOUT_SECONDS:-450}
   AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:?Set AUTH_JWT_SECRET in .env before starting Docker.}"
   AUTH_USER_STORE_PATH: ${AUTH_USER_STORE_PATH:-/data/auth_users.json}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
   HTTP_PROXY: ${HTTP_PROXY:-}
   HTTPS_PROXY: ${HTTPS_PROXY:-}
-  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1,frontend,backend,worker,db,redis}
+  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1,frontend,backend,db,redis}
   http_proxy: ${HTTP_PROXY:-}
   https_proxy: ${HTTPS_PROXY:-}
-  no_proxy: ${NO_PROXY:-localhost,127.0.0.1,::1,frontend,backend,worker,db,redis}
+  no_proxy: ${NO_PROXY:-localhost,127.0.0.1,::1,frontend,backend,db,redis}
   GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
   GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
   GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3000/authorize}
@@ -34,8 +33,6 @@ x-backend-environment: &backend-environment
   UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS: ${UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS:-5}
   GDRIVE_SYNC_ALLOWED_ROOT: ${GDRIVE_SYNC_ALLOWED_ROOT:-}
   INGESTION_SAVE_ORIGINAL_ZIP: ${INGESTION_SAVE_ORIGINAL_ZIP:-true}
-  JOB_TIMEOUT: ${JOB_TIMEOUT:-3600}
-  JOB_RESULT_TTL: ${JOB_RESULT_TTL:-86400}
   PARQUET_CACHE_DIR: ${PARQUET_CACHE_DIR:-/data/parquet_cache}
   PARQUET_CACHE_TTL_HOURS: ${PARQUET_CACHE_TTL_HOURS:-4}
   ANALYTICS_REDIS_TTL_SECONDS: ${ANALYTICS_REDIS_TTL_SECONDS:-900}
@@ -108,35 +105,6 @@ services:
       retries: 5
       start_period: 20s
 
-  worker:
-    image: neurodatics-backend-worker:local
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    command: python -m neurodatics.workers
-    environment: *backend-environment
-    depends_on:
-      backend:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - neurodatics_data:/data
-    networks:
-      - egress
-      - data
-    mem_limit: ${WORKER_MEM_LIMIT:-2g}
-    mem_reservation: ${WORKER_MEM_RESERVATION:-512m}
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health/worker', timeout=5)\""]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
   frontend:
     image: neurodatics-frontend:local
     build:
@@ -171,6 +139,5 @@ volumes:
 
 networks:
   app:
-  egress:
   data:
     internal: true

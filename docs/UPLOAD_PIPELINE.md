@@ -11,6 +11,13 @@ defends against and what it does not.
   everything else in §5 is still open. See §6 for the running list.
 - **Audience**: developers and whoever signs off on the deployment.
 
+Cleanup decision (2026-09-04): the user explicitly retired the unused RQ worker.
+Current Compose files now start only frontend, backend, PostgreSQL and Redis;
+synchronous ZIP ingestion and the Redis analytics cache remain active. References
+to the worker below describe the historical audit. See
+[retirement evidence](cleanup/evidence/retired-runtime-surfaces.md) for the staged
+removal and preserved dependencies.
+
 ---
 
 ## 1. Summary

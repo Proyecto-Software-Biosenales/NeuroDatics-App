@@ -25,7 +25,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-El stack crea y conecta `frontend`, `backend`, `worker`, `db` y `redis`. Las migraciones se ejecutan al iniciar el backend.
+El stack crea y conecta `frontend`, `backend`, `db` y `redis`. Las migraciones se ejecutan al iniciar el backend.
 
 | Recurso | URL |
 | --- | --- |
@@ -52,6 +52,8 @@ docker compose down -v
 ```
 
 Después de actualizar el repositorio, ejecuta de nuevo `docker compose up -d --build`.
+Al actualizar desde una versión con el worker RQ, usa
+`docker compose up -d --build --remove-orphans` para retirar su contenedor antiguo.
 
 ## Solución de problemas
 
@@ -69,5 +71,5 @@ Para un despliegue en una red universitaria o corporativa, consulta [NETWORK_DEP
 
 - `docker-compose.yml`: punto de inicio único del stack.
 - `frontend/`: interfaz Next.js.
-- `backend/`: API FastAPI, migraciones y worker RQ.
+- `backend/`: API FastAPI, migraciones e ingesta de experimentos.
 - `docs/NETWORK_DEPLOYMENT.md`: guía de red y proxy.

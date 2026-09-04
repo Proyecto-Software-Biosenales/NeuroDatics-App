@@ -13,7 +13,7 @@ No ejecutes Docker ni mantengas una configuración independiente desde esta carp
 - API HTTP y documentación OpenAPI.
 - Migraciones de PostgreSQL al iniciar el contenedor.
 - Autenticación con Google OAuth y gestión de proyectos.
-- Procesamiento asíncrono mediante Redis y el servicio `worker`.
+- Ingesta de ZIP dentro de la solicitud HTTP y caché de analítica en Redis.
 
 ## Configuración relevante
 
