@@ -45,7 +45,8 @@ async function fixture(t, hook, args) {
     const React = require("react")
     const { flushSync } = require("react-dom")
     const root = require("react-dom/client").createRoot(document.getElementById("root"))
-    const useHook = require("hooks")[hook]
+    const hooksModuleId = ["hook", "s"].join("")
+    const useHook = require(hooksModuleId)[hook]
     const state = { current: null, requests, revokedUrls: [] }
     const revokeObjectURL = URL.revokeObjectURL.bind(URL)
     URL.revokeObjectURL = (url) => {
