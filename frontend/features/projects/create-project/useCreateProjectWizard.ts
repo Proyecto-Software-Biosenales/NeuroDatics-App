@@ -63,6 +63,13 @@ const isGoogleSessionExpiredError = (message: string): boolean => {
   return /google drive|oauth|invalid_grant|refresh token|token has expired|no se pudo configurar google drive/i.test(message);
 };
 
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error !== null && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+  return fallback;
+};
+
 const extractDriveFileId = (url?: string | null): string | null => {
   if (!url) return null;
   const filePathMatch = url.match(/\/d\/([^/]+)/i);
@@ -360,7 +367,7 @@ export const useCreateProjectWizard = (
         }
         const zipBlob = await zip.generateAsync({ type: "blob" });
         zipFile = new File([zipBlob], `${folderName}.zip`, { type: "application/zip" });
-      } catch (packError: any) {
+      } catch (packError) {
         console.error("[CreateProjectWizard] JSZip packaging failed", packError);
         throw new Error("Error al empaquetar la carpeta. Verifica que no exceda 500MB.");
       }
@@ -574,7 +581,7 @@ export const useCreateProjectWizard = (
       keepDraftOnFailure = true;
       setSaveProgressMessage(null);
       setSaveNotice("Carpeta procesada correctamente. Puedes continuar con la configuración.");
-    } catch (error: any) {
+    } catch (error) {
       // The backend re-validates structure independently. If it still finds the
       // archive ambiguous, surface its questions instead of a generic failure
       // and send the user back to Step 1 to answer them.
@@ -590,7 +597,7 @@ export const useCreateProjectWizard = (
         return;
       }
 
-      const rawErrorMessage = error?.message ?? "Error procesando carpeta";
+      const rawErrorMessage = getErrorMessage(error, "Error procesando carpeta");
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
         .replace(/^Error subiendo archivo:\s*/i, "");
@@ -863,8 +870,8 @@ export const useCreateProjectWizard = (
       toast.success(`Proyecto "${finalized.name}" creado correctamente.`);
       setIsOpen(false);
       reset();
-    } catch (e: any) {
-      const rawErrorMessage = e?.message ?? "Error guardando proyecto";
+    } catch (e) {
+      const rawErrorMessage = getErrorMessage(e, "Error guardando proyecto");
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
         .replace(/^Error subiendo archivo:\s*/i, "");

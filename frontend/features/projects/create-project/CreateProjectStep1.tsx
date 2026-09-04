@@ -202,7 +202,7 @@ export const CreateProjectStep1 = ({
         })
         // Store reconstructed relative path for drag-drop files.
         const relativePath = basePath ? `${basePath}/${entry.name}` : `${dirEntry.name}/${entry.name}`
-        ;(file as any)._relativePath = relativePath
+        Object.assign(file, { _relativePath: relativePath })
         files.push(file)
       } else if (entry.isDirectory) {
         if (entry.name.startsWith(".")) continue
