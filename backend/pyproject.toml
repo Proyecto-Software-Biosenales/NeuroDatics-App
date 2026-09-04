@@ -62,3 +62,8 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["F401", "F811", "F841", "ERA001"]
+
+[tool.deptry]
+known_first_party = ["neurodatics"]
+# Runtime discovery happens outside direct Python imports for these packages.
+per_rule_ignores = { DEP002 = ["psycopg", "cryptography", "python-multipart"] }
