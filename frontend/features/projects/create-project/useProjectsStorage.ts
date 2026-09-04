@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
-import type { Project } from "@/features/projects/types"
-import { ProjectsApi } from "@/features/projects/api/projectsApi"
+import type { Project, SensorType } from "@/features/projects/types"
+import { ProjectsApi, type ApiProject } from "@/features/projects/api/projectsApi"
 
 const STORAGE_KEY = "neurodatics_projects"
 
@@ -89,10 +89,10 @@ export const useProjectsStorage = () => {
   const previousStatusByIdRef = useRef<Map<string, string | undefined>>(new Map())
   const hasProcessingDraftRef = useRef(false)
 
-  const buildProject = (bp: any): Project => ({
+  const buildProject = (bp: ApiProject): Project => ({
     id: bp.id,
     name: bp.name,
-    description: bp.description,
+    description: bp.description ?? undefined,
     status: normalizeStatus(bp.status),
     ingestionStatus: bp.ingestion_status?.toUpperCase() as Project["ingestionStatus"] || undefined,
     createdAt: formatDate(bp.created_at),
@@ -100,7 +100,9 @@ export const useProjectsStorage = () => {
       ? formatDateTime(bp.updated_at)
       : undefined,
     sensors: bp.sensors && bp.sensors.length > 0
-      ? bp.sensors.map((s: any) => s.sensor_type || s)
+      ? bp.sensors.map((sensor) => typeof sensor === "string" ? sensor : sensor.sensor_type).filter(
+          (sensor): sensor is SensorType => sensor === "EEG" || sensor === "GSR" || sensor === "EyeTracker"
+        )
       : [],
     participants: bp.participants_count || 0,
   })

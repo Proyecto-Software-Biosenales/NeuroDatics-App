@@ -525,7 +525,7 @@ export const EditProjectDialog = ({
         }
         const zipBlob = await zip.generateAsync({ type: "blob" })
         zipFile = new File([zipBlob], `${folderName}.zip`, { type: "application/zip" })
-      } catch (packError: any) {
+      } catch (packError) {
         console.error("[EditProjectDialog] JSZip packaging failed", packError)
         throw new Error("Error al empaquetar la carpeta. Verifica que no exceda 500MB.")
       }
