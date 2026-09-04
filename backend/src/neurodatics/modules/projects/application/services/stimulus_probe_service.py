@@ -109,7 +109,8 @@ def _probe_image(path: Path) -> StimulusDimensions:
 def _exif_orientation(image) -> Optional[int]:
     try:
         exif = image.getexif()
-    except Exception:
+    except Exception as exc:
+        logger.warning("Stimulus EXIF orientation unavailable (%s)", type(exc).__name__)
         return None
     if not exif:
         return None
