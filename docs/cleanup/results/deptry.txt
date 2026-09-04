@@ -1,0 +1,29 @@
+Scanning 138 files...
+
+[1mmigrations\env.py[m[36m:[m13[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1mmigrations\env.py[m[36m:[m14[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1mmigrations\env.py[m[36m:[m17[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1mmigrations\env.py[m[36m:[m18[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1mmigrations\env.py[m[36m:[m19[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1mpyproject.toml[m[36m:[m [1m[31mDEP002[m 'psycopg' defined as a dependency but not used in the codebase
+[1mpyproject.toml[m[36m:[m [1m[31mDEP002[m 'cryptography' defined as a dependency but not used in the codebase
+[1mpyproject.toml[m[36m:[m [1m[31mDEP002[m 'python-multipart' defined as a dependency but not used in the codebase
+[1msrc\neurodatics\modules\analytics\api\routes.py[m[36m:[m16[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\analytics\api\routes.py[m[36m:[m34[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\analytics\api\routes.py[m[36m:[m36[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\analytics\application\services\analytics_service.py[m[36m:[m10[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\analytics\application\services\analytics_service.py[m[36m:[m29[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\analytics\application\services\parquet_reader_service.py[m[36m:[m15[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\analytics\domain\cache_generation.py[m[36m:[m3[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\analytics\domain\scenario_identity.py[m[36m:[m3[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\analytics\infrastructure\parquet_cache.py[m[36m:[m14[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\analytics\infrastructure\redis_cache.py[m[36m:[m9[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\projects\api\routes.py[m[36m:[m22[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\projects\application\services\csv_processing_service.py[m[36m:[m15[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\projects\application\services\fixation_detection_service.py[m[36m:[m20[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\projects\application\services\fixation_detection_service.py[m[36m:[m26[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\projects\application\use_cases\upload_experiment_zip.py[m[36m:[m16[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1msrc\neurodatics\modules\reports\application\services\executive_report_service.py[m[36m:[m40[36m:[m1[36m:[m [1m[31mDEP001[m 'neurodatics' imported but missing from the dependency definitions
+[1m[31mFound 24 dependency issues.[m
+
+For more information, see the documentation: https://deptry.com/

@@ -101,3 +101,21 @@ git switch dashboard && git branch -D cleanup/NN-short-name
 
 Nothing else in the campaign depends on an abandoned session except where `PLAN.md` says so
 explicitly.
+
+
+## Executed campaign status — 2026-09-03
+
+The campaign now exists on `codex/cleanup-campaign`; continue from its latest verified
+commit rather than restarting from the historical `dashboard` baseline. `LEDGER.md`
+contains the current decisions, rollback commands and open external gates.
+
+`verify.ps1` now runs backend tests, Ruff, Vulture (required-protocol whitelist),
+application boot, three import-linter contracts, TypeScript, all frontend helper
+unit tests, real React hook tests in Chromium, and the ESLint 0-error/8-warning
+ratchet. The old baseline above is historical. Use the pinned root virtual environment;
+install the already-declared Playwright browser with `cd frontend; npx playwright install chromium`
+if absent. Development tests use Node 24 here; direct TypeScript imports in the existing
+Node tests need a runtime with native TypeScript support.
+
+Real-experiment acceptance, deployed observation/harvest and Tier C product decisions
+remain open. No instruction to delete from a static candidate report overrides those gates.
