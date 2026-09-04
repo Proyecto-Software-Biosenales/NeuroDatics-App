@@ -91,4 +91,3 @@
 | IconName                        | components/ui/Icon.tsx:10:13                               | error    |
 | SignUpResult                    | features/auth/auth.ts:21:18                                | error    |
 | AuthSource                      | features/auth/auth.ts:1:13                                 | error    |
-
