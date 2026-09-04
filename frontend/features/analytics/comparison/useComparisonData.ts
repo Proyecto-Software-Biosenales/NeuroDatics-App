@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { getStimulusImageUrl, getStimulusPreviewUrl } from "@/features/projects/api/stimulusUrls"
 import { AnalyticsApi } from "../api/analyticsApi"
 import {
   useAoiMetrics,
@@ -347,7 +348,7 @@ export function useComparisonData({
     null
   const staticImage = useObjectUrl(
     staticFileId
-      ? `/api/projects/${projectId}/files/${staticFileId}/image`
+      ? getStimulusImageUrl(projectId, staticFileId)
       : null,
     concreteScenario &&
       Boolean(staticFileId) &&
@@ -356,12 +357,11 @@ export function useComparisonData({
 
   const pointPreviewParams = useMemo(() => {
     if (!gazeAt.data?.scenario_file_id) return null
-    const params = new URLSearchParams({
-      time_s: String(gazeAt.data.nearest_time_s),
+    return getStimulusPreviewUrl(projectId, gazeAt.data.scenario_file_id, {
+      timeS: gazeAt.data.nearest_time_s,
+      participantCode,
+      scenario: gazeAt.data.scenario,
     })
-    if (participantCode) params.set("participant_code", participantCode)
-    if (gazeAt.data.scenario) params.set("scenario", gazeAt.data.scenario)
-    return `/api/projects/${projectId}/files/${gazeAt.data.scenario_file_id}/preview?${params}`
   }, [gazeAt.data, participantCode, projectId])
   const pointPreview = useObjectUrl(
     pointPreviewParams,
