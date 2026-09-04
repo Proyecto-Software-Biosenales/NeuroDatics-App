@@ -57,5 +57,3 @@ def fixation_duration_column(base_column: str, min_duration_ms: Any) -> str:
     if duration_ms == CANONICAL_FIXATION_MIN_DURATION_MS:
         return base_column
     return f"{base_column}__{duration_ms}ms"
-
-

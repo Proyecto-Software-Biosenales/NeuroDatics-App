@@ -6,10 +6,10 @@ from ...domain.repository import ProjectRepository
 
 class CreateProjectUseCase:
     """Create project use case"""
-    
+
     def __init__(self, repository: ProjectRepository):
         self.repository = repository
-    
+
     async def execute(
         self,
         owner_id: UUID,
@@ -24,7 +24,7 @@ class CreateProjectUseCase:
             description=description,
             status=status,
         )
-        
+
         return await self.repository.create(project)
 def create_project(data):
     return {"id": "project-placeholder"}

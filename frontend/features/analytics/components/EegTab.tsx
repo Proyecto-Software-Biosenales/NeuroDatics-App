@@ -514,9 +514,9 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         visibleChannels={visibleChannels}
       />
 
-      
 
-      
+
+
 
       <EegPsdView
         availableChannels={availableChannels}
@@ -541,7 +541,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         visiblePsdChannels={visiblePsdChannels}
       />
 
-      
+
 
       <EegSpectrogramView
         availableChannels={availableChannels}
@@ -563,9 +563,9 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         visibleSpectrogramChannels={visibleSpectrogramChannels}
       />
 
-      
 
-      
+
+
 
       <EegTopographyView
         availableTopographyChannels={availableTopographyChannels}
@@ -583,7 +583,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         view={view}
       />
 
-      
+
 
     </div>
   )
