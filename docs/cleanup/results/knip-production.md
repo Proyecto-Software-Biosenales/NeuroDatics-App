@@ -1,6 +1,6 @@
 # Knip report
 
-## Unused exports (52)
+## Unused exports (40)
 
 | Name                              | Location                                                      | Severity |
 | :-------------------------------- | :------------------------------------------------------------ | :------- |
@@ -38,18 +38,6 @@
 | AlertDialogTrigger                | components/ui/alert-dialog.tsx:198:3                          | error    |
 | AlertDialogPortal                 | components/ui/alert-dialog.tsx:196:3                          | error    |
 | AlertDialogMedia                  | components/ui/alert-dialog.tsx:194:3                          | error    |
-| InputGroupTextarea                | components/ui/input-group.tsx:155:3                           | error    |
-| InputGroupText                    | components/ui/input-group.tsx:153:3                           | error    |
-| ComboboxCollection                | components/ui/combobox.tsx:290:3                              | error    |
-| ComboboxChipsInput                | components/ui/combobox.tsx:295:3                              | error    |
-| ComboboxSeparator                 | components/ui/combobox.tsx:292:3                              | error    |
-| useComboboxAnchor                 | components/ui/combobox.tsx:298:3                              | error    |
-| ComboboxInput                     | components/ui/combobox.tsx:284:3                              | error    |
-| ComboboxGroup                     | components/ui/combobox.tsx:288:3                              | error    |
-| ComboboxLabel                     | components/ui/combobox.tsx:289:3                              | error    |
-| ComboboxEmpty                     | components/ui/combobox.tsx:291:3                              | error    |
-| ComboboxChips                     | components/ui/combobox.tsx:293:3                              | error    |
-| ComboboxChip                      | components/ui/combobox.tsx:294:3                              | error    |
 | getAuthSessionStorageKey          | lib/auth/sessionStore.ts:23:17                                | error    |
 | buttonVariants                    | components/ui/button.tsx:67:18                                | error    |
 | DialogOverlay                     | components/ui/dialog.tsx:161:3                                | error    |

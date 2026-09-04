@@ -5,6 +5,22 @@ and the downstream distance conversion. No production calculations or existing
 goldens were changed. Findings below were reproduced with generated `SYN-PROBE`
 CSV blocks, not participant recordings.
 
+## Resolution — 2026-09-04
+
+Commit `dd01a58` closes the unit-contract gaps for new imports. Explicit time units
+(`seconds`, `milliseconds`, `microseconds` and accepted aliases) are converted to
+seconds before observed-rate derivation, fixation detection and Parquet persistence.
+Explicit distance units (`mm`, `cm`, `m` and accepted aliases) are converted to
+millimetres. Unsupported explicit units and incompatible X/Y gaze axes now fail with
+`CsvProcessingError` instead of silently choosing an interpretation. Eleven focused
+tests cover conversion, rejection, detector input and stored schema metadata.
+
+Every newly written participant/scenario Parquet records `recording_units` metadata
+with source and canonical units. Existing Parquet readers deliberately remain
+compatible and do not reinterpret or rewrite historical values. Re-import the source
+CSV to correct a historical Parquet created from centimetre/metre or subsecond-time
+metadata. Protected numeric goldens were not regenerated.
+
 ## Confirmed unit-contract gaps
 
 | Case | Observed result | Consequence and follow-up |
@@ -14,7 +30,8 @@ CSV blocks, not participant recordings.
 | Time metadata declares `milliseconds`; samples advance `0,10,...,990`, with file and eye rates `100 Hz` | CSV processing reports observed/effective rate `0.1 Hz`, preserves final time `990`, and detector warns `time_unit_inferred:seconds` | `_derive_observed_rate` assumes raw time is seconds. That derived rate is passed as the detector's reference, reinforcing the wrong unit. The parsed time-channel unit is not passed to the detector. Decide whether such exports should be normalized or explicitly rejected. |
 | X declares `%`, Y declares `px`; samples are `(20,216)` | Processing accepts the file; all 100 gaze samples become invalid, with no warning identifying mixed axis units | `_gaze_units` selects percent if either axis declares percent. Incompatible explicit units should be rejected or normalized separately after calibration, rather than silently choosing one axis's unit for both. |
 
-These cases are not newly introduced regressions and were not repaired during cleanup.
+These cases were pre-existing gaps when reviewed and were repaired later in the cleanup
+for new imports as described above.
 The synthetic campaign golden follows the existing seconds/percent legacy path;
 it does not establish correct behavior for these alternative unit declarations.
 Do not update its goldens as a substitute for explicit regression tests and a

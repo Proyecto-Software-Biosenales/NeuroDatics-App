@@ -236,3 +236,38 @@ No real experiment ZIP/CSV/parquet was found in the workspace or sibling project
 - All nine Drive handlers and the worker are instrumented, but Docker's engine was unavailable. No deployment observation window or harvest date can be claimed from local tests.
 - S7's apparent class seams conceal a real mutual dependency between `FixationDurationVariantService` and `FixationEventService`; larger splitting is deferred. Bounded S8 helper/URL extraction is complete and independently reviewed. The live UI library is retained pending a product decision.
 - Final verification: 593 backend tests, 24 snapshots, 48 frontend helper tests, 6 hook browser tests and 6 dashboard e2e tests pass; TypeScript/Ruff/Vulture/architecture gates pass; ESLint is 0 errors / 8 warnings. Knip reports no unused files in either mode. Residual export/dependency findings remain candidates, not automatic deletion authority.
+
+### 2026-09-04 — Final decisions and real-data evidence
+
+- The two supplied reference experiments are valid and complementary. Bugui contributes
+  8 participants / 7 scenarios / EyeTracker; SAIO contributes 6 participants / 9
+  scenarios / EEG, GSR and EyeTracker. Across both: 261,194 sensor rows, 1,508 events,
+  96 numerical service calls and 110 scenario Parquets passed. Raw recordings remain
+  ignored; hashes and aggregate results are in `evidence/reference-experiment-acceptance.md`.
+- Each experiment contains one distance block declared in metres. This confirms the
+  alternative-unit finding against real data. New imports now persist canonical seconds
+  and millimetres plus schema metadata. Existing Parquets are read unchanged for backward
+  compatibility; correcting a historical noncanonical file requires re-importing source.
+- The analytics split is complete without changing public imports. The compatibility
+  facade is 74 lines, the largest service module is 609, and AST/equivalence plus numeric
+  protections pass. `EegTab` is 590 lines after separating spectral/timeseries views,
+  panels, tables and tooltips; its dashboard contract runs in Playwright.
+- The current combobox usage needs only single selection. Real browser contracts found
+  and fixed placeholder/typeahead behavior during the Radix migration. Base UI is gone;
+  a clean `npm ci`, TypeScript, browser tests and production build pass.
+- An open Edit Project dialog could accept a stale response after switching project or
+  reopening. Three failing browser reproductions preceded the cancellation/generation
+  fix; a fourth case protects the existing save flow.
+- RQ had no enqueue caller and its only task was a logging stub. It and its Compose,
+  settings and dependency surface were deliberately removed. Redis remains live for
+  analytics caching. Seven Drive operations had no current callers and were removed;
+  OAuth `authorize`/`callback` stay because callback is the sole writer of the persisted
+  connection used by current Drive functionality.
+- The final static sweep removed `components/ui/input-group.tsx`, the only unused file.
+  Deptry now passes as an executable gate. Knip reports no unused files or dependency
+  findings; exported symbols/types in active modules remain candidates only.
+- Final gate: 586 backend tests and 24 snapshots, 48 helpers, 17 real Chromium cases,
+  seven dashboard e2e tests, production build, Ruff, Vulture, deptry, TypeScript,
+  three import contracts and both Compose validations pass. ESLint is 0 errors / 6
+  warnings. The warnings are intentional raw stimulus/blob image elements; the static
+  navigation logo now uses `next/image` and an absolute public path.

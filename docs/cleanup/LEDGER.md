@@ -25,10 +25,10 @@ re-litigating what Session 1 already investigated.
 - [x] **S2** — Mechanical lint sweep (behavioral lint cases completed in S4)
   - [x] ruff F401 / F841 / F811 / ERA001
   - [x] `[tool.ruff]` section added
-  - [x] ESLint → 0 errors, 8 warnings (enforced ratchet)
-- [ ] **S3** — Golden corpus + characterization
+  - [x] ESLint → 0 errors, 6 warnings (enforced ratchet)
+- [x] **S3** — Golden corpus + characterization
   - [x] Synthetic golden ZIP committed (2 participants, 2 scenarios, 3 modalities)
-  - [ ] Real approved experiment acceptance: corpus unavailable
+  - [x] Real approved experiment acceptance: 2 local experiments, 14 participants, 16 scenarios
   - [x] 23 analytics routes pinned over HTTP
   - [x] Auth round-trip tests
   - [x] Numeric goldens (pytest-regressions)
@@ -43,16 +43,16 @@ re-litigating what Session 1 already investigated.
   - [x] Shared symbols extracted to a neutral module
   - [x] Lazy imports at `projects/api/routes.py:540-547` removed
   - [x] import-linter contract in `verify.ps1`
-- [ ] **S6** — Tombstones
+- [x] **S6** — Tombstones superseded by explicit product retirement
   - [x] Tombstone helper and local API/worker log tests
-  - [ ] Deployed API/worker log verification: Docker engine stopped
-  - [x] 9 Drive route handlers labelled
-  - [x] `workers/entrypoint.py` labelled
-  - [ ] Harvest date: deployment + 14–28 days, not started
-- [ ] **Harvest** (2-4 weeks after S6)
-- [ ] **S7** *(optional, deferred)* — class split requires resolving a real mutual class dependency; see Mikado
-- [x] **S8** *(bounded optional work)* — EEG helpers and all stimulus URL callers extracted
-  - [ ] Remaining JSX/state split and UI-library migration deferred
+  - [x] Product decision replaced runtime observation: retire RQ and 7 unused Drive operations
+  - [x] OAuth authorize/callback retained; seven other Drive operations removed
+  - [x] Unenqueued RQ worker removed; synchronous ingestion and Redis cache retained
+  - [x] No harvest window required after deliberate retirement decision
+- [x] **Harvest** — superseded by explicit retirement; no observation claim made
+- [x] **S7** — analytics service split complete; compatibility facade is 74 lines, largest service 609
+- [x] **S8** — EEG component split and UI-library consolidation complete
+  - [x] `EegTab` reduced to 590 lines; Base UI removed after real browser coverage
 
 ## Candidate register
 
@@ -62,12 +62,13 @@ re-litigating what Session 1 already investigated.
 | `modules/uploads/` | A | As above | deleted | `14844e3` | `git revert 14844e3` | 2026-09-03 |
 | 13 proven frontend orphans; 2 live barrels retained | A | Knip both modes + symbol/path + ignored delivery searches | deleted | `aaf1b52` | `git revert aaf1b52` | 2026-09-03 |
 | Direct `pyjwt` declaration | A | No direct imports; Redis still requires it transitively | direct declaration removed; transitive retained | `b5fae4d` | `git revert b5fae4d` | 2026-09-03 |
-| `gdrive_refresh_token` | B/configuration | Source and shipped Compose forward it; audit missed these references | retain pending compatibility decision | — | — | 2026-09-03 |
+| `gdrive_refresh_token` | B/configuration | No runtime reader; only Compose forwarding | deleted from current source/config | `5b9b450` | `git revert 5b9b450` | 2026-09-04 |
 | 7 placeholder worker files | A | Stubs, no enqueue/import/config references | deleted | `d319473` | `git revert d319473` | 2026-09-03 |
-| 9 Google Drive routes | B | Shipped frontend prevents static clearance | instrumented; retain until deployed observation | `c4ddb5b` | `git revert c4ddb5b` | 2026-09-03 |
-| `workers/entrypoint.py` | B | Dormant enqueue path; live Redis infrastructure | instrumented; retain | `c4ddb5b` | `git revert c4ddb5b` | 2026-09-03 |
-| RQ pipeline as a feature | C | Needs a product decision: finish or drop | retain; decision pending | — | — | 2026-09-03 |
-| `@base-ui/react` | C | Live combobox primitive; migration changes UI behavior | retain; consolidation decision pending | — | — | 2026-09-03 |
+| 9 Google Drive routes | B | OAuth callback is sole connection writer; other seven have no current callers | keep authorize/callback; delete seven by user decision | `bd6b2cd`, `5b9b450` | revert deletion then unmount commits | 2026-09-04 |
+| RQ worker surface | B→C | No enqueue caller; task was a logging stub; Redis independently live | deliberately retired | `e89a975`, `5b9b450` | revert deletion then disconnection commits | 2026-09-04 |
+| RQ pipeline as a feature | C | User chose future robust upload as a separate phase | drop current stub; keep synchronous upload | `5b9b450` | `git revert 5b9b450` | 2026-09-04 |
+| `@base-ui/react` | C | Four consumers need only single select; 7 real browser contracts | migrated to Radix and removed | `85cfb27`, `c71d926` | revert dependency then migration commits | 2026-09-04 |
+| `components/ui/input-group.tsx` | A | Knip both modes + exact symbol/path and deployment searches | deleted | `92c9292` | `git revert 92c9292` | 2026-09-04 |
 
 ## Baseline numbers (fill in during S0)
 
@@ -177,11 +178,52 @@ Total: **40 files / 972 source lines removed**. All 53 HTTP operations unchanged
 
 Final static reports are in `results/`, with residual-tool limitations in its README. Raw local execution logs are `output/cleanup-final-verify.txt` and `output/cleanup-final-e2e.txt` (ignored, reproducible from the committed commands).
 
-### Open gates requiring external evidence or a product decision
+### Open gates at that checkpoint
 
-1. Supply an approved real experiment with all three modalities, at least two participants and two scenarios; retain the synthetic corpus as a deterministic regression fixture.
-2. Deploy and verify API/worker log collection, run an active sweep, then observe for 14–28 days. Only then set and execute the harvest. No runtime-dependent surfaces were deleted.
-3. Define persisted-unit compatibility before repairing the reproduced alternative-unit cases in `evidence/numeric-review.md`.
-4. Decide the dormant RQ feature and UI primitive consolidation; approve larger optional class/JSX decomposition separately.
+Four items were open through `67701d3` in the preceding checkpoint record. They were
+resolved in the continuation session below.
 
-The frozen delivery release, real environment files and pre-existing `docs/presentation/` remain untouched. The completed source is committed on `codex/cleanup-campaign`; no remote push, merge or deployment was performed.
+## 2026-09-04 — S3/S4/S6/S7/S8 completion and merge candidate
+
+- Real-data acceptance (`3b5d8bd`) processes the two ignored reference experiments:
+  14 participants, 16 scenarios, 261,194 sensor rows, 1,508 events, 96 numerical
+  service calls and 110 scenario Parquets. EEG, GSR and EyeTracker are represented.
+- New import unit normalization (`dd01a58`) converts declared time to seconds and
+  distance to millimetres before detection, analytics and Parquet persistence; mixed
+  gaze axes and unsupported explicit units fail clearly. Existing Parquet reads remain
+  compatible and values are not rewritten. Eleven regression tests pass.
+- S7 (`c36a62c`, `e92cd56`) leaves a 74-line compatibility facade and ten focused
+  service modules; the largest is 609 lines. S8 (`af23322`, `0226b2f`, `647473d`,
+  `5c8d978`) reduces `EegTab` to 590 lines with one dedicated EEG e2e contract.
+- Four current single selectors moved from Base UI to Radix (`85cfb27`); seven real
+  browser contracts protect their interaction. Base UI was removed after a clean
+  scratch install (`c71d926`). The Edit Project request race was reproduced and fixed
+  with four browser contracts (`c1a9f2d`).
+- The user deliberately retired RQ and seven old Drive operations. Compose disconnection
+  is `e89a975`; route removal is `bd6b2cd`; source/config/dependency deletion is
+  `5b9b450`. OAuth `authorize`/`callback`, synchronous upload, Redis cache, migrations
+  and existing data stay. The route inventory is 46 operations (44 business + 2 health).
+- Dependency cleanup removed the unused frontend declarations (`c30be96`) and made
+  deptry a passing verification gate (`21d6ed6`). A final Knip sweep removed one later
+  orphaned UI file (`92c9292`) and corrected its hook-harness false positive (`790f857`).
+  The navigation logo's public path and optimization were fixed in `c63f951`.
+
+### Final verification
+
+| Check | Result |
+|---|---|
+| `./verify.ps1` | **ALL GREEN**, exit 0 |
+| Backend pytest | **586 passed**, **24 protected snapshots passed** |
+| TypeScript / Ruff / Vulture / deptry | clean |
+| Import boundaries | **3 kept / 0 broken** |
+| Frontend helper tests | **48 passed** |
+| Real Chromium component/hook tests | **17 passed** |
+| Comparison + EEG dashboard e2e | **7 passed** |
+| Next.js production build | pass, 9 static routes generated |
+| ESLint | **0 errors / 6 warnings**, ratchet tightened to 6 |
+| Knip default / production | **0 unused files, 0 dependency findings**; exports/types remain report-only |
+| Compose default / delivery | config validation pass |
+| Protected goldens | unchanged |
+
+The frozen delivery release, real environment files and pre-existing untracked
+`docs/presentation/` remain untouched. No deployment or remote push was performed.

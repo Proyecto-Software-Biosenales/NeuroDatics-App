@@ -60,3 +60,11 @@ unreachable subgraph. Preserve all runtime dependencies and all remaining export
 After the deletion commit, retrieve any removed file with
 `git show <deletion-commit>^:frontend/<path>`; revert the deletion commit to restore
 the complete subgraph.
+
+## Final static sweep — 2026-09-04
+
+Knip 6.34.0 identified `components/ui/input-group.tsx` as one later-added unused file.
+Exact symbol/path searches found no source, test, configuration or deployment consumer.
+Commit `92c9292` removes its six exported primitives (156 lines). Default and production
+Knip reports now contain zero unused files and zero unused/unlisted dependencies; their
+remaining findings are exported symbols/types from active modules and remain report-only.

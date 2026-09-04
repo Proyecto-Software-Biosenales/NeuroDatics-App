@@ -52,6 +52,19 @@ nothing about dynamic ones.
 
 *(Add new goals as they arise. A leaf that turns out to have children becomes `[~]`.)*
 
+## Resolved — 2026-09-04
+
+- [x] `analytics_service.py` is a 74-line compatibility facade. The mutual fixation
+  dependency was expressed through a narrow collaborator boundary; all ten services
+  now live in focused modules and the largest is 609 lines.
+- [x] The four live single-selection consumers moved to the existing Radix primitive.
+  Seven real Chromium contracts protected keyboard, focus, placeholder and disabled
+  behavior; `@base-ui/react` was then removed and a clean `npm ci` passed.
+- [x] Runtime observation was superseded by the user's explicit product decision.
+  Seven obsolete Drive operations and the unenqueued RQ worker were removed. OAuth
+  `authorize`/`callback` remain because callback is the only current writer of the
+  persisted Drive connection used by upload, analytics, media and deletion.
+
 
 ## 2026-09-03 findings during execution
 

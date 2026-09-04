@@ -1,5 +1,11 @@
 # Tier B observation — prepared 2026-09-03
 
+> **Superseded 2026-09-04.** The user explicitly chose to retire RQ and the seven
+> non-OAuth Drive operations after reviewing their current role. The observation
+> instructions below are retained as historical evidence; no deployment observation
+> or hit count is claimed. OAuth `authorize`/`callback`, Redis caching and synchronous
+> ZIP ingestion remain. See `retired-runtime-surfaces.md` for the executed decision.
+
 Nine Google Drive HTTP handlers and `WorkerManager.start` now emit
 `TOMBSTONE 2026-09-03 codex <name> caller=<file>:<line> pid=<pid>` at WARNING.
 Labels are deduplicated per process and safe under concurrent calls. Logging
