@@ -11,10 +11,10 @@ def main() -> int:
     backend = Path(__file__).resolve().parents[3]
     sys.path.insert(0, str(backend / "src"))
     runpy.run_path(str(backend / "tests/conftest.py"))
-    from neurodatics.modules.analytics.application.services import analytics_service
+    from neurodatics.modules.analytics.application.services import numeric_helpers
 
-    original = analytics_service._moving_average
-    analytics_service._moving_average = lambda values, window: original(values, window + 1)
+    original = numeric_helpers._moving_average
+    numeric_helpers._moving_average = lambda values, window: original(values, window + 1)
     test = backend / "tests/characterization/test_numeric_characterization.py"
     failures = []
 
@@ -29,7 +29,7 @@ def main() -> int:
             "-q", "--disable-warnings",
         ], plugins=[Capture()])
     finally:
-        analytics_service._moving_average = original
+        numeric_helpers._moving_average = original
     if (result != pytest.ExitCode.TESTS_FAILED or len(failures) != 1
             or failures[0][0] != "call" or "num_regression.check" not in failures[0][1]):
         print(f"MUTATION NOT VALIDATED: expected a test failure, received {result}")
