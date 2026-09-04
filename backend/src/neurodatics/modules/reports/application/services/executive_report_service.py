@@ -630,7 +630,8 @@ def _draw_heatmap(base_image: Image.Image, overlay_bytes: Optional[bytes]) -> Op
         return None
     try:
         overlay = Image.open(io.BytesIO(overlay_bytes)).convert("RGBA")
-    except Exception:
+    except Exception as exc:
+        logger.warning("Executive report heatmap overlay unreadable (%s)", type(exc).__name__)
         return None
     image = base_image.copy()
     offset_x, offset_y, content_width, content_height = _content_box(image)
@@ -852,8 +853,8 @@ def build_spatial_assets(
                     {"metric": "Fijacion media", "value": (stats.get("avg_duration_s") or 0) * 1000, "unit": "ms"},
                 ]
             )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Executive report fixation summary unavailable (%s)", type(exc).__name__)
 
     aoi_image = _draw_aois(base_image, aois) if aois else None
     aoi_results = []

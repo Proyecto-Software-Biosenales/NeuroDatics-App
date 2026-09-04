@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 from typing import Any, Dict
 from urllib.parse import parse_qs, urlsplit
@@ -17,6 +18,8 @@ from sqlalchemy import text
 
 from ..config.settings import settings
 from ..infra.db.session import engine
+
+logger = logging.getLogger(__name__)
 
 GOOGLE_SERVER_HTTPS_HOSTS = (
     "oauth2.googleapis.com",
@@ -58,8 +61,8 @@ async def probe_tcp(host: str, port: int, timeout_seconds: float) -> Dict[str, A
         writer.close()
         try:
             await writer.wait_closed()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("TCP probe stream cleanup failed (%s)", type(exc).__name__)
         return {"ok": True}
     except Exception as exc:
         return {"ok": False, "error": type(exc).__name__}

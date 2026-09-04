@@ -210,8 +210,10 @@ class GoogleDriveClient:
             if local_path and callable(closer):
                 try:
                     closer().close()
-                except Exception:  # noqa: BLE001 - best effort handle cleanup
-                    pass
+                except Exception as exc:  # noqa: BLE001 - best effort handle cleanup
+                    logger.warning(
+                        "Drive upload file-handle cleanup failed (%s)", type(exc).__name__
+                    )
 
         return {
             "drive_file_id": uploaded["id"],
