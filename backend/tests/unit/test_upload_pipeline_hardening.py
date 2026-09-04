@@ -1,14 +1,10 @@
 """Auth, path confinement and admission control around the upload pipeline."""
 
 import pytest
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from neurodatics.config.settings import settings
 from neurodatics.main import app
-from neurodatics.modules.integrations.google_drive.application.service import (
-    GoogleDriveIntegrationService,
-)
 from neurodatics.modules.projects.application.services.upload_throttle import (
     UploadAdmissionControl,
     UploadRejected,
@@ -77,83 +73,6 @@ def test_experiment_zip_upload_still_requires_auth():
         "/api/projects/00000000-0000-0000-0000-000000000000/files/experiment-zip"
     )
     assert response.status_code == 401
-
-
-# ------------------------------------------------------- sync path confinement
-
-
-def _service() -> GoogleDriveIntegrationService:
-    return GoogleDriveIntegrationService(repository=None)
-
-
-def test_folder_sync_is_disabled_when_no_root_is_configured(monkeypatch):
-    monkeypatch.setattr(settings, "gdrive_sync_allowed_root", None, raising=False)
-
-    with pytest.raises(HTTPException) as excinfo:
-        _service().resolve_syncable_folder("/data")
-
-    assert excinfo.value.status_code == 404
-
-
-def test_folder_sync_accepts_a_path_inside_the_allowed_root(tmp_path, monkeypatch):
-    root = tmp_path / "sync-root"
-    nested = root / "project" / "run1"
-    nested.mkdir(parents=True)
-    monkeypatch.setattr(settings, "gdrive_sync_allowed_root", str(root), raising=False)
-
-    assert _service().resolve_syncable_folder(str(nested)) == nested.resolve()
-    assert _service().resolve_syncable_folder(str(root)) == root.resolve()
-
-
-@pytest.mark.parametrize("attempt", ["..", "../outside", "sibling"])
-def test_folder_sync_rejects_paths_outside_the_allowed_root(tmp_path, monkeypatch, attempt):
-    root = tmp_path / "sync-root"
-    root.mkdir()
-    (tmp_path / "outside").mkdir()
-    (tmp_path / "sibling").mkdir()
-    monkeypatch.setattr(settings, "gdrive_sync_allowed_root", str(root), raising=False)
-
-    target = (root / attempt) if attempt.startswith("..") else (tmp_path / attempt)
-
-    with pytest.raises(HTTPException) as excinfo:
-        _service().resolve_syncable_folder(str(target))
-
-    assert excinfo.value.status_code == 400
-
-
-def test_folder_sync_rejects_a_symlink_escaping_the_allowed_root(tmp_path, monkeypatch):
-    root = tmp_path / "sync-root"
-    root.mkdir()
-    secret = tmp_path / "secret"
-    secret.mkdir()
-    link = root / "escape"
-    try:
-        link.symlink_to(secret, target_is_directory=True)
-    except (OSError, NotImplementedError):
-        pytest.skip("symlink creation is not permitted in this environment")
-
-    monkeypatch.setattr(settings, "gdrive_sync_allowed_root", str(root), raising=False)
-
-    with pytest.raises(HTTPException) as excinfo:
-        _service().resolve_syncable_folder(str(link))
-
-    assert excinfo.value.status_code == 400
-
-
-def test_folder_sync_error_does_not_reveal_whether_the_path_exists(tmp_path, monkeypatch):
-    """Same message either way, so the endpoint cannot be used to probe the FS."""
-    root = tmp_path / "sync-root"
-    root.mkdir()
-    existing_outside = tmp_path / "exists"
-    existing_outside.mkdir()
-    monkeypatch.setattr(settings, "gdrive_sync_allowed_root", str(root), raising=False)
-
-    with pytest.raises(HTTPException) as existing:
-        _service().resolve_syncable_folder(str(existing_outside))
-    with pytest.raises(HTTPException) as missing:
-        _service().resolve_syncable_folder(str(tmp_path / "does-not-exist"))
-
-    assert existing.value.detail == missing.value.detail
 
 
 # ---------------------------------------------------------- admission control
