@@ -36,6 +36,11 @@ note. Source, dependency and worker-only tests remain until Stage B so the two
 commits separate disconnection from deletion. Updating deployments should use
 `docker compose up -d --build --remove-orphans` to remove an old worker container.
 
+Stage A was committed as `e89a975`. Stage B was completed in `5b9b450`: the RQ
+entrypoint/task/package, queue placeholders, worker-only configuration and dependency
+were removed after both Compose definitions passed validation. Redis remains in both
+definitions for analytics caching and readiness.
+
 ## Drive audit: a dependency requiring a decision
 
 The frontend has no `/api/integrations/google-drive` callers. Google login uses
@@ -56,3 +61,10 @@ insufficient evidence to retire the bootstrap/reconnection capability.
 environment lookups). Its old retention was based only on Compose/frozen-release
 forwarding. The user has now authorized removing the unused current setting and
 examples while retaining real environment files and the frozen release.
+
+The final Drive decision kept `GET /authorize` and `GET /callback`. The seven other
+operations (`status`, `disconnect`, `create-folder`, `sync-folder`,
+`sync-folder-scheduled`, `sync-status`, `sync-tasks`) were unmounted in `bd6b2cd` and
+their unused services/schemas/configuration deleted in `5b9b450`. Each retired path is
+covered by an authenticated 404 contract; callback security tests still pass. Mounted
+HTTP operations fell from 53 to 46 solely through these seven deliberate removals.

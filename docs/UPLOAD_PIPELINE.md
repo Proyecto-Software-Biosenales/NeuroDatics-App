@@ -6,17 +6,16 @@ defends against and what it does not.
 
 - **Scope**: the experiment-ZIP ingestion path (`POST /api/projects/{id}/files/experiment-zip`)
   and the media read-back path (`/files/{id}/image`, `/files/{id}/preview`).
-- **Status**: reflects the code on branch `dashboard` as of 2026-08-07. Findings
-  §5.1, §5.2, §5.3, §5.11 and §5.14 have since been fixed and are marked as such;
-  everything else in §5 is still open. See §6 for the running list.
+- **Status**: originally audited on `dashboard` on 2026-08-07 and reconciled with
+  the cleanup result on 2026-09-04. Resolved and retired findings are marked below;
+  the remaining open items are listed in §6.
 - **Audience**: developers and whoever signs off on the deployment.
 
 Cleanup decision (2026-09-04): the user explicitly retired the unused RQ worker.
 Current Compose files now start only frontend, backend, PostgreSQL and Redis;
-synchronous ZIP ingestion and the Redis analytics cache remain active. References
-to the worker below describe the historical audit. See
+synchronous ZIP ingestion and the Redis analytics cache remain active. See
 [retirement evidence](cleanup/evidence/retired-runtime-surfaces.md) for the staged
-removal and preserved dependencies.
+removal, the seven retired Drive operations and preserved dependencies.
 
 ---
 
@@ -26,18 +25,12 @@ There is exactly **one** file upload entry point in the product. It accepts a si
 ZIP archive per project, validates its structure, extracts it to a temp directory,
 converts the experiment CSV into Parquet, mirrors everything into a fresh Google
 Drive folder, and records one `project_files` row per stored object. Ingestion runs
-**synchronously inside the HTTP request** — the RQ worker task exists but is an
-explicit stub.
+**synchronously inside the HTTP request**. The unenqueued RQ stub was retired; a future
+asynchronous pipeline must be designed as a separate robust implementation.
 
-Two other modules look like upload paths but are dead code: `modules/uploads/*`
-(all placeholders — `routes.py` is `def register_upload_routes(app): pass`,
-`r2_storage_adapter.py` is `class R2StorageAdapter: pass`) and
-`workers/tasks/process_experiment_zip.py` (logs "stub, not implemented").
-
-Cleanup update (2026-09-03): the unmounted `modules/uploads/` and
-`modules/processing/` placeholders have been removed after reference checks and
-verification. The ZIP worker stub remains pending the product/runtime decision;
-see [the cleanup ledger](cleanup/LEDGER.md).
+Cleanup removed the placeholder `modules/uploads/`, `modules/processing/` and worker
+subgraphs after reference checks and verification; none formed a second upload path.
+See [the cleanup ledger](cleanup/LEDGER.md).
 
 The single most serious finding in this review was unrelated to the ZIP endpoint
 itself: the entire Google Drive integration router had no authentication, and one of
@@ -411,8 +404,7 @@ miss into `/data/parquet_cache`. Every analytics route calls `_verify_ownership`
 | `UPLOAD_MAX_CONCURRENT_PER_USER` | `1` | Simultaneous ingestions one user may run |
 | `UPLOAD_MAX_CONCURRENT_GLOBAL` | `4` | Simultaneous ingestions across all users |
 | `UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS` | `5` | Minimum gap between one user's attempts |
-| `GDRIVE_SYNC_ALLOWED_ROOT` | unset | Only directory `sync-folder*` may read; unset ⇒ endpoints 404 |
-| `BACKEND_MEM_LIMIT` / `WORKER_MEM_LIMIT` | `2g` | Container memory ceilings (compose) |
+| `BACKEND_MEM_LIMIT` | `2g` | Backend container memory ceiling (compose) |
 | `INGESTION_SAVE_ORIGINAL_ZIP` | `true` | Whether the source ZIP is archived to Drive |
 | `GDRIVE_FOLDER_ID` | unset | Parent for project root folders; unset ⇒ Drive root |
 | `GDRIVE_HTTP_TIMEOUT_SECONDS` | `300` | Per-request Drive timeout |
@@ -500,15 +492,10 @@ so every route returns 401 without a valid bearer token. The OAuth `callback` mo
 a separate `public_router` — Google redirects the browser there with no Authorization
 header, and it is still guarded by the HMAC-signed, TTL-bounded `state` it validates.
 
-`sync-folder` / `sync-folder-scheduled` are additionally **disabled by default**: they
-404 unless `GDRIVE_SYNC_ALLOWED_ROOT` is set, and `resolve_syncable_folder` then
-confines the caller's path to that root with `Path.resolve()` (so symlinks cannot
-escape) and returns an identical error whether a rejected path exists or not, so the
-endpoint cannot be used to probe the filesystem. `os.walk` runs with
-`followlinks=False` and symlinked files are skipped.
-
-An admin role still does not exist in the codebase; connect/disconnect/sync are
-available to any authenticated user.
+Cleanup subsequently removed `status`, `disconnect`, `create-folder`, `sync-folder`,
+`sync-folder-scheduled`, `sync-status` and `sync-tasks`. The router now exposes only
+authenticated OAuth `authorize` and its signed, TTL-bounded public callback. The older
+path-confinement behavior is preserved by Git history rather than kept as dormant code.
 
 Covered by [test_upload_pipeline_hardening.py](../backend/tests/unit/test_upload_pipeline_hardening.py).
 
@@ -549,17 +536,18 @@ streaming so callers no longer read each file a second time to checksum it.
 `UploadAdmissionControl` caps uploads per user (`UPLOAD_MAX_CONCURRENT_PER_USER`,
 default 1) and globally (`UPLOAD_MAX_CONCURRENT_GLOBAL`, default 4), with a minimum
 gap between attempts (`UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS`, default 5 s); rejections
-are 429 with `Retry-After`. Both compose files now set `mem_limit` / `mem_reservation`
-on `backend` and `worker`.
+are 429 with `Retry-After`. Both compose files set `mem_limit` / `mem_reservation`
+on the backend.
 
 Like the progress registry (§5.8), admission control is process-local and must move to
 Redis if the API is ever scaled out.
 
-### 5.4 HIGH — ingestion runs synchronously in the request
+### 5.4 HIGH — ingestion runs synchronously in the request — ACCEPTED FOR NOW
 
-The queue infrastructure exists (Redis, an RQ worker service, `JOB_TIMEOUT=3600`,
-a `processing_jobs` table) but `process_experiment_zip_task` is a stub and nothing
-enqueues it. Consequences:
+RQ was a nonfunctional stub with no enqueue caller and has been removed. Redis remains
+for analytics caching, and the historical `processing_jobs` table remains to preserve
+deployment data. The current synchronous behavior is intentionally preserved pending a
+future robust upload-pipeline phase. Its operational consequences remain:
 
 - a DB session is held open for up to 30 minutes per upload
 - a client disconnect does not stop the work — only the explicit cancel endpoint does
@@ -646,9 +634,10 @@ not `drive.file` (which would limit the app to files it created). Notably the
 **service-account fallback path in `gdrive_client` does use the narrower `drive.file`** —
 the OAuth path is the broad one.
 
-So any read of that one column — a DB backup, a log dump, a future SQLi, or the
-unauthenticated `/status` + `/sync-folder` combination in §5.1 — yields full read/write
-access to the connected Google account's entire Drive, not just NeuroDatics data.
+So any read of that one column — a DB backup, a log dump or a future SQLi — yields
+full read/write access to the connected Google account's entire Drive, not just
+NeuroDatics data. The unauthenticated `/status` + `/sync-folder` chain from the
+original audit was first secured and later removed during cleanup.
 
 ### 5.11 ~~LOW — Drive query injection via ZIP folder names~~ — FIXED
 
@@ -733,7 +722,7 @@ project's folder wipes hand-drawn AOIs with no warning and no backup.
 | 1 | Add `Depends(get_current_user)` to every Google Drive integration route; delete or root-restrict `sync-folder*` | Critical | XS | **Done** — §5.1 |
 | 2 | Cap total uncompressed size, per-entry size and entry count in `build_manifest` | High | XS | **Done** — §5.2 |
 | 3 | Narrow the OAuth scope to `drive.file`; encrypt `refresh_token` at rest | High | S | Open |
-| 4 | Move ingestion to the existing RQ worker; add a `PROCESSING` reaper for stranded projects | High | M | Open |
+| 4 | Design a robust asynchronous ingestion pipeline and add a `PROCESSING` reaper | High | M | Future phase; obsolete RQ stub removed |
 | 5 | Stream the upload to a temp file instead of `await file.read()`; stream Drive uploads from disk | High | M | **Done** — §5.3 |
 | 6 | Set container memory limits; add per-user upload concurrency/rate limits | High | S | **Done** — §5.3 |
 | 7 | Magic-byte verification for images/videos; drop `.svg` or force `Content-Disposition: attachment` + `nosniff` | Medium | S | Open |
@@ -766,7 +755,7 @@ project's folder wipes hand-drawn AOIs with no warning and no backup.
 | Progress/cancel registry | [backend/src/neurodatics/modules/projects/application/services/drive_upload_progress_registry.py](../backend/src/neurodatics/modules/projects/application/services/drive_upload_progress_registry.py) |
 | Upload concurrency + rate limiting | [backend/src/neurodatics/modules/projects/application/services/upload_throttle.py](../backend/src/neurodatics/modules/projects/application/services/upload_throttle.py) |
 | Drive SDK wrapper | [backend/src/neurodatics/infra/storage/gdrive_client.py](../backend/src/neurodatics/infra/storage/gdrive_client.py) |
-| Drive OAuth connect/status/sync (authenticated; callback on `public_router`) | [backend/src/neurodatics/modules/integrations/google_drive/api/routes.py](../backend/src/neurodatics/modules/integrations/google_drive/api/routes.py) |
+| Drive OAuth authorize + callback | [backend/src/neurodatics/modules/integrations/google_drive/api/routes.py](../backend/src/neurodatics/modules/integrations/google_drive/api/routes.py) |
 | Structure / bomb-guard / extraction tests | [backend/tests/unit/test_zip_validation_service.py](../backend/tests/unit/test_zip_validation_service.py) |
 | Auth / path-confinement / throttle tests | [backend/tests/unit/test_upload_pipeline_hardening.py](../backend/tests/unit/test_upload_pipeline_hardening.py) |
 | Credential injection into the global client | [backend/src/neurodatics/modules/integrations/google_drive/infrastructure/configure_client.py](../backend/src/neurodatics/modules/integrations/google_drive/infrastructure/configure_client.py) |
@@ -774,5 +763,3 @@ project's folder wipes hand-drawn AOIs with no warning and no backup.
 | Settings + production guardrails | [backend/src/neurodatics/config/settings.py](../backend/src/neurodatics/config/settings.py) |
 | DB entities (`Project`, `ProjectFile`) | [backend/src/neurodatics/modules/projects/domain/entities.py](../backend/src/neurodatics/modules/projects/domain/entities.py) |
 | Parquet read-back | [backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py](../backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py) |
-| Dead code — R2/uploads module | [backend/src/neurodatics/modules/uploads/](../backend/src/neurodatics/modules/uploads/) |
-| Dead code — background ingestion stub | [backend/src/neurodatics/workers/tasks/process_experiment_zip.py](../backend/src/neurodatics/workers/tasks/process_experiment_zip.py) |

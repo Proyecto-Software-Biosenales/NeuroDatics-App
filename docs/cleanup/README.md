@@ -103,19 +103,22 @@ Nothing else in the campaign depends on an abandoned session except where `PLAN.
 explicitly.
 
 
-## Executed campaign status — 2026-09-03
+## Executed campaign status — 2026-09-04
 
-The campaign now exists on `codex/cleanup-campaign`; continue from its latest verified
-commit rather than restarting from the historical `dashboard` baseline. `LEDGER.md`
-contains the current decisions, rollback commands and open external gates.
+The campaign is complete on `codex/cleanup-campaign` and ready to fast-forward into
+`dashboard`. `LEDGER.md` contains the final decisions, rollback commands and evidence.
 
 `verify.ps1` now runs backend tests, Ruff, Vulture (required-protocol whitelist),
 application boot, three import-linter contracts, TypeScript, all frontend helper
-unit tests, real React hook tests in Chromium, and the ESLint 0-error/8-warning
+unit tests, real React/component tests in Chromium, and the ESLint 0-error/6-warning
 ratchet. The old baseline above is historical. Use the pinned root virtual environment;
 install the already-declared Playwright browser with `cd frontend; npx playwright install chromium`
 if absent. Development tests use Node 24 here; direct TypeScript imports in the existing
 Node tests need a runtime with native TypeScript support.
 
-Real-experiment acceptance, deployed observation/harvest and Tier C product decisions
-remain open. No instruction to delete from a static candidate report overrides those gates.
+Two approved local reference experiments closed real-data acceptance. The user made the
+Tier C decisions: RQ and seven obsolete Drive operations were retired, while Drive OAuth
+authorization/callback remain because they create and renew the connection used by the app.
+New CSV imports normalize declared time to seconds and distance to millimetres. Existing
+Parquet files remain readable and are not rewritten; re-import source data to correct an
+older file whose declared source unit was metres or centimetres.
