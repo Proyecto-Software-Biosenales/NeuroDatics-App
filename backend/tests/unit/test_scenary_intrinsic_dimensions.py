@@ -6,7 +6,6 @@ size of the overlay it renders. Those columns existed but were hard-coded to
 if it were 1920x1080.
 """
 
-import io
 from unittest.mock import Mock
 from uuid import uuid4
 

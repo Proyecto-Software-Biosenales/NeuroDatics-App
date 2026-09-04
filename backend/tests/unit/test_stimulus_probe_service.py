@@ -7,7 +7,6 @@ quarter-turn videos report their transposed dimensions - and that an unreadable
 file degrades to "unknown" instead of failing the upload.
 """
 
-import io
 import struct
 
 import pytest
