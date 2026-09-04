@@ -22,10 +22,10 @@ re-litigating what Session 1 already investigated.
   - [x] Direct `pyjwt` declaration removed; 4 direct imports declared; PyJWT stays as Redis transitive
   - [ ] `gdrive_refresh_token` retained: forwarded by shipped delivery configuration (D4 deferred)
   - [x] 7 placeholder worker files
-- [ ] **S2** — Mechanical lint sweep
+- [x] **S2** — Mechanical lint sweep (behavioral lint cases completed in S4)
   - [x] ruff F401 / F841 / F811 / ERA001
   - [x] `[tool.ruff]` section added
-  - [ ] ESLint → 0 errors
+  - [x] ESLint → 0 errors, 8 warnings (enforced ratchet)
 - [ ] **S3** — Golden corpus + characterization
   - [x] Synthetic golden ZIP committed (2 participants, 2 scenarios, 3 modalities)
   - [ ] Real approved experiment acceptance: corpus unavailable
@@ -33,16 +33,16 @@ re-litigating what Session 1 already investigated.
   - [x] Auth round-trip tests
   - [x] Numeric goldens (pytest-regressions)
   - [x] **Net validated** — deliberate bug went red, then reverted
-- [ ] **S4** — Broken logic
+- [x] **S4** — Covered broken logic fixed; uncovered unit cases recorded
   - [x] 16 `set-state-in-effect` errors: 1 removed with orphan, 15 fixed; 6 browser regressions pass
   - [x] 10 actual `getattr(settings, ...)` call sites replaced
   - [x] `.env.example` regenerated: 52 keys and exact model parity tested
-  - [ ] 5 swallowed exceptions
-  - [ ] 7 `any` escape hatches
-- [ ] **S5** — Break the circular dependency
-  - [ ] Shared symbols extracted to a neutral module
-  - [ ] Lazy imports at `projects/api/routes.py:540-547` removed
-  - [ ] import-linter contract in `verify.ps1`
+  - [x] 5 swallowed exceptions now warn without changing fallback behavior
+  - [x] 7 reported `any` escape hatches removed without new suppressions
+- [x] **S5** — Break the processing/analytics service dependency cycle
+  - [x] Shared symbols extracted to a neutral module
+  - [x] Lazy imports at `projects/api/routes.py:540-547` removed
+  - [x] import-linter contract in `verify.ps1`
 - [ ] **S6** — Tombstones
   - [x] Tombstone helper and local API/worker log tests
   - [ ] Deployed API/worker log verification: Docker engine stopped
@@ -51,22 +51,23 @@ re-litigating what Session 1 already investigated.
   - [ ] Harvest date: deployment + 14–28 days, not started
 - [ ] **Harvest** (2-4 weeks after S6)
 - [ ] **S7** *(optional, deferred)* — class split requires resolving a real mutual class dependency; see Mikado
-- [ ] **S8** *(optional)* — frontend god components
+- [x] **S8** *(bounded optional work)* — EEG helpers and all stimulus URL callers extracted
+  - [ ] Remaining JSX/state split and UI-library migration deferred
 
 ## Candidate register
 
 | Candidate | Tier | Evidence | Decision | SHA | Revert | Date |
 |---|---|---|---|---|---|---|
-| `modules/processing/` | A | 0 external refs; not mounted; `NameError` on import | delete | | | |
-| `modules/uploads/` | A | as above | delete | | | |
-| 12 orphan frontend files | A | 0 importers (verified by grep + knip) | delete | | | |
-| `pyjwt` | A | 0 imports; only `python-jose` used | delete | | | |
-| `gdrive_refresh_token` | A | 0 refs incl. `getattr` form | delete | | | |
-| 7 placeholder worker files | A | 3-LOC stubs | delete | | | |
-| 9 Google Drive routes | **B** | 0 frontend callers, **but** `delivery/` is a shipped build | tombstone | | | |
-| `workers/entrypoint.py` | **B** | nothing enqueues; Redis itself is live | tombstone | | | |
-| RQ pipeline as a feature | **C** | needs a product decision: finish or drop | ask user | | | |
-| `@base-ui/react` | **C** | 1 import; consolidation, not deletion | S8 | | | |
+| `modules/processing/` | A | Rechecked imports, registration and ignored delivery | deleted | `14844e3` | `git revert 14844e3` | 2026-09-03 |
+| `modules/uploads/` | A | As above | deleted | `14844e3` | `git revert 14844e3` | 2026-09-03 |
+| 13 proven frontend orphans; 2 live barrels retained | A | Knip both modes + symbol/path + ignored delivery searches | deleted | `aaf1b52` | `git revert aaf1b52` | 2026-09-03 |
+| Direct `pyjwt` declaration | A | No direct imports; Redis still requires it transitively | direct declaration removed; transitive retained | `b5fae4d` | `git revert b5fae4d` | 2026-09-03 |
+| `gdrive_refresh_token` | B/configuration | Source and shipped Compose forward it; audit missed these references | retain pending compatibility decision | — | — | 2026-09-03 |
+| 7 placeholder worker files | A | Stubs, no enqueue/import/config references | deleted | `d319473` | `git revert d319473` | 2026-09-03 |
+| 9 Google Drive routes | B | Shipped frontend prevents static clearance | instrumented; retain until deployed observation | `c4ddb5b` | `git revert c4ddb5b` | 2026-09-03 |
+| `workers/entrypoint.py` | B | Dormant enqueue path; live Redis infrastructure | instrumented; retain | `c4ddb5b` | `git revert c4ddb5b` | 2026-09-03 |
+| RQ pipeline as a feature | C | Needs a product decision: finish or drop | retain; decision pending | — | — | 2026-09-03 |
+| `@base-ui/react` | C | Live combobox primitive; migration changes UI behavior | retain; consolidation decision pending | — | — | 2026-09-03 |
 
 ## Baseline numbers (fill in during S0)
 
@@ -127,7 +128,7 @@ Total: **40 files / 972 source lines removed**. All 53 HTTP operations unchanged
 ## 2026-09-03 — S3, local characterization complete; real-data acceptance open
 
 - `2ade40f`, `097e01c`: 23 auth tests cover token round-trip/rejection, file-store identity persistence, Google HTTP contracts, database identity mapping and network failures without external services.
-- Protected baselines, corpus `3e661d0`, and tests `b38b5ab`: 64 additional tests, 24 shape snapshots and 18 tolerance-aware numerical CSVs. 23 analytics routes execute 92 successful requests over the four participant/scenario pairs; 21 missing-participant cases are checked.
+- Protected baselines `2e56bc6`, corpus `3e661d0`, and tests `b38b5ab`: 64 additional tests, 24 shape snapshots and 18 tolerance-aware numerical CSVs. 23 analytics routes execute 92 successful requests over the four participant/scenario pairs; 21 missing-participant cases are checked.
 - Real ZIP validation, CSV processing, fixation detection and parquet output drive the corpus. Only infrastructure is replaced at HTTP boundaries. Heatmaps pin histogram data and response contracts, never PNG snapshots.
 - Verified with pytest-regressions **2.8.3**, syrupy **4.6.1**, pytest **7.4.4**. Initial isolated generation is documented; subsequent runs use no update flags.
 - `check_mutation.py` increases the smoothing window by one sample in its own process: exactly one numerical regression fails, helper reports MUTATION CAUGHT and exits successfully. Production and baselines remain unchanged.
@@ -146,3 +147,41 @@ Total: **40 files / 972 source lines removed**. All 53 HTTP operations unchanged
 - `c4ddb5b`: all 9 Drive handlers and real worker entrypoint log stable warning labels once per process; concurrent calls and API/worker behavior tested.
 - `cf6f908`: deployment and active-sweep instructions in `evidence/tombstone-rollout.md`.
 - Docker client is present, engine unavailable. No deployed containers or frozen release changed. No observation window has started, so no honest harvest date/hit count exists yet. Runtime collection, 14–28 days and an active sweep remain mandatory before deletion.
+
+
+## 2026-09-03 — S4/S5/S8 final integration
+
+- S4 completed: `a3d0280` removes the seven reported `any` cases while preserving legacy string sensor compatibility; `c2f783b` logs all five fallback failures with operation/type only. Five tests verify fallback outcomes and no sensitive exception payloads. `3d58c7e` requires ESLint zero errors.
+- S5 completed: `1aa864c` extracts the shared implementations; `48fb298` repoints imports without other AST changes; `f292487` adds three enforced contracts and accurate HTTP operation count. Public import shims remain. Independent review agrees that all calculations are unchanged. See `evidence/architecture-boundary.md` for intentional API/entity/cache dependencies.
+- S8 bounded work: `54d2981` extracts 15 EEG helpers, three types and two constants without changing their bodies or JSX. `5310e10` introduces tested URL helpers; `a196110`, `56ee57f` and `67701d3` migrate all nine consumers in three groups. Independent review confirms query order, Unicode encoding, omission versus zero time, cancellation and resource cleanup are preserved.
+- S7 remains deferred: its class split is not a pure move because two live classes call each other. Remaining EegTab JSX/state and UI primitive replacement are not forced through that uncertainty.
+
+### Final verification (source through `67701d3`)
+
+| Check | Result |
+|---|---|
+| `./verify.ps1` | **ALL GREEN**, exit 0 |
+| Backend pytest | **593 passed**, **24 snapshots passed** (494 before campaign) |
+| TypeScript | exit 0 |
+| Frontend helper tests | **48 passed** (34 before discovery fix; 38 after S0) |
+| Real React hook browser regressions | **6 passed** |
+| Existing comparison dashboard e2e | **6 passed**, 30.2 seconds; still infrastructure-mocked |
+| ESLint | **0 errors / 8 warnings** (25 / 15 before campaign) |
+| Ruff F401/F841/F811/ERA001 | clean |
+| Vulture 100% + documented protocol whitelist | clean |
+| Import boundaries | **3 kept / 0 broken** |
+| Mounted HTTP operations | **53 unchanged**: 51 business + 2 health |
+| Poetry manifest/lock validation; installed dependency check | pass (legacy metadata deprecation warnings only) |
+| Existing protected goldens | unchanged since initial reviewed baseline |
+| Knip 6.34.0 default and production | **0 unused files**, including analytics; residual export/dependency candidates are report-only |
+
+Final static reports are in `results/`, with residual-tool limitations in its README. Raw local execution logs are `output/cleanup-final-verify.txt` and `output/cleanup-final-e2e.txt` (ignored, reproducible from the committed commands).
+
+### Open gates requiring external evidence or a product decision
+
+1. Supply an approved real experiment with all three modalities, at least two participants and two scenarios; retain the synthetic corpus as a deterministic regression fixture.
+2. Deploy and verify API/worker log collection, run an active sweep, then observe for 14–28 days. Only then set and execute the harvest. No runtime-dependent surfaces were deleted.
+3. Define persisted-unit compatibility before repairing the reproduced alternative-unit cases in `evidence/numeric-review.md`.
+4. Decide the dormant RQ feature and UI primitive consolidation; approve larger optional class/JSX decomposition separately.
+
+The frozen delivery release, real environment files and pre-existing `docs/presentation/` remain untouched. The completed source is committed on `codex/cleanup-campaign`; no remote push, merge or deployment was performed.
