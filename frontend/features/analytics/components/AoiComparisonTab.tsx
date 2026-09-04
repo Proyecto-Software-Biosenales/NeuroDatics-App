@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/Card"
 import { KpiCard } from "@/components/ui/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import {
   useAoiMetrics,
   useDistanceTimeseries,
@@ -145,7 +146,7 @@ export function AoiComparisonTab({
       }
 
       try {
-        const blob = await apiFetchBlob(`/api/projects/${projectId}/files/${data.scenario_file_id}/image`)
+        const blob = await apiFetchBlob(getStimulusImageUrl(projectId, data.scenario_file_id))
         if (cancelled) return
         currentUrl = URL.createObjectURL(blob)
         setScenarioImageUrl(currentUrl)
