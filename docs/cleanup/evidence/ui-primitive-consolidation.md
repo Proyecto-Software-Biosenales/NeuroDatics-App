@@ -35,8 +35,8 @@ expectations pass after migration. Existing successful selection, cancellation,
 disabled-state and focus behavior remains covered.
 
 An ESLint `no-restricted-imports` rule prevents new Base UI imports. The dependency
-and lockfile remain installed during this stage so it can be committed and reviewed
-before removing package entries.
+and lockfile remained installed during this stage, committed as `85cfb27`, before
+removing package entries.
 
 ## Verification
 
@@ -57,5 +57,28 @@ The existing `test:hooks` gate now includes these component tests: **13 passed**
 passed. Keyboard checks explicitly wait for the primitive's asynchronous focus
 movement before sending the next key; final selection assertions remain strict.
 
-The final deletion stage requires a clean `npm ci` and tests in an isolated scratch
-copy. Current workspace `node_modules` must remain untouched during parallel work.
+## Dependency deletion verification
+
+The deletion was checked in `output/cleanup-ui-scratch/frontend`, extracted with
+`git archive` from `dd01a58`. This isolated source copy contains no `.env`, existing
+`node_modules` or Next.js build output. The shared workspace's installed packages
+were not changed. Runtime: Node 24.13.1 and npm 11.8.0 on Windows.
+
+The original manifest passed a clean `npm ci` (752 installed packages), Next.js
+type generation, TypeScript, all 13 hook/component tests and ESLint. The candidate
+manifest then passed another clean `npm ci` (747 packages) with Base UI removed.
+After removal, TypeScript, 48 helper tests and all 13 hook/component tests passed.
+Full ESLint remained at the archived source's baseline of 0 errors and 8 warnings.
+
+The lockfile removes exactly five entries: `@base-ui/react`, `@base-ui/utils`,
+`@babel/runtime`, `@date-fns/tz` and `date-fns`. Every retained package entry,
+including versions, resolved URLs and integrity hashes, is unchanged. npm's
+lockfile-only uninstall initially added six unrelated optional WASM entries; those
+additions were excluded, and the minimal lockfile was verified by the final clean
+installation. No dependency version was upgraded.
+
+Resolution checks confirm that all five removed packages are absent in the clean
+copy. `radix-ui`, `shadcn/tailwind.css` and `tw-animate-css` still resolve from that
+copy; the CSS packages use their `style` export condition. Processing the actual
+`app/globals.css` with the installed Tailwind/PostCSS plugin also passed. The root
+verification gate remains required before the separate deletion commit.
