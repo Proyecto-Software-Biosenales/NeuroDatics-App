@@ -36,6 +36,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/KpiCard"
 import { StatisticsTable } from "@/components/ui/StatisticsTable"
@@ -318,7 +319,7 @@ export function GazePointTab({
     let cancelled = false
     let currentUrl: string | null = null
 
-    apiFetchBlob(`/api/projects/${projectId}/files/${gazeData.scenario_file_id}/image`)
+    apiFetchBlob(getStimulusImageUrl(projectId, gazeData.scenario_file_id))
       .then((blob) => {
         if (cancelled) return
         currentUrl = URL.createObjectURL(blob)
