@@ -56,6 +56,13 @@ def _decimation_indices(size: int, max_points: int) -> np.ndarray:
     return np.arange(size, dtype=int)
 
 
+def _scenario_strings(df: pd.DataFrame) -> pd.Series:
+    values = df["scenario"]
+    # Importers already store strings. Preserve that column without another
+    # allocation; mixed/legacy dtypes still need the historical string coercion.
+    return values if pd.api.types.is_string_dtype(values) else values.astype(str)
+
+
 def resolve_scenario_in_frame(
     df: pd.DataFrame,
     scenario: Optional[str],
@@ -70,7 +77,7 @@ def resolve_scenario_in_frame(
 
     if is_all_scenarios(scenario) or "scenario" not in df.columns:
         return None
-    stored = pd.unique(df["scenario"].dropna().astype(str))
+    stored = pd.unique(_scenario_strings(df))
     return resolve_scenario(scenario, stored.tolist())
 
 
@@ -84,11 +91,17 @@ def scope_to_scenario(df: pd.DataFrame, scenario: Optional[str]) -> pd.DataFrame
 
     if is_all_scenarios(scenario) or "scenario" not in df.columns:
         return df
-    resolution = resolve_scenario_in_frame(df, scenario)
+    values = _scenario_strings(df)
+    stored = pd.unique(values).tolist()
+    resolution = resolve_scenario(scenario, stored)
     if resolution is None:
         return df.iloc[0:0]
-    stored = df["scenario"].astype(str).str.strip()
-    return df.loc[stored == resolution.value.strip()]
+    # Strip distinct labels, not every row. Whitespace variants still select
+    # together, while the usual pre-stripped column takes a direct comparison.
+    target = resolution.value.strip()
+    matching = [value for value in stored if isinstance(value, str) and value.strip() == target]
+    mask = values == matching[0] if len(matching) == 1 else values.isin(matching)
+    return df.loc[mask]
 
 
 def _filter_time_window(
