@@ -19,6 +19,19 @@ from .numeric_helpers import _robust_baseline
 from .numeric_helpers import scope_to_scenario
 
 
+def _nearest_sorted_gaze_index(times: np.ndarray, t_s: float) -> int:
+    """Nearest sorted time, with the earlier/first sample winning ties."""
+    if not np.isfinite(t_s):
+        return int(pd.Series(times).sub(t_s).abs().idxmin())
+    right = int(np.searchsorted(times, t_s, side="left"))
+    if right == 0:
+        return 0
+    left = right - 1
+    if right < len(times) and abs(times[right] - t_s) < abs(times[left] - t_s):
+        return right
+    return int(np.searchsorted(times, times[left], side="left"))
+
+
 class PupilAnalyticsService:
     """Stateless computation helpers for pupil data."""
 
@@ -218,31 +231,59 @@ class PupilAnalyticsService:
         if "time" not in df.columns or df.empty:
             return _empty(df)
 
-        clean = df.copy()
-        clean["time"] = pd.to_numeric(clean["time"], errors="coerce")
-        clean = clean.dropna(subset=["time"])
-        if clean.empty:
-            return _empty(clean)
+        numeric_times = pd.to_numeric(df["time"], errors="coerce")
+        positions = np.flatnonzero(numeric_times.notna().to_numpy())
+        if not positions.size:
+            return _empty(df.iloc[0:0])
+        times = numeric_times.to_numpy()[positions]
+        # Guard the importer ordering assumption. Duplicate times also take the
+        # fallback because the historical pandas sort decides their row order.
+        ordered = bool(np.all(times[1:] > times[:-1]))
 
         # Resolve the scenario from the original nearest row before cleaning.
         # For an unscoped lookup this prevents interpolation/smoothing across a
         # boundary when two scenarios contain overlapping or adjacent times.
-        raw_idx = (clean["time"] - t_s).abs().idxmin()
-        raw_row = clean.loc[raw_idx]
-        has_scenario = "scenario" in clean.columns and pd.notna(
+        raw_idx = (
+            _nearest_sorted_gaze_index(times, t_s)
+            if ordered else int(pd.Series(times).sub(t_s).abs().idxmin())
+        )
+        raw_sample = df.iloc[[positions[raw_idx]]]
+        raw_row = raw_sample.iloc[0]
+        has_scenario = "scenario" in df.columns and pd.notna(
             raw_row.get("scenario")
         )
         raw_scenario = str(raw_row["scenario"]).strip() if has_scenario else None
-        if raw_scenario and "scenario" in clean.columns:
-            scenario_values = clean["scenario"].astype(str).str.strip()
-            clean = clean.loc[scenario_values == raw_scenario]
-
-        # The temporal gaze chart uses this same coordinate-selection seam. For
-        # an applied contract it reads local derivatives and never interpolates
-        # an outside-stimulus row back onto the image.
-        clean = clean.sort_values("time").reset_index(drop=True)
+        if ordered and applied_transform_mask(raw_sample).any():
+            # Applied coordinates depend only on this row. With unique sorted
+            # times, narrowing to its scenario cannot change the nearest sample.
+            clean = raw_sample.copy()
+            clean["time"] = [times[raw_idx]]
+            idx = 0
+        else:
+            if raw_scenario and "scenario" in df.columns:
+                values = df["scenario"].astype(str).iloc[positions]
+                matching = [
+                    value for value in pd.unique(values)
+                    if isinstance(value, str) and value.strip() == raw_scenario
+                ]
+                mask = values.isin(matching).to_numpy()
+                positions, times = positions[mask], times[mask]
+            if not ordered:
+                order = pd.Series(times).sort_values().index.to_numpy()
+                positions, times = positions[order], times[order]
+            idx = _nearest_sorted_gaze_index(times, t_s)
+            selected = df.iloc[[positions[idx]]]
+            if applied_transform_mask(selected).any():
+                clean = selected.copy()
+                clean["time"] = [times[idx]]
+                idx = 0
+            else:
+                # Legacy normalization, interpolation and smoothing require the
+                # entire scenario, including its original sampling frequency.
+                clean = df.iloc[positions].copy()
+                clean["time"] = times
+        clean = clean.reset_index(drop=True)
         clean, _ = PupilAnalyticsService._gaze_in_output_space(clean)
-        idx = (clean["time"] - t_s).abs().idxmin()
         row = clean.loc[idx]
 
         nearest_time = float(row["time"]) if pd.notna(row.get("time")) else 0.0
