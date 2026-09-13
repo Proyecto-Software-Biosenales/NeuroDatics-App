@@ -452,6 +452,11 @@ async def _serve_project_file_image(
         "ETag": etag,
     }
 
+    # The ETag derives from file identity, not content, so a revalidation is
+    # answered before any cache tier reads bytes it would never send.
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+
     # Tier 0: disk cache (session-persistent, no TTL)
     disk_cached = await anyio.to_thread.run_sync(
         lambda: _read_disk_cache(project_file.id)
@@ -460,8 +465,6 @@ async def _serve_project_file_image(
         disk_content, disk_mime = disk_cached
         # Also populate in-memory cache for hot path
         await _set_cached_image(cache_key, disk_content, disk_mime, etag)
-        if request.headers.get("if-none-match") == etag:
-            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
         return Response(
             content=disk_content,
             media_type=disk_mime,
@@ -470,10 +473,7 @@ async def _serve_project_file_image(
 
     cached_image = await _get_cached_image(cache_key)
     if cached_image:
-        cached_content, cached_mime_type, cached_etag = cached_image
-        if request.headers.get("if-none-match") == cached_etag:
-            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
-
+        cached_content, cached_mime_type, _ = cached_image
         return Response(
             content=cached_content,
             media_type=cached_mime_type,
@@ -485,10 +485,7 @@ async def _serve_project_file_image(
         async with download_lock:
             cached_after_lock = await _get_cached_image(cache_key)
             if cached_after_lock:
-                cached_content, cached_mime_type, cached_etag = cached_after_lock
-                if request.headers.get("if-none-match") == cached_etag:
-                    return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
-
+                cached_content, cached_mime_type, _ = cached_after_lock
                 return Response(
                     content=cached_content,
                     media_type=cached_mime_type,
@@ -519,9 +516,6 @@ async def _serve_project_file_image(
             await _set_cached_image(cache_key, content, project_file.mime_type, etag)
     finally:
         await _cleanup_image_download_lock(cache_key, download_lock)
-
-    if request.headers.get("if-none-match") == etag:
-        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
 
     return Response(
         content=content,
