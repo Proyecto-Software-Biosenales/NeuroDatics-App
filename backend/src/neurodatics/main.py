@@ -7,6 +7,9 @@ from .config.settings import settings
 from .config.logging import configure_logging
 from .infra.health.readiness import collect_readiness
 from .shared.scenario_identity import ScenarioAmbiguityError
+import asyncio
+from contextlib import suppress
+from .modules.projects.application.use_cases.recover_uploads import upload_recovery_loop
 
 # Create FastAPI app
 app = FastAPI(
@@ -46,8 +49,16 @@ async def scenario_ambiguity_handler(request: Request, exc: ScenarioAmbiguityErr
 
 @app.on_event("startup")
 async def startup_event():
-    """Create database tables on startup"""
-    pass
+    app.state.upload_recovery_task = asyncio.create_task(upload_recovery_loop())
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    task = getattr(app.state, "upload_recovery_task", None)
+    if task is not None:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
 
 @app.get("/health")

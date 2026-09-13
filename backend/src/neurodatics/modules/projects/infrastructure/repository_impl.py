@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ...scenaries.domain.entities import AOI, Scenaries
+from ...participants.domain.entities import Participant
 from ..domain.entities import Project, ProjectFile, ProjectSensor
 from ..domain.repository import ProjectRepository
 
@@ -38,6 +39,7 @@ class SQLProjectRepository(ProjectRepository):
                 selectinload(Project.scenaries).selectinload(Scenaries.stimulus_placement),
             )
             .where(Project.id == project_id, Project.owner_id == owner_id)
+            .execution_options(populate_existing=True)
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -92,6 +94,9 @@ class SQLProjectRepository(ProjectRepository):
         if not project:
             return False
 
+        await self.session.execute(update(ProjectFile).where(
+            ProjectFile.project_id == project_id,
+        ).values(source_zip_id=None))
         await self.session.delete(project)
         await self.session.commit()
         return True
@@ -103,6 +108,16 @@ class SQLProjectRepository(ProjectRepository):
         return project_file
 
     async def purge_files_by_kind(self, project_id: UUID, kind: str) -> int:
+        # Historical children survive as tombstones. Detach their provenance
+        # before deleting the ZIP parent; soft deletion does not release a FK.
+        parent_ids = select(ProjectFile.id).where(
+            ProjectFile.project_id == project_id, ProjectFile.kind == kind,
+        )
+        await self.session.execute(
+            update(ProjectFile)
+            .where(ProjectFile.source_zip_id.in_(parent_ids))
+            .values(source_zip_id=None)
+        )
         result = await self.session.execute(
             delete(ProjectFile).where(
                 ProjectFile.project_id == project_id,
@@ -120,14 +135,9 @@ class SQLProjectRepository(ProjectRepository):
         return files
 
     async def delete_file_by_kind(self, project_id: UUID, kind: str) -> bool:
-        result = await self.session.execute(
-            delete(ProjectFile).where(
-                ProjectFile.project_id == project_id,
-                ProjectFile.kind == kind,
-            )
-        )
+        count = await self.purge_files_by_kind(project_id, kind)
         await self.session.commit()
-        return (result.rowcount or 0) > 0
+        return count > 0
 
     async def update_sensors(self, project_id: UUID, sensors: List[str]) -> List[ProjectSensor]:
         await self.session.execute(delete(ProjectSensor).where(ProjectSensor.project_id == project_id))
@@ -200,6 +210,23 @@ class SQLProjectRepository(ProjectRepository):
         for scenary in scenaries:
             await self.session.refresh(scenary)
         return scenaries
+
+    async def reconcile_ingestion_metadata(self, project_id: UUID, participant_codes: List[str], sensors: List[str]) -> None:
+        codes = set(participant_codes)
+        result = await self.session.execute(select(Participant.participant_code).where(Participant.project_id == project_id))
+        existing = set(result.scalars().all())
+        await self.session.execute(delete(Participant).where(
+            Participant.project_id == project_id, Participant.participant_code.not_in(codes),
+        ))
+        self.session.add_all([
+            Participant(project_id=project_id, participant_code=code)
+            for code in sorted(codes - existing)
+        ])
+        await self.session.execute(delete(ProjectSensor).where(ProjectSensor.project_id == project_id))
+        self.session.add_all([
+            ProjectSensor(project_id=project_id, sensor_type=sensor) for sensor in dict.fromkeys(sensors)
+        ])
+        await self.session.flush()
 
     async def update_project_ingestion(self, project_id: UUID, updates: Dict[str, Any]) -> None:
         if not updates:

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, Enum, ForeignKey, Index, Integer, JSON, DateTime
+from sqlalchemy import Column, String, Text, Enum, ForeignKey, Index, Integer, JSON, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -92,6 +92,28 @@ class ProjectFile(BaseModel):
 
     # Relationships
     project = relationship("Project", back_populates="files")
+
+
+class DriveCleanupTask(BaseModel):
+    """Committed cleanup intent that survives deletion of the owning project."""
+    __tablename__ = "drive_cleanup_tasks"
+
+    external_id = Column(String(255), primary_key=True)
+    project_id = Column(UUID(as_uuid=True), nullable=False)
+
+
+class UploadAttempt(BaseModel):
+    """Durable outcome and root-folder journal for a single HTTP upload."""
+    __tablename__ = "upload_attempts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    phase = Column(String(20), nullable=False, default="processing")
+    cancel_requested = Column(Boolean, nullable=False, default=False)
+    root_folder_id = Column(String(255), nullable=True)
+    cleanup_root_id = Column(String(255), nullable=True)
+    progress = Column(JSON, nullable=True)
+    error = Column(Text, nullable=True)
 
 
 class ProjectSensor(BaseModel):

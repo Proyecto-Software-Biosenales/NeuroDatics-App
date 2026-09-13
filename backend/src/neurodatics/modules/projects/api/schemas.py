@@ -123,6 +123,7 @@ class AcquisitionSummaryResponse(BaseModel):
 
 
 class UploadedProjectZipSummaryResponse(BaseModel):
+    upload_id: Optional[UUID] = None
     project_id: UUID
     ingestion_status: str
     drive_root_folder_id: Optional[str] = None
@@ -167,6 +168,7 @@ class UploadClarificationResponse(BaseModel):
 
 
 class DriveUploadProgressResponse(BaseModel):
+    upload_id: Optional[UUID] = None
     phase: str
     uploaded_bytes: int
     total_bytes: int

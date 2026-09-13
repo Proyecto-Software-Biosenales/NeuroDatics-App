@@ -73,3 +73,4 @@ Para un despliegue en una red universitaria o corporativa, consulta [NETWORK_DEP
 - `frontend/`: interfaz Next.js.
 - `backend/`: API FastAPI, migraciones e ingesta de experimentos.
 - `docs/NETWORK_DEPLOYMENT.md`: guía de red y proxy.
+- [docs/UPLOAD_HARDENING.md](./docs/UPLOAD_HARDENING.md): revisión de la carga, correcciones, recuperación y migración 022.

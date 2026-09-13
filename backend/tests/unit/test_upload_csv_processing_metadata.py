@@ -194,6 +194,7 @@ async def test_upload_route_builds_and_forwards_screen_geometry(monkeypatch):
         screen_width_mm=530.0,
         screen_height_mm=300.0,
         viewing_distance_mm=650.0,
+        upload_id=None,
         current_user=str(owner_id),
         db=object(),
     )
@@ -384,6 +385,7 @@ async def test_use_case_forwards_geometry_and_persists_json_safe_block_metadata(
         clear_project_scenaries=AsyncMock(),
         add_files=AsyncMock(),
         add_scenaries=AsyncMock(),
+        reconcile_ingestion_metadata=AsyncMock(),
     )
     use_case = UploadExperimentZipUseCase(repository)
     use_case._create_new_drive_root_folder = AsyncMock(

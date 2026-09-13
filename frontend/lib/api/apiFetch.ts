@@ -77,11 +77,15 @@ function pruneBlobCache(now: number) {
 async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const onAbort = () => controller.abort(init.signal?.reason);
+  if (init.signal?.aborted) onAbort();
+  else init.signal?.addEventListener("abort", onAbort, { once: true });
 
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timeout);
+    init.signal?.removeEventListener("abort", onAbort);
   }
 }
 
@@ -169,12 +173,16 @@ export async function apiUploadFormWithProgress<T>(
       const finalizeReject = (error: Error) => {
         if (settled) return;
         settled = true;
+        clearProcessingTimer();
+        signal?.removeEventListener("abort", onAbortRequest);
         reject(error);
       };
 
       const finalizeResolve = (response: Response) => {
         if (settled) return;
         settled = true;
+        clearProcessingTimer();
+        signal?.removeEventListener("abort", onAbortRequest);
         resolve(response);
       };
 
@@ -214,7 +222,7 @@ export async function apiUploadFormWithProgress<T>(
       }
 
       xhr.upload.onprogress = (event) => {
-        if (!onProgress || !event.lengthComputable) return;
+        if (settled || !onProgress || !event.lengthComputable) return;
         const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
         onProgress({
           loaded: event.loaded,
@@ -225,8 +233,9 @@ export async function apiUploadFormWithProgress<T>(
       };
 
       xhr.upload.onload = () => {
-        if (!onProgress) return;
+        if (settled || !onProgress) return;
 
+        clearProcessingTimer();
         processingStartedAt = Date.now();
         onProgress({
           loaded: 1,
@@ -263,12 +272,13 @@ export async function apiUploadFormWithProgress<T>(
       };
 
       xhr.onload = () => {
+        if (settled) return;
         clearProcessingTimer();
         if (signal) {
           signal.removeEventListener("abort", onAbortRequest);
         }
 
-        if (onProgress) {
+        if (onProgress && xhr.status >= 200 && xhr.status < 300) {
           const elapsedSeconds = processingStartedAt
             ? Math.max(0, Math.round((Date.now() - processingStartedAt) / 1000))
             : 0;
@@ -289,7 +299,11 @@ export async function apiUploadFormWithProgress<T>(
         finalizeResolve(response);
       };
 
-      xhr.send(formData);
+      try {
+        xhr.send(formData);
+      } catch (error) {
+        finalizeReject(error instanceof Error ? error : new Error("No se pudo iniciar la subida."));
+      }
     });
   };
 

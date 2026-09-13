@@ -1,6 +1,8 @@
 """Best-effort fallbacks stay usable and log no exception payloads."""
 
+import hashlib
 import logging
+from io import BytesIO
 from types import SimpleNamespace
 
 import googleapiclient.http
@@ -50,10 +52,23 @@ async def test_tcp_cleanup_warning_preserves_success(monkeypatch, caplog):
 def test_drive_handle_cleanup_warning_preserves_upload(monkeypatch, tmp_path, caplog):
     local_file = tmp_path / "sample.csv"
     local_file.write_text("sample", encoding="utf-8")
-    media = SimpleNamespace(stream=lambda: SimpleNamespace(close=fail_with_sensitive_error))
+    stream = BytesIO(b"sample")
+    media = SimpleNamespace(
+        stream=lambda: SimpleNamespace(
+            read=stream.read, seek=stream.seek, close=fail_with_sensitive_error
+        ),
+        size=lambda: 6,
+    )
     monkeypatch.setattr(googleapiclient.http, "MediaFileUpload", lambda *a, **k: media)
-    request = SimpleNamespace(execute=lambda **kwargs: {"id": "uploaded-file", "size": "6"})
-    service = SimpleNamespace(files=lambda: SimpleNamespace(create=lambda **kwargs: request))
+    metadata = {
+        "id": "uploaded-file", "size": "6",
+        "sha256Checksum": hashlib.sha256(b"sample").hexdigest(),
+    }
+    request = SimpleNamespace(next_chunk=lambda **kwargs: (None, metadata))
+    generated_ids = SimpleNamespace(execute=lambda **kwargs: {"ids": ["uploaded-file"]})
+    service = SimpleNamespace(files=lambda: SimpleNamespace(
+        create=lambda **kwargs: request, generateIds=lambda **kwargs: generated_ids
+    ))
     client = drive.GoogleDriveClient()
     monkeypatch.setattr(client, "_require_service", lambda: service)
 

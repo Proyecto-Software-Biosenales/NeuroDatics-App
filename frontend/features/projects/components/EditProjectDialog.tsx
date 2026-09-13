@@ -28,6 +28,9 @@ import type {
 import { createEmptyFixationScreenGeometry } from "@/features/projects/create-project/types"
 import { apiAoiToFormAoi, serializeAoisForComparison, serializeScenaryAois } from "@/features/projects/create-project/aoiUtils"
 import { getFileRelativePath, type FolderSelection } from "@/features/projects/create-project/folderStructure"
+import { useZipUploadAttempt } from "@/features/projects/create-project/useZipUploadAttempt"
+import { packageExperimentFolder } from "@/features/projects/create-project/packageExperimentFolder"
+import { detectedUploadMetadata } from "@/features/projects/create-project/uploadMetadata"
 import {
   createEmptyStimulusPlacementDraft,
   isStimulusPlacementDraftValid,
@@ -42,18 +45,6 @@ interface EditProjectDialogProps {
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
 }
-
-const defaultParticipants: ParticipantData[] = [
-  { id: "1000557085", sex: null, age: "" },
-  { id: "1000187293", sex: null, age: "" },
-  { id: "1023675443", sex: null, age: "" },
-]
-
-const defaultScenaries: scenaries[] = [
-  { id: "1", name: "San Jeronimo", aois: [] },
-  { id: "2", name: "Yom Yom", aois: [] },
-  { id: "3", name: "Crem Helado", aois: [] },
-]
 
 const toProjectStatus = (value: unknown): ProjectStatus => {
   if (value === "draft" || value === "active" || value === "archived") return value
@@ -224,8 +215,7 @@ export const EditProjectDialog = ({
   const [zipUploadEtaSeconds, setZipUploadEtaSeconds] = useState<number | null>(null)
   const [zipDriveProcessingSeconds, setZipDriveProcessingSeconds] = useState<number | null>(null)
   const [isZipUploadInProgress, setIsZipUploadInProgress] = useState(false)
-  const uploadAbortControllerRef = useRef<AbortController | null>(null)
-  const activeZipUploadProjectIdRef = useRef<string | null>(null)
+  const uploadAttempt = useZipUploadAttempt(`${projectId}:${isOpen}`)
   const [shouldUpdateFolder, setShouldUpdateFolder] = useState(false)
   const [hasProcessedFolderUpdate, setHasProcessedFolderUpdate] = useState(false)
   const [folderSelection, setFolderSelection] = useState<FolderSelection | null>(null)
@@ -244,14 +234,7 @@ export const EditProjectDialog = ({
   const isDriveSyncFinalizing = zipUploadPercent !== null && zipUploadPercent >= 99 && zipUploadPercent < 100
 
   const cancelZipUpload = () => {
-    if (uploadAbortControllerRef.current) {
-      uploadAbortControllerRef.current.abort()
-    }
-    if (activeZipUploadProjectIdRef.current) {
-      void ProjectsApi.cancelZipUpload(activeZipUploadProjectIdRef.current).catch((error: unknown) => {
-        console.warn("[EditProjectDialog] backend cancel request failed", error)
-      })
-    }
+    uploadAttempt.cancel()
     setSaveProgressMessage("Cancelando subida a Google Drive...")
   }
 
@@ -263,8 +246,8 @@ export const EditProjectDialog = ({
     folderPath: "",
     uploadedZip: null,
     sensors: [],
-    participants: defaultParticipants,
-    scenaries: defaultScenaries,
+    participants: [],
+    scenaries: [],
     fixationGeometry: createEmptyFixationScreenGeometry(),
     stimulusPlacements: [],
   })
@@ -281,6 +264,16 @@ export const EditProjectDialog = ({
 
   useEffect(() => {
     if (!isOpen) return
+    setIsSaving(false)
+    setIsZipUploadInProgress(false)
+    setSaveProgressMessage(null)
+    setZipUploadPercent(null)
+    setZipUploadBytes(null)
+    setZipUploadSpeedMbps(null)
+    setZipUploadEtaSeconds(null)
+    setZipDriveProcessingSeconds(null)
+    setCurrentStep(1)
+    setFolderSelection(null)
     let cancelled = false
     const loadProject = async () => {
       try {
@@ -305,7 +298,7 @@ export const EditProjectDialog = ({
           folderPath: getCurrentZipFilename(detail),
           uploadedZip: null,
           sensors: ((detail.sensors || []).map((s) => s.sensor_type) as SensorType[]) || [],
-          participants: participants.length > 0 ? participants : defaultParticipants,
+          participants,
           scenaries: parseScenaries(detail),
           fixationGeometry: createEmptyFixationScreenGeometry(),
           stimulusPlacements: [],
@@ -361,6 +354,7 @@ export const EditProjectDialog = ({
     setFormData((prev) => ({
       ...prev,
       experimentFolderFiles: files,
+      uploadedZip: null,
       folderPath: files?.[0] ? getFileRelativePath(files[0]).split("/")[0] : "",
     }))
   }
@@ -495,6 +489,8 @@ export const EditProjectDialog = ({
       return
     }
 
+    const attempt = uploadAttempt.begin()
+    if (!attempt) return
     setIsSaving(true)
     setSaveError(null)
     setSaveNotice(null)
@@ -514,159 +510,87 @@ export const EditProjectDialog = ({
         })
       }
 
-      const uploadAbortController = new AbortController()
-      uploadAbortControllerRef.current = uploadAbortController
-      activeZipUploadProjectIdRef.current = projectId
+      attempt.assertActive()
+      let uploadedZipResult = formData.uploadedZip?.ingestion_status === "READY" ? formData.uploadedZip : null
+      if (!uploadedZipResult) {
+        updateProgress("Empaquetando carpeta del experimento...")
+        const zipFile = await packageExperimentFolder(formData.experimentFolderFiles, attempt.signal)
+        attempt.assertActive()
+        attempt.startPolling(projectId, (snapshot) => {
+          const totalBytes = Math.max(0, snapshot.total_bytes || 0)
+          const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0)
 
-      // Package folder into ZIP for backend upload
-      updateProgress("Empaquetando carpeta del experimento...")
-      let zipFile: File
-      try {
-        const JSZip = (await import("jszip")).default
-        const zip = new JSZip()
-        const getFilePath = getFileRelativePath
-
-        const folderName = getFilePath(formData.experimentFolderFiles[0]).split("/")[0]
-        for (const file of formData.experimentFolderFiles) {
-          const fullPath = getFilePath(file)
-          const relativePath = fullPath.startsWith(folderName + "/")
-            ? fullPath.slice(folderName.length + 1)
-            : fullPath || file.name
-          zip.file(relativePath, file, { compression: "STORE" })
-        }
-        const zipBlob = await zip.generateAsync({ type: "blob" })
-        zipFile = new File([zipBlob], `${folderName}.zip`, { type: "application/zip" })
-      } catch (packError) {
-        console.error("[EditProjectDialog] JSZip packaging failed", packError)
-        throw new Error("Error al empaquetar la carpeta. Verifica que no exceda 500MB.")
-      }
-
-      let driveProgressPollTimer: ReturnType<typeof setInterval> | null = null
-      let lastDriveSampleAt: number | null = null
-      let lastDriveUploadedBytes: number | null = null
-
-      const clearDriveProgressPolling = () => {
-        if (driveProgressPollTimer) {
-          clearInterval(driveProgressPollTimer)
-          driveProgressPollTimer = null
-        }
-      }
-
-      const pollDriveProgress = async () => {
-        const snapshot = await ProjectsApi.getZipUploadProgress(projectId)
-        const totalBytes = Math.max(0, snapshot.total_bytes || 0)
-        const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0)
-
-        if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
-          setSaveProgressMessage("Preparando sincronización en Google Drive...")
-          return
-        }
-
-        const percent = Math.max(
-          0,
-          Math.min(
-            100,
-            Number.isFinite(snapshot.percent)
-              ? snapshot.percent
-              : totalBytes > 0
-                ? Math.round((uploadedBytes / totalBytes) * 100)
-                : 0
-          )
-        )
-
-        const now = Date.now()
-        let speedMbps = snapshot.speed_mbps ?? null
-        if ((speedMbps === null || !Number.isFinite(speedMbps)) && lastDriveSampleAt !== null && lastDriveUploadedBytes !== null) {
-          const deltaSeconds = Math.max(0.001, (now - lastDriveSampleAt) / 1000)
-          const deltaBytes = Math.max(0, uploadedBytes - lastDriveUploadedBytes)
-          const sampledSpeed = deltaBytes / deltaSeconds / (1024 * 1024)
-          speedMbps = Number.isFinite(sampledSpeed) && sampledSpeed > 0 ? sampledSpeed : null
-        }
-
-        const speedBytesPerSecond = speedMbps !== null ? speedMbps * 1024 * 1024 : null
-        const etaSeconds = snapshot.eta_seconds ?? (
-          speedBytesPerSecond && speedBytesPerSecond > 0
-            ? Math.max(0, Math.round((totalBytes - uploadedBytes) / speedBytesPerSecond))
-            : null
-        )
-
-        lastDriveSampleAt = now
-        lastDriveUploadedBytes = uploadedBytes
-
-        setZipUploadPercent(percent)
-        setZipUploadBytes({ loaded: uploadedBytes, total: totalBytes })
-        setZipUploadSpeedMbps(speedMbps !== null && Number.isFinite(speedMbps) ? speedMbps : null)
-        setZipUploadEtaSeconds(etaSeconds !== null && Number.isFinite(etaSeconds) ? etaSeconds : null)
-        setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0)
-
-        if (snapshot.phase === "canceling") {
-          setSaveProgressMessage("Cancelando subida en backend...")
-        } else if (percent >= 99 && snapshot.phase !== "completed") {
-          setSaveProgressMessage("Finalizando sincronización con Google Drive...")
-        } else {
-          setSaveProgressMessage(`Sincronizando archivos en Google Drive... ${percent}%`)
-        }
-
-        if (snapshot.phase === "completed") {
-          clearDriveProgressPolling()
-        }
-        if (snapshot.phase === "failed") {
-          clearDriveProgressPolling()
-          if (snapshot.error) {
-            throw new Error(snapshot.error)
+          if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
+            setSaveProgressMessage("Preparando sincronización en Google Drive...")
+            return
           }
-        }
-      }
 
-      void pollDriveProgress().catch((error: unknown) => {
-        console.warn("[EditProjectDialog] initial Drive progress poll failed", error)
-      })
-      driveProgressPollTimer = setInterval(() => {
-        void pollDriveProgress().catch((error: unknown) => {
-          console.warn("[EditProjectDialog] Drive progress poll failed", error)
+          const { percent, speed_mbps: speedMbps = null, eta_seconds: etaSeconds = null } = snapshot
+
+          setZipUploadPercent(percent)
+          setZipUploadBytes({ loaded: uploadedBytes, total: totalBytes })
+          setZipUploadSpeedMbps(speedMbps)
+          setZipUploadEtaSeconds(etaSeconds)
+          setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0)
+
+          if (snapshot.phase === "canceling") {
+            setSaveProgressMessage("Cancelando subida en backend...")
+          } else if (percent >= 99 && snapshot.phase !== "completed") {
+            setSaveProgressMessage("Finalizando sincronización con Google Drive...")
+          } else {
+            setSaveProgressMessage(`Sincronizando archivos en Google Drive... ${percent}%`)
+          }
+
         })
-      }, 1000)
 
-      await ProjectsApi.uploadZipWithProgress(
-        projectId,
-        zipFile,
-        (progress) => {
-          if (progress.phase === "uploading") {
-            setSaveProgressMessage(`Enviando nuevo experimento al backend... ${progress.percent}%`)
-            return
-          }
-          if (progress.phase === "processing") {
-            return
-          }
-          if (progress.phase === "completed") {
-            clearDriveProgressPolling()
-            void pollDriveProgress().catch((error: unknown) => {
-              console.warn("[EditProjectDialog] final Drive progress poll failed", error)
-            })
-          }
-        },
-        uploadAbortController.signal,
-        folderSelection,
-        formData.fixationGeometry,
-        serializeStimulusPlacements(formData.stimulusPlacements),
-      )
+        attempt.markRequestStarted(projectId)
+        uploadedZipResult = await ProjectsApi.uploadZipWithProgress(
+          projectId,
+          zipFile,
+          (progress) => {
+            if (!attempt.isCurrent() || attempt.signal.aborted) return
+            if (progress.phase === "uploading") {
+              setSaveProgressMessage(`Enviando nuevo experimento al backend... ${progress.percent}%`)
+              return
+            }
+            if (progress.phase === "processing") {
+              return
+            }
+          },
+          attempt.signal,
+          folderSelection,
+          formData.fixationGeometry,
+          serializeStimulusPlacements(formData.stimulusPlacements),
+          attempt.id,
+        )
 
-      clearDriveProgressPolling()
-      await pollDriveProgress().catch((error: unknown) => {
-        console.warn("[EditProjectDialog] post-upload Drive progress poll failed", error)
-      })
+        attempt.markRequestCompleted()
+        if (!attempt.isCurrent()) return
+        if (uploadedZipResult.ingestion_status !== "READY") {
+          throw new Error("La ingesta no se completó en backend. Verifica estructura y contenido.")
+        }
+        // Preserve a successful result even if the detail refresh fails. Retrying
+        // Step 1 then reloads metadata instead of replacing the experiment again.
+        setFormData((prev) => ({ ...prev, uploadedZip: uploadedZipResult }))
+      }
 
       const refreshed = await ProjectsApi.get(projectId)
+      if (!attempt.isCurrent()) return
+      const detected = detectedUploadMetadata(uploadedZipResult, formData.participants)
 
       setFormData((prev) => ({
         ...prev,
         folderPath: getCurrentZipFilename(refreshed) || prev.folderPath,
         scenaries: parseScenaries(refreshed),
+        sensors: detected.sensors,
+        participants: detected.participants,
       }))
       setHasProcessedFolderUpdate(true)
+      setShouldUpdateFolder(false)
       setCurrentStep(2)
       setSaveNotice("Experimento procesado correctamente. Puedes continuar con la edición.")
     } catch (error) {
+      if (!attempt.isCurrent()) return
       // The backend re-validates structure independently; surface its questions
       // rather than a generic failure and keep the user on Step 1 to answer them.
       const clarification = asUploadClarification(error)
@@ -696,16 +620,18 @@ export const EditProjectDialog = ({
         setSaveError(nextMessage)
       }
     } finally {
-      setIsSaving(false)
-      setSaveProgressMessage(null)
-      setZipUploadPercent(null)
-      setZipUploadBytes(null)
-      setZipUploadSpeedMbps(null)
-      setZipUploadEtaSeconds(null)
-      setZipDriveProcessingSeconds(null)
-      setIsZipUploadInProgress(false)
-      uploadAbortControllerRef.current = null
-      activeZipUploadProjectIdRef.current = null
+      const isCurrent = attempt.isCurrent()
+      uploadAttempt.finish(attempt)
+      if (isCurrent) {
+        setIsSaving(false)
+        setSaveProgressMessage(null)
+        setZipUploadPercent(null)
+        setZipUploadBytes(null)
+        setZipUploadSpeedMbps(null)
+        setZipUploadEtaSeconds(null)
+        setZipDriveProcessingSeconds(null)
+        setIsZipUploadInProgress(false)
+      }
     }
   }
 
@@ -856,12 +782,12 @@ export const EditProjectDialog = ({
       setZipUploadEtaSeconds(null)
       setZipDriveProcessingSeconds(null)
       setIsZipUploadInProgress(false)
-      uploadAbortControllerRef.current = null
-      activeZipUploadProjectIdRef.current = null
+
     }
   }
 
   const resetDialogState = () => {
+    uploadAttempt.reset()
     setIsLoading(false)
     setIsSaving(false)
     setCurrentStep(1)
@@ -877,8 +803,7 @@ export const EditProjectDialog = ({
     setIsZipUploadInProgress(false)
     setHasProcessedFolderUpdate(false)
     setFolderSelection(null)
-    uploadAbortControllerRef.current = null
-    activeZipUploadProjectIdRef.current = null
+
   }
 
   const handleNextStep = async () => {

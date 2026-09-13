@@ -4,6 +4,7 @@ from typing import List
 from uuid import UUID
 
 from ....api.deps import get_db, get_current_user
+from ...projects.api.dependencies import lock_project_for_write
 from ....modules.projects.infrastructure.repository_impl import SQLProjectRepository
 from ..infrastructure.repository_impl import SQLParticipantRepository
 from .schemas import UpdateParticipantsRequest, ParticipantResponse
@@ -11,7 +12,7 @@ from .schemas import UpdateParticipantsRequest, ParticipantResponse
 router = APIRouter(prefix="/projects", tags=["participants"])
 
 
-@router.put("/{project_id}/participants", response_model=List[ParticipantResponse])
+@router.put("/{project_id}/participants", response_model=List[ParticipantResponse], dependencies=[Depends(lock_project_for_write)])
 async def update_participants(
     project_id: UUID,
     request: UpdateParticipantsRequest,

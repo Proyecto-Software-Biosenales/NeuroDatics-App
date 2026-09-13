@@ -213,6 +213,7 @@ export type DeleteProjectResult = {
 };
 
 export type ApiDriveUploadProgress = {
+  upload_id?: string | null;
   phase: "idle" | "uploading" | "completed" | "failed" | "canceling" | string;
   uploaded_bytes: number;
   total_bytes: number;
@@ -254,9 +255,11 @@ export const ProjectsApi = {
     signal?: AbortSignal,
     fixationGeometry?: FixationScreenGeometryInput | null,
     stimulusPlacements?: ApiStimulusPlacementEnvelope[] | null,
+    uploadId?: string,
   ) => {
     const form = new FormData();
     form.append("file", file);
+    if (uploadId) form.append("upload_id", uploadId);
     appendSelection(form, selection);
     appendFixationGeometry(form, fixationGeometry);
     appendStimulusPlacements(form, stimulusPlacements);
@@ -276,9 +279,11 @@ export const ProjectsApi = {
     selection?: FolderSelection | null,
     fixationGeometry?: FixationScreenGeometryInput | null,
     stimulusPlacements?: ApiStimulusPlacementEnvelope[] | null,
+    uploadId?: string,
   ) => {
     const form = new FormData();
     form.append("file", file);
+    if (uploadId) form.append("upload_id", uploadId);
     appendSelection(form, selection);
     appendFixationGeometry(form, fixationGeometry);
     appendStimulusPlacements(form, stimulusPlacements);
@@ -290,11 +295,11 @@ export const ProjectsApi = {
     );
   },
 
-  getZipUploadProgress: (projectId: string) =>
-    apiFetch<ApiDriveUploadProgress>(`/api/projects/${projectId}/files/experiment-zip/progress`),
+  getZipUploadProgress: (projectId: string, uploadId?: string, signal?: AbortSignal) =>
+    apiFetch<ApiDriveUploadProgress>(`/api/projects/${projectId}/files/experiment-zip/progress${uploadId ? `?upload_id=${encodeURIComponent(uploadId)}` : ""}`, { signal }),
 
-  cancelZipUpload: (projectId: string) =>
-    apiFetch<{ message: string }>(`/api/projects/${projectId}/files/experiment-zip/cancel`, {
+  cancelZipUpload: (projectId: string, uploadId?: string) =>
+    apiFetch<{ message: string }>(`/api/projects/${projectId}/files/experiment-zip/cancel${uploadId ? `?upload_id=${encodeURIComponent(uploadId)}` : ""}`, {
       method: "POST",
     }),
 

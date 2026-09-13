@@ -4,6 +4,7 @@ from typing import List
 from uuid import UUID
 
 from ....api.deps import get_db, get_current_user
+from ...projects.api.dependencies import lock_project_for_write
 from ....modules.projects.infrastructure.repository_impl import SQLProjectRepository
 from ..domain.stimulus_placement import (
     StimulusPlacementRequiresReprocessing,
@@ -21,7 +22,7 @@ from .schemas import (
 router = APIRouter(prefix="/projects", tags=["scenaries"])
 
 
-@router.put("/{project_id}/scenaries", response_model=List[scenariesResponse])
+@router.put("/{project_id}/scenaries", response_model=List[scenariesResponse], dependencies=[Depends(lock_project_for_write)])
 async def update_scenaries(
     project_id: UUID,
     request: UpdatescenariesRequest,
@@ -78,7 +79,7 @@ async def update_scenaries(
     ]
 
 
-@router.put("/{project_id}/aois", response_model=List[AOIResponse])
+@router.put("/{project_id}/aois", response_model=List[AOIResponse], dependencies=[Depends(lock_project_for_write)])
 async def update_aois(
     project_id: UUID,
     request: UpdateAOIsRequest,

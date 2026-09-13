@@ -1,6 +1,7 @@
 import mimetypes
 import os
 import re
+import unicodedata
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
@@ -208,6 +209,72 @@ class ZipValidationService:
         return path.replace("\\", "/").strip("/")
 
     @classmethod
+    def is_unsafe_entry_path(cls, path: str, *, is_directory: bool = False) -> bool:
+        """Reject paths that escape or alias another filename on supported hosts."""
+        normalized = path.replace("\\", "/")
+        if is_directory and normalized.endswith("/"):
+            normalized = normalized[:-1]
+        parts = normalized.split("/")
+        if len(normalized.encode("utf-8")) > 1024 or len(parts) > 128:
+            return True
+        reserved = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
+        reserved.update(
+            f"{prefix}{number}"
+            for prefix in ("COM", "LPT")
+            for number in range(1, 10)
+        )
+        for part in parts:
+            if (
+                not part
+                or part in {".", ".."}
+                or part.endswith((".", " "))
+                or len(part.encode("utf-8")) > 255
+            ):
+                return True
+            if any(ord(char) < 32 or char in '<>:"|?*' for char in part):
+                return True
+            if unicodedata.normalize("NFKC", part.split(".")[0]).upper() in reserved:
+                return True
+        return False
+
+    @classmethod
+    def archive_members_by_path(cls, zip_file: zipfile.ZipFile) -> Dict[str, zipfile.ZipInfo]:
+        """Validate original names before normalization, and bind paths to exact members.
+
+        ZIP lookup by string chooses the last duplicate. File and directory aliases
+        also overwrite one another on case-insensitive filesystems, so reject the
+        whole archive, including entries that will later be excluded from ingestion.
+        """
+        members: Dict[str, zipfile.ZipInfo] = {}
+        nodes: Dict[str, Tuple[str, bool]] = {}
+        explicit: set[str] = set()
+        for info in zip_file.infolist():
+            if info.flag_bits & 1:
+                raise cls.ValidationError("El ZIP contiene entradas cifradas no soportadas")
+            if info.compress_type not in {
+                zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED, zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA,
+            }:
+                raise cls.ValidationError("El ZIP usa un metodo de compresion no soportado")
+            if cls.is_unsafe_entry_path(info.orig_filename, is_directory=info.is_dir()):
+                raise cls.ValidationError(f"Ruta insegura detectada en ZIP: {info.orig_filename}")
+            path = cls.normalize_entry_path(info.filename)
+            parts = path.split("/")
+            for length in range(1, len(parts) + 1):
+                prefix = "/".join(parts[:length])
+                key = unicodedata.normalize("NFC", prefix).casefold()
+                is_file = length == len(parts) and not info.is_dir()
+                previous = nodes.get(key)
+                if previous is not None and previous != (prefix, is_file):
+                    raise cls.ValidationError(f"Rutas ambiguas o duplicadas en ZIP: {prefix}")
+                nodes[key] = (prefix, is_file)
+            if key in explicit:
+                raise cls.ValidationError(f"Entrada duplicada en ZIP: {path}")
+            explicit.add(key)
+            if not info.is_dir():
+                members[path] = info
+        return members
+
+    @classmethod
     def is_useful_entry(cls, entry_path: str) -> bool:
         normalized = cls.normalize_entry_path(entry_path)
         if not normalized:
@@ -235,6 +302,8 @@ class ZipValidationService:
 
     @classmethod
     def validate_upload(cls, filename: str, mime_type: str, size_bytes: int) -> None:
+        if len(filename) > 255 or any(char in filename for char in "/\\") or any(ord(char) < 32 for char in filename):
+            raise cls.ValidationError("El nombre del ZIP debe ser un nombre de archivo de hasta 255 caracteres")
         if not filename.lower().endswith(".zip"):
             raise cls.ValidationError("El archivo debe tener extension .zip")
 
@@ -270,7 +339,7 @@ class ZipValidationService:
         can cost any CPU or disk. The declared sizes are not trusted afterwards:
         `ZipExtractionService` re-checks the real byte count while extracting.
         """
-        infos = [info for info in zip_file.infolist() if not info.is_dir()]
+        infos = zip_file.infolist()
 
         max_entries = max(1, int(settings.project_zip_max_entries))
         if len(infos) > max_entries:
@@ -344,13 +413,15 @@ class ZipValidationService:
     def scan_structure(
         cls,
         zip_file: zipfile.ZipFile,
+        *,
+        selected_acquisition_folder: Optional[str] = None,
     ) -> Tuple[StructureReport, AcquisitionSummary]:
         """Inventory the archive: CSVs, scenario folders and the Acquisition tree."""
         report = StructureReport()
         seen_images: Dict[str, str] = {}
         seen_videos: Dict[str, str] = {}
         seen_acquisition: Dict[str, str] = {}
-        recordings_by_folder: Dict[str, AcquisitionRecording] = {}
+        recordings_by_folder: Dict[Tuple[str, str], AcquisitionRecording] = {}
 
         for info in zip_file.infolist():
             source_entry_path = cls.normalize_entry_path(info.filename)
@@ -378,11 +449,17 @@ class ZipValidationService:
 
             if acquisition_folder:
                 seen_acquisition.setdefault(acquisition_folder.lower(), acquisition_folder)
+                if (
+                    selected_acquisition_folder
+                    and acquisition_folder != selected_acquisition_folder
+                ):
+                    continue
 
                 relative = search_path.parent.parts[len(PurePosixPath(acquisition_folder).parts):]
                 if relative:
                     recording_folder = relative[0]
-                    recording = recordings_by_folder.get(recording_folder.lower())
+                    recording_key = (acquisition_folder, recording_folder)
+                    recording = recordings_by_folder.get(recording_key)
                     if recording is None:
                         parsed = cls._parse_acquisition_folder_name(recording_folder)
                         # Only `Sujet_..._Scenario_..._RecN` folders are recordings.
@@ -391,7 +468,7 @@ class ZipValidationService:
                         if parsed.subject_code is None:
                             continue
                         recording = parsed
-                        recordings_by_folder[recording_folder.lower()] = recording
+                        recordings_by_folder[recording_key] = recording
                     if not info.is_dir() and path.name not in recording.documents:
                         recording.documents.append(path.name)
 
@@ -406,8 +483,11 @@ class ZipValidationService:
         report.acquisition_folders = sorted(seen_acquisition.values())
         report.csv_paths.sort()
 
+        acquisition_path = selected_acquisition_folder
+        if acquisition_path is None and len(report.acquisition_folders) == 1:
+            acquisition_path = report.acquisition_folders[0]
         acquisition = AcquisitionSummary(
-            folder_path=report.acquisition_folders[0] if len(report.acquisition_folders) == 1 else None,
+            folder_path=acquisition_path,
             recordings=sorted(
                 recordings_by_folder.values(),
                 key=lambda rec: (rec.recording_index is None, rec.recording_index or 0, rec.folder_name),
@@ -436,13 +516,13 @@ class ZipValidationService:
             )
 
         resolved_csv = selection.csv_entry_path
-        if len(report.csv_paths) == 1:
-            resolved_csv = report.csv_paths[0]
-        elif resolved_csv:
+        if resolved_csv:
             if resolved_csv not in report.csv_paths:
                 raise cls.ValidationError(
                     f"El archivo .csv seleccionado no existe en el ZIP: {resolved_csv}"
                 )
+        elif len(report.csv_paths) == 1:
+            resolved_csv = report.csv_paths[0]
         else:
             questions.append(
                 ClarificationQuestion(
@@ -491,6 +571,10 @@ class ZipValidationService:
 
         # --- Acquisition: optional, but must not be ambiguous ------------------
         resolved_acquisition = selection.acquisition_folder
+        if resolved_acquisition and resolved_acquisition not in report.acquisition_folders:
+            raise cls.ValidationError(
+                f"La carpeta 'Acquisition' seleccionada no existe en el ZIP: {resolved_acquisition}"
+            )
         if len(report.acquisition_folders) == 1:
             resolved_acquisition = report.acquisition_folders[0]
         elif len(report.acquisition_folders) > 1:
@@ -539,6 +623,10 @@ class ZipValidationService:
         missing_message: str,
         questions: List[ClarificationQuestion],
     ) -> Optional[str]:
+        if chosen and chosen not in folders:
+            raise cls.ValidationError(
+                f"La carpeta '{label}' seleccionada no existe en el ZIP: {chosen}"
+            )
         if len(folders) == 1:
             return folders[0]
 
@@ -555,10 +643,6 @@ class ZipValidationService:
             return None
 
         if chosen:
-            if chosen not in folders:
-                raise cls.ValidationError(
-                    f"La carpeta '{label}' seleccionada no existe en el ZIP: {chosen}"
-                )
             return chosen
 
         questions.append(
@@ -615,21 +699,25 @@ class ZipValidationService:
                     excluded.append(source_entry_path)
                     continue
 
+            # A media-folder choice excludes its entire unselected tree, including
+            # sidecars and files whose extension belongs to the other media type.
+            images_folder = cls._named_ancestor(path, IMAGES_FOLDER_NAME)
+            videos_folder = cls._named_ancestor(path, VIDEOS_FOLDER_NAME)
+            if kind != "raw_csv" and any(
+                folder and folder != selected
+                for folder, selected in (
+                    (images_folder, selection.images_folder),
+                    (videos_folder, selection.videos_folder),
+                )
+            ):
+                excluded.append(source_entry_path)
+                continue
+
             # Only files under the selected Images/Videos folder are scenario assets.
-            if kind == "scenario_image":
-                folder = cls._named_ancestor(path, IMAGES_FOLDER_NAME)
-                if not folder:
-                    kind = "other_asset"
-                elif selection.images_folder and folder != selection.images_folder:
-                    excluded.append(source_entry_path)
-                    continue
-            elif kind == "scenario_video":
-                folder = cls._named_ancestor(path, VIDEOS_FOLDER_NAME)
-                if not folder:
-                    kind = "other_asset"
-                elif selection.videos_folder and folder != selection.videos_folder:
-                    excluded.append(source_entry_path)
-                    continue
+            if (kind == "scenario_image" and not images_folder) or (
+                kind == "scenario_video" and not videos_folder
+            ):
+                kind = "other_asset"
 
             if kind == "scenario_image":
                 counts["images"] += 1
@@ -680,13 +768,16 @@ class ZipValidationService:
         zip_file = cls.open_archive(zip_path)
         try:
             cls.enforce_archive_limits(zip_file, compressed_size)
+            cls.archive_members_by_path(zip_file)
             report, acquisition = cls.scan_structure(zip_file)
             resolved = cls.resolve_structure(report, selection)
 
             if resolved.acquisition_folder is None:
                 acquisition = AcquisitionSummary()
-            else:
-                acquisition.folder_path = resolved.acquisition_folder
+            elif acquisition.folder_path != resolved.acquisition_folder:
+                _, acquisition = cls.scan_structure(
+                    zip_file, selected_acquisition_folder=resolved.acquisition_folder
+                )
 
             entries, counts, excluded = cls.build_manifest(zip_file, resolved)
             return entries, counts, resolved, acquisition, excluded

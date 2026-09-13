@@ -1,4 +1,6 @@
 import zipfile
+import zlib
+import lzma
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,7 +8,7 @@ from typing import Dict, Generator, List
 import tempfile
 
 from .....config.settings import settings
-from .zip_validation_service import ZipManifestEntry
+from .zip_validation_service import ZipManifestEntry, ZipValidationService
 
 
 @dataclass
@@ -25,13 +27,7 @@ class ZipExtractionService:
 
     @classmethod
     def _is_unsafe_relative_path(cls, relative_path: str) -> bool:
-        normalized = relative_path.replace("\\", "/")
-        if normalized.startswith("/"):
-            return True
-        if ":" in normalized.split("/")[0]:
-            return True
-        parts = [part for part in normalized.split("/") if part]
-        return any(part == ".." for part in parts)
+        return ZipValidationService.is_unsafe_entry_path(relative_path)
 
     @classmethod
     def _copy_bounded(
@@ -95,40 +91,56 @@ class ZipExtractionService:
 
             try:
                 with zipfile.ZipFile(zip_path, "r") as zip_file:
+                    members = ZipValidationService.archive_members_by_path(zip_file)
                     for entry in manifest_entries:
                         rel_path = entry.source_entry_path
                         if cls._is_unsafe_relative_path(rel_path):
                             raise cls.ExtractionError(f"Ruta insegura detectada en ZIP: {rel_path}")
+                        if rel_path in files_by_entry_path:
+                            raise cls.ExtractionError(f"Entrada duplicada en manifiesto: {rel_path}")
+                        member = members[rel_path]
+                        if member.file_size != entry.size_bytes:
+                            raise cls.ExtractionError(
+                                f"El tamaño de '{rel_path}' no coincide con lo declarado en el manifiesto"
+                            )
 
                         destination = extraction_root / Path(rel_path)
                         destination.parent.mkdir(parents=True, exist_ok=True)
                         folder_set.add(str(destination.parent.relative_to(extraction_root)).replace("\\", "/"))
 
-                        # Allow a small margin over the declared size so that a
-                        # benign header rounding difference is not treated as an attack.
+                        # ZIP sizes are exact byte counts; a margin hides a mismatch
+                        # between the manifest, progress accounting, and stored bytes.
                         entry_budget = min(
                             max_entry_bytes,
-                            max(1024, max(0, int(entry.size_bytes or 0)) + cls.COPY_CHUNK_SIZE),
+                            max(0, int(entry.size_bytes or 0)),
                         )
 
-                        with zip_file.open(rel_path, "r") as src, destination.open("wb") as dst:
-                            total_written += cls._copy_bounded(
+                        with zip_file.open(member, "r") as src, destination.open("xb") as dst:
+                            written = cls._copy_bounded(
                                 src,
                                 dst,
                                 entry_path=rel_path,
                                 entry_budget=entry_budget,
                                 remaining_total=max_total_bytes - total_written,
                             )
+                        if written != entry.size_bytes:
+                            raise cls.ExtractionError(
+                                f"El tamaño de '{rel_path}' no coincide con lo declarado en el ZIP"
+                            )
+                        total_written += written
 
                         files_by_entry_path[rel_path] = str(destination)
 
-                yield ExtractedZipContext(
-                    temp_dir=tmp_dir,
-                    extracted_root=str(extraction_root),
-                    files_by_entry_path=files_by_entry_path,
-                    folders=sorted(folder for folder in folder_set if folder and folder != "."),
-                )
+            except ZipValidationService.ValidationError as exc:
+                raise cls.ExtractionError(str(exc)) from exc
             except KeyError as exc:
                 raise cls.ExtractionError("No se pudo extraer una entrada del ZIP") from exc
-            except zipfile.BadZipFile as exc:
-                raise cls.ExtractionError(f"ZIP corrupto: {exc}") from exc
+            except (zipfile.BadZipFile, zlib.error, lzma.LZMAError, EOFError, RuntimeError) as exc:
+                raise cls.ExtractionError("ZIP corrupto o con compresion no soportada") from exc
+
+            yield ExtractedZipContext(
+                temp_dir=tmp_dir,
+                extracted_root=str(extraction_root),
+                files_by_entry_path=files_by_entry_path,
+                folders=sorted(folder for folder in folder_set if folder and folder != "."),
+            )
