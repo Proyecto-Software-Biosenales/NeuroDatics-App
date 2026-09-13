@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, Enum, ForeignKey, Integer, JSON, DateTime
+from sqlalchemy import Column, String, Text, Enum, ForeignKey, Index, Integer, JSON, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -25,7 +25,7 @@ class Project(BaseModel):
     __tablename__ = "projects"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_id = Column(UUID(as_uuid=True), nullable=False)  # FK to auth.users(id)
+    owner_id = Column(UUID(as_uuid=True), nullable=False, index=True)  # FK to auth.users(id)
     name = Column(String(255), nullable=False)
     description = Column(Text)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE, nullable=False)
@@ -50,6 +50,8 @@ class Project(BaseModel):
 class ProjectFile(BaseModel):
     """Project files entity"""
     __tablename__ = "project_files"
+    # Parquet resolution filters on exactly this pair.
+    __table_args__ = (Index("ix_project_files_project_id_kind", "project_id", "kind"),)
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
