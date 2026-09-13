@@ -3,6 +3,7 @@
 from typing import Optional
 import numpy as np
 import pandas as pd
+from .numeric_helpers import _decimation_indices
 from .numeric_helpers import _filter_time_window
 from .numeric_helpers import _infer_fs
 from .numeric_helpers import _moving_average
@@ -55,6 +56,7 @@ class GsrAnalyticsService:
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
         absolute_time: bool = False,
+        max_points: int = 0,
     ) -> dict:
         """Compute raw and 1-second smoothed GSR timeseries."""
         _empty: dict = {"time": [], "gsr": [], "gsr_smooth": []}
@@ -75,10 +77,12 @@ class GsrAnalyticsService:
                 for value in values
             ]
 
+        # The smoothed trace was built at full rate in _clean_signal.
+        indices = _decimation_indices(len(clean), max_points)
         return {
-            "time": _safe_list(clean["time"].to_numpy(dtype=float)),
-            "gsr": _safe_list(clean["gsr"].to_numpy(dtype=float)),
-            "gsr_smooth": _safe_list(clean["gsr_smooth"].to_numpy(dtype=float)),
+            "time": _safe_list(clean["time"].to_numpy(dtype=float)[indices]),
+            "gsr": _safe_list(clean["gsr"].to_numpy(dtype=float)[indices]),
+            "gsr_smooth": _safe_list(clean["gsr_smooth"].to_numpy(dtype=float)[indices]),
         }
 
     @staticmethod

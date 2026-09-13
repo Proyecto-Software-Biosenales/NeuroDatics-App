@@ -352,6 +352,7 @@ async def pupil_timeseries(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
@@ -364,7 +365,7 @@ async def pupil_timeseries(
     cache_key = _redis.build_key(
         project_id,
         participant_code,
-        f"timeseries_pupil:{_time_window_key(start_time_s, end_time_s)}",
+        f"timeseries_pupil:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
         scenario,
         generation=generation,
     )
@@ -386,6 +387,7 @@ async def pupil_timeseries(
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
+            max_points=max_points,
         )
     )
 
@@ -566,6 +568,7 @@ async def gaze_timeseries(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
@@ -587,7 +590,8 @@ async def gaze_timeseries(
     cache_key = _redis.build_key(
         project_id,
         participant_code,
-        f"timeseries_gaze:v2:stimulus-v1:{transform_token}:{_time_window_key(start_time_s, end_time_s)}",
+        f"timeseries_gaze:v2:stimulus-v1:{transform_token}:{max_points}:"
+        f"{_time_window_key(start_time_s, end_time_s)}",
         scenario,
         generation=generation,
     )
@@ -601,6 +605,7 @@ async def gaze_timeseries(
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
+            max_points=max_points,
         )
     )
 
@@ -660,6 +665,7 @@ async def distance_timeseries(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
@@ -672,7 +678,7 @@ async def distance_timeseries(
     cache_key = _redis.build_key(
         project_id,
         participant_code,
-        f"timeseries_distance:{_time_window_key(start_time_s, end_time_s)}",
+        f"timeseries_distance:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
         scenario,
         generation=generation,
     )
@@ -694,6 +700,7 @@ async def distance_timeseries(
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
+            max_points=max_points,
         )
     )
 
@@ -752,6 +759,7 @@ async def gsr_timeseries(
     project_id: UUID,
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
+    max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
@@ -764,7 +772,7 @@ async def gsr_timeseries(
     cache_key = _redis.build_key(
         project_id,
         participant_code,
-        f"timeseries_gsr:{_time_window_key(start_time_s, end_time_s)}",
+        f"timeseries_gsr:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
         scenario,
         generation=generation,
     )
@@ -786,6 +794,7 @@ async def gsr_timeseries(
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
+            max_points=max_points,
         )
     )
 
