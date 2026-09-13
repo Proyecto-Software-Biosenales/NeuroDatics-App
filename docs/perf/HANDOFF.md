@@ -20,6 +20,8 @@ Concurrent work independently landed steps 1–4. Integration retained its decim
 - Migration upgrade/downgrade passed on a scratch SQLite database; PostgreSQL-specific merge SQL was compiled and checked. Live PostgreSQL validation was unavailable because the Docker daemon was stopped. A PostgreSQL migration/concurrency smoke test remains a deployment check.
 - Existing migration **022** and the upload-hardening edits remain the other workstream's uncommitted changes. Do not stage, discard, or overwrite them.
 
+Migration application was requested after the safe exit. Read-only connection checks failed for both configured Supabase URLs: `backend/.env` (port 6543) and root `.env` (port 5432) returned `FATAL: (ENOTFOUND) tenant/user ... not found`. No migration or other database mutation ran. Restore database access or provide working configuration before retrying `alembic upgrade head`; then verify revision 024 and the token column. Do not assume either environment has been migrated.
+
 ## Remaining work
 
 1. **Step 7 has not started.** Introduce the cached-frame helper and reader dependency, then migrate routes in small verified batches. Preserve the new cache-before-read ordering, 404/503 read errors versus 422 computation errors, mutable AOI key material, and step 4's point caps. Keep gaze-at and heatmap specialized.
