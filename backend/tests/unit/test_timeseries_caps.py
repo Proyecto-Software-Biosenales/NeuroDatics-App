@@ -74,7 +74,7 @@ def test_a_cap_above_the_sample_count_returns_every_sample():
 def test_oversized_json_is_not_written_to_redis(monkeypatch):
     writes = []
     cache = AnalyticsRedisCache()
-    cache._client = SimpleNamespace(set=lambda key, value, ex=None: writes.append(key))
+    cache._client = SimpleNamespace(set=lambda key, value, **_: writes.append(key))
     monkeypatch.setattr(AnalyticsRedisCache, "MAX_JSON_BYTES", 64)
 
     cache.set_json("small", {"time": [1.0]})
