@@ -33,6 +33,8 @@ class Project(BaseModel):
     # Analytics cache identity: bumped only when an ingestion commits successfully, so a crashed
     # re-ingest leaves the old generation (and therefore every cached artifact) still valid.
     ingestion_generation = Column(Integer, nullable=False, default=0, server_default="0")
+    # Lazily populated analytics provenance, keyed by participant and generation.
+    analytics_transform_tokens = Column(JSON, nullable=True)
     ingestion_error = Column(Text, nullable=True)
     last_ingested_at = Column(DateTime, nullable=True)
     storage_provider = Column(String(20), nullable=False, default="gdrive")
