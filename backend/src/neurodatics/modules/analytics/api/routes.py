@@ -1,4 +1,5 @@
 import hashlib
+import json
 import logging
 from typing import List, Optional
 from uuid import UUID
@@ -35,6 +36,7 @@ from neurodatics.shared.cache_generation import project_cache_generation
 from ..domain.coordinate_transform import transform_cache_token
 from neurodatics.shared.scenario_identity import is_all_scenarios, resolve_scenario
 from ..infrastructure.redis_cache import AnalyticsRedisCache
+from ..infrastructure.transform_token_store import persist_transform_token, stored_transform_token
 from .schemas import (
     AoiMetricsResponse,
     ComparisonChartsResponse,
@@ -156,6 +158,38 @@ def _fixation_duration(value: int) -> int:
         return FixationDurationVariantService.validate_duration(value)
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+async def _resolve_transform_token(db, project, participant_code, generation, *, cache_only=False):
+    """Resolve old rows lazily; a persisted token needs no reader or Parquet."""
+    token = stored_transform_token(project, participant_code, generation)
+    if token is not None:
+        return token, None
+    reader = ParquetReaderService(db)
+    try:
+        df = None
+        if cache_only:
+            df = await reader.read_from_cache_only(project.id, participant_code, generation=generation)
+        if df is None:
+            df = await reader.read(project.id, participant_code, generation=generation)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    token = await anyio.to_thread.run_sync(lambda: transform_cache_token(df))
+    await persist_transform_token(db, project, participant_code, generation, token)
+    return token, df
+
+
+def _aoi_cache_token(scenary, aois) -> str:
+    # AOIs are edited independently of ingestion; their current geometry and
+    # presentation fields must invalidate cached metrics as well.
+    material = [str(scenary.name), str(scenary.file_id), [
+        {field: getattr(aoi, field, None) for field in (
+            "id", "name", "color", "shape_type", "shape",
+        )} for aoi in aois
+    ]]
+    return hashlib.sha256(json.dumps(material, sort_keys=True, default=str).encode()).hexdigest()[:20]
 
 
 def _fixation_duration_cache_token(value: int) -> str:
@@ -328,13 +362,26 @@ async def comparison_charts(
         if item.strip()
     ] or None
 
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, generation,
+    )
+    views_token = hashlib.sha256(json.dumps(requested_visualizations).encode()).hexdigest()[:20]
+    cache_key = _redis.build_key(
+        project_id, participant_code,
+        f"comparison_charts:v1:stimulus-v1:{transform_token}:{max_points}:{views_token}",
+        scenario, generation=generation,
+    )
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return ComparisonChartsResponse(**cached)
+    if df is None:
+        reader = ParquetReaderService(db)
+        try:
+            df = await reader.read(project_id, participant_code, generation=generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     charts = await anyio.to_thread.run_sync(
         lambda: ChartConfigBuilder.build_many(
@@ -344,7 +391,9 @@ async def comparison_charts(
             max_points=max_points,
         )
     )
-    return ComparisonChartsResponse(charts=charts)
+    response_data = {"charts": charts}
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data))
+    return ComparisonChartsResponse(**response_data)
 
 
 @router.get("/timeseries/pupil", response_model=PupilTimeseriesResponse)
@@ -471,25 +520,9 @@ async def gaze_at(
             raise HTTPException(status_code=404, detail="Scenario not found")
         canonical_scenario = str(requested_scenary.name).strip()
 
-    reader = ParquetReaderService(db)
-    df = await reader.read_from_cache_only(
-        project_id,
-        participant_code,
-        generation=generation,
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, generation, cache_only=True,
     )
-
-    if df is None:
-        try:
-            df = await reader.read(project_id, participant_code, generation=generation)
-        except (ValueError, FileNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    # The transform snapshot participates in every spatial cache key. Reading
-    # the processed artifact first is intentional: SQL geometry may have been
-    # edited later and is not authoritative for this Parquet.
-    transform_token = transform_cache_token(df)
     rounded_t = round(t_s, 4)
     if canonical_scenario is None:
         cache_key = _redis.build_key(
@@ -510,6 +543,22 @@ async def gaze_at(
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return GazeAtResponse(**cached)
+
+    if df is None:
+        reader = ParquetReaderService(db)
+        df = await reader.read_from_cache_only(
+            project_id,
+            participant_code,
+            generation=generation,
+        )
+
+        if df is None:
+            try:
+                df = await reader.read(project_id, participant_code, generation=generation)
+            except (ValueError, FileNotFoundError) as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except RuntimeError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     gaze_data = await anyio.to_thread.run_sync(
         lambda: PupilAnalyticsService.find_gaze_at(
@@ -578,15 +627,9 @@ async def gaze_timeseries(
     generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    transform_token = transform_cache_token(df)
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, generation,
+    )
     cache_key = _redis.build_key(
         project_id,
         participant_code,
@@ -598,6 +641,15 @@ async def gaze_timeseries(
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return GazeTimeseriesResponse(**cached)
+
+    if df is None:
+        reader = ParquetReaderService(db)
+        try:
+            df = await reader.read(project_id, participant_code, generation=generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
         lambda: PupilAnalyticsService.compute_gaze_timeseries(
@@ -627,15 +679,9 @@ async def gaze_statistics(
     generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    transform_token = transform_cache_token(df)
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, generation,
+    )
     cache_key = _redis.build_key(
         project_id,
         participant_code,
@@ -646,6 +692,15 @@ async def gaze_statistics(
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return GazeStatisticsResponse(**cached)
+
+    if df is None:
+        reader = ParquetReaderService(db)
+        try:
+            df = await reader.read(project_id, participant_code, generation=generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     result_data = await anyio.to_thread.run_sync(
         lambda: PupilAnalyticsService.compute_gaze_statistics(
@@ -1130,15 +1185,9 @@ async def scanpath(
     project = await _verify_ownership(db, project_id, current_user)
     generation = _cache_generation(project)
 
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    transform_token = transform_cache_token(df)
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, generation,
+    )
     cache_key = _redis.build_key(
         project_id,
         participant_code,
@@ -1152,6 +1201,15 @@ async def scanpath(
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return ScanpathResponse(**cached)
+
+    if df is None:
+        reader = ParquetReaderService(db)
+        try:
+            df = await reader.read(project_id, participant_code, generation=generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     try:
         result_data = await anyio.to_thread.run_sync(
@@ -1190,15 +1248,9 @@ async def fixation_data(
     project = await _verify_ownership(db, project_id, current_user)
     generation = _cache_generation(project)
 
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    transform_token = transform_cache_token(df)
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, generation,
+    )
     cache_key = _redis.build_key(
         project_id,
         participant_code,
@@ -1216,6 +1268,15 @@ async def fixation_data(
         # written before it existed reports the real generation instead of 0 and
         # cannot leave the overlay client requesting a superseded heatmap URL.
         return FixationDataResponse(**{**cached, "cache_generation": generation})
+
+    if df is None:
+        reader = ParquetReaderService(db)
+        try:
+            df = await reader.read(project_id, participant_code, generation=generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     try:
         result_data = await anyio.to_thread.run_sync(
@@ -1271,15 +1332,9 @@ async def heatmap_overlay(
     stimulus_height = getattr(scenary, "height", None) if scenary else None
     size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
 
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=cache_generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    transform_token = transform_cache_token(df)
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, cache_generation,
+    )
     cache_key = _redis.build_key(
         project_id,
         participant_code,
@@ -1321,6 +1376,15 @@ async def heatmap_overlay(
                 **_stimulus_transform_headers(cached_metadata),
             },
         )
+
+    if df is None:
+        reader = ParquetReaderService(db)
+        try:
+            df = await reader.read(project_id, participant_code, generation=cache_generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     try:
         png_bytes, fixation_metadata = await anyio.to_thread.run_sync(
@@ -1367,15 +1431,9 @@ async def fixation_duration_sensitivity(
 
     project = await _verify_ownership(db, project_id, current_user)
     generation = _cache_generation(project)
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    transform_token = transform_cache_token(df)
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, generation,
+    )
     cache_key = _redis.build_key(
         project_id,
         participant_code,
@@ -1386,6 +1444,15 @@ async def fixation_duration_sensitivity(
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return FixationDurationSensitivityResponse(**cached)
+
+    if df is None:
+        reader = ParquetReaderService(db)
+        try:
+            df = await reader.read(project_id, participant_code, generation=generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     try:
         result_data = await anyio.to_thread.run_sync(
@@ -1411,15 +1478,9 @@ async def fixation_histogram(
     project = await _verify_ownership(db, project_id, current_user)
     generation = _cache_generation(project)
 
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    transform_token = transform_cache_token(df)
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, generation,
+    )
     cache_key = _redis.build_key(
         project_id,
         participant_code,
@@ -1433,6 +1494,15 @@ async def fixation_histogram(
     cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
     if cached:
         return FixationHistogramResponse(**cached)
+
+    if df is None:
+        reader = ParquetReaderService(db)
+        try:
+            df = await reader.read(project_id, participant_code, generation=generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     try:
         result_data = await anyio.to_thread.run_sync(
@@ -1477,13 +1547,26 @@ async def aoi_metrics(
     scenario_file_id = str(scenary.file_id) if scenary.file_id else None
     aois = list(scenary.aois or [])
 
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    transform_token, df = await _resolve_transform_token(
+        db, project, participant_code, generation,
+    )
+    cache_key = _redis.build_key(
+        project_id, participant_code,
+        f"aois:v1:stimulus-v1:{transform_token}:{_aoi_cache_token(scenary, aois)}:"
+        f"{_fixation_duration_cache_token(min_fixation_duration_ms)}",
+        scenario, generation=generation,
+    )
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return AoiMetricsResponse(**cached)
+    if df is None:
+        reader = ParquetReaderService(db)
+        try:
+            df = await reader.read(project_id, participant_code, generation=generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     if not aois:
         try:
@@ -1496,7 +1579,7 @@ async def aoi_metrics(
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
-        return AoiMetricsResponse(
+        response = AoiMetricsResponse(
             scenario=scenary.name,
             scenario_file_id=scenario_file_id,
             aois=[],
@@ -1523,6 +1606,9 @@ async def aoi_metrics(
             coordinate_transform=fixation_metadata.get("coordinate_transform"),
         )
 
+        await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response.model_dump(mode="json")))
+        return response
+
     # The stored label is what the AOIs were drawn against, and the service
     # resolves it onto whatever spelling the Parquet holds - so the retry that
     # used to recompute under the other spelling is no longer needed.
@@ -1538,8 +1624,10 @@ async def aoi_metrics(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    return AoiMetricsResponse(
+    response = AoiMetricsResponse(
         scenario=scenary.name,
         scenario_file_id=scenario_file_id,
         **result_data,
     )
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response.model_dump(mode="json")))
+    return response
