@@ -11,6 +11,7 @@ from ...domain.coordinate_transform import (
     valid_stimulus_gaze_mask,
 )
 from neurodatics.shared.scenario_identity import is_all_scenarios
+from .numeric_helpers import _decimation_indices
 from .numeric_helpers import _filter_time_window
 from .numeric_helpers import _infer_fs
 from .numeric_helpers import _moving_average
@@ -27,6 +28,7 @@ class PupilAnalyticsService:
         scenario: Optional[str] = None,
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
+        max_points: int = 0,
     ) -> dict:
         """Compute pupil timeseries from DataFrame."""
         df = scope_to_scenario(df, scenario)
@@ -47,9 +49,9 @@ class PupilAnalyticsService:
         mask = df["lx_pupil"].notna() | df["rx_pupil"].notna()
         df = df.loc[mask].sort_values("time").reset_index(drop=True)
 
-        time_arr = df["time"].fillna(0.0).astype(float).tolist()
-        left_arr = df["lx_pupil"].fillna(0.0).astype(float).tolist()
-        right_arr = df["rx_pupil"].fillna(0.0).astype(float).tolist()
+        time_arr = df["time"].fillna(0.0).astype(float).to_numpy()
+        left_arr = df["lx_pupil"].fillna(0.0).astype(float).to_numpy()
+        right_arr = df["rx_pupil"].fillna(0.0).astype(float).to_numpy()
 
         lx = df["lx_pupil"]
         rx = df["rx_pupil"]
@@ -60,7 +62,7 @@ class PupilAnalyticsService:
                 np.where(lx.notna(), lx, rx),
             )
         )
-        average_arr = avg_series.fillna(0.0).astype(float).tolist()
+        average_arr = avg_series.fillna(0.0).astype(float).to_numpy()
 
         # Infer sampling frequency and compute dynamic window
         t = df["time"].to_numpy(dtype=float)
@@ -69,16 +71,19 @@ class PupilAnalyticsService:
 
         smooth_left_arr = _moving_average(df["lx_pupil"].to_numpy(dtype=float), win)
         smooth_right_arr = _moving_average(df["rx_pupil"].to_numpy(dtype=float), win)
-        smooth_left = np.where(np.isfinite(smooth_left_arr), smooth_left_arr, 0.0).tolist()
-        smooth_right = np.where(np.isfinite(smooth_right_arr), smooth_right_arr, 0.0).tolist()
+        smooth_left = np.where(np.isfinite(smooth_left_arr), smooth_left_arr, 0.0)
+        smooth_right = np.where(np.isfinite(smooth_right_arr), smooth_right_arr, 0.0)
 
+        # Decimate only after smoothing, which needs the full-rate signal, and
+        # with one index set so every series stays aligned to the time axis.
+        indices = _decimation_indices(time_arr.size, max_points)
         return {
-            "time": time_arr,
-            "left": left_arr,
-            "right": right_arr,
-            "average": average_arr,
-            "smooth_left": smooth_left,
-            "smooth_right": smooth_right,
+            "time": time_arr[indices].tolist(),
+            "left": left_arr[indices].tolist(),
+            "right": right_arr[indices].tolist(),
+            "average": average_arr[indices].tolist(),
+            "smooth_left": smooth_left[indices].tolist(),
+            "smooth_right": smooth_right[indices].tolist(),
         }
 
     @staticmethod
@@ -418,6 +423,7 @@ class PupilAnalyticsService:
         scenario: Optional[str] = None,
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
+        max_points: int = 0,
     ) -> dict:
         """Compute cleaned gaze X/Y timeseries."""
         df = scope_to_scenario(df, scenario)
@@ -448,10 +454,11 @@ class PupilAnalyticsService:
         def _safe_list(arr: np.ndarray) -> list:
             return [0.0 if not np.isfinite(float(v)) else round(float(v), 4) for v in arr]
 
+        indices = _decimation_indices(len(df), max_points)
         return attach_transform_provenance({
-            "time": df["time"].astype(float).tolist(),
-            "gx_clean": _safe_list(df["gx_clean"].to_numpy(dtype=float)),
-            "gy_clean": _safe_list(df["gy_clean"].to_numpy(dtype=float)),
+            "time": df["time"].to_numpy(dtype=float)[indices].tolist(),
+            "gx_clean": _safe_list(df["gx_clean"].to_numpy(dtype=float)[indices]),
+            "gy_clean": _safe_list(df["gy_clean"].to_numpy(dtype=float)[indices]),
         }, scoped_for_provenance)
 
     @staticmethod
@@ -513,6 +520,7 @@ class PupilAnalyticsService:
         scenario: Optional[str] = None,
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
+        max_points: int = 0,
     ) -> dict:
         """Compute eye-to-screen distance timeseries (mm -> cm)."""
         _empty: dict = {"time": [], "distance_cm": []}
@@ -532,9 +540,12 @@ class PupilAnalyticsService:
         if df.empty:
             return _empty
 
+        indices = _decimation_indices(len(df), max_points)
         return {
-            "time": df["time"].astype(float).tolist(),
-            "distance_cm": [round(float(v), 4) for v in df["distance_cm"].tolist()],
+            "time": df["time"].to_numpy(dtype=float)[indices].tolist(),
+            "distance_cm": [
+                round(float(v), 4) for v in df["distance_cm"].to_numpy(dtype=float)[indices]
+            ],
         }
 
     @staticmethod

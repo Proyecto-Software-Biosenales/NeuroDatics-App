@@ -39,6 +39,9 @@ class AnalyticsRedisCache:
     # from, so they would keep serving the previous upload's numbers.
     NAMESPACE = "screen-stimulus-v2"
     INVALIDATION_BATCH_SIZE = 500
+    # Redis runs append-only with no maxmemory, so an oversized response would
+    # be fsynced and never evicted. Larger payloads are computed, not cached.
+    MAX_JSON_BYTES = 8 * 1024 * 1024
 
     def __init__(self):
         self._client: Optional[redis_lib.Redis] = None
@@ -84,8 +87,17 @@ class AnalyticsRedisCache:
         try:
             from ....config.settings import settings
 
+            payload = json.dumps(data)
+            if len(payload) > self.MAX_JSON_BYTES:
+                logger.warning(
+                    "Skipping Redis write for key %s: %d bytes exceeds the %d byte limit",
+                    key,
+                    len(payload),
+                    self.MAX_JSON_BYTES,
+                )
+                return
             _ttl = ttl or settings.analytics_redis_ttl_seconds
-            self.client.set(key, json.dumps(data), ex=_ttl)
+            self.client.set(key, payload, ex=_ttl)
         except Exception:
             logger.warning("Redis write failed for key %s", key, exc_info=True)
 

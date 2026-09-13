@@ -49,6 +49,13 @@ def _robust_baseline(x: np.ndarray) -> float:
     return result if np.isfinite(result) else 0.0
 
 
+def _decimation_indices(size: int, max_points: int) -> np.ndarray:
+    """Evenly spaced sample indices; ``max_points <= 0`` keeps every sample."""
+    if max_points > 0 and size > max_points:
+        return np.linspace(0, size - 1, int(max_points), dtype=int)
+    return np.arange(size, dtype=int)
+
+
 def resolve_scenario_in_frame(
     df: pd.DataFrame,
     scenario: Optional[str],
