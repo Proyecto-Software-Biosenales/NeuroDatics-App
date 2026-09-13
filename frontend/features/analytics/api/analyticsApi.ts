@@ -40,27 +40,31 @@ function appendTimeWindowParams(
 }
 
 export const AnalyticsApi = {
-  getParticipants: (projectId: string) =>
+  getParticipants: (projectId: string, signal?: AbortSignal) =>
     apiFetch<AnalyticsParticipant[]>(
-      `/api/projects/${projectId}/analytics/participants`
+      `/api/projects/${projectId}/analytics/participants`,
+      { signal }
     ),
 
-  getScenarios: (projectId: string) =>
+  getScenarios: (projectId: string, signal?: AbortSignal) =>
     apiFetch<AnalyticsScenario[]>(
-      `/api/projects/${projectId}/analytics/scenarios`
+      `/api/projects/${projectId}/analytics/scenarios`,
+      { signal }
     ),
 
   getCorrelations: (
     projectId: string,
     participantCode: string,
-    scenario: string
+    scenario: string,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
       scenario,
     })
     return apiFetch<CorrelationResponse>(
-      `/api/projects/${projectId}/analytics/correlations?${params}`
+      `/api/projects/${projectId}/analytics/correlations?${params}`,
+      { signal }
     )
   },
 
@@ -69,7 +73,8 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     visualizations: string[] = [],
-    maxPoints: number = 5000
+    maxPoints: number = 5000,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -80,7 +85,8 @@ export const AnalyticsApi = {
       params.set("visualizations", visualizations.join(","))
     }
     return apiFetch<ComparisonChartsResponse>(
-      `/api/projects/${projectId}/analytics/comparison/charts?${params}`
+      `/api/projects/${projectId}/analytics/comparison/charts?${params}`,
+      { signal }
     )
   },
 
@@ -89,7 +95,8 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -97,7 +104,8 @@ export const AnalyticsApi = {
     })
     appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<PupilTimeseriesData>(
-      `/api/projects/${projectId}/analytics/timeseries/pupil?${params}`
+      `/api/projects/${projectId}/analytics/timeseries/pupil?${params}`,
+      { signal }
     )
   },
 
@@ -106,7 +114,8 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -114,7 +123,8 @@ export const AnalyticsApi = {
     })
     appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<PupilStatistics>(
-      `/api/projects/${projectId}/analytics/statistics/pupil?${params}`
+      `/api/projects/${projectId}/analytics/statistics/pupil?${params}`,
+      { signal }
     )
   },
 
@@ -122,7 +132,8 @@ export const AnalyticsApi = {
     projectId: string,
     participantCode: string,
     timeS: number,
-    scenario?: string | null
+    scenario?: string | null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -130,7 +141,8 @@ export const AnalyticsApi = {
     })
     if (scenario && scenario !== "all") params.set("scenario", scenario)
     return apiFetch<GazeAtData>(
-      `/api/projects/${projectId}/analytics/gaze-at?${params}`
+      `/api/projects/${projectId}/analytics/gaze-at?${params}`,
+      { signal }
     )
   },
 
@@ -139,7 +151,8 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -147,7 +160,8 @@ export const AnalyticsApi = {
     })
     appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<GazeTimeseriesData>(
-      `/api/projects/${projectId}/analytics/timeseries/gaze?${params}`
+      `/api/projects/${projectId}/analytics/timeseries/gaze?${params}`,
+      { signal }
     )
   },
 
@@ -156,7 +170,8 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -164,7 +179,8 @@ export const AnalyticsApi = {
     })
     appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<GazeStatistics>(
-      `/api/projects/${projectId}/analytics/statistics/gaze?${params}`
+      `/api/projects/${projectId}/analytics/statistics/gaze?${params}`,
+      { signal }
     )
   },
 
@@ -173,7 +189,8 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -181,7 +198,8 @@ export const AnalyticsApi = {
     })
     appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<DistanceTimeseriesData>(
-      `/api/projects/${projectId}/analytics/timeseries/distance?${params}`
+      `/api/projects/${projectId}/analytics/timeseries/distance?${params}`,
+      { signal }
     )
   },
 
@@ -190,7 +208,8 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -198,7 +217,8 @@ export const AnalyticsApi = {
     })
     appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<DistanceStatistics>(
-      `/api/projects/${projectId}/analytics/statistics/distance?${params}`
+      `/api/projects/${projectId}/analytics/statistics/distance?${params}`,
+      { signal }
     )
   },
 
@@ -207,7 +227,8 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -215,7 +236,8 @@ export const AnalyticsApi = {
     })
     appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<GsrTimeseriesData>(
-      `/api/projects/${projectId}/analytics/timeseries/gsr?${params}`
+      `/api/projects/${projectId}/analytics/timeseries/gsr?${params}`,
+      { signal }
     )
   },
 
@@ -224,7 +246,8 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -232,7 +255,8 @@ export const AnalyticsApi = {
     })
     appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<GsrStatistics>(
-      `/api/projects/${projectId}/analytics/statistics/gsr?${params}`
+      `/api/projects/${projectId}/analytics/statistics/gsr?${params}`,
+      { signal }
     )
   },
 
@@ -244,7 +268,8 @@ export const AnalyticsApi = {
     smoothWindowS: number = 0.2,
     maxPoints: number = 5000,
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -262,7 +287,8 @@ export const AnalyticsApi = {
       params.set("end_time_s", String(endTimeS))
     }
     return apiFetch<EegTimeseriesData>(
-      `/api/projects/${projectId}/analytics/timeseries/eeg?${params}`
+      `/api/projects/${projectId}/analytics/timeseries/eeg?${params}`,
+      { signal }
     )
   },
 
@@ -275,7 +301,8 @@ export const AnalyticsApi = {
     useDb: boolean = true,
     maxPoints: number = 5000,
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -296,7 +323,8 @@ export const AnalyticsApi = {
       params.set("end_time_s", String(endTimeS))
     }
     return apiFetch<EegPsdData>(
-      `/api/projects/${projectId}/analytics/psd/eeg?${params}`
+      `/api/projects/${projectId}/analytics/psd/eeg?${params}`,
+      { signal }
     )
   },
 
@@ -309,7 +337,8 @@ export const AnalyticsApi = {
     useDb: boolean = true,
     normalize: string = "freq_demean",
     maxTimeBins: number = 600,
-    maxFrequencyBins: number = 256
+    maxFrequencyBins: number = 256,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -326,7 +355,8 @@ export const AnalyticsApi = {
       params.set("max_freq_hz", String(maxFreqHz))
     }
     return apiFetch<EegSpectrogramData>(
-      `/api/projects/${projectId}/analytics/spectrogram/eeg?${params}`
+      `/api/projects/${projectId}/analytics/spectrogram/eeg?${params}`,
+      { signal }
     )
   },
 
@@ -338,7 +368,8 @@ export const AnalyticsApi = {
     windowS: number = 0.33,
     overlapRatio: number = 0,
     removeDc: boolean = true,
-    maxFrames: number = 5000
+    maxFrames: number = 5000,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -352,7 +383,8 @@ export const AnalyticsApi = {
       params.set("channels", channels.join(","))
     }
     return apiFetch<EegTopographyData>(
-      `/api/projects/${projectId}/analytics/topography/eeg?${params}`
+      `/api/projects/${projectId}/analytics/topography/eeg?${params}`,
+      { signal }
     )
   },
 
@@ -360,7 +392,8 @@ export const AnalyticsApi = {
     projectId: string,
     participantCode: string,
     scenario: string,
-    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
+    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -368,7 +401,8 @@ export const AnalyticsApi = {
     })
     params.set("min_fixation_duration_ms", String(minFixationDurationMs))
     return apiFetch<ScanpathData>(
-      `/api/projects/${projectId}/analytics/scanpath?${params}`
+      `/api/projects/${projectId}/analytics/scanpath?${params}`,
+      { signal }
     )
   },
 
@@ -376,7 +410,8 @@ export const AnalyticsApi = {
     projectId: string,
     participantCode: string,
     scenario: string,
-    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
+    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -384,7 +419,8 @@ export const AnalyticsApi = {
     })
     params.set("min_fixation_duration_ms", String(minFixationDurationMs))
     return apiFetch<FixationData>(
-      `/api/projects/${projectId}/analytics/fixations?${params}`
+      `/api/projects/${projectId}/analytics/fixations?${params}`,
+      { signal }
     )
   },
 
@@ -394,7 +430,8 @@ export const AnalyticsApi = {
     scenario: string,
     transformToken: string = "screen-stimulus-v1",
     cacheGeneration?: number | null,
-    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
+    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -409,7 +446,8 @@ export const AnalyticsApi = {
       params.set("generation", String(cacheGeneration))
     }
     return apiFetchBlobWithHeaders(
-      `/api/projects/${projectId}/analytics/heatmap?${params}`
+      `/api/projects/${projectId}/analytics/heatmap?${params}`,
+      { signal }
     )
   },
 
@@ -417,7 +455,8 @@ export const AnalyticsApi = {
     projectId: string,
     participantCode: string,
     scenario: string = "all",
-    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
+    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -425,21 +464,24 @@ export const AnalyticsApi = {
     })
     params.set("min_fixation_duration_ms", String(minFixationDurationMs))
     return apiFetch<FixationHistogramData>(
-      `/api/projects/${projectId}/analytics/fixations/histogram?${params}`
+      `/api/projects/${projectId}/analytics/fixations/histogram?${params}`,
+      { signal }
     )
   },
 
   getFixationSensitivity: (
     projectId: string,
     participantCode: string,
-    scenario: string = "all"
+    scenario: string = "all",
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
       scenario,
     })
     return apiFetch<FixationSensitivityData>(
-      `/api/projects/${projectId}/analytics/fixations/sensitivity?${params}`
+      `/api/projects/${projectId}/analytics/fixations/sensitivity?${params}`,
+      { signal }
     )
   },
 
@@ -447,7 +489,8 @@ export const AnalyticsApi = {
     projectId: string,
     participantCode: string,
     scenario: string,
-    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
+    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS,
+    signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
       participant_code: participantCode,
@@ -455,7 +498,8 @@ export const AnalyticsApi = {
     })
     params.set("min_fixation_duration_ms", String(minFixationDurationMs))
     return apiFetch<AoiMetricsData>(
-      `/api/projects/${projectId}/analytics/aois?${params}`
+      `/api/projects/${projectId}/analytics/aois?${params}`,
+      { signal }
     )
   },
 }
