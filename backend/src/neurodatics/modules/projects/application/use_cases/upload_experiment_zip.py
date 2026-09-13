@@ -2,6 +2,7 @@ import asyncio
 import logging
 import pathlib
 import uuid
+from contextlib import AsyncExitStack
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
@@ -9,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.concurrency import contextmanager_in_threadpool
 
 from .....config.settings import settings
 from .....infra.storage.gdrive_client import gdrive_client
@@ -30,11 +32,13 @@ from ..services.fixation_detection_service import ScreenGeometry
 from ..services.stimulus_probe_service import StimulusDimensions, probe_stimulus
 from ..services.zip_extraction_service import ZipExtractionService
 from ..services.zip_validation_service import UploadSelection, ZipManifestEntry, ZipValidationService
+from .ingestion_lifecycle import IngestionLifecycle, UploadCanceledError
+from .publish_ingestion import publish_ingestion, preserve_unchanged_stimulus_annotations
 
 logger = logging.getLogger(__name__)
 
 
-class UploadCanceledError(Exception):
+class ProjectUploadNotFoundError(ValueError):
     pass
 
 
@@ -88,14 +92,26 @@ GOOGLE_DRIVE_RECONNECT_MESSAGE = (
 
 
 def _is_invalid_google_grant_error(exc: Exception) -> bool:
-    message = str(exc).lower()
-    return "invalid_grant" in message or "expired or revoked" in message
+    seen = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        message = str(exc).lower()
+        if "invalid_grant" in message or "expired or revoked" in message:
+            return True
+        exc = exc.__cause__ or exc.__context__
+    return False
 
 
 def _user_facing_ingestion_error(exc: Exception) -> str:
     if _is_invalid_google_grant_error(exc):
         return GOOGLE_DRIVE_RECONNECT_MESSAGE
-    return str(exc)
+    if isinstance(exc, (
+        ZipValidationService.ValidationError, ZipValidationService.ClarificationRequired,
+        ZipExtractionService.ExtractionError, StimulusPlacementUploadError,
+        CsvIngestionError, ParticipantIdentityError, UploadCanceledError,
+    )):
+        return str(exc)
+    return "No se pudo completar la carga. Los datos publicados se conservan; puedes reintentar."
 
 
 class UploadExperimentZipUseCase:
@@ -115,10 +131,11 @@ class UploadExperimentZipUseCase:
         selection: Optional[UploadSelection] = None,
         screen_geometry: Optional[ScreenGeometry] = None,
         stimulus_placements: Optional[List[Dict[str, Any]]] = None,
+        upload_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         project = await self.repository.get_by_id(project_id, owner_id)
         if not project:
-            raise ValueError("Project not found or access denied")
+            raise ProjectUploadNotFoundError("Project not found or access denied")
 
         # Configure Google Drive client with OAuth credentials from system integrations
         if self.db:
@@ -132,8 +149,12 @@ class UploadExperimentZipUseCase:
 
         uploaded_drive_ids: List[str] = []
         previous_root_folder_id = project.drive_root_folder_id
+        self.lifecycle = IngestionLifecycle(self.repository, self.db, project, upload_id)
 
         try:
+            await self.lifecycle.begin()
+            project = self.lifecycle.project
+            previous_root_folder_id = self.lifecycle.previous_root
             # Validate the ZIP structure FIRST, before any uploads or project updates.
             # This ensures that if the structure is invalid, nothing gets uploaded to Drive
             # and the project state is not modified.
@@ -143,7 +164,8 @@ class UploadExperimentZipUseCase:
                 resolved_selection,
                 acquisition,
                 excluded_entries,
-            ) = ZipValidationService.validate_and_analyze(
+            ) = await asyncio.to_thread(
+                ZipValidationService.validate_and_analyze,
                 filename=filename,
                 mime_type=mime_type,
                 zip_path=zip_path,
@@ -155,8 +177,12 @@ class UploadExperimentZipUseCase:
             # Extraction is part of validation: it is the pass that actually
             # decompresses (CRC-checking every member and enforcing the byte
             # budget), so it has to happen before the project state changes too.
-            with ZipExtractionService.extract_to_temp(zip_path, manifest_entries) as extracted:
-                resolved_stimulus_placements = self._resolve_stimulus_placements(
+            async with AsyncExitStack() as extraction_stack:
+                extracted = await extraction_stack.enter_async_context(contextmanager_in_threadpool(
+                    ZipExtractionService.extract_to_temp(zip_path, manifest_entries)
+                ))
+                resolved_stimulus_placements = await asyncio.to_thread(
+                    self._resolve_stimulus_placements,
                     stimulus_placements or [],
                     manifest_entries=manifest_entries,
                     extracted_files=extracted.files_by_entry_path,
@@ -183,7 +209,8 @@ class UploadExperimentZipUseCase:
                     },
                 )
                 await self.repository.commit()
-                self._raise_if_canceled(project_id)
+                self.lifecycle.processing = True
+                await self.lifecycle.check_canceled()
 
                 # Always ingest into a fresh root folder when uploading a new ZIP.
                 # This allows us to safely replace previous Drive content for edits.
@@ -194,6 +221,9 @@ class UploadExperimentZipUseCase:
 
                 if root_folder_id:
                     uploaded_drive_ids.append(root_folder_id)
+                    await self.lifecycle.record_root(root_folder_id)
+                else:
+                    raise RuntimeError("Drive did not return an upload root ID")
 
                 folder_cache: Dict[str, str] = {"": root_folder_id}
 
@@ -240,7 +270,7 @@ class UploadExperimentZipUseCase:
                 )
 
                 for csv_entry in (entry for entry in manifest_entries if entry.kind == "raw_csv"):
-                    self._raise_if_canceled(project_id)
+                    await self.lifecycle.check_canceled()
                     local_csv_path = extracted.files_by_entry_path.get(csv_entry.source_entry_path)
                     if not local_csv_path:
                         csv_summary["failed"] += 1
@@ -333,11 +363,12 @@ class UploadExperimentZipUseCase:
                 if zip_saved:
                     total_drive_bytes += zip_size_bytes
 
-                drive_upload_progress_registry.start(project_id, total_drive_bytes)
-                self._raise_if_canceled(project_id)
+                drive_upload_progress_registry.start(self.lifecycle.progress_key, total_drive_bytes)
+                await self.lifecycle.progress()
+                await self.lifecycle.check_canceled()
 
                 if zip_saved:
-                    self._raise_if_canceled(project_id)
+                    await self.lifecycle.check_canceled()
                     zip_upload = await asyncio.to_thread(
                         gdrive_client.upload_file,
                         filename=filename,
@@ -347,7 +378,8 @@ class UploadExperimentZipUseCase:
                     )
                     uploaded_drive_ids.append(zip_upload["drive_file_id"])
                     drive_uploaded_bytes += zip_size_bytes
-                    drive_upload_progress_registry.mark_uploaded_bytes(project_id, drive_uploaded_bytes)
+                    drive_upload_progress_registry.mark_uploaded_bytes(self.lifecycle.progress_key, drive_uploaded_bytes)
+                    await self.lifecycle.progress()
 
                     source_zip_file_id = uuid.uuid4()
                     checksum = zip_upload["checksum_sha256"]
@@ -396,7 +428,7 @@ class UploadExperimentZipUseCase:
                     zip_file_response = self._to_response_file(zip_project_file)
 
                 for folder_path in extracted.folders:
-                    self._raise_if_canceled(project_id)
+                    await self.lifecycle.check_canceled()
                     await self._ensure_folder_path(
                         folder_path=folder_path,
                         root_folder_id=root_folder_id,
@@ -406,7 +438,7 @@ class UploadExperimentZipUseCase:
                     )
 
                 for entry in manifest_entries:
-                    self._raise_if_canceled(project_id)
+                    await self.lifecycle.check_canceled()
 
                     if entry.kind == "raw_csv":
                         csv_summary["detected"] += 1
@@ -438,7 +470,8 @@ class UploadExperimentZipUseCase:
                     )
                     uploaded_drive_ids.append(upload_info["drive_file_id"])
                     drive_uploaded_bytes += max(0, int(entry.size_bytes or 0))
-                    drive_upload_progress_registry.mark_uploaded_bytes(project_id, drive_uploaded_bytes)
+                    drive_upload_progress_registry.mark_uploaded_bytes(self.lifecycle.progress_key, drive_uploaded_bytes)
+                    await self.lifecycle.progress()
 
                     if entry.kind == "scenario_image":
                         counts["images"] += 1
@@ -507,7 +540,7 @@ class UploadExperimentZipUseCase:
                     )
 
                     for user_index, parquet_path in all_user_parquet_paths:
-                        self._raise_if_canceled(project_id)
+                        await self.lifecycle.check_canceled()
                         parquet_size = pathlib.Path(parquet_path).stat().st_size
 
                         user_folder_id = await self._ensure_folder_path(
@@ -527,7 +560,8 @@ class UploadExperimentZipUseCase:
                         )
                         uploaded_drive_ids.append(upload_info["drive_file_id"])
                         drive_uploaded_bytes += parquet_size
-                        drive_upload_progress_registry.mark_uploaded_bytes(project_id, drive_uploaded_bytes)
+                        drive_upload_progress_registry.mark_uploaded_bytes(self.lifecycle.progress_key, drive_uploaded_bytes)
+                        await self.lifecycle.progress()
 
                         file_id = uuid.uuid4()
                         user_file_metadata: Dict[str, Any] = {
@@ -577,7 +611,7 @@ class UploadExperimentZipUseCase:
                         counts["files_uploaded"] += 1
 
                     for user_index, scenario_name, parquet_path in all_scenario_parquet_paths:
-                        self._raise_if_canceled(project_id)
+                        await self.lifecycle.check_canceled()
                         parquet_size = pathlib.Path(parquet_path).stat().st_size
 
                         esc_folder_id = await self._ensure_folder_path(
@@ -588,7 +622,7 @@ class UploadExperimentZipUseCase:
                             counts,
                         )
 
-                        clean_name = CsvProcessingService._clean_scenario_name(scenario_name)
+                        clean_name = pathlib.Path(parquet_path).stem
                         upload_info = await asyncio.to_thread(
                             gdrive_client.upload_file,
                             filename=f"{clean_name}.parquet",
@@ -598,7 +632,8 @@ class UploadExperimentZipUseCase:
                         )
                         uploaded_drive_ids.append(upload_info["drive_file_id"])
                         drive_uploaded_bytes += parquet_size
-                        drive_upload_progress_registry.mark_uploaded_bytes(project_id, drive_uploaded_bytes)
+                        drive_upload_progress_registry.mark_uploaded_bytes(self.lifecycle.progress_key, drive_uploaded_bytes)
+                        await self.lifecycle.progress()
 
                         file_id = uuid.uuid4()
                         scenario_file_metadata: Dict[str, Any] = {
@@ -650,38 +685,15 @@ class UploadExperimentZipUseCase:
                         response_files.append(self._to_response_file(project_file))
                         counts["files_uploaded"] += 1
 
-            self._raise_if_canceled(project_id)
-            await self.repository.soft_delete_active_files(project_id)
-            # DB has a unique constraint for one experiment ZIP per project.
-            # Remove any historical experiment_zip rows before inserting the new one.
-            await self.repository.purge_files_by_kind(project_id, "experiment_zip")
-            await self.repository.clear_project_scenaries(project_id)
-            await self.repository.add_files(files_to_insert)
-            await self.repository.add_scenaries(scenaries_to_insert)
-
-            counts["scenaries_created"] = len(scenaries_to_insert)
-
-            self._raise_if_canceled(project_id)
-            await self.repository.update_project_ingestion(
-                project_id=project_id,
-                updates={
-                    "ingestion_status": "READY",
-                    "ingestion_error": None,
-                    "last_ingested_at": datetime.now(timezone.utc),
-                    "storage_provider": "gdrive",
-                    "drive_root_folder_id": root_folder_id,
-                    "drive_root_folder_name": root_folder_name,
-                    "drive_root_folder_url": root_folder_url,
-                },
+            preserve_unchanged_stimulus_annotations(project, files_to_insert, scenaries_to_insert)
+            new_generation = await publish_ingestion(
+                self.repository, self.lifecycle, files_to_insert, scenaries_to_insert,
+                list(dict.fromkeys(parquet_participant_codes.values())),
+                all_detected_sensors,
+                {"id": root_folder_id, "name": root_folder_name, "url": root_folder_url},
             )
-            # The bump has to sit between the READY update and the commit: both
-            # flush into the same transaction, so the generation and the data it
-            # names become visible in one step. If anything raises before the
-            # commit, the generation never advances, every reader keeps resolving
-            # the previous one, and the caches written under it stay valid.
-            new_generation = await self.repository.bump_ingestion_generation(project_id)
-            await self.repository.commit()
-            drive_upload_progress_registry.complete(project_id)
+            counts["scenaries_created"] = len(scenaries_to_insert)
+            drive_upload_progress_registry.complete(self.lifecycle.progress_key)
 
             # Reclaimed only after the commit. Deleting it earlier destroyed the
             # content the un-bumped generation still pointed at, so a cancel or a DB
@@ -707,6 +719,8 @@ class UploadExperimentZipUseCase:
                         previous_root_folder_id,
                         project_id,
                     )
+                else:
+                    await self.lifecycle.cleanup_completed()
 
             # Space reclamation only, never the freshness mechanism: readers already
             # resolve the new generation from the committed row, so nothing below can
@@ -737,6 +751,7 @@ class UploadExperimentZipUseCase:
                 )
 
             return {
+                "upload_id": self.lifecycle.upload_id,
                 "project_id": project_id,
                 "drive_root_folder_id": root_folder_id,
                 "drive_root_folder_name": root_folder_name,
@@ -775,67 +790,22 @@ class UploadExperimentZipUseCase:
         except Exception as exc:
             user_error = _user_facing_ingestion_error(exc)
             logger.exception("Project ingestion failed for project %s", project_id)
-            drive_upload_progress_registry.fail(project_id, user_error)
-            await self.repository.rollback()
-
-            for drive_id in reversed(uploaded_drive_ids):
-                try:
-                    await asyncio.to_thread(gdrive_client.delete_file, drive_id)
-                except Exception:
-                    logger.warning("Could not delete drive object during compensation: %s", drive_id)
-
-            # If the error was a ZIP structure validation error or a pending
-            # clarification, it was raised before any project update or Drive
-            # upload, so we re-raise it as-is and leave the project untouched.
-            if isinstance(
-                exc,
-                (
-                    ZipValidationService.ValidationError,
-                    ZipValidationService.ClarificationRequired,
-                    StimulusPlacementUploadError,
-                ),
-            ):
-                raise
-
-            if isinstance(exc, UploadCanceledError):
-                failure_updates = {
-                    "ingestion_status": "FAILED",
-                    "ingestion_error": "Upload canceled by user",
-                    "storage_provider": "gdrive",
-                }
-                try:
-                    await self.repository.update_project_ingestion(project_id=project_id, updates=failure_updates)
-                    await self.repository.commit()
-                except Exception:
-                    await self.repository.rollback()
-                    logger.exception("Could not update project ingestion status after cancellation")
-                raise
-
-            # For other errors that occur after project updates (e.g., during Drive operations),
-            # mark the project as FAILED so the user can retry or see what went wrong.
-            failure_updates = {
-                "ingestion_status": "FAILED",
-                "ingestion_error": user_error,
-                "storage_provider": "gdrive",
-            }
             try:
-                await self.repository.update_project_ingestion(project_id=project_id, updates=failure_updates)
-                await self.repository.commit()
+                await self.lifecycle.fail(exc, user_error, uploaded_drive_ids)
             except Exception:
-                await self.repository.rollback()
-                logger.exception("Could not update project ingestion status to FAILED")
-
+                logger.exception("Upload recovery deferred; durable attempt retains its cleanup root")
             if _is_invalid_google_grant_error(exc):
                 raise GoogleDriveReconnectRequiredError(user_error) from exc
-
             raise
 
-    def _raise_if_canceled(self, project_id: UUID) -> None:
-        if drive_upload_progress_registry.is_cancel_requested(project_id):
-            raise UploadCanceledError("Upload canceled by user")
-
     async def _create_new_drive_root_folder(self, project: Any) -> Dict[str, Any]:
-        folder_name = f"{project.name}-{str(project.id)[:8]}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+        folder_name = f"{project.name[:200]}-{str(project.id)[:8]}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+        if self.db is not None:
+            root_id = await asyncio.to_thread(gdrive_client.reserve_file_id)
+            # Persist the reserved ID before the first remote mutation. A crash
+            # during create can then be reconciled without discovering orphans.
+            await self.lifecycle.record_root(root_id)
+            return await asyncio.to_thread(gdrive_client.create_folder, name=folder_name, parent_id=None, file_id=root_id)
         return await asyncio.to_thread(gdrive_client.create_folder, name=folder_name, parent_id=None)
 
     async def _ensure_folder_path(
@@ -1060,6 +1030,8 @@ class UploadExperimentZipUseCase:
         seen: Dict[str, int] = {}
         for user_index, parquet_path in user_parquet_paths:
             code = participant_codes[parquet_path]
+            if len(code) > 50:
+                raise ParticipantIdentityError("El codigo de participante excede el maximo de 50 caracteres.")
             if code in seen:
                 raise ParticipantIdentityError(
                     f"El codigo de participante '{code}' aparece en los bloques "
@@ -1071,6 +1043,8 @@ class UploadExperimentZipUseCase:
     def _dedupe_user_parquet_paths(self, paths: List[tuple[int, str]]) -> List[tuple[int, str]]:
         deduped: Dict[int, str] = {}
         for user_index, parquet_path in paths:
+            if user_index in deduped and deduped[user_index] != parquet_path:
+                raise ParticipantIdentityError("Hay varios archivos para el mismo indice de participante.")
             deduped[user_index] = parquet_path
 
         if len(deduped) != len(paths):
@@ -1084,8 +1058,10 @@ class UploadExperimentZipUseCase:
     ) -> List[tuple[int, str, str]]:
         deduped: Dict[tuple[int, str], tuple[int, str, str]] = {}
         for user_index, scenario_name, parquet_path in paths:
-            clean_name = CsvProcessingService._clean_scenario_name(scenario_name)
-            deduped[(user_index, clean_name)] = (user_index, scenario_name, parquet_path)
+            previous = deduped.get((user_index, scenario_name))
+            if previous is not None and previous[2] != parquet_path:
+                raise CsvIngestionError("Hay varios archivos para el mismo participante y escenario.")
+            deduped[(user_index, scenario_name)] = (user_index, scenario_name, parquet_path)
 
         if len(deduped) != len(paths):
             logger.info("Deduplicated scenario parquet outputs: %d -> %d", len(paths), len(deduped))

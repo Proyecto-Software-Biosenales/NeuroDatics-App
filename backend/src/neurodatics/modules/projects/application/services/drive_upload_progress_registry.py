@@ -24,8 +24,10 @@ class DriveUploadProgressRegistry:
         safe_total = max(1, int(total_bytes))
         with self._lock:
             self._prune_stale(now)
+            previous = self._data.get(str(project_id), {})
+            canceled = previous.get("phase") in {"processing", "canceling"} and bool(previous.get("cancel_requested"))
             self._data[str(project_id)] = {
-                "phase": "uploading",
+                "phase": "canceling" if canceled else "uploading",
                 "uploaded_bytes": 0,
                 "total_bytes": safe_total,
                 "percent": 0,
@@ -33,12 +35,19 @@ class DriveUploadProgressRegistry:
                 "eta_seconds": None,
                 "elapsed_seconds": 0,
                 "error": None,
-                "cancel_requested": False,
+                "cancel_requested": canceled,
                 "started_at": now,
                 "updated_at": now,
                 "last_uploaded_bytes": 0,
                 "last_sample_at": now,
             }
+
+    def begin(self, project_id: UUID) -> None:
+        self.start(project_id, 1)
+        with self._lock:
+            item = self._data.get(str(project_id))
+            if item is not None:
+                item["phase"] = "canceling" if item["cancel_requested"] else "processing"
 
     def request_cancel(self, project_id: UUID) -> None:
         now = time.time()
@@ -65,6 +74,9 @@ class DriveUploadProgressRegistry:
                     "last_sample_at": now,
                 }
                 self._data[key] = item
+                return
+
+            if item["phase"] in {"completed", "failed"}:
                 return
 
             item["cancel_requested"] = True
@@ -110,7 +122,9 @@ class DriveUploadProgressRegistry:
             if computed_percent >= 100:
                 computed_percent = 99
 
-            item["phase"] = "uploading"
+            if item["phase"] in {"completed", "failed"}:
+                return
+            item["phase"] = "canceling" if item.get("cancel_requested") else "uploading"
             item["uploaded_bytes"] = bounded_uploaded
             item["percent"] = computed_percent
             item["speed_mbps"] = round(speed_bytes_per_second / (1024 * 1024), 2) if speed_bytes_per_second > 0 else None

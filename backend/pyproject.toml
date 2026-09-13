@@ -10,6 +10,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.9"
 fastapi = "^0.104.1"
+starlette = "^0.27.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0"}
 sqlalchemy = "^2.0.23"
 psycopg = {extras = ["binary"], version = "^3.2.0"}

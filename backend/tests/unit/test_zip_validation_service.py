@@ -397,30 +397,18 @@ def test_extraction_writes_every_manifest_entry_and_nothing_else(tmp_path):
         assert Path(extracted.files_by_entry_path["Images/a.png"]).read_bytes() == b"png-bytes"
 
 
-def test_extraction_rejects_a_member_whose_bytes_exceed_the_declared_size(tmp_path):
-    """A hostile central directory can under-declare `file_size`."""
-    # Stored, not deflated: a 1:1 ratio keeps the zip-bomb guard out of the way
-    # so this exercises the extraction budget specifically.
-    path = build_zip(
-        tmp_path,
-        {"data.csv": b"time;x\n", "Images/a.png": b"A" * 4096},
-        compression=zipfile.ZIP_STORED,
-    )
-    entries, _, _, _, _ = analyze(path, UploadSelection(allow_missing_videos=True))
+@pytest.mark.parametrize("entry_budget,total_budget,message", [
+    (1, 10, "declarado"), (10, 1, "descomprimido"),
+])
+def test_extraction_counts_actual_bytes_before_writing(entry_budget, total_budget, message):
+    from io import BytesIO
 
-    for entry in entries:
-        if entry.source_entry_path == "Images/a.png":
-            entry.size_bytes = 1  # pretend the header claimed a single byte
-
-    # The budget adds a chunk of slack over the declared size, so shrink it too.
-    original_chunk = ZipExtractionService.COPY_CHUNK_SIZE
-    ZipExtractionService.COPY_CHUNK_SIZE = 16
-    try:
-        with pytest.raises(ZipExtractionService.ExtractionError, match="declarado"):
-            with ZipExtractionService.extract_to_temp(str(path), entries):
-                pass
-    finally:
-        ZipExtractionService.COPY_CHUNK_SIZE = original_chunk
+    destination = BytesIO()
+    with pytest.raises(ZipExtractionService.ExtractionError, match=message):
+        ZipExtractionService._copy_bounded(
+            BytesIO(b"ab"), destination, "data.csv", entry_budget, total_budget
+        )
+    assert destination.getvalue() == b""
 
 
 def test_extraction_rejects_a_corrupt_member(tmp_path):
@@ -454,3 +442,120 @@ def test_unsafe_relative_paths_are_detected(unsafe_path):
 def test_safe_relative_paths_are_allowed():
     for safe in ["data.csv", "Images/a.png", "a/b/c.mp4"]:
         assert ZipExtractionService._is_unsafe_relative_path(safe) is False
+
+
+@pytest.mark.parametrize("first,second", [
+    ("Images/a.png", "Images/a.png"),
+    ("Images/a.png", "Images\\a.png"),
+    ("Images/a.png", "Images/A.png"),
+    ("Images/a.png", "images/b.png"),
+    ("Images/a.png", "Images/a.png/child.txt"),
+    ("Images/a.png/child.txt", "Images/a.png"),
+    ("Images/café.png", "Images/cafe\u0301.png"),
+])
+def test_duplicate_members_and_filesystem_aliases_are_rejected(tmp_path, first, second):
+    import warnings
+
+    path = tmp_path / "aliases.zip"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("data.csv", b"time;gsr\n0;1\n")
+            archive.writestr(first, b"first")
+            archive.writestr(second, b"second")
+    with pytest.raises(ZipValidationService.ValidationError, match="[Dd]uplicad|ambiguas"):
+        analyze(path, ALLOW_NO_MEDIA)
+
+
+@pytest.mark.parametrize("unsafe", [
+    "/outside.csv", "../outside.csv", "C:/outside.csv", "a/../outside.csv",
+    "a//outside.csv", "a/./outside.csv", "a/file.txt:stream", "a/CON.txt",
+    "a/file. ", "a/file.", "Acquisition/../outside.csv", "__MACOSX/../outside.txt",
+])
+def test_invalid_original_paths_are_rejected_even_in_excluded_trees(tmp_path, unsafe):
+    path = build_zip(tmp_path, {"data.csv": b"time;gsr\n0;1\n", unsafe: b"ignored"})
+    with pytest.raises(ZipValidationService.ValidationError, match="Ruta insegura"):
+        analyze(path, ALLOW_NO_MEDIA)
+
+
+def test_backslash_archive_paths_bind_to_their_exact_zip_members(tmp_path):
+    from pathlib import Path
+
+    path = build_zip(tmp_path, {"nested\\data.csv": b"time;gsr\n0;1\n", "Images\\a.png": b"image"})
+    entries, _, _, _, _ = analyze(path, UploadSelection(allow_missing_videos=True))
+    with ZipExtractionService.extract_to_temp(str(path), entries) as extracted:
+        assert Path(extracted.files_by_entry_path["nested/data.csv"]).read_bytes() == b"time;gsr\n0;1\n"
+        assert Path(extracted.files_by_entry_path["Images/a.png"]).read_bytes() == b"image"
+
+
+def test_empty_directories_count_towards_archive_entry_limit(tmp_path, monkeypatch):
+    from neurodatics.config.settings import settings
+
+    monkeypatch.setattr(settings, "project_zip_max_entries", 2)
+    path = build_zip(tmp_path, {"data.csv": b"time;x\n", "one/": b"", "two/": b""})
+    with pytest.raises(ZipValidationService.ValidationError, match="demasiadas entradas"):
+        analyze(path, ALLOW_NO_MEDIA)
+
+
+def test_acquisition_selection_limits_defaults_and_documents_to_selected_tree(tmp_path):
+    path = build_zip(tmp_path, {
+        "data.csv": b"time;x\n",
+        "runA/Acquisition/Sujet_P1_Scenario_S_Rec1/a.txt": b"a",
+        "runB/Acquisition/Sujet_P1_Scenario_S_Rec1/b.txt": b"b",
+        "runB/Acquisition/Sujet_P2_Scenario_Other_Rec2/b.txt": b"b",
+    })
+    _, _, _, acquisition, _ = analyze(path, UploadSelection(
+        acquisition_folder="runA/Acquisition", allow_missing_images=True, allow_missing_videos=True,
+    ))
+    assert acquisition.folder_path == "runA/Acquisition"
+    assert acquisition.default_participant_codes() == ["P1"]
+    assert acquisition.default_scenario_names() == ["S"]
+    assert acquisition.recordings[0].documents == ["a.txt"]
+
+
+@pytest.mark.parametrize("field,value", [
+    ("csv_entry_path", "absent.csv"), ("images_folder", "missing/Images"),
+    ("videos_folder", "missing/Videos"), ("acquisition_folder", "missing/Acquisition"),
+])
+def test_explicit_invalid_selection_is_not_silently_replaced(tmp_path, field, value):
+    path = build_zip(tmp_path, {"data.csv": b"time;x\n", "Images/a.png": b"a", "Videos/v.mp4": b"v"})
+    with pytest.raises(ZipValidationService.ValidationError, match="no existe"):
+        analyze(path, UploadSelection(**{field: value}))
+
+
+def test_unselected_media_tree_excludes_sidecars_and_cross_typed_assets(tmp_path):
+    path = build_zip(tmp_path, {
+        "data.csv": b"time;x\n", "runA/Images/a.png": b"a",
+        "runB/Images/b.png": b"b", "runB/Images/notes.txt": b"notes",
+        "runB/Images/video.mp4": b"video",
+    })
+    entries, _, _, _, excluded = analyze(path, UploadSelection(
+        images_folder="runA/Images", allow_missing_videos=True,
+    ))
+    assert {entry.source_entry_path for entry in entries} == {"data.csv", "runA/Images/a.png"}
+    assert excluded == ["runB/Images/b.png", "runB/Images/notes.txt", "runB/Images/video.mp4"]
+
+
+def test_extraction_does_not_translate_errors_from_its_consumer(tmp_path):
+    path = build_zip(tmp_path, {"data.csv": b"time;x\n"})
+    entries, _, _, _, _ = analyze(path, ALLOW_NO_MEDIA)
+    with pytest.raises(KeyError, match="consumer failed"):
+        with ZipExtractionService.extract_to_temp(str(path), entries):
+            raise KeyError("consumer failed")
+
+
+def test_extraction_rejects_duplicate_manifest_entries(tmp_path):
+    path = build_zip(tmp_path, {"data.csv": b"time;x\n"})
+    entries, _, _, _, _ = analyze(path, ALLOW_NO_MEDIA)
+    with pytest.raises(ZipExtractionService.ExtractionError, match="duplicada"):
+        with ZipExtractionService.extract_to_temp(str(path), entries + entries):
+            pass
+
+
+def test_extraction_enforces_exact_declared_size_without_slack(tmp_path):
+    path = build_zip(tmp_path, {"data.csv": b"time;x\n"})
+    entries, _, _, _, _ = analyze(path, ALLOW_NO_MEDIA)
+    entries[0].size_bytes -= 1
+    with pytest.raises(ZipExtractionService.ExtractionError, match="declarado"):
+        with ZipExtractionService.extract_to_temp(str(path), entries):
+            pass

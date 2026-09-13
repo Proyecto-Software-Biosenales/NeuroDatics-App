@@ -254,6 +254,53 @@ def test_numeric_arousal_values_are_still_converted_to_numbers():
     assert "arousal" not in parsed.extra_columns
 
 
+def test_numeric_scenario_labels_preserve_distinct_partitions_and_original_values(tmp_path):
+    csv_path = tmp_path / "numeric-scenarios.csv"
+    labels = ["001", "1", "1.0", "1e0", "01"]
+    _write_csv(csv_path, ["Time;Scenario;GSR;", *[
+        f"{index};{label};{index + 10};" for index, label in enumerate(labels)
+    ]], encoding="utf-8")
+
+    result = CsvProcessingService.process(str(csv_path), str(tmp_path / "out"))
+
+    user_frame = pd.read_parquet(result.user_parquet_paths[0][1])
+    assert user_frame["scenario"].tolist() == labels
+    assert user_frame["gsr"].tolist() == pytest.approx([10, 11, 12, 13, 14])
+    assert [name for _, name, _ in result.scenario_parquet_paths] == labels
+    for _, name, path in result.scenario_parquet_paths:
+        assert pd.read_parquet(path)["scenario"].tolist() == [name]
+
+
+@pytest.mark.parametrize("first,second", [("001", "1"), ("A", "a")])
+def test_duplicate_scenario_aliases_require_identical_categorical_values(first, second):
+    with pytest.raises(CsvProcessingError, match="duplicadas en conflicto"):
+        CsvProcessingService._build_dataframe_with_info(
+            ["Time;Scenario;Scenario 1;", f"0;{first};{second};"], ";"
+        )
+
+
+def test_colliding_scenario_partition_names_keep_each_scenarios_data(tmp_path):
+    import json
+
+    import pyarrow.parquet as pq
+
+    labels = ["A B", "A_B", "A/B", "a_b", "safe", "CON", "x" * 300, "x" * 301]
+    frame = pd.DataFrame({"time": list(range(len(labels))), "scenario": labels})
+    _, paths = CsvProcessingService._write_parquets(frame, 1, str(tmp_path / "first"))
+    _, reversed_paths = CsvProcessingService._write_parquets(
+        frame.iloc[::-1], 1, str(tmp_path / "second")
+    )
+
+    names = {name: Path(path).name for _, name, path in paths}
+    assert len({name.casefold() for name in names.values()}) == len(labels)
+    assert names == {name: Path(path).name for _, name, path in reversed_paths}
+    assert names["safe"] == "safe.parquet"
+    for _, name, path in paths:
+        assert len(Path(path).name.encode("utf-8")) <= 255
+        assert pd.read_parquet(path)["scenario"].tolist() == [name]
+        assert json.loads(pq.read_metadata(path).metadata[b"scenario_name"]) == name
+
+
 @pytest.mark.parametrize(
     "lines,expected",
     [

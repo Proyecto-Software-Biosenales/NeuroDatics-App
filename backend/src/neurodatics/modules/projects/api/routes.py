@@ -3,7 +3,7 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional, Tuple
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import datetime, timezone
 from collections import OrderedDict
 from pathlib import Path, PurePosixPath
@@ -35,16 +35,23 @@ from ..application.use_cases.delete_project import DeleteProjectUseCase
 from ..application.use_cases.upload_experiment_zip import (
     GoogleDriveConfigurationError,
     GoogleDriveReconnectRequiredError,
+    ProjectUploadNotFoundError,
+    CsvIngestionError,
+    ParticipantIdentityError,
     StimulusPlacementUploadError,
     UploadCanceledError,
     UploadExperimentZipUseCase,
 )
 from ..application.services.drive_upload_progress_registry import drive_upload_progress_registry
 from ..application.services.fixation_detection_service import ScreenGeometry
-from ..application.services.upload_throttle import UploadRejected, upload_admission_control
+from ..application.use_cases.ingestion_lifecycle import finish_upload_on_disconnect, progress_key
+from ..infrastructure.upload_attempt_store import UploadAttemptStore, UploadAttemptConflict
+from ..infrastructure.drive_cleanup import enqueue_drive_cleanup, drain_drive_cleanup
 from ..application.services.zip_extraction_service import ZipExtractionService
 from ..application.services.zip_validation_service import UploadSelection, ZipValidationService
 from ..domain.entities import Project, ProjectFile, ProjectStatus
+from .dependencies import lock_project_for_write
+from .upload_route import ProjectUploadRoute
 from .schemas import (
     CreateProjectRequest, UpdateProjectRequest, UpdateSensorsRequest,
     ProjectResponse, ProjectDetailResponse, ProjectFileResponse, UploadedProjectZipSummaryResponse,
@@ -52,7 +59,7 @@ from .schemas import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/projects", tags=["projects"])
+router = APIRouter(prefix="/projects", tags=["projects"], route_class=ProjectUploadRoute)
 
 
 _IMAGE_CACHE_TTL_SECONDS = 300
@@ -974,7 +981,7 @@ async def get_project(
     )
 
 
-@router.patch("/{project_id}", response_model=ProjectResponse)
+@router.patch("/{project_id}", response_model=ProjectResponse, dependencies=[Depends(lock_project_for_write)])
 async def update_project(
     project_id: UUID,
     request: UpdateProjectRequest,
@@ -1052,7 +1059,7 @@ async def update_project(
     )
 
 
-@router.delete("/{project_id}", response_model=DeleteProjectResponse)
+@router.delete("/{project_id}", response_model=DeleteProjectResponse, dependencies=[Depends(lock_project_for_write)])
 async def delete_project(
     project_id: UUID,
     current_user: str = Depends(get_current_user),
@@ -1113,6 +1120,7 @@ async def _spool_upload_to_disk(file: UploadFile, destination: Path) -> int:
 
 @router.post(
     "/{project_id}/files/experiment-zip",
+    dependencies=[Depends(lock_project_for_write)],
     response_model=UploadedProjectZipSummaryResponse,
     responses={
         409: {
@@ -1140,6 +1148,7 @@ async def upload_experiment_zip(
     screen_width_mm: Optional[float] = Form(default=None, gt=0),
     screen_height_mm: Optional[float] = Form(default=None, gt=0),
     viewing_distance_mm: Optional[float] = Form(default=None, gt=0),
+    upload_id: Optional[UUID] = Form(default=None),
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -1152,6 +1161,7 @@ async def upload_experiment_zip(
     """
 
     owner_id = UUID(current_user)
+    upload_id = upload_id or uuid4()
     mime_type = file.content_type or "application/zip"
     filename = file.filename or "experiment.zip"
     selection = UploadSelection(
@@ -1177,34 +1187,28 @@ async def upload_experiment_zip(
     use_case = UploadExperimentZipUseCase(repository, db=db)
 
     try:
-        with upload_admission_control.slot(current_user):
-            with tempfile.TemporaryDirectory(prefix="neurodatics-upload-") as spool_dir:
-                zip_path = Path(spool_dir) / "experiment.zip"
+        with tempfile.TemporaryDirectory(prefix="neurodatics-upload-") as spool_dir:
+            zip_path = Path(spool_dir) / "experiment.zip"
 
-                try:
-                    await _spool_upload_to_disk(file, zip_path)
-                except ZipValidationService.ValidationError as exc:
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=str(exc),
-                    ) from exc
+            try:
+                await _spool_upload_to_disk(file, zip_path)
+            except ZipValidationService.ValidationError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=str(exc),
+                ) from exc
 
-                summary = await use_case.execute(
-                    project_id=project_id,
-                    owner_id=owner_id,
-                    zip_path=str(zip_path),
-                    filename=filename,
-                    mime_type=mime_type,
-                    selection=selection,
-                    screen_geometry=screen_geometry,
-                    stimulus_placements=stimulus_placements,
-                )
-    except UploadRejected as exc:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(exc),
-            headers={"Retry-After": str(exc.retry_after_seconds)},
-        ) from exc
+            summary = await finish_upload_on_disconnect(use_case.execute(
+                project_id=project_id,
+                owner_id=owner_id,
+                zip_path=str(zip_path),
+                filename=filename,
+                mime_type=mime_type,
+                selection=selection,
+                screen_geometry=screen_geometry,
+                stimulus_placements=stimulus_placements,
+                upload_id=upload_id,
+            ), project_id, upload_id)
     except HTTPException:
         raise
     except ZipValidationService.ClarificationRequired as exc:
@@ -1228,7 +1232,7 @@ async def upload_experiment_zip(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": exc.code, "message": str(exc)},
         ) from exc
-    except ValueError as e:
+    except ProjectUploadNotFoundError as e:
         logger.error(f"Project access denied: {e}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1239,19 +1243,24 @@ async def upload_experiment_zip(
             status_code=status.HTTP_409_CONFLICT,
             detail="Upload canceled by user"
         )
+    except UploadAttemptConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except (CsvIngestionError, ParticipantIdentityError) as exc:
+        raise HTTPException(422, str(exc)) from exc
     except (GoogleDriveConfigurationError, GoogleDriveReconnectRequiredError) as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e)
         )
-    except Exception as e:
+    except Exception:
         logger.exception("ZIP upload failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error procesando el archivo: {e}"
+            detail="No se pudo completar la carga. Consulta el estado del proyecto antes de reintentar."
         )
 
     return UploadedProjectZipSummaryResponse(
+        upload_id=summary.get("upload_id", upload_id),
         project_id=summary["project_id"],
         ingestion_status=summary["ingestion_status"],
         drive_root_folder_id=summary.get("drive_root_folder_id"),
@@ -1268,12 +1277,14 @@ async def upload_experiment_zip(
         selection=summary.get("selection", {}),
         acquisition=summary.get("acquisition", {}),
         excluded_entries=summary.get("excluded_entries", []),
+        stimulus_placements=summary.get("stimulus_placements", {}),
     )
 
 
 @router.post("/{project_id}/files/experiment-zip/cancel")
 async def cancel_experiment_zip_upload(
     project_id: UUID,
+    upload_id: Optional[UUID] = None,
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -1286,13 +1297,15 @@ async def cancel_experiment_zip_upload(
             detail="Project not found"
         )
 
-    drive_upload_progress_registry.request_cancel(project_id)
+    await UploadAttemptStore(db).request_cancel(project_id, upload_id)
+    drive_upload_progress_registry.request_cancel(progress_key(project_id, upload_id))
     return {"message": "Cancel requested"}
 
 
 @router.get("/{project_id}/files/experiment-zip/progress", response_model=DriveUploadProgressResponse)
 async def get_experiment_zip_upload_progress(
     project_id: UUID,
+    upload_id: Optional[UUID] = None,
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -1305,9 +1318,18 @@ async def get_experiment_zip_upload_progress(
             detail="Project not found"
         )
 
-    progress = drive_upload_progress_registry.get(project_id)
+    attempt = await UploadAttemptStore(db).get(project_id, upload_id)
+    scoped_id = upload_id or (attempt.id if attempt is not None else None)
+    progress = drive_upload_progress_registry.get(progress_key(project_id, scoped_id))
+    if attempt is not None:
+        progress = dict(progress or attempt.progress or {})
+        progress["phase"] = "canceling" if attempt.cancel_requested and attempt.phase not in {"completed", "failed"} else attempt.phase
+        progress["error"] = attempt.error
+        if attempt.phase == "completed":
+            progress["percent"] = 100
     if progress:
         return DriveUploadProgressResponse(
+            upload_id=scoped_id,
             phase=str(progress.get("phase") or "idle"),
             uploaded_bytes=int(progress.get("uploaded_bytes") or 0),
             total_bytes=int(progress.get("total_bytes") or 0),
@@ -1332,7 +1354,7 @@ async def get_experiment_zip_upload_progress(
             error=None,
         )
 
-    if project.ingestion_status and str(project.ingestion_status).upper() == "FAILED":
+    if upload_id is None and project.ingestion_status and str(project.ingestion_status).upper() == "FAILED":
         return DriveUploadProgressResponse(
             phase="failed",
             uploaded_bytes=0,
@@ -1356,7 +1378,7 @@ async def get_experiment_zip_upload_progress(
     )
 
 
-@router.delete("/{project_id}/files/experiment-zip")
+@router.delete("/{project_id}/files/experiment-zip", dependencies=[Depends(lock_project_for_write)])
 async def delete_experiment_zip(
     project_id: UUID,
     current_user: str = Depends(get_current_user),
@@ -1372,7 +1394,9 @@ async def delete_experiment_zip(
             detail="Project not found"
         )
 
-    # Delete from database
+    active_zip = await repository.get_active_zip(project_id)
+    cleanup_ids = [active_zip.external_id] if active_zip else []
+    await enqueue_drive_cleanup(db, project_id, cleanup_ids)
     deleted = await repository.delete_file_by_kind(project_id, "experiment_zip")
 
     if not deleted:
@@ -1381,10 +1405,15 @@ async def delete_experiment_zip(
             detail="Experiment zip file not found"
         )
 
+    try:
+        if cleanup_ids and await configure_gdrive_client_with_oauth(db, silent=True):
+            await drain_drive_cleanup(db, external_ids=cleanup_ids)
+    except Exception:
+        logger.warning("ZIP removed; its Drive cleanup remains queued", exc_info=True)
     return {"message": "Experiment zip file deleted successfully"}
 
 
-@router.put("/{project_id}/sensors", response_model=List[dict])
+@router.put("/{project_id}/sensors", response_model=List[dict], dependencies=[Depends(lock_project_for_write)])
 async def update_sensors(
     project_id: UUID,
     request: UpdateSensorsRequest,
@@ -1406,7 +1435,7 @@ async def update_sensors(
     return [{"id": s.id, "sensor_type": s.sensor_type} for s in sensors]
 
 
-@router.post("/{project_id}/finalize")
+@router.post("/{project_id}/finalize", dependencies=[Depends(lock_project_for_write)])
 async def finalize_project(
     project_id: UUID,
     current_user: str = Depends(get_current_user),

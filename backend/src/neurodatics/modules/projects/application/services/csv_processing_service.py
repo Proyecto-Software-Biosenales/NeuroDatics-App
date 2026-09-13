@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import json
 import logging
 import math
@@ -232,7 +233,7 @@ class CsvProcessingService:
         r"grabaci[oó]n\s*:\s*([^|;\r\n]+)",
         flags=re.IGNORECASE,
     )
-    _SCENARIO_CLEAN_RE = re.compile(r"[\\/\s]+")
+    _SCENARIO_CLEAN_RE = re.compile(r'[\\/\s<>:"|?*\x00-\x1f]+')
 
     @staticmethod
     def _norm(value: str) -> str:
@@ -502,7 +503,11 @@ class CsvProcessingService:
         return channels, declared_file_rate_hz, warnings
 
     @classmethod
-    def _values_equivalent(cls, first: str, second: str) -> bool:
+    def _values_equivalent(
+        cls, first: str, second: str, *, categorical: bool = False
+    ) -> bool:
+        if categorical:
+            return first == second
         first_number = cls._to_float(first)
         second_number = cls._to_float(second)
         if first_number is not None and second_number is not None:
@@ -515,6 +520,10 @@ class CsvProcessingService:
     def _convert_numeric_columns(cls, df: pd.DataFrame) -> pd.DataFrame:
         converted_df = df.copy()
         for column in converted_df.columns:
+            # Scenario labels are identities, even when every value looks numeric.
+            # Converting these would merge conditions such as "001" and "1".
+            if column == "scenario":
+                continue
             series = converted_df[column]
             if pd.api.types.is_numeric_dtype(series):
                 continue
@@ -604,7 +613,9 @@ class CsvProcessingService:
             for row_index, row in enumerate(parsed_rows):
                 candidates = [row[index] for index in indices if row[index] is not None]
                 if len(candidates) > 1 and any(
-                    not cls._values_equivalent(candidates[0], value)
+                    not cls._values_equivalent(
+                        candidates[0], value, categorical=name == "scenario"
+                    )
                     for value in candidates[1:]
                 ):
                     raise CsvProcessingError(
@@ -915,8 +926,43 @@ class CsvProcessingService:
     @classmethod
     def _clean_scenario_name(cls, scenario_name: str) -> str:
         normalized = cls._SCENARIO_CLEAN_RE.sub("_", scenario_name.strip())
-        normalized = re.sub(r"_+", "_", normalized).strip("_")
+        normalized = re.sub(r"_+", "_", normalized).strip("_. ")
+        # Keep filenames portable and leave room for a collision suffix and extension.
+        normalized = normalized.encode("utf-8")[:160].decode("utf-8", errors="ignore")
+        if unicodedata.normalize("NFKC", normalized.split(".")[0]).upper() in {
+            "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$",
+            *(f"COM{number}" for number in range(1, 10)),
+            *(f"LPT{number}" for number in range(1, 10)),
+        }:
+            normalized = "_" + normalized
         return normalized or "scenario"
+
+    @classmethod
+    def _scenario_partition_names(cls, scenarios: List[str]) -> Dict[str, str]:
+        """Allocate distinct portable filenames without changing scenario identities."""
+        bases = {scenario: cls._clean_scenario_name(scenario) for scenario in scenarios}
+        counts: Dict[str, int] = {}
+        for base in bases.values():
+            key = unicodedata.normalize("NFC", base).casefold()
+            counts[key] = counts.get(key, 0) + 1
+        reserved = set(counts)
+        names: Dict[str, str] = {}
+        for scenario, base in bases.items():
+            key = unicodedata.normalize("NFC", base).casefold()
+            if counts[key] == 1:
+                names[scenario] = base
+                continue
+            digest = hashlib.sha256(scenario.encode("utf-8")).hexdigest()
+            for length in range(12, 65, 4):
+                candidate = f"{base}-{digest[:length]}"
+                candidate_key = unicodedata.normalize("NFC", candidate).casefold()
+                if candidate_key not in reserved:
+                    names[scenario] = candidate
+                    reserved.add(candidate_key)
+                    break
+            else:
+                raise CsvProcessingError("No se pudieron distinguir los archivos de escenarios")
+        return names
 
     @classmethod
     def _write_parquets(
@@ -959,15 +1005,16 @@ class CsvProcessingService:
             unique_scenarios = [
                 value for value in pd.unique(valid_scenarios) if value and value != ""
             ]
+            partition_names = cls._scenario_partition_names(unique_scenarios)
 
             for scenario_name in unique_scenarios:
-                clean_name = cls._clean_scenario_name(str(scenario_name))
+                clean_name = partition_names[scenario_name]
                 scenario_path = (scenarios_dir / f"{clean_name}.parquet").resolve()
 
                 scenario_df = df[
                     scenario_series.astype("string").str.strip() == scenario_name
                 ]
-                scenario_metadata: Dict[str, Any] = {}
+                scenario_metadata: Dict[str, Any] = {"scenario_name": str(scenario_name)}
                 if recording_units is not None:
                     scenario_metadata["recording_units"] = dict(recording_units)
                 placement_resolution = resolve_scenario(

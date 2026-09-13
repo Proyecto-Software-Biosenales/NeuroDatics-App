@@ -258,6 +258,7 @@ def upload(tmp_path, monkeypatch):
         clear_project_scenaries=AsyncMock(),
         add_files=AsyncMock(),
         add_scenaries=AsyncMock(),
+        reconcile_ingestion_metadata=AsyncMock(),
     )
     use_case = UploadExperimentZipUseCase(repository)
     use_case._create_new_drive_root_folder = AsyncMock(
