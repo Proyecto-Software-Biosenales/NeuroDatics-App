@@ -327,6 +327,8 @@ export async function apiFetchBlobWithHeaders(
   // caller someone else's document — the executive report is posted to a single
   // constant path for every project.
   const isCacheable = method === "GET";
+  // Independently cancellable callers must not share a fetch owned by a sibling.
+  const isShareable = isCacheable && !requestInit.signal;
   const cacheKey = `${token ?? "anon"}:${path}`;
   const now = Date.now();
   pruneBlobCache(now);
@@ -337,7 +339,7 @@ export async function apiFetchBlobWithHeaders(
       return { blob: cached.blob, headers: new Headers(cached.headers) };
     }
 
-    const inflight = inflightBlobRequests.get(cacheKey);
+    const inflight = isShareable ? inflightBlobRequests.get(cacheKey) : undefined;
     if (inflight) {
       const entry = await inflight;
       return { blob: entry.blob, headers: new Headers(entry.headers) };
@@ -387,10 +389,10 @@ export async function apiFetchBlobWithHeaders(
     }
     return entry;
   })().finally(() => {
-    if (isCacheable) inflightBlobRequests.delete(cacheKey);
+    if (isShareable) inflightBlobRequests.delete(cacheKey);
   });
 
-  if (isCacheable) inflightBlobRequests.set(cacheKey, blobPromise);
+  if (isShareable) inflightBlobRequests.set(cacheKey, blobPromise);
 
   const entry = await blobPromise;
   return { blob: entry.blob, headers: new Headers(entry.headers) };
