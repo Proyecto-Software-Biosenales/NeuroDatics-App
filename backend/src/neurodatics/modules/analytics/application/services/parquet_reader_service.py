@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
+import anyio
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -139,7 +140,9 @@ class ParquetReaderService:
         """Load participant Parquet from cache or Drive."""
         if generation is None:
             generation = await self.resolve_cache_generation(project_id)
-        cached = self._cache.read_dataframe(project_id, participant_code, generation)
+        cached = await anyio.to_thread.run_sync(
+            lambda: self._cache.read_dataframe(project_id, participant_code, generation)
+        )
         if cached is not None:
             return cached
 
@@ -149,8 +152,6 @@ class ParquetReaderService:
         client = await self._build_drive_client()
         if client is None:
             raise RuntimeError("Google Drive integration not configured")
-
-        import anyio
 
         try:
             content = await anyio.to_thread.run_sync(
@@ -163,7 +164,7 @@ class ParquetReaderService:
             raise RuntimeError("No se pudo descargar el parquet desde Google Drive") from exc
 
         path = self._cache.put(project_id, participant_code, content, generation)
-        return pd.read_parquet(path)
+        return await anyio.to_thread.run_sync(lambda: pd.read_parquet(path))
 
     async def read_from_cache_only(
         self,
@@ -174,7 +175,9 @@ class ParquetReaderService:
         """Read only from disk cache - no Drive download. Returns None if not cached."""
         if generation is None:
             generation = await self.resolve_cache_generation(project_id)
-        return self._cache.read_dataframe(project_id, participant_code, generation)
+        return await anyio.to_thread.run_sync(
+            lambda: self._cache.read_dataframe(project_id, participant_code, generation)
+        )
 
     async def resolve_user_parquet(
         self,
