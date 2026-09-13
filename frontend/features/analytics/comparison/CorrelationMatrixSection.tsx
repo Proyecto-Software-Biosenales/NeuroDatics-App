@@ -203,9 +203,6 @@ export function CorrelationMatrixSection({
   const [reloadVersion, setReloadVersion] = useState(0)
   const [request, setRequest] = useState<RequestState>(INITIAL_REQUEST_STATE)
   const cachedResponses = useRef(new Map<string, CorrelationResponse>())
-  const inFlightRequests = useRef(
-    new Map<string, Promise<CorrelationResponse>>()
-  )
 
   const selectedSignalIds = useMemo(
     () => getSelectedSignalIds(selectedViewIds),
@@ -224,11 +221,11 @@ export function CorrelationMatrixSection({
   useEffect(() => {
     if (!canFetch || !participantCode) return
 
+    const controller = new AbortController()
     const cached = cachedResponses.current.get(contextKey)
     if (cached) {
-      let cancelled = false
       Promise.resolve().then(() => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setRequest({
             key: requestKey,
             data: cached,
@@ -238,48 +235,32 @@ export function CorrelationMatrixSection({
         }
       })
       return () => {
-        cancelled = true
+        controller.abort()
       }
     }
 
-    let cancelled = false
     Promise.resolve().then(() => {
-      if (!cancelled) {
+      if (!controller.signal.aborted) {
         setRequest({ key: requestKey, data: null, loading: true, error: null })
       }
     })
 
-    let pendingRequest = inFlightRequests.current.get(contextKey)
-    if (!pendingRequest) {
-      pendingRequest = AnalyticsApi.getCorrelations(
-        projectId,
-        participantCode,
-        scenario
-      )
-      inFlightRequests.current.set(contextKey, pendingRequest)
-      pendingRequest.then(
-        (data) => {
-          cachedResponses.current.set(contextKey, data)
-          if (inFlightRequests.current.get(contextKey) === pendingRequest) {
-            inFlightRequests.current.delete(contextKey)
-          }
-        },
-        () => {
-          if (inFlightRequests.current.get(contextKey) === pendingRequest) {
-            inFlightRequests.current.delete(contextKey)
-          }
-        }
-      )
-    }
+    const pendingRequest = AnalyticsApi.getCorrelations(
+      projectId,
+      participantCode,
+      scenario,
+      controller.signal
+    )
 
     pendingRequest
       .then((data) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
+          cachedResponses.current.set(contextKey, data)
           setRequest({ key: requestKey, data, loading: false, error: null })
         }
       })
       .catch((error: unknown) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setRequest({
             key: requestKey,
             data: null,
@@ -293,7 +274,7 @@ export function CorrelationMatrixSection({
       })
 
     return () => {
-      cancelled = true
+      controller.abort()
     }
   }, [canFetch, contextKey, participantCode, projectId, requestKey, scenario])
 

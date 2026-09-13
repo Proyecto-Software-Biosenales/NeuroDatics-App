@@ -55,12 +55,15 @@ function useComparisonGazeAt(
   const [loading, setLoading] = useState(false)
   const [requestedKey, setRequestedKey] = useState<string | null>(null)
   const requestId = useRef(0)
+  const abortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => { abortRef.current?.abort() }, [projectId, participantCode, scenario])
   const activeRequestKey =
     projectId && participantCode && scenario && activeTimeS != null
       ? JSON.stringify([projectId, participantCode, scenario, activeTimeS])
       : null
 
   const clear = useCallback(() => {
+    abortRef.current?.abort()
     requestId.current += 1
     setRequestedKey(null)
     setData(null)
@@ -70,6 +73,9 @@ function useComparisonGazeAt(
   const fetchGaze = useCallback(
     async (timeS: number) => {
       if (!projectId || !participantCode || !scenario) return
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
       const currentRequest = ++requestId.current
       setRequestedKey(
         JSON.stringify([projectId, participantCode, scenario, timeS])
@@ -81,13 +87,14 @@ function useComparisonGazeAt(
           projectId,
           participantCode,
           timeS,
-          scenario
+          scenario,
+          controller.signal
         )
-        if (requestId.current === currentRequest) setData(result)
+        if (!controller.signal.aborted && requestId.current === currentRequest) setData(result)
       } catch {
-        if (requestId.current === currentRequest) setData(null)
+        if (!controller.signal.aborted && requestId.current === currentRequest) setData(null)
       } finally {
-        if (requestId.current === currentRequest) setLoading(false)
+        if (!controller.signal.aborted && requestId.current === currentRequest) setLoading(false)
       }
     },
     [participantCode, projectId, scenario]

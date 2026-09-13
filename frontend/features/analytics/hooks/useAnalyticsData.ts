@@ -3,7 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { AnalyticsApi } from "../api/analyticsApi"
 import { DEFAULT_FIXATION_DURATION_MS } from "../types"
-import type { AnalyticsParticipant, AnalyticsScenario, FixationDurationMs, GazeAtData, HeatmapTransformHeaders } from "../types"
+import type {
+  AnalyticsParticipant,
+  AnalyticsScenario,
+  FixationDurationMs,
+  GazeAtData,
+  HeatmapTransformHeaders,
+} from "../types"
 
 const EMPTY_PARTICIPANTS: AnalyticsParticipant[] = []
 const EMPTY_SCENARIOS: AnalyticsScenario[] = []
@@ -32,102 +38,322 @@ function useRequestState<T>(request: object | null) {
 }
 
 function useAnalyticsRequest<T>(
-  request: (() => Promise<T>) | null,
+  request: ((signal: AbortSignal) => Promise<T>) | null,
   errorMessage = "Error loading analytics"
 ) {
   const [state, setState] = useRequestState<T>(request)
   useEffect(() => {
     if (!request) return
-    let cancelled = false
-    request().then(
+    const controller = new AbortController()
+    request(controller.signal).then(
       (data) => {
-        if (!cancelled) setState({ request, data, loading: false, error: null })
+        if (!controller.signal.aborted)
+          setState({ request, data, loading: false, error: null })
       },
       (error: unknown) => {
-        if (!cancelled) setState({
-          request,
-          data: null,
-          loading: false,
-          error: error instanceof Error && error.message ? error.message : errorMessage,
-        })
+        if (!controller.signal.aborted)
+          setState({
+            request,
+            data: null,
+            loading: false,
+            error:
+              error instanceof Error && error.message
+                ? error.message
+                : errorMessage,
+          })
       }
     )
-    return () => { cancelled = true }
+    return () => {
+      controller.abort()
+    }
   }, [request, errorMessage, setState])
   return { data: state.data, loading: state.loading, error: state.error }
 }
 
+// Prepare complete API tuples before serializing: defaults and list contents are
+// part of the request identity, while newly allocated but equal arrays are not.
+function makeAnalyticsHook<
+  Args extends unknown[],
+  Result,
+  HookArgs extends unknown[],
+>(
+  apiMethod: (...args: [...Args, signal?: AbortSignal]) => Promise<Result>,
+  prepare: (...args: HookArgs) => Args | null,
+  errorMessage = "Error loading analytics"
+) {
+  return function useGeneratedAnalytics(...args: HookArgs) {
+    const requestKey = JSON.stringify(prepare(...args))
+    const load = useCallback(
+      (signal: AbortSignal) =>
+        apiMethod(...(JSON.parse(requestKey) as Args), signal),
+      [requestKey]
+    )
+    return useAnalyticsRequest(
+      requestKey === "null" ? null : load,
+      errorMessage
+    )
+  }
+}
+
+type ApiArgs<Method extends (...args: never[]) => unknown> =
+  Parameters<Method> extends [...infer Args, signal?: AbortSignal] ? Args : never
+
+function projectArgs(projectId: string | null): [string] | null {
+  return projectId ? [projectId] : null
+}
+
+function selectionArgs(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario = "all"
+): [string, string, string] | null {
+  return projectId && participantCode
+    ? [projectId, participantCode, scenario]
+    : null
+}
+
+function windowArgs(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario = "all",
+  startTimeS: number | null = null,
+  endTimeS: number | null = null
+): [string, string, string, number | null, number | null] | null {
+  const selection = selectionArgs(projectId, participantCode, scenario)
+  return selection ? [...selection, startTimeS, endTimeS] : null
+}
+
+function fixationArgs(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario = "all",
+  minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
+): [string, string, string, FixationDurationMs] | null {
+  const selection = selectionArgs(projectId, participantCode, scenario)
+  return selection ? [...selection, minFixationDurationMs] : null
+}
+
+function spatialArgs(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string,
+  minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
+) {
+  return scenario && scenario !== "all"
+    ? fixationArgs(projectId, participantCode, scenario, minFixationDurationMs)
+    : null
+}
+
+const useParticipants = makeAnalyticsHook(
+  AnalyticsApi.getParticipants,
+  projectArgs
+)
+const useScenarios = makeAnalyticsHook(AnalyticsApi.getScenarios, projectArgs)
+
 export function useAnalyticsParticipants(projectId: string | null) {
-  const load = useCallback(
-    () => AnalyticsApi.getParticipants(
-      projectId!
-    ),
-    [projectId]
-  )
-  const { data, loading } = useAnalyticsRequest(
-    projectId ? load : null
-  )
+  const { data, loading } = useParticipants(projectId)
   return { participants: data ?? EMPTY_PARTICIPANTS, loading }
 }
 
 export function useAnalyticsScenarios(projectId: string | null) {
-  const load = useCallback(
-    () => AnalyticsApi.getScenarios(
-      projectId!
-    ),
-    [projectId]
-  )
-  const { data, loading } = useAnalyticsRequest(
-    projectId ? load : null
-  )
+  const { data, loading } = useScenarios(projectId)
   return { scenarios: data ?? EMPTY_SCENARIOS, loading }
 }
 
-export function usePupilTimeseries(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getPupilTimeseries(
-      projectId!,
-      participantCode!,
-      scenario,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, startTimeS, endTimeS]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading timeseries"
-  )
-  return { data, loading, error }
-}
+export const usePupilTimeseries = makeAnalyticsHook(
+  AnalyticsApi.getPupilTimeseries,
+  windowArgs,
+  "Error loading timeseries"
+)
+export const usePupilStatistics = makeAnalyticsHook(
+  AnalyticsApi.getPupilStatistics,
+  windowArgs
+)
+export const useGazeTimeseries = makeAnalyticsHook(
+  AnalyticsApi.getGazeTimeseries,
+  windowArgs,
+  "Error loading gaze timeseries"
+)
+export const useGazeStatistics = makeAnalyticsHook(
+  AnalyticsApi.getGazeStatistics,
+  windowArgs
+)
+export const useDistanceTimeseries = makeAnalyticsHook(
+  AnalyticsApi.getDistanceTimeseries,
+  windowArgs,
+  "Error loading distance timeseries"
+)
+export const useDistanceStatistics = makeAnalyticsHook(
+  AnalyticsApi.getDistanceStatistics,
+  windowArgs
+)
+export const useGsrTimeseries = makeAnalyticsHook(
+  AnalyticsApi.getGsrTimeseries,
+  windowArgs,
+  "Error loading GSR timeseries"
+)
+export const useGsrStatistics = makeAnalyticsHook(
+  AnalyticsApi.getGsrStatistics,
+  windowArgs
+)
+export const useScanpathData = makeAnalyticsHook(
+  AnalyticsApi.getScanpath,
+  spatialArgs,
+  "Error loading scanpath data"
+)
+export const useFixationData = makeAnalyticsHook(
+  AnalyticsApi.getFixationData,
+  spatialArgs,
+  "Error loading fixation data"
+)
+export const useAoiMetrics = makeAnalyticsHook(
+  AnalyticsApi.getAoiMetrics,
+  spatialArgs,
+  "Error loading AOI metrics"
+)
+export const useFixationHistogram = makeAnalyticsHook(
+  AnalyticsApi.getFixationHistogram,
+  fixationArgs,
+  "Error loading histogram"
+)
+export const useFixationSensitivity = makeAnalyticsHook(
+  AnalyticsApi.getFixationSensitivity,
+  selectionArgs,
+  "Error loading fixation sensitivity"
+)
 
-export function usePupilStatistics(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getPupilStatistics(
-      projectId!,
-      participantCode!,
-      scenario,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, startTimeS, endTimeS]
-  )
-  const { data, loading } = useAnalyticsRequest(
-    projectId && participantCode ? load : null
-  )
-  return { data, loading }
-}
+export const useComparisonCharts = makeAnalyticsHook(
+  AnalyticsApi.getComparisonCharts,
+  (
+    projectId: string | null,
+    participantCode: string | null,
+    scenario: string = "all",
+    visualizationIds: string[] = [],
+    maxPoints: number = 5000
+  ): ApiArgs<typeof AnalyticsApi.getComparisonCharts> | null =>
+    projectId && participantCode && visualizationIds.join(",")
+      ? [
+          projectId,
+          participantCode,
+          scenario,
+          visualizationIds.join(",").split(",").filter(Boolean),
+          maxPoints,
+        ]
+      : null,
+  "Error loading comparison charts"
+)
+
+export const useEegTimeseries = makeAnalyticsHook(
+  AnalyticsApi.getEegTimeseries,
+  (
+    projectId: string | null,
+    participantCode: string | null,
+    scenario: string = "all",
+    channels: string[] = [],
+    smoothWindowS: number = 0.2,
+    maxPoints: number = 5000,
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ): ApiArgs<typeof AnalyticsApi.getEegTimeseries> | null =>
+    projectId && participantCode
+      ? [
+          projectId,
+          participantCode,
+          scenario,
+          channels.join(",") ? channels.join(",").split(",") : [],
+          smoothWindowS,
+          maxPoints,
+          startTimeS,
+          endTimeS,
+        ]
+      : null,
+  "Error loading EEG timeseries"
+)
+
+export const useEegPsd = makeAnalyticsHook(
+  AnalyticsApi.getEegPsd,
+  (
+    projectId: string | null,
+    participantCode: string | null,
+    scenario: string = "all",
+    channels: string[] = [],
+    maxFreqHz: number | null = null,
+    useDb: boolean = true,
+    maxPoints: number = 5000,
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
+  ): ApiArgs<typeof AnalyticsApi.getEegPsd> | null =>
+    projectId && participantCode
+      ? [
+          projectId,
+          participantCode,
+          scenario,
+          channels.join(",") ? channels.join(",").split(",") : [],
+          maxFreqHz,
+          useDb,
+          maxPoints,
+          startTimeS,
+          endTimeS,
+        ]
+      : null,
+  "Error loading EEG PSD"
+)
+
+export const useEegSpectrogram = makeAnalyticsHook(
+  AnalyticsApi.getEegSpectrogram,
+  (
+    projectId: string | null,
+    participantCode: string | null,
+    scenario: string = "all",
+    channels: string[] = [],
+    maxFreqHz: number | null = 25,
+    useDb: boolean = true,
+    normalize: string = "freq_demean",
+    maxTimeBins: number = 600,
+    maxFrequencyBins: number = 256
+  ): ApiArgs<typeof AnalyticsApi.getEegSpectrogram> | null =>
+    projectId && participantCode
+      ? [
+          projectId,
+          participantCode,
+          scenario,
+          channels.join(",") ? channels.join(",").split(",") : [],
+          maxFreqHz,
+          useDb,
+          normalize,
+          maxTimeBins,
+          maxFrequencyBins,
+        ]
+      : null,
+  "Error loading EEG spectrogram"
+)
+
+export const useEegTopography = makeAnalyticsHook(
+  AnalyticsApi.getEegTopography,
+  (
+    projectId: string | null,
+    participantCode: string | null,
+    scenario: string = "all",
+    channels: string[] = [],
+    windowS: number = 0.33,
+    overlapRatio: number = 0,
+    removeDc: boolean = true,
+    maxFrames: number = 5000
+  ): ApiArgs<typeof AnalyticsApi.getEegTopography> | null =>
+    projectId && participantCode
+      ? [
+          projectId,
+          participantCode,
+          scenario,
+          channels.join(",") ? channels.join(",").split(",") : [],
+          windowS,
+          overlapRatio,
+          removeDc,
+          maxFrames,
+        ]
+      : null,
+  "Error loading EEG topography"
+)
 
 export function useGazeAt(
   projectId: string | null,
@@ -136,6 +362,13 @@ export function useGazeAt(
   const [data, setData] = useState<GazeAtData | null>(null)
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const selectionKey = JSON.stringify([projectId, participantCode])
+  const [previousSelection, setPreviousSelection] = useState(selectionKey)
+  if (selectionKey !== previousSelection) {
+    setPreviousSelection(selectionKey)
+    setData(null)
+    setLoading(false)
+  }
 
   const fetchGaze = useCallback(
     async (timeS: number) => {
@@ -149,7 +382,9 @@ export function useGazeAt(
         const result = await AnalyticsApi.getGazeAt(
           projectId,
           participantCode,
-          timeS
+          timeS,
+          undefined,
+          controller.signal
         )
         if (!controller.signal.aborted) setData(result)
       } catch {
@@ -161,340 +396,20 @@ export function useGazeAt(
     [projectId, participantCode]
   )
 
+  useEffect(
+    () => () => {
+      abortRef.current?.abort()
+    },
+    [projectId, participantCode]
+  )
+
   const clear = useCallback(() => {
     abortRef.current?.abort()
     setData(null)
+    setLoading(false)
   }, [])
 
   return { data, loading, fetchGaze, clear }
-}
-
-export function useComparisonCharts(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  visualizationIds: string[] = [],
-  maxPoints: number = 5000
-) {
-  const visualizationsKey = visualizationIds.join(",")
-  const load = useCallback(
-    () => AnalyticsApi.getComparisonCharts(
-      projectId!,
-      participantCode!,
-      scenario,
-      visualizationsKey.split(",").filter(Boolean),
-      maxPoints
-    ),
-    [projectId, participantCode, scenario, visualizationsKey, maxPoints]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode && visualizationsKey ? load : null, "Error loading comparison charts"
-  )
-  return { data, loading, error }
-}
-
-export function useGazeTimeseries(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getGazeTimeseries(
-      projectId!,
-      participantCode!,
-      scenario,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, startTimeS, endTimeS]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading gaze timeseries"
-  )
-  return { data, loading, error }
-}
-
-export function useGazeStatistics(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getGazeStatistics(
-      projectId!,
-      participantCode!,
-      scenario,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, startTimeS, endTimeS]
-  )
-  const { data, loading } = useAnalyticsRequest(
-    projectId && participantCode ? load : null
-  )
-  return { data, loading }
-}
-
-export function useDistanceTimeseries(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getDistanceTimeseries(
-      projectId!,
-      participantCode!,
-      scenario,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, startTimeS, endTimeS]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading distance timeseries"
-  )
-  return { data, loading, error }
-}
-
-export function useDistanceStatistics(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getDistanceStatistics(
-      projectId!,
-      participantCode!,
-      scenario,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, startTimeS, endTimeS]
-  )
-  const { data, loading } = useAnalyticsRequest(
-    projectId && participantCode ? load : null
-  )
-  return { data, loading }
-}
-
-export function useGsrTimeseries(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getGsrTimeseries(
-      projectId!,
-      participantCode!,
-      scenario,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, startTimeS, endTimeS]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading GSR timeseries"
-  )
-  return { data, loading, error }
-}
-
-export function useGsrStatistics(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getGsrStatistics(
-      projectId!,
-      participantCode!,
-      scenario,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, startTimeS, endTimeS]
-  )
-  const { data, loading } = useAnalyticsRequest(
-    projectId && participantCode ? load : null
-  )
-  return { data, loading }
-}
-
-export function useEegTimeseries(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  channels: string[] = [],
-  smoothWindowS: number = 0.2,
-  maxPoints: number = 5000,
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const channelsKey = channels.join(",")
-  const load = useCallback(
-    () => AnalyticsApi.getEegTimeseries(
-      projectId!,
-      participantCode!,
-      scenario,
-      channelsKey ? channelsKey.split(",") : [],
-      smoothWindowS,
-      maxPoints,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, channelsKey, smoothWindowS, maxPoints, startTimeS, endTimeS]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading EEG timeseries"
-  )
-  return { data, loading, error }
-}
-
-export function useEegPsd(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  channels: string[] = [],
-  maxFreqHz: number | null = null,
-  useDb: boolean = true,
-  maxPoints: number = 5000,
-  startTimeS: number | null = null,
-  endTimeS: number | null = null
-) {
-  const channelsKey = channels.join(",")
-  const load = useCallback(
-    () => AnalyticsApi.getEegPsd(
-      projectId!,
-      participantCode!,
-      scenario,
-      channelsKey ? channelsKey.split(",") : [],
-      maxFreqHz,
-      useDb,
-      maxPoints,
-      startTimeS,
-      endTimeS
-    ),
-    [projectId, participantCode, scenario, channelsKey, maxFreqHz, useDb, maxPoints, startTimeS, endTimeS]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading EEG PSD"
-  )
-  return { data, loading, error }
-}
-
-export function useEegSpectrogram(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  channels: string[] = [],
-  maxFreqHz: number | null = 25,
-  useDb: boolean = true,
-  normalize: string = "freq_demean",
-  maxTimeBins: number = 600,
-  maxFrequencyBins: number = 256
-) {
-  const channelsKey = channels.join(",")
-  const load = useCallback(
-    () => AnalyticsApi.getEegSpectrogram(
-      projectId!,
-      participantCode!,
-      scenario,
-      channelsKey ? channelsKey.split(",") : [],
-      maxFreqHz,
-      useDb,
-      normalize,
-      maxTimeBins,
-      maxFrequencyBins
-    ),
-    [projectId, participantCode, scenario, channelsKey, maxFreqHz, useDb, normalize, maxTimeBins, maxFrequencyBins]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading EEG spectrogram"
-  )
-  return { data, loading, error }
-}
-
-export function useEegTopography(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  channels: string[] = [],
-  windowS: number = 0.33,
-  overlapRatio: number = 0,
-  removeDc: boolean = true,
-  maxFrames: number = 5000
-) {
-  const channelsKey = channels.join(",")
-  const load = useCallback(
-    () => AnalyticsApi.getEegTopography(
-      projectId!,
-      participantCode!,
-      scenario,
-      channelsKey ? channelsKey.split(",") : [],
-      windowS,
-      overlapRatio,
-      removeDc,
-      maxFrames
-    ),
-    [projectId, participantCode, scenario, channelsKey, windowS, overlapRatio, removeDc, maxFrames]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading EEG topography"
-  )
-  return { data, loading, error }
-}
-
-export function useScanpathData(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string,
-  minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getScanpath(
-      projectId!,
-      participantCode!,
-      scenario,
-      minFixationDurationMs
-    ),
-    [projectId, participantCode, scenario, minFixationDurationMs]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode && scenario && scenario !== "all" ? load : null, "Error loading scanpath data"
-  )
-  return { data, loading, error }
-}
-
-export function useFixationData(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string,
-  minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getFixationData(
-      projectId!,
-      participantCode!,
-      scenario,
-      minFixationDurationMs
-    ),
-    [projectId, participantCode, scenario, minFixationDurationMs]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode && scenario && scenario !== "all" ? load : null, "Error loading fixation data"
-  )
-  return { data, loading, error }
 }
 
 export function useHeatmapOverlay(
@@ -506,17 +421,33 @@ export function useHeatmapOverlay(
   minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
 ) {
   const load = useCallback(
-    () => AnalyticsApi.getHeatmapOverlay(
-      projectId!,
-      participantCode!,
+    (signal: AbortSignal) =>
+      AnalyticsApi.getHeatmapOverlay(
+        projectId!,
+        participantCode!,
+        scenario,
+        transformToken,
+        cacheGeneration,
+        minFixationDurationMs,
+        signal
+      ),
+    [
+      projectId,
+      participantCode,
       scenario,
       transformToken,
       cacheGeneration,
-      minFixationDurationMs
-    ),
-    [projectId, participantCode, scenario, transformToken, cacheGeneration, minFixationDurationMs]
+      minFixationDurationMs,
+    ]
   )
-  const request = projectId && participantCode && scenario && scenario !== "all" && cacheGeneration != null ? load : null
+  const request =
+    projectId &&
+    participantCode &&
+    scenario &&
+    scenario !== "all" &&
+    cacheGeneration != null
+      ? load
+      : null
   const [state, setState] = useRequestState<{
     overlayUrl: string
     coordinateTransform: HeatmapTransformHeaders
@@ -525,11 +456,11 @@ export function useHeatmapOverlay(
   useEffect(() => {
     // A generation is required: generation-free URLs can hit an older ingestion.
     if (!request) return
-    let cancelled = false
+    const controller = new AbortController()
     let currentUrl: string | null = null
-    request()
+    request(controller.signal)
       .then(({ blob, headers }) => {
-        if (cancelled) return
+        if (controller.signal.aborted) return
         currentUrl = URL.createObjectURL(blob)
         const warnings = headers.get("X-Stimulus-Transform-Warnings")
         const version = headers.get("X-Stimulus-Transform-Version")
@@ -541,25 +472,32 @@ export function useHeatmapOverlay(
           data: {
             overlayUrl: currentUrl,
             coordinateTransform: {
-              status: headers.get("X-Stimulus-Transform-Status") as HeatmapTransformHeaders["status"],
+              status: headers.get(
+                "X-Stimulus-Transform-Status"
+              ) as HeatmapTransformHeaders["status"],
               coordinateSpace: headers.get("X-Stimulus-Coordinate-Space"),
               contractVersion: version && version !== "none" ? version : null,
-              contractFingerprint: fingerprint && fingerprint !== "none" ? fingerprint : null,
+              contractFingerprint:
+                fingerprint && fingerprint !== "none" ? fingerprint : null,
               warningCodes: warnings ? warnings.split(",").filter(Boolean) : [],
             },
           },
         })
       })
       .catch((error: unknown) => {
-        if (!cancelled) setState({
-          request,
-          data: null,
-          loading: false,
-          error: error instanceof Error && error.message ? error.message : "Error loading heatmap",
-        })
+        if (!controller.signal.aborted)
+          setState({
+            request,
+            data: null,
+            loading: false,
+            error:
+              error instanceof Error && error.message
+                ? error.message
+                : "Error loading heatmap",
+          })
       })
     return () => {
-      cancelled = true
+      controller.abort()
       if (currentUrl) URL.revokeObjectURL(currentUrl)
     }
   }, [request, setState])
@@ -570,65 +508,4 @@ export function useHeatmapOverlay(
     loading: state.loading,
     error: state.error,
   }
-}
-
-export function useFixationHistogram(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all",
-  minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getFixationHistogram(
-      projectId!,
-      participantCode!,
-      scenario,
-      minFixationDurationMs
-    ),
-    [projectId, participantCode, scenario, minFixationDurationMs]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading histogram"
-  )
-  return { data, loading, error }
-}
-
-export function useFixationSensitivity(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string = "all"
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getFixationSensitivity(
-      projectId!,
-      participantCode!,
-      scenario
-    ),
-    [projectId, participantCode, scenario]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode ? load : null, "Error loading fixation sensitivity"
-  )
-  return { data, loading, error }
-}
-
-export function useAoiMetrics(
-  projectId: string | null,
-  participantCode: string | null,
-  scenario: string,
-  minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
-) {
-  const load = useCallback(
-    () => AnalyticsApi.getAoiMetrics(
-      projectId!,
-      participantCode!,
-      scenario,
-      minFixationDurationMs
-    ),
-    [projectId, participantCode, scenario, minFixationDurationMs]
-  )
-  const { data, loading, error } = useAnalyticsRequest(
-    projectId && participantCode && scenario && scenario !== "all" ? load : null, "Error loading AOI metrics"
-  )
-  return { data, loading, error }
 }
