@@ -27,10 +27,10 @@ class Scenaries(BaseModel):
     __tablename__ = "scenaries"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     type = Column(String(50), nullable=False)  # 'image', 'video', etc.
-    file_id = Column(UUID(as_uuid=True), ForeignKey("project_files.id"), nullable=True)
+    file_id = Column(UUID(as_uuid=True), ForeignKey("project_files.id"), nullable=True, index=True)
     source_entry_path = Column(String(1024), nullable=True)
     width = Column(Integer)
     height = Column(Integer)
@@ -210,7 +210,7 @@ class AOI(BaseModel):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     scenaries_id = Column(
-        UUID(as_uuid=True), ForeignKey("scenaries.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("scenaries.id"), nullable=False, index=True
     )
     name = Column(String(255), nullable=False)
     color = Column(String(7), nullable=False)  # Hex color
