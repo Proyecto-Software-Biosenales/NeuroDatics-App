@@ -1,9 +1,7 @@
 "use client"
 import { AnalyticsModeSelector } from "@/features/analytics/components/AnalyticsModeSelector"
 
-import { Skeleton } from "@/components/ui/skeleton"
-
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import {
   Area,
   AreaChart,
@@ -31,23 +29,15 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
-import { StatisticsTable } from "@/features/analytics/components/StatisticsTable"
-import type { StatRow } from "@/features/analytics/components/StatisticsTable"
 import { cn } from "@/lib/utils"
 import {
   useGsrStatistics,
   useGsrTimeseries,
 } from "../hooks/useAnalyticsData"
 import { StimulusFixationCard } from "./StimulusFixationCard"
-import {
-  EMPTY_TIME_WINDOW,
-  EMPTY_TIME_WINDOW_DRAFT,
-  TimeWindowControls,
-  validateTimeWindowDraft,
-  type TimeWindow,
-  type TimeWindowDraft,
-} from "./TimeWindowControls"
-import { AnalyticsChartShell } from "./AnalyticsChartShell"
+import type { GsrTimeseriesData } from "../types"
+import { useSingleSignalData } from "../hooks/useSingleSignalData"
+import { SingleSignalTab } from "./SingleSignalTab"
 
 type SignalMode = "smooth" | "raw" | "both"
 
@@ -61,6 +51,16 @@ interface GsrLinePoint {
   time: number
   gsr: number
   gsr_smooth: number
+}
+
+const GSR_SIGNAL = {
+  useTimeseries: useGsrTimeseries,
+  useStatistics: useGsrStatistics,
+  serie: "GSR",
+  toPoints: (data: GsrTimeseriesData): GsrLinePoint[] => data.time.map((time, index) => ({
+    time, gsr: data.gsr[index], gsr_smooth: data.gsr_smooth[index],
+  })),
+  valueOf: (point: GsrLinePoint) => point.gsr_smooth,
 }
 
 interface GsrTooltipPayloadEntry {
@@ -112,39 +112,11 @@ function readClickedTime(state: unknown): number | null {
 
 export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
   const [signalMode, setSignalMode] = useState<SignalMode>("smooth")
-  const [selectedTime, setSelectedTime] = useState<number | null>(null)
-  const [timeWindowDraft, setTimeWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
-  const [timeWindowError, setTimeWindowError] = useState<string | null>(null)
 
-  const { data: timeseriesData, loading: timeseriesLoading } = useGsrTimeseries(
-    projectId,
-    participantCode,
-    scenario,
-    timeWindow.start,
-    timeWindow.end
+  const signal = useSingleSignalData(
+    { projectId, participantCode, scenario }, GSR_SIGNAL
   )
-  const { data: stats, loading: statsLoading } = useGsrStatistics(
-    projectId,
-    participantCode,
-    scenario,
-    timeWindow.start,
-    timeWindow.end
-  )
-
-  const chartData = useMemo<GsrLinePoint[]>(() => {
-    if (!timeseriesData) return []
-    return timeseriesData.time.map((time, index) => ({
-      time,
-      gsr: timeseriesData.gsr[index],
-      gsr_smooth: timeseriesData.gsr_smooth[index],
-    }))
-  }, [timeseriesData])
-
-  const chartDomain = useMemo<[number, number] | ["dataMin", "dataMax"]>(() => {
-    if (chartData.length === 0) return ["dataMin", "dataMax"]
-    return [chartData[0].time, chartData[chartData.length - 1].time]
-  }, [chartData])
+  const { chartData, chartDomain, minTime, maxTime, selectedPoint, selectedTime, setSelectedTime, stats, statsLoading } = signal
   const chartLegend = [
     ...(signalMode === "smooth" || signalMode === "both"
       ? [{ label: "GSR suavizada", color: "#10B981" }]
@@ -153,63 +125,6 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
       ? [{ label: "GSR cruda", color: "#6366F1" }]
       : []),
   ]
-
-  const minTime = useMemo(() => {
-    if (chartData.length === 0) return null
-    let minVal = Infinity
-    let minT = chartData[0].time
-    for (const pt of chartData) {
-      if (pt.gsr_smooth < minVal) {
-        minVal = pt.gsr_smooth
-        minT = pt.time
-      }
-    }
-    return minT
-  }, [chartData])
-
-  const maxTime = useMemo(() => {
-    if (chartData.length === 0) return null
-    let maxVal = -Infinity
-    let maxT = chartData[0].time
-    for (const pt of chartData) {
-      if (pt.gsr_smooth > maxVal) {
-        maxVal = pt.gsr_smooth
-        maxT = pt.time
-      }
-    }
-    return maxT
-  }, [chartData])
-
-  const selectedPoint = useMemo<GsrLinePoint | null>(() => {
-    if (selectedTime == null || chartData.length === 0) return null
-    let nearest = chartData[0]
-    let minDiff = Math.abs(chartData[0].time - selectedTime)
-    for (const pt of chartData) {
-      const diff = Math.abs(pt.time - selectedTime)
-      if (diff < minDiff) {
-        minDiff = diff
-        nearest = pt
-      }
-    }
-    return nearest
-  }, [selectedTime, chartData])
-
-  const tableRows = useMemo<StatRow[]>(() => {
-    const gsrRow: StatRow = {
-      serie: "GSR",
-      count: chartData.length > 0 ? chartData.length : null,
-      baseline: stats?.baseline ?? null,
-      std: stats?.std ?? null,
-      median: stats?.median ?? null,
-      min: stats?.min ?? null,
-      max: stats?.max ?? null,
-      peak:
-        stats?.max != null && stats?.baseline != null && stats.baseline !== 0
-          ? ((stats.max - stats.baseline) / Math.abs(stats.baseline)) * 100
-          : null,
-    }
-    return [gsrRow]
-  }, [chartData.length, stats])
 
   const handleKpiClick = (time: number | null) => {
     if (time == null) return
@@ -222,197 +137,146 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
     setSelectedTime(time)
   }
 
-  const handleApplyTimeWindow = () => {
-    const { window, error } = validateTimeWindowDraft(timeWindowDraft)
-    if (error || !window) {
-      setTimeWindowError(error)
-      return
-    }
-
-    setTimeWindow(window)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-  }
-
-  const handleResetTimeWindow = () => {
-    setTimeWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
-    setTimeWindow(EMPTY_TIME_WINDOW)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-  }
-
   return (
-    <div className="analytics-stack">
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-xl">Respuesta galvánica</CardTitle>
-            <CardDescription>
-              Conductancia de la piel a lo largo del tiempo, suavizada con ventana de un segundo.
-            </CardDescription>
-          </div>
+    <SingleSignalTab
+      label="Respuesta galvánica"
+      description="Conductancia de la piel a lo largo del tiempo, suavizada con ventana de un segundo."
+      unit="µS"
+      emptyText="No hay datos de GSR para los filtros seleccionados."
+      statisticsDescription="Resumen numérico de la respuesta galvánica suavizada: tendencia, variabilidad y extremos."
+      signal={signal}
+      legend={chartLegend}
+      headerActions={
+        <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
+          { key: "smooth", label: "Suavizada" },
+          { key: "raw", label: "Cruda" },
+          { key: "both", label: "Ambas" },
+        ]} />
+      }
+      kpis={[
+        {
+          label: "Media",
+          value: stats?.mean,
+          description: "Promedio suavizado",
+          tooltip: "Promedio de respuesta galvánica en el intervalo visualizado",
+          tooltipExtra: stats?.raw_mean != null ? `Valor real: ${stats.raw_mean.toFixed(4)} µS` : undefined,
+          Icon: Activity,
+          iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
+          iconColorClass: "text-emerald-600 dark:text-emerald-400",
+          labelColorClass: "text-emerald-700 dark:text-emerald-400",
+          hoverBgClass: "hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
+          activeBgClass: "bg-emerald-50 dark:bg-emerald-950/30",
+          onClick: undefined as (() => void) | undefined,
+          active: false,
+        },
+        {
+          label: "Mínimo",
+          value: stats?.min,
+          description: "Valor más bajo",
+          tooltip: "Valor mínimo registrado en la señal suavizada",
+          tooltipExtra: stats?.raw_min != null ? `Valor real: ${stats.raw_min.toFixed(4)} µS` : undefined,
+          Icon: TrendingDown,
+          iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
+          iconColorClass: "text-emerald-600 dark:text-emerald-400",
+          labelColorClass: "text-emerald-700 dark:text-emerald-400",
+          hoverBgClass: "hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
+          activeBgClass: "bg-emerald-50 dark:bg-emerald-950/30",
+          onClick: minTime != null ? () => handleKpiClick(minTime) : undefined,
+          active: selectedTime === minTime,
+        },
+        {
+          label: "Máximo",
+          value: stats?.max,
+          description: "Pico de conductancia",
+          tooltip: "Valor máximo registrado en la señal suavizada",
+          tooltipExtra: stats?.raw_max != null ? `Valor real: ${stats.raw_max.toFixed(4)} µS` : undefined,
+          Icon: TrendingUp,
+          iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
+          iconColorClass: "text-rose-600 dark:text-rose-400",
+          labelColorClass: "text-rose-700 dark:text-rose-400",
+          hoverBgClass: "hover:bg-rose-50 dark:hover:bg-rose-950/30",
+          activeBgClass: "bg-rose-50 dark:bg-rose-950/30",
+          onClick: maxTime != null ? () => handleKpiClick(maxTime) : undefined,
+          active: selectedTime === maxTime,
+        },
+      ].map((cardProps) => (
+        <KpiCard
+          key={cardProps.label}
+          loading={statsLoading}
+          unit="µS"
+          decimals={4}
+          {...cardProps}
+        />
+      ))}
+      chart={
+        <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
+          <AreaChart
+            data={chartData}
+            onClick={handleChartClick}
+            margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
+          >
+            <defs>
+              <linearGradient id="gsrSmoothFill" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="5%" stopColor="#10B981" stopOpacity={0.28} />
+                <stop offset="95%" stopColor="#10B981" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <XAxis
+              dataKey="time"
+              type="number"
+              domain={chartDomain}
+              tickFormatter={(value) => String(Math.round(Number(value)))}
+              tickMargin={8}
+            />
+            <YAxis
+              width={80}
+              label={{ value: "Respuesta galvánica (µS)", angle: -90, position: "insideLeft", offset: 4, style: { textAnchor: "middle" } }}
+            />
+            <RechartsTooltip content={<GsrTooltip />} />
 
-          <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
-              { key: "smooth", label: "Suavizada" },
-              { key: "raw", label: "Cruda" },
-              { key: "both", label: "Ambas" },
-            ]} />
-        </CardHeader>
+            {typeof stats?.mean === "number" ? (
+              <ReferenceLine y={stats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
+            ) : null}
 
-        <CardContent>
-          <TimeWindowControls
-            draftStart={timeWindowDraft.start}
-            draftEnd={timeWindowDraft.end}
-            appliedWindow={timeWindow}
-            error={timeWindowError}
-            loading={timeseriesLoading || statsLoading}
-            onDraftStartChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, start: value }))
-            }
-            onDraftEndChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, end: value }))
-            }
-            onApply={handleApplyTimeWindow}
-            onReset={handleResetTimeWindow}
-          />
-
-          <div className="analytics-kpi-grid">
-            {[
-              {
-                label: "Media",
-                value: stats?.mean,
-                description: "Promedio suavizado",
-                tooltip: "Promedio de respuesta galvánica en el intervalo visualizado",
-                tooltipExtra: stats?.raw_mean != null ? `Valor real: ${stats.raw_mean.toFixed(4)} µS` : undefined,
-                Icon: Activity,
-                iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
-                iconColorClass: "text-emerald-600 dark:text-emerald-400",
-                labelColorClass: "text-emerald-700 dark:text-emerald-400",
-                hoverBgClass: "hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
-                activeBgClass: "bg-emerald-50 dark:bg-emerald-950/30",
-                onClick: undefined as (() => void) | undefined,
-                active: false,
-              },
-              {
-                label: "Mínimo",
-                value: stats?.min,
-                description: "Valor más bajo",
-                tooltip: "Valor mínimo registrado en la señal suavizada",
-                tooltipExtra: stats?.raw_min != null ? `Valor real: ${stats.raw_min.toFixed(4)} µS` : undefined,
-                Icon: TrendingDown,
-                iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
-                iconColorClass: "text-emerald-600 dark:text-emerald-400",
-                labelColorClass: "text-emerald-700 dark:text-emerald-400",
-                hoverBgClass: "hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
-                activeBgClass: "bg-emerald-50 dark:bg-emerald-950/30",
-                onClick: minTime != null ? () => handleKpiClick(minTime) : undefined,
-                active: selectedTime === minTime,
-              },
-              {
-                label: "Máximo",
-                value: stats?.max,
-                description: "Pico de conductancia",
-                tooltip: "Valor máximo registrado en la señal suavizada",
-                tooltipExtra: stats?.raw_max != null ? `Valor real: ${stats.raw_max.toFixed(4)} µS` : undefined,
-                Icon: TrendingUp,
-                iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
-                iconColorClass: "text-rose-600 dark:text-rose-400",
-                labelColorClass: "text-rose-700 dark:text-rose-400",
-                hoverBgClass: "hover:bg-rose-50 dark:hover:bg-rose-950/30",
-                activeBgClass: "bg-rose-50 dark:bg-rose-950/30",
-                onClick: maxTime != null ? () => handleKpiClick(maxTime) : undefined,
-                active: selectedTime === maxTime,
-              },
-            ].map((cardProps) => (
-              <KpiCard
-                key={cardProps.label}
-                loading={statsLoading}
-                unit="µS"
-                decimals={4}
-                {...cardProps}
+            {selectedTime != null ? (
+              <ReferenceLine
+                x={selectedTime}
+                stroke="#374151"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                label={{ value: `${Math.round(selectedTime)}s`, position: "top", fontSize: 11, fill: "#374151" }}
               />
-            ))}
-          </div>
+            ) : null}
 
-          {timeseriesLoading ? (
-            <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
-          ) : chartData.length === 0 ? (
-            <div className="analytics-state-frame flex items-center justify-center text-sm text-muted-foreground">
-              No hay datos de GSR para los filtros seleccionados.
-            </div>
-          ) : (
-            <AnalyticsChartShell legend={chartLegend}>
-            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
-              <AreaChart
-                data={chartData}
-                onClick={handleChartClick}
-                margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
-              >
-                <defs>
-                  <linearGradient id="gsrSmoothFill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.28} />
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis
-                  dataKey="time"
-                  type="number"
-                  domain={chartDomain}
-                  tickFormatter={(value) => String(Math.round(Number(value)))}
-                  tickMargin={8}
-                />
-                <YAxis
-                  width={80}
-                  label={{ value: "Respuesta galvánica (µS)", angle: -90, position: "insideLeft", offset: 4, style: { textAnchor: "middle" } }}
-                />
-                <RechartsTooltip content={<GsrTooltip />} />
+            {signalMode === "smooth" || signalMode === "both" ? (
+              <Area
+                type="monotone"
+                dataKey="gsr_smooth"
+                name="GSR suavizada"
+                stroke="#10B981"
+                strokeWidth={1.8}
+                fill="url(#gsrSmoothFill)"
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            ) : null}
 
-                {typeof stats?.mean === "number" ? (
-                  <ReferenceLine y={stats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
-                ) : null}
-
-                {selectedTime != null ? (
-                  <ReferenceLine
-                    x={selectedTime}
-                    stroke="#374151"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 3"
-                    label={{ value: `${Math.round(selectedTime)}s`, position: "top", fontSize: 11, fill: "#374151" }}
-                  />
-                ) : null}
-
-                {signalMode === "smooth" || signalMode === "both" ? (
-                  <Area
-                    type="monotone"
-                    dataKey="gsr_smooth"
-                    name="GSR suavizada"
-                    stroke="#10B981"
-                    strokeWidth={1.8}
-                    fill="url(#gsrSmoothFill)"
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                ) : null}
-
-                {signalMode === "raw" || signalMode === "both" ? (
-                  <Line
-                    type="monotone"
-                    dataKey="gsr"
-                    name="GSR cruda"
-                    stroke="#6366F1"
-                    strokeWidth={signalMode === "raw" ? 1.6 : 1}
-                    strokeOpacity={signalMode === "raw" ? 1 : 0.45}
-                    dot={false}
-                  />
-                ) : null}
-              </AreaChart>
-            </ResponsiveContainer>
-            </AnalyticsChartShell>
-          )}
-        </CardContent>
-      </Card>
-
+            {signalMode === "raw" || signalMode === "both" ? (
+              <Line
+                type="monotone"
+                dataKey="gsr"
+                name="GSR cruda"
+                stroke="#6366F1"
+                strokeWidth={signalMode === "raw" ? 1.6 : 1}
+                strokeOpacity={signalMode === "raw" ? 1 : 0.45}
+                dot={false}
+              />
+            ) : null}
+          </AreaChart>
+        </ResponsiveContainer>
+      }
+    >
       <StimulusFixationCard
         projectId={projectId}
         participantCode={participantCode}
@@ -487,23 +351,6 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
           </CardContent>
         </Card>
       ) : null}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Estadísticas</CardTitle>
-          <CardDescription>
-            Resumen numérico de la respuesta galvánica suavizada: tendencia, variabilidad y extremos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <StatisticsTable
-            rows={tableRows}
-            summaryRow={tableRows[0]}
-            loading={statsLoading || !stats}
-            unit=" µS"
-          />
-        </CardContent>
-      </Card>
-    </div>
+    </SingleSignalTab>
   )
 }
