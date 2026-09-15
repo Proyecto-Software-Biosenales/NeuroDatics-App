@@ -1,9 +1,12 @@
 'use client'
 
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { LoaderCircle, Moon, Sun, User } from 'lucide-react'
+import { LoaderCircle, Menu, Moon, Sun, User } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
@@ -62,7 +65,7 @@ export const NavBar = () => {
       <div className="mx-auto h-full max-w-[var(--app-page-max-width)] px-4 sm:px-5 lg:px-6 2xl:px-8">
         <div className="flex h-full items-center justify-between">
           <div className="flex min-w-0 items-center gap-4 2xl:gap-10">
-            <Link href="/" className="flex items-center gap-3 group">
+            <Link href="/" className="group flex shrink-0 items-center gap-3">
               <Image
                 src="/assets/NeuroDatics-logo.png"
                 alt="NeuroDatics Logo"
@@ -75,11 +78,12 @@ export const NavBar = () => {
               </span>
             </Link>
 
-            <nav className="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:gap-1">
+            <nav aria-label="Navegación principal" className="hidden min-w-0 items-center gap-0.5 md:flex 2xl:gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   href={item.path}
+                  aria-current={pathname === item.path ? "page" : undefined}
                   onClick={(event) => handleProtectedNavigation(event, item)}
                   className={`relative shrink-0 px-3 py-2 text-sm font-medium transition-all duration-200 2xl:px-4 ${
                     pathname === item.path
@@ -93,14 +97,26 @@ export const NavBar = () => {
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" className="md:hidden" aria-label="Abrir navegación"><Menu /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {navItems.map((item) => (
+                  <DropdownMenuItem key={item.path} asChild>
+                    <Link href={item.path} aria-current={pathname === item.path ? "page" : undefined} onClick={(event) => handleProtectedNavigation(event, item)}>{item.label}</Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button size="icon-sm" variant="ghost"
               type="button"
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground 2xl:p-2"
+              className="text-muted-foreground"
               aria-label="Cambiar tema"
             >
               {mounted && resolvedTheme === 'dark' ? <Sun className="h-4 w-4 2xl:h-5 2xl:w-5" /> : <Moon className="h-4 w-4 2xl:h-5 2xl:w-5" />}
-            </button>
+            </Button>
             {currentUser ? (
               <div className="hidden items-center gap-2 rounded-lg bg-muted px-2.5 py-1.5 text-sm text-muted-foreground sm:flex 2xl:px-3 2xl:py-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
@@ -113,16 +129,13 @@ export const NavBar = () => {
                 <LoaderCircle className="h-5 w-5 animate-spin" />
               </div>
             ) : currentUser ? (
-              <button
+              <Button variant="outline"
                 type="button"
                 onClick={handleSignOut}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground',
-                  'px-2.5 py-1.5 2xl:px-3 2xl:py-2',
-                )}
+                className="gap-2"
               >
                 Salir
-              </button>
+              </Button>
             ) : (
               <Link
                 href="/login"

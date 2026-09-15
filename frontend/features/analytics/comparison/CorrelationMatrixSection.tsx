@@ -1,5 +1,8 @@
 "use client"
 
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
+
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Loader2, RefreshCw } from "lucide-react"
 
@@ -9,7 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { AnalyticsApi } from "../api/analyticsApi"
@@ -143,7 +146,7 @@ function MatrixCell({
   const status = cell ? STATUS_LABELS[cell.status] : STATUS_LABELS.unavailable
 
   return (
-    <td className="border border-border p-1.5 text-center align-middle">
+    <TableCell className="border border-border p-1.5 text-center align-middle">
       <div
         className={cn(
           "flex min-h-20 min-w-28 flex-col items-center justify-center rounded-md px-2 py-2",
@@ -170,7 +173,7 @@ function MatrixCell({
           {status}.
         </span>
       </div>
-    </td>
+    </TableCell>
   )
 }
 
@@ -189,7 +192,7 @@ function LoadingMatrix() {
         <Loader2 aria-hidden="true" className="size-4 animate-spin" />
         Calculando correlaciones…
       </div>
-      <div className="h-64 animate-pulse rounded-lg bg-muted" />
+      <Skeleton className="h-64 animate-pulse rounded-lg bg-muted" />
     </div>
   )
 }
@@ -373,24 +376,24 @@ export function CorrelationMatrixSection({
               </div>
 
               <div className="overflow-x-auto rounded-lg border border-border">
-                <table
+                <Table
                   aria-label={`Matriz de correlaciones de Pearson para ${data.scenario}`}
-                  className="mx-auto min-w-[720px] border-collapse text-sm"
+                  className="mx-auto w-auto min-w-[720px] border-collapse text-sm"
                 >
-                  <caption className="sr-only">
+                  <TableCaption className="sr-only">
                     Coeficientes de Pearson, muestras emparejadas, cobertura y
                     estado para cada par de señales seleccionadas.
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th
+                  </TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
                         className="sticky left-0 z-20 border border-border bg-card px-3 py-2 text-left font-medium"
                         scope="col"
                       >
                         Señal
-                      </th>
+                      </TableHead>
                       {filteredSignals.map((signal) => (
-                        <th
+                        <TableHead
                           className="min-w-32 border border-border bg-muted/40 px-2 py-2 text-center font-medium"
                           key={signal.id}
                           scope="col"
@@ -399,14 +402,14 @@ export function CorrelationMatrixSection({
                           <span className="block text-xs font-normal text-muted-foreground">
                             {signal.unit} · {formatCoverage(signal.coverage)}
                           </span>
-                        </th>
+                        </TableHead>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {filteredSignals.map((rowSignal) => (
-                      <tr key={rowSignal.id}>
-                        <th
+                      <TableRow key={rowSignal.id}>
+                        <TableHead
                           className="sticky left-0 z-10 border border-border bg-card px-3 py-2 text-left font-medium"
                           scope="row"
                         >
@@ -414,7 +417,7 @@ export function CorrelationMatrixSection({
                           <span className="block text-xs font-normal text-muted-foreground">
                             {rowSignal.valid_bins} intervalos
                           </span>
-                        </th>
+                        </TableHead>
                         {filteredSignals.map((columnSignal) => {
                           const cell =
                             cellsByPair.get(
@@ -432,10 +435,10 @@ export function CorrelationMatrixSection({
                             />
                           )
                         })}
-                      </tr>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
 
               {filteredSignals.some((signal) => !signal.available) && (

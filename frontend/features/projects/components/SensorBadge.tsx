@@ -1,6 +1,7 @@
 import { Brain, Zap, Eye } from "lucide-react"
 import type { SensorType } from "@/features/projects/types"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 
 export type { SensorType }
 
@@ -14,11 +15,6 @@ const sensorConfig = {
   EEG: { icon: Brain, label: "EEG" },
   GSR: { icon: Zap, label: "GSR" },
   EyeTracker: { icon: Eye, label: "Eye tracker" },
-}
-
-const variantStyles = {
-  default: "font-medium text-foreground bg-muted hover:bg-accent",
-  secondary: "font-normal text-white bg-gray-950",
 }
 
 export const SensorBadge = ({
@@ -35,15 +31,15 @@ export const SensorBadge = ({
   const iconSize = size === "sm" ? 12 : 14
 
   return (
-    <span
+    <Badge
+      variant={variant === "default" ? "secondary" : "default"}
       className={cn(
-        "inline-flex items-center rounded-full",
-        variantStyles[variant],
+        "rounded-full",
         sizeClasses
       )}
     >
       <Icon size={iconSize} />
       {config.label}
-    </span>
+    </Badge>
   )
 }

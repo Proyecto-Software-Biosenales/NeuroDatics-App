@@ -1,5 +1,8 @@
 "use client"
 
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Bar,
@@ -18,8 +21,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
-import { KpiCard } from "@/components/ui/KpiCard"
+} from "@/components/ui/card"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import {
@@ -415,9 +418,9 @@ export function AoiComparisonTab({
   if (loading) {
     return (
       <div className="analytics-stack">
-        <div className="analytics-state-frame animate-pulse rounded-lg bg-muted" />
-        <div className="analytics-state-frame-compact animate-pulse rounded-lg bg-muted" />
-        <div className="h-64 animate-pulse rounded-lg bg-muted" />
+        <Skeleton className="analytics-state-frame animate-pulse rounded-lg bg-muted" />
+        <Skeleton className="analytics-state-frame-compact animate-pulse rounded-lg bg-muted" />
+        <Skeleton className="h-64 animate-pulse rounded-lg bg-muted" />
       </div>
     )
   }
@@ -504,7 +507,7 @@ export function AoiComparisonTab({
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px] 2xl:gap-6">
             <div className="relative overflow-hidden rounded-lg bg-muted" ref={imageContainerRef}>
               {!scenarioImageUrl ? (
-                <div className="analytics-state-frame w-full animate-pulse bg-muted" />
+                <Skeleton className="analytics-state-frame w-full animate-pulse bg-muted" />
               ) : (
                 <img
                   ref={imageRef}
@@ -724,22 +727,22 @@ export function AoiComparisonTab({
             </div>
 
             <div className="overflow-x-auto rounded-xl border border-border bg-card">
-              <table className="w-full min-w-[980px] text-left text-sm">
-                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">AOI</th>
-                    <th className="px-4 py-3 text-right font-semibold">Fijaciones</th>
-                    <th className="px-4 py-3 text-right font-semibold">Dwell total</th>
-                    <th className="px-4 py-3 text-right font-semibold">Duracion media</th>
-                    <th className="px-4 py-3 text-right font-semibold">TTFF</th>
-                    <th className="px-4 py-3 text-right font-semibold">Hit rate</th>
-                    <th className="px-4 py-3 text-right font-semibold">Hasta objetivo</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+              <Table className="w-full min-w-[980px] text-left text-sm">
+                <TableHeader className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                  <TableRow>
+                    <TableHead className="px-4 py-3 font-semibold">AOI</TableHead>
+                    <TableHead className="px-4 py-3 text-right font-semibold">Fijaciones</TableHead>
+                    <TableHead className="px-4 py-3 text-right font-semibold">Dwell total</TableHead>
+                    <TableHead className="px-4 py-3 text-right font-semibold">Duracion media</TableHead>
+                    <TableHead className="px-4 py-3 text-right font-semibold">TTFF</TableHead>
+                    <TableHead className="px-4 py-3 text-right font-semibold">Hit rate</TableHead>
+                    <TableHead className="px-4 py-3 text-right font-semibold">Hasta objetivo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-border">
                   {data.aois.map((aoi) => (
-                    <tr key={aoi.id} className="transition-colors hover:bg-muted/25">
-                      <td className="px-4 py-3">
+                    <TableRow key={aoi.id} className="transition-colors hover:bg-muted/25">
+                      <TableCell className="px-4 py-3">
                         <div className="flex min-w-0 items-center gap-2 font-semibold text-foreground">
                           <span
                             className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -747,20 +750,20 @@ export function AoiComparisonTab({
                           />
                           <span className="truncate">{aoi.name}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right font-medium tabular-nums">
                         {aoi.fixation_count}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums">
                         {formatMs(aoi.total_dwell_time_ms)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums">
                         {formatMs(aoi.avg_fixation_duration_ms)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums">
                         {formatMs(aoi.ttff_ms)}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell className="px-4 py-3">
                         <div className="flex items-center justify-end gap-3">
                           <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
                             <div
@@ -775,14 +778,14 @@ export function AoiComparisonTab({
                             {formatPercent(aoi.hit_rate_percent)}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums">
                         {aoi.fixations_to_target ?? "-"}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </div>
 
@@ -801,12 +804,12 @@ export function AoiComparisonTab({
               </span>
             </div>
             <div className="overflow-x-auto rounded-xl border border-border bg-card">
-              <table className="w-full min-w-[860px] text-left text-sm">
-                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Desde \ Hacia</th>
+              <Table className="w-full min-w-[860px] text-left text-sm">
+                <TableHeader className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                  <TableRow>
+                    <TableHead className="px-4 py-3 font-semibold">Desde \ Hacia</TableHead>
                     {data.aois.map((aoi) => (
-                      <th key={aoi.id} className="px-4 py-3 text-center font-semibold">
+                      <TableHead key={aoi.id} className="px-4 py-3 text-center font-semibold">
                         <span className="inline-flex items-center justify-center gap-2">
                           <span
                             className="h-2 w-2 rounded-full"
@@ -814,17 +817,17 @@ export function AoiComparisonTab({
                           />
                           {aoi.name}
                         </span>
-                      </th>
+                      </TableHead>
                     ))}
-                    <th className="px-4 py-3 text-center font-semibold">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+                    <TableHead className="px-4 py-3 text-center font-semibold">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-border">
                   {data.transitions.map((row) => {
                     const fromAoi = data.aois.find((aoi) => aoi.name === row.from_aoi)
                     return (
-                      <tr key={row.from_aoi} className="transition-colors hover:bg-muted/25">
-                        <td className="px-4 py-3">
+                      <TableRow key={row.from_aoi} className="transition-colors hover:bg-muted/25">
+                        <TableCell className="px-4 py-3">
                           <div className="flex min-w-0 items-center gap-2 font-semibold text-foreground">
                             <span
                               className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -832,14 +835,14 @@ export function AoiComparisonTab({
                             />
                             <span className="truncate">{row.from_aoi}</span>
                           </div>
-                        </td>
+                        </TableCell>
                         {data.aois.map((aoi) => {
                           const count = row.counts[aoi.name] ?? 0
                           const intensity = maxTransitionCount > 0
                             ? 0.08 + (count / maxTransitionCount) * 0.24
                             : 0
                           return (
-                            <td key={aoi.id} className="px-3 py-2 text-center">
+                            <TableCell key={aoi.id} className="px-3 py-2 text-center">
                               {aoi.name === row.from_aoi ? (
                                 <span className="text-muted-foreground">-</span>
                               ) : (
@@ -854,17 +857,17 @@ export function AoiComparisonTab({
                                   {count}
                                 </span>
                               )}
-                            </td>
+                            </TableCell>
                           )
                         })}
-                        <td className="px-4 py-3 text-center font-semibold tabular-nums">
+                        <TableCell className="px-4 py-3 text-center font-semibold tabular-nums">
                           {row.total}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </div>
         </CardContent>

@@ -3,13 +3,13 @@
 import { Download, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-  ComboboxValue,
-} from "@/components/ui/combobox"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { AnalyticsParticipant, AnalyticsScenario } from "../types"
 
 interface FiltersBarProps {
@@ -40,46 +40,46 @@ export function FiltersBar({
         <span>Filtros</span>
       </div>
 
-      <Combobox
+      <Select
         value={selectedScenario}
         onValueChange={(val) => onScenarioChange(val ?? "all")}
         disabled={scenariosLoading}
       >
-        <ComboboxTrigger className="flex w-[min(34vw,240px)] min-w-40 max-w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-[280px] 2xl:py-2">
+        <SelectTrigger className="flex w-[min(34vw,240px)] min-w-40 max-w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-[280px] 2xl:py-2">
           <span className="truncate">
             {selectedScenario === "all" ? "Todos los escenarios" : selectedScenario}
           </span>
-        </ComboboxTrigger>
-        <ComboboxContent>
-          <ComboboxList>
-            <ComboboxItem value="all">Todos los escenarios</ComboboxItem>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="all">Todos los escenarios</SelectItem>
             {scenarios.map((scenario) => (
-              <ComboboxItem key={scenario.name} value={scenario.name}>
+              <SelectItem key={scenario.name} value={scenario.name}>
                 {scenario.name}
-              </ComboboxItem>
+              </SelectItem>
             ))}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
 
-      <Combobox
-        value={selectedParticipant}
+      <Select
+        value={selectedParticipant ?? ""}
         onValueChange={(val) => val && onParticipantChange(val)}
         disabled={participantsLoading || participants.length === 0}
       >
-        <ComboboxTrigger className="flex w-40 shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-44 2xl:py-2">
-          <ComboboxValue placeholder="Sin sujetos">{selectedParticipant ?? undefined}</ComboboxValue>
-        </ComboboxTrigger>
-        <ComboboxContent>
-          <ComboboxList>
+        <SelectTrigger className="flex w-40 shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-44 2xl:py-2">
+          <SelectValue placeholder="Sin sujetos">{selectedParticipant ?? undefined}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
             {participants.map((participant) => (
-              <ComboboxItem key={participant.participant_code} value={participant.participant_code}>
+              <SelectItem key={participant.participant_code} value={participant.participant_code}>
                 {`Sujeto ${participant.participant_code}`}
-              </ComboboxItem>
+              </SelectItem>
             ))}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
 
       <div className="ml-auto shrink-0">
         <Button

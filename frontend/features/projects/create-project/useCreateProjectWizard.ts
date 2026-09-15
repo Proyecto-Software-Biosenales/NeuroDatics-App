@@ -720,20 +720,16 @@ export const useCreateProjectWizard = (
 
     try {
       updateProgress("Guardando sensores y participantes...");
-      const updates: Promise<void>[] = [];
-
       if (formData.sensors.length > 0) {
-        updates.push(ProjectsApi.setSensors(draftProjectId, formData.sensors as string[]));
+        await ProjectsApi.setSensors(draftProjectId, formData.sensors as string[]);
       }
 
       if (formData.participants.length > 0) {
         const normalizedParticipants = normalizeParticipants(formData.participants);
-        updates.push(ProjectsApi.setParticipants(draftProjectId, normalizedParticipants));
+        await ProjectsApi.setParticipants(draftProjectId, normalizedParticipants);
       }
 
-      updates.push(ProjectsApi.setAois(draftProjectId, serializeScenaryAois(formData.scenaries)));
-
-      await Promise.all(updates);
+      await ProjectsApi.setAois(draftProjectId, serializeScenaryAois(formData.scenaries));
 
       updateProgress("Finalizando configuración del proyecto...");
       await ProjectsApi.finalize(draftProjectId);

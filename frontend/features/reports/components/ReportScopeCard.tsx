@@ -1,13 +1,16 @@
+
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Users } from "lucide-react"
-import { Card } from "@/components/ui/Card"
+import { ReportStepCard } from "./ReportStepCard"
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-  ComboboxValue,
-} from "@/components/ui/combobox"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { AnalyticsParticipant } from "@/features/analytics/types"
 import type { ReportScopeKind } from "@/features/reports/types"
 
@@ -31,85 +34,70 @@ export const ReportScopeCard = ({
   const hasParticipants = participants.length > 0
 
   return (
-    <Card className="p-8 transition-all duration-300">
-      <div className="mb-6 flex items-start gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-          <span className="text-lg font-semibold text-foreground">2</span>
-        </div>
-        <div className="flex-1">
-          <h2 className="mb-2 text-xl font-semibold text-foreground">
-            Alcance del informe
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Selecciona un participante o genera un resumen agregado del grupo.
-          </p>
-        </div>
-      </div>
+    <ReportStepCard step={2} title="Alcance del informe" description="Selecciona un participante o genera un resumen agregado del grupo.">
 
-      <div className="space-y-3 pl-14">
-        <label
+
+      <RadioGroup value={scopeKind} onValueChange={(value) => onScopeKindChange(value as ReportScopeKind)} aria-label="Alcance del informe" className="space-y-3 sm:pl-14">
+        <div
           className={`flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 transition-all duration-200 ${
             scopeKind === "participant"
               ? "border-foreground/40 bg-muted"
               : "hover:bg-muted/50"
           }`}
         >
-          <input
-            type="radio"
-            name="report-scope"
-            checked={scopeKind === "participant"}
-            onChange={() => onScopeKindChange("participant")}
-            className="mt-1 h-4 w-4 accent-gray-950"
+          <RadioGroupItem
+            id="report-scope-participant"
+            value="participant"
+            className="mt-1"
           />
           <div className="min-w-0 flex-1">
-            <h3 className="mb-1 text-sm font-semibold text-foreground">
+            <Label htmlFor="report-scope-participant" className="mb-1 font-semibold">
               Un participante
-            </h3>
+            </Label>
             <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
               Genera el informe ejecutivo para un solo sujeto.
             </p>
             {scopeKind === "participant" ? (
-              <Combobox
+              <Select
                 value={selectedParticipant}
                 onValueChange={(val) => val && onParticipantChange(val)}
                 disabled={loading || !hasParticipants}
               >
-                <ComboboxTrigger className="flex w-full max-w-md items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50">
-                  <ComboboxValue placeholder={loading ? "Cargando..." : "Selecciona un participante"}>
+                <SelectTrigger className="flex w-full max-w-md items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50">
+                  <SelectValue placeholder={loading ? "Cargando..." : "Selecciona un participante"}>
                     {selectedParticipant || undefined}
-                  </ComboboxValue>
-                </ComboboxTrigger>
-                <ComboboxContent>
-                  <ComboboxList>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
                     {participants.map((participant) => (
-                      <ComboboxItem
+                      <SelectItem
                         key={participant.participant_code}
                         value={participant.participant_code}
                       >
                         {`Sujeto ${participant.participant_code}`}
-                      </ComboboxItem>
+                      </SelectItem>
                     ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             ) : null}
           </div>
-        </label>
+        </div>
 
-        <label
+        <Label
+          htmlFor="report-scope-all"
           className={`flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 transition-all duration-200 ${
             scopeKind === "all-participants"
               ? "border-foreground/40 bg-muted"
               : "hover:bg-muted/50"
           }`}
         >
-          <input
-            type="radio"
-            name="report-scope"
-            checked={scopeKind === "all-participants"}
-            onChange={() => onScopeKindChange("all-participants")}
+          <RadioGroupItem
+            id="report-scope-all"
+            value="all-participants"
             disabled={!hasParticipants}
-            className="mt-1 h-4 w-4 accent-gray-950 disabled:opacity-50"
+            className="mt-1"
           />
           <div className="flex-1">
             <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -120,9 +108,8 @@ export const ReportScopeCard = ({
               Promedia metricas por participante y agrupa mapas por escenario.
             </p>
           </div>
-        </label>
-      </div>
-    </Card>
+        </Label>
+      </RadioGroup>
+    </ReportStepCard>
   )
 }
-

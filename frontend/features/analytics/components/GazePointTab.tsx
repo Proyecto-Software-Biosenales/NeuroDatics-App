@@ -1,4 +1,8 @@
 "use client"
+import { AnalyticsModeSelector } from "@/features/analytics/components/AnalyticsModeSelector"
+
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -17,7 +21,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
+} from "@/components/ui/card"
 import {
   Activity,
   Clock,
@@ -38,9 +42,9 @@ import {
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import { cn } from "@/lib/utils"
-import { KpiCard } from "@/components/ui/KpiCard"
-import { StatisticsTable } from "@/components/ui/StatisticsTable"
-import type { StatRow } from "@/components/ui/StatisticsTable"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
+import { StatisticsTable } from "@/features/analytics/components/StatisticsTable"
+import type { StatRow } from "@/features/analytics/components/StatisticsTable"
 import {
   useAoiMetrics,
   useGazeAt,
@@ -48,7 +52,6 @@ import {
   useGazeTimeseries,
 } from "../hooks/useAnalyticsData"
 import {
-  AoiContextPanel,
   AoiLegend,
   AoiOverlay,
   AoiToggleButton,
@@ -157,7 +160,7 @@ export function GazePointTab({
     clear: clearGaze,
   } = useGazeAt(projectId, participantCode)
   const aoiScenario = scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
-  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
+  const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
     projectId,
     participantCode,
     aoiScenario
@@ -385,27 +388,11 @@ export function GazePointTab({
             </CardDescription>
           </div>
 
-          <div className="inline-flex overflow-hidden rounded-lg border border-border">
-            {[
+          <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
               { key: "both", label: "Ambos ejes" },
               { key: "x", label: "Eje X" },
               { key: "y", label: "Eje Y" },
-            ].map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setViewMode(option.key as ViewMode)}
-                className={cn(
-                  "px-3 py-1.5 text-sm",
-                  viewMode === option.key
-                    ? "bg-foreground text-background"
-                    : "bg-background text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+            ]} />
         </CardHeader>
 
         <CardContent>
@@ -478,7 +465,7 @@ export function GazePointTab({
           </div>
 
           {timeseriesLoading ? (
-            <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
+            <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
           ) : chartData.length === 0 ? (
             <div className="analytics-state-frame flex items-center justify-center text-sm text-muted-foreground">
               No hay datos de gaze para los filtros seleccionados.
@@ -583,17 +570,17 @@ export function GazePointTab({
                 disabled={aois.length === 0 || aoiLoading}
                 count={aois.length}
               />
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={() => {
                   clearGaze()
                   setSelectedTime(null)
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="gap-1.5 text-muted-foreground"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Limpiar selección
-              </button>
+              </Button>
             </div>
           )}
         </CardHeader>
@@ -666,7 +653,7 @@ export function GazePointTab({
               Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante
             </div>
           ) : gazeLoading ? (
-            <div className="h-48 animate-pulse rounded-xl bg-muted" />
+            <Skeleton className="h-48 animate-pulse rounded-xl bg-muted" />
           ) : gazeData && (gazeData.gx == null || gazeData.gy == null) ? (
             <div className="flex h-48 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
               <span>
@@ -778,15 +765,6 @@ export function GazePointTab({
         </CardContent>
       </Card>
 
-      {participantCode && scenario !== "all" ? (
-        <AoiContextPanel
-          data={aoiData}
-          loading={aoiLoading}
-          error={aoiError}
-          title="AOIs en gaze point"
-          description="Resume cuantas fijaciones y cuanto tiempo observado caen en cada area delimitada."
-        />
-      ) : null}
     </div>
   )
 }

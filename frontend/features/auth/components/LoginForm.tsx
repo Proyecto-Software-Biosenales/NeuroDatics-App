@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from "@/components/ui/button"
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/providers/AuthProvider'
@@ -15,11 +15,11 @@ import { redirectToGoogleAuth } from '@/lib/providers/customAuthProvider'
 
 export function LoginForm() {
   const fieldClassName =
-    'h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-base shadow-sm transition-colors focus-visible:border-gray-400 focus-visible:ring-0'
+    'h-12 w-full px-4 text-base'
   const primaryButtonClassName =
-    'h-12 w-full rounded-2xl bg-gray-900 text-base font-semibold text-white shadow-sm hover:bg-gray-800'
+    'h-12 w-full text-base font-semibold'
   const secondaryButtonClassName =
-    'h-12 w-full rounded-2xl border border-gray-200 bg-white text-base font-semibold text-gray-900 shadow-sm hover:bg-gray-50'
+    'h-12 w-full text-base font-semibold'
 
   const router = useRouter()
   const { loading, signInWithPassword } = useAuth()
@@ -72,7 +72,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-[26.5rem] rounded-[2rem] border border-gray-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+    <Card className="w-full max-w-[26.5rem]">
       <CardHeader className="space-y-4 text-center">
         <div className="mx-auto rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
           <Image src="/assets/NeuroDatics-logo.svg" alt="NeuroDatics" width={160} height={48} className="h-12 w-auto" priority />
@@ -111,14 +111,14 @@ export function LoginForm() {
                 required
                 className={`${fieldClassName} pr-11`}
               />
-              <button
+              <Button size="icon-sm" variant="ghost"
                 type="button"
                 onClick={() => setShowPassword((current) => !current)}
-                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground"
                 aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               >
                 {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-              </button>
+              </Button>
             </div>
           </div>
 

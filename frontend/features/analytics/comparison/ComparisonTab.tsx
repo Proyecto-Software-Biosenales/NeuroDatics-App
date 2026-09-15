@@ -1,5 +1,8 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   AlertCircle,
@@ -14,7 +17,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
+} from "@/components/ui/card"
 import { useAuth } from "@/lib/providers/AuthProvider"
 import {
   EegPsdChart,
@@ -145,14 +148,13 @@ function ComparisonPanel({
   const definition = VISUALIZATION_BY_ID[id]
   const contentId = `comparison-panel-${id}`
   return (
-    <Card>
+    <Collapsible open={!collapsed} onOpenChange={onToggle} asChild><Card>
       <CardHeader className="p-0 xl:p-0">
-        <button
+        <CollapsibleTrigger asChild><Button variant="ghost"
           type="button"
-          onClick={onToggle}
           aria-expanded={!collapsed}
           aria-controls={contentId}
-          className="flex w-full items-start gap-3 rounded-xl p-4 text-left transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset xl:p-6"
+          className="h-auto w-full items-start gap-3 whitespace-normal rounded-xl p-4 text-left focus-visible:ring-inset xl:p-6"
         >
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
             <definition.Icon className="h-4 w-4" />
@@ -173,14 +175,12 @@ function ComparisonPanel({
           ) : (
             <ChevronUp className="mt-1 h-5 w-5 text-muted-foreground" />
           )}
-        </button>
+        </Button></CollapsibleTrigger>
       </CardHeader>
-      {!collapsed ? (
-        <div id={contentId}>
+        <CollapsibleContent id={contentId}>
           <CardContent>{children}</CardContent>
-        </div>
-      ) : null}
-    </Card>
+        </CollapsibleContent>
+    </Card></Collapsible>
   )
 }
 

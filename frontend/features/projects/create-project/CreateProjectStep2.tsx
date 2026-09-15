@@ -1,6 +1,10 @@
 "use client"
 
-import { Brain, Zap, Eye, Check } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+
+import { Brain, Zap, Eye } from "lucide-react"
 import type { SensorType } from "./types"
 
 interface CreateProjectStep2Props {
@@ -52,21 +56,16 @@ export const CreateProjectStep2 = ({
           const Icon = sensor.icon
 
           return (
-            <button
+            <Label
               key={sensor.id}
-              type="button"
-              onClick={() => onToggleSensor(sensor.id)}
-              className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+              htmlFor={`project-sensor-${sensor.id}`}
+              className={`relative block cursor-pointer p-6 rounded-xl border-2 transition-colors text-left ${
                 isSelected
                   ? "border-foreground bg-muted"
                   : "border-border bg-card hover:border-foreground/40"
               }`}
             >
-              {isSelected && (
-                <div className="absolute top-3 right-3 w-6 h-6 bg-foreground rounded-full flex items-center justify-center">
-                  <Check className="w-4 h-4 text-white" strokeWidth={3} />
-                </div>
-              )}
+              <Checkbox id={`project-sensor-${sensor.id}`} checked={isSelected} onCheckedChange={() => onToggleSensor(sensor.id)} aria-label={sensor.title} className="absolute right-3 top-3" />
 
               <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mb-4">
                 <Icon className="w-6 h-6 text-foreground" strokeWidth={2} />
@@ -81,11 +80,11 @@ export const CreateProjectStep2 = ({
               </p>
 
               {autoDetectedSensors.includes(sensor.id) && (
-                <span className="mt-2 inline-block text-xs font-medium text-green-500 bg-green-500/15 px-2 py-0.5 rounded-full">
+                <Badge variant="secondary" className="mt-2">
                   Auto-detectado
-                </span>
+                </Badge>
               )}
-            </button>
+            </Label>
           )
         })}
       </div>

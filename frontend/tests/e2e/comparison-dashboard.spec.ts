@@ -460,7 +460,7 @@ async function openProjectComparison(page: Page, projectName: string) {
 }
 
 async function selectScenario(page: Page, scenarioName = "Escenario concreto") {
-  const scenarioTrigger = page.locator('[data-slot="combobox-trigger"]').first()
+  const scenarioTrigger = page.locator('[data-slot="select-trigger"]').first()
   await scenarioTrigger.click()
   await page.getByRole("option", { name: scenarioName, exact: true }).click()
   await expect(scenarioTrigger).toContainText(scenarioName)
@@ -534,7 +534,7 @@ test("uses comparable absolute fixation sizes across participants", async ({
   expect(participantOneRadius).toBeLessThan(28)
 
   const participantTrigger = page
-    .locator('[data-slot="combobox-trigger"]')
+    .locator('[data-slot="select-trigger"]')
     .nth(1)
   await participantTrigger.click()
   await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()
@@ -574,7 +574,7 @@ test("renders a generic stimulus in the single-sensor view for a fileless moment
   await page.goto("/dashboard")
   await page.getByRole("button", { name: "Proyecto Alfa", exact: true }).click()
 
-  const minimumCard = page.getByRole("button", { name: /Mínimo/ })
+  const minimumCard = page.getByRole("button", { name: /^Mínimo:/ })
   await expect(minimumCard).toBeVisible()
   await minimumCard.click()
 
@@ -828,7 +828,7 @@ test("restores applied views per user and project across filters, navigation, an
     .toMatchObject({ version: 1, selectedIds: ["pupil", "gaze"] })
 
   const participantTrigger = page
-    .locator('[data-slot="combobox-trigger"]')
+    .locator('[data-slot="select-trigger"]')
     .nth(1)
   await participantTrigger.click()
   await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()

@@ -1,3 +1,6 @@
+
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Activity, ArrowLeft, ArrowRight, BarChart2, TrendingDown, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -54,10 +57,10 @@ function SummaryCards({ row, loading, unit = " mm" }: { row?: StatRow; loading?:
             key={i}
             className="flex items-center gap-4 rounded-xl border border-border bg-card px-4 py-4"
           >
-            <div className="h-10 w-10 animate-pulse rounded-xl bg-muted" />
+            <Skeleton className="h-10 w-10 animate-pulse rounded-xl bg-muted" />
             <div className="flex-1 space-y-2">
-              <div className="h-2.5 w-20 animate-pulse rounded bg-muted" />
-              <div className="h-5 w-24 animate-pulse rounded bg-muted" />
+              <Skeleton className="h-2.5 w-20 animate-pulse rounded bg-muted" />
+              <Skeleton className="h-5 w-24 animate-pulse rounded bg-muted" />
             </div>
           </div>
         ))}
@@ -159,39 +162,39 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activ
 
       {loading ? (
         <div className="overflow-hidden rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted">
+          <Table className="w-full text-sm">
+            <TableHeader>
+              <TableRow className="border-b border-border bg-muted">
                 {TABLE_HEADERS.map((h) => (
-                  <th
+                  <TableHead
                     key={h}
                     className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                   >
                     {h}
-                  </th>
+                  </TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {Array.from({ length: 3 }).map((_, i) => (
-                <tr key={i} className="border-b border-border/50 last:border-b-0">
+                <TableRow key={i} className="border-b border-border/50 last:border-b-0">
                   {Array.from({ length: 8 }).map((__, j) => (
-                    <td key={j} className="px-4 py-4">
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </td>
+                    <TableCell key={j} className="px-4 py-4">
+                      <Skeleton className="h-4 w-full animate-pulse rounded bg-muted" />
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/60">
+          <Table className="w-full text-sm">
+            <TableHeader>
+              <TableRow className="border-b border-border bg-muted/60">
                 {TABLE_HEADERS.map((h, i) => (
-                  <th
+                  <TableHead
                     key={h}
                     className={cn(
                       "px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
@@ -199,15 +202,15 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activ
                     )}
                   >
                     {h}
-                  </th>
+                  </TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((row, index) => {
                 const meta = SERIE_META[row.serie]
                 return (
-                  <tr
+                  <TableRow
                     key={row.serie}
                     className={cn(
                       "border-b border-border/50 transition-colors hover:bg-muted/30",
@@ -215,7 +218,7 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activ
                       (activeSerie ? row.serie === activeSerie : index === 0) && "bg-muted/20"
                     )}
                   >
-                    <td className="px-4 py-4">
+                    <TableCell className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         {meta ? (
                           <div
@@ -229,33 +232,33 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activ
                         ) : null}
                         <span className="font-semibold text-foreground">{row.serie}</span>
                       </div>
-                    </td>
+                    </TableCell>
 
-                    <td className="px-4 py-4 text-right text-muted-foreground">
+                    <TableCell className="px-4 py-4 text-right text-muted-foreground">
                       {row.count ?? "—"}
-                    </td>
+                    </TableCell>
 
-                    <td className="px-4 py-4 text-right text-muted-foreground">
+                    <TableCell className="px-4 py-4 text-right text-muted-foreground">
                       {fmt(row.baseline, 4, unit)}
-                    </td>
+                    </TableCell>
 
-                    <td className="px-4 py-4 text-right text-foreground/80">
+                    <TableCell className="px-4 py-4 text-right text-foreground/80">
                       {fmt(row.std, 4, unit)}
-                    </td>
+                    </TableCell>
 
-                    <td className="px-4 py-4 text-right font-semibold text-foreground">
+                    <TableCell className="px-4 py-4 text-right font-semibold text-foreground">
                       {fmt(row.mean ?? row.median, 4, unit)}
-                    </td>
+                    </TableCell>
 
-                    <td className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">
+                    <TableCell className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">
                       {fmt(row.min, 4, unit)}
-                    </td>
+                    </TableCell>
 
-                    <td className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">
+                    <TableCell className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">
                       {fmt(row.max, 4, unit)}
-                    </td>
+                    </TableCell>
 
-                    <td className="px-4 py-4 text-right">
+                    <TableCell className="px-4 py-4 text-right">
                       {row.peak != null ? (
                         <span
                           className={cn(
@@ -271,12 +274,12 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activ
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

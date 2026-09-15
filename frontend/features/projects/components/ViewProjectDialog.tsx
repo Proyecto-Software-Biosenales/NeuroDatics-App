@@ -1,5 +1,9 @@
 "use client"
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Activity,
@@ -238,32 +242,32 @@ export const ViewProjectDialog = ({
               </h3>
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
                 {participants.length > 0 ? (
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted text-muted-foreground">
-                      <tr className="text-left">
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Documento</th>
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Edad</th>
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Sexo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table className="w-full text-sm">
+                    <TableHeader className="bg-muted text-muted-foreground">
+                      <TableRow className="text-left">
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Documento</TableHead>
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Edad</TableHead>
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Sexo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {participants.map((participant) => (
-                        <tr key={participant.id} className="border-t border-border text-foreground">
-                          <td className="px-4 py-3 text-sm font-medium">{participant.participant_code}</td>
-                          <td className="px-4 py-3">
+                        <TableRow key={participant.id} className="border-t border-border text-foreground">
+                          <TableCell className="px-4 py-3 text-sm font-medium">{participant.participant_code}</TableCell>
+                          <TableCell className="px-4 py-3">
                             <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-muted px-2 py-0.5 text-sm font-semibold text-foreground">
                               {participant.age ?? "-"}
                             </span>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
                             <span className={`inline-flex rounded-full border px-3 py-0.5 text-sm font-semibold ${getSexPillClass()}`}>
                               {toSexLabel(participant.sex)}
                             </span>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 ) : (
                   <p className="text-sm text-muted-foreground">No hay participantes registrados.</p>
                 )}
@@ -283,10 +287,10 @@ export const ViewProjectDialog = ({
                   <ul className="space-y-3">
                     {scenaries.map((scenary) => (
                       <li key={scenary.id} className="overflow-hidden rounded-2xl border border-border bg-card">
-                        <button
+                        <Collapsible open={openScenaryId === scenary.id} onOpenChange={(open) => setOpenScenaryId(open ? scenary.id : "")}>
+                        <CollapsibleTrigger asChild><Button variant="ghost"
                           type="button"
-                          onClick={() => setOpenScenaryId((prev) => (prev === scenary.id ? "" : scenary.id))}
-                          className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-muted/50 transition-colors"
+                          className="h-auto w-full justify-between gap-3 whitespace-normal p-4 text-left"
                         >
                           <div className="min-w-0">
                             <p className="break-words text-base font-semibold text-foreground">{scenary.name}</p>
@@ -297,10 +301,9 @@ export const ViewProjectDialog = ({
                           ) : (
                             <ChevronRight className="h-5 w-5 text-muted-foreground" />
                           )}
-                        </button>
+                        </Button></CollapsibleTrigger>
 
-                        {openScenaryId === scenary.id && (
-                          <div className="border-t border-border p-4">
+                          <CollapsibleContent className="border-t border-border p-4">
                             <div className="relative overflow-hidden rounded-xl border border-border bg-muted aspect-video">
                               <ScenarioPreviewImage
                                 projectId={projectId}
@@ -311,8 +314,8 @@ export const ViewProjectDialog = ({
                                 isVideo={String(scenary.type || "").toLowerCase() === "video"}
                               />
                             </div>
-                          </div>
-                        )}
+                          </CollapsibleContent>
+                        </Collapsible>
                       </li>
                     ))}
                   </ul>

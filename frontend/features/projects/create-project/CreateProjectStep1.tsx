@@ -503,7 +503,7 @@ export const CreateProjectStep1 = ({
               )}
 
               {/* mostrar resultado del ZIP upload procesado */}
-              {uploadedZip && (
+              {uploadedZip && ingestionFailed && (
                 <div className={`mt-6 rounded-lg p-4 space-y-3 border ${
                   ingestionFailed ? "border-red-500/30 bg-red-500/10" : "border-green-500/30 bg-green-500/10"
                 }`}>
@@ -632,14 +632,14 @@ export const CreateProjectStep1 = ({
                   {question.kind === "choice" ? (
                     <div className="space-y-1">
                       {question.options.map((option) => (
-                        <button
+                        <Button variant="outline"
                           key={option}
                           type="button"
                           onClick={() => answerQuestion(question.field, option)}
-                          className="w-full break-all rounded-lg border border-border bg-card px-3 py-2 text-left text-xs text-foreground transition-colors hover:border-foreground/60 hover:bg-accent"
+                          className="h-auto w-full justify-start whitespace-normal break-all px-3 py-2 text-left text-xs"
                         >
                           {option}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   ) : (

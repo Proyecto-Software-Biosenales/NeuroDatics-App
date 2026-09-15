@@ -1,6 +1,9 @@
+
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar, Clock3, Folder, Users, MoreVertical, Edit, Trash2, Archive, Loader2 } from "lucide-react"
 import { useState } from "react"
-import { Card } from "../../../components/ui/Card"
+import { Card } from "@/components/ui/card"
 import { SensorBadge } from "../../../features/projects/components/SensorBadge"
 import { DeleteProjectDialog } from "../../../features/projects/components/DeleteProjectDialog"
 import { EditProjectDialog } from "../../../features/projects/components/EditProjectDialog"
@@ -136,16 +139,14 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           <div className="absolute top-4 right-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild disabled={isDraftProcessing}>
-                <button
+                <Button size="icon-sm" variant="ghost"
                   type="button"
-                  className={`rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
-                    isDraftProcessing ? "cursor-not-allowed opacity-40" : ""
-                  }`}
+                  className="text-muted-foreground"
                   disabled={isDraftProcessing}
                   aria-label="Opciones del proyecto"
                 >
                   <MoreVertical className="h-5 w-5" />
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
@@ -242,22 +243,22 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
 
               <div className="flex items-center gap-1">
                 {!isDraftProcessing && !isDraftPending && !canContinueDraft && (
-                  <button
+                  <Button size="sm" variant="outline"
                     type="button"
-                    className="rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    className=""
                     onClick={() => setViewOpenId(project.id)}
                   >
                     Ver proyecto
-                  </button>
+                  </Button>
                 )}
                 {canContinueDraft && (
-                  <button
+                  <Button variant="outline"
                     type="button"
-                    className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 dark:text-gray-200 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white"
+                    className="text-xs"
                     onClick={() => onContinueDraft?.(project)}
                   >
                     Continuar
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -266,15 +267,15 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           {isDraftProcessing && (
             <>
               {/* Pulsing border */}
-              <div className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-gray-300 dark:border-gray-600 animate-pulse z-[5]" />
+              <Skeleton className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-border animate-pulse z-[5]" />
               {/* Content dimming overlay */}
-              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-white/40 dark:bg-gray-900/40 z-[6]" />
+              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-background/40 z-[6]" />
             </>
           )}
 
           {isDeleting && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 dark:bg-gray-900/70 backdrop-blur-[1px]">
-              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm">
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/70 backdrop-blur-[1px]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Eliminando proyecto...
               </div>
@@ -284,41 +285,41 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           {isDraftProcessing && (
             <div className="absolute bottom-0 left-0 right-0 rounded-b-2xl overflow-hidden z-[10]">
               {/* Animated shimmer line */}
-              <div className="relative h-0.5 w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-                <div className="absolute inset-y-0 left-0 w-2/3 animate-pulse bg-gradient-to-r from-transparent via-gray-500 to-transparent" />
+              <div className="relative h-0.5 w-full overflow-hidden bg-muted">
+                <Skeleton className="absolute inset-y-0 left-0 w-2/3 animate-pulse bg-gradient-to-r from-transparent via-gray-500 to-transparent" />
               </div>
               {/* Footer body */}
-              <div className="flex items-center gap-3 bg-gray-100/95 dark:bg-gray-800/95 backdrop-blur-sm px-4 py-4">
+              <div className="flex items-center gap-3 bg-muted/95 backdrop-blur-sm px-4 py-4">
                 {/* Custom spinner */}
-                <div className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 animate-spin" />
+                <div className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-border border-t-foreground animate-spin" />
                 {/* Text */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold leading-tight text-gray-700 dark:text-gray-200">Procesando archivos</p>
+                  <p className="text-sm font-semibold leading-tight text-foreground">Procesando archivos</p>
                 </div>
                 {/* Bouncing dots */}
                 <div className="flex flex-shrink-0 items-end gap-1 pb-0.5">
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" style={{ animationDelay: "0ms" }} />
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" style={{ animationDelay: "150ms" }} />
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" style={{ animationDelay: "300ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "0ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "150ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             </div>
           )}
 
           {isDraftPending && (
-            <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 rounded-b-2xl z-[10]">
-              <div className="flex items-center justify-between bg-white dark:bg-gray-800 px-4 py-2.5">
+            <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-border rounded-b-2xl z-[10]">
+              <div className="flex items-center justify-between bg-card px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Paso 1 incompleto</p>
+                  <p className="text-xs text-muted-foreground">Paso 1 incompleto</p>
                 </div>
-                <button
+                <Button variant="link"
                   type="button"
-                  className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white underline underline-offset-2 transition-colors"
+                  className="text-xs"
                   onClick={(e) => { e.stopPropagation(); onContinueDraft?.(project) }}
                 >
                   Retomar
-                </button>
+                </Button>
               </div>
             </div>
           )}

@@ -1,13 +1,13 @@
 "use client"
 
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-  ComboboxValue,
-} from "@/components/ui/combobox"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { SensorBadge } from "./SensorBadge"
 import type { SensorType } from "@/features/projects/types"
 
@@ -31,17 +31,17 @@ export const ProjectSelect = ({
   placeholder = "Selecciona un proyecto...",
 }: ProjectSelectProps) => {
   return (
-    <Combobox value={value} onValueChange={(val) => val && onChange(val)}>
-      <ComboboxTrigger className="w-full flex items-center justify-between px-5 py-3.5 bg-background border border-input rounded-xl text-left text-foreground hover:border-ring hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200">
-        <ComboboxValue placeholder={placeholder}>
+    <Select value={value} onValueChange={(val) => val && onChange(val)}>
+      <SelectTrigger className="w-full flex items-center justify-between px-5 py-3.5 bg-background border border-input rounded-xl text-left text-foreground hover:border-ring hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200">
+        <SelectValue placeholder={placeholder}>
           {projects.find((project) => project.id === value)?.name ?? placeholder}
-        </ComboboxValue>
-      </ComboboxTrigger>
+        </SelectValue>
+      </SelectTrigger>
 
-      <ComboboxContent>
-        <ComboboxList>
+      <SelectContent>
+        <SelectGroup>
           {projects.map((project) => (
-            <ComboboxItem key={project.id} value={project.id} textValue={project.name}>
+            <SelectItem key={project.id} value={project.id} textValue={project.name}>
               <div className="flex flex-col gap-2 py-1">
                 <span className="font-medium text-foreground">{project.name}</span>
                 {project.sensors && project.sensors.length > 0 ? (
@@ -52,10 +52,10 @@ export const ProjectSelect = ({
                   </div>
                 ) : null}
               </div>
-            </ComboboxItem>
+            </SelectItem>
           ))}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   )
 }

@@ -1,12 +1,15 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { AnalyticsTabs } from "@/features/analytics/components/AnalyticsTabs"
+
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { AuthGuard } from "@/features/auth/components/AuthGuard"
 import {
   ProjectsApi,
   type ApiProject,
 } from "@/features/projects/api/projectsApi"
 import { AnalyticsSidebar } from "@/features/analytics/components/AnalyticsSidebar"
+import { getProjectSensors, type SensorSelection } from "@/features/analytics/projectSensors"
 import { FiltersBar } from "@/features/analytics/components/FiltersBar"
 import { PlaceholderTab } from "@/features/analytics/components/PlaceholderTab"
 import { PupilDilationTab } from "@/features/analytics/components/PupilDilationTab"
@@ -29,8 +32,6 @@ import {
   DEFAULT_FIXATION_DURATION_MS,
   type FixationDurationMs,
 } from "@/features/analytics/types"
-
-type SensorSelection = "EyeTracker" | "EEG" | "GSR" | "Comparativas"
 
 type AnalyticsTabKey =
   | "pupil_dilation"
@@ -67,6 +68,15 @@ const EEG_TABS: Array<{ key: EegTabKey; label: string }> = [
   { key: "topography", label: "Topografía EEG" },
 ]
 
+const compactSidebarQuery = "(max-width: 767px)"
+const subscribeToCompactViewport = (onChange: () => void) => {
+  const query = window.matchMedia(compactSidebarQuery)
+  query.addEventListener("change", onChange)
+  return () => query.removeEventListener("change", onChange)
+}
+const getCompactViewport = () => window.matchMedia(compactSidebarQuery).matches
+const getServerCompactViewport = () => false
+
 export default function DashboardPage() {
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
@@ -74,7 +84,10 @@ export default function DashboardPage() {
   )
   const [selectedSensor, setSelectedSensor] =
     useState<SensorSelection>("EyeTracker")
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const compactViewport = useSyncExternalStore(subscribeToCompactViewport, getCompactViewport, getServerCompactViewport)
+  const [sidebarCollapsedOverride, setSidebarCollapsed] = useState<boolean | null>(null)
+  const sidebarCollapsed = sidebarCollapsedOverride ?? compactViewport
+  const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState<AnalyticsTabKey>("pupil_dilation")
   const [minFixationDurationMs, setMinFixationDurationMs] =
     useState<FixationDurationMs>(DEFAULT_FIXATION_DURATION_MS)
@@ -115,6 +128,12 @@ export default function DashboardPage() {
       .then((items) => {
         if (cancelled) return
         setProjects(items)
+        const firstProject = items[0]
+        if (firstProject) {
+          setSelectedProjectId(firstProject.id)
+          setSelectedSensor(getProjectSensors(firstProject)[0] ?? "Comparativas")
+          setExpandedProjects({ [firstProject.id]: true })
+        }
       })
       .catch(() => {
         if (cancelled) return
@@ -184,7 +203,10 @@ export default function DashboardPage() {
     [selectedProject]
   )
 
-  const handleSelectProject = (projectId: string) => {
+  const handleSelectProject = (projectId: string, sensor?: SensorSelection) => {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+
     if (projectId !== selectedProjectId) {
       sawParticipantLoading.current = false
       setParticipantDataProjectId(null)
@@ -193,19 +215,30 @@ export default function DashboardPage() {
       setMinFixationDurationMs(DEFAULT_FIXATION_DURATION_MS)
     }
     setSelectedProjectId(projectId)
+    setSelectedSensor(sensor ?? getProjectSensors(project)[0] ?? "Comparativas")
+    setExpandedProjects((prev) => ({ ...prev, [projectId]: true }))
+  }
+
+  const handleToggleProject = (projectId: string) => {
+    if (expandedProjects[projectId]) {
+      setExpandedProjects((prev) => ({ ...prev, [projectId]: false }))
+    } else {
+      handleSelectProject(projectId)
+    }
   }
 
   return (
     <AuthGuard>
-      <div className="fixed inset-x-0 top-[var(--app-nav-height)] bottom-0 flex min-h-0 min-w-0 overflow-hidden bg-gray-50 dark:bg-black">
+      <div className="fixed inset-x-0 top-[var(--app-nav-height)] bottom-0 flex min-h-0 min-w-0 overflow-hidden bg-muted/30">
         <AnalyticsSidebar
           projects={projects}
           selectedProjectId={selectedProjectId}
           selectedSensor={selectedSensor}
           onSelectProject={handleSelectProject}
-          onSelectSensor={setSelectedSensor}
+          expandedProjects={expandedProjects}
+          onToggleProject={handleToggleProject}
           collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -222,7 +255,7 @@ export default function DashboardPage() {
 
           <main className="analytics-shell min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-4 xl:px-6 xl:pb-6">
             {!selectedProjectId ? (
-              <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 Selecciona un proyecto del panel lateral
               </div>
             ) : selectedSensor === "Comparativas" ? (
@@ -241,26 +274,7 @@ export default function DashboardPage() {
                 scenario={selectedScenario}
               />
             ) : selectedSensor === "EEG" ? (
-              <>
-                <div className="dashboard-tab-list flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-2 text-muted-foreground [scrollbar-width:none] 2xl:gap-2 2xl:px-5 [&::-webkit-scrollbar]:hidden">
-                  {EEG_TABS.map((tab) => {
-                    const isActive = activeEegTab === tab.key
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setActiveEegTab(tab.key)}
-                        className={
-                          isActive
-                            ? "dashboard-tab-button dashboard-tab-button-active shrink-0 border-b-2 border-foreground px-3 py-2.5 text-sm leading-5 font-semibold whitespace-nowrap text-foreground"
-                            : "dashboard-tab-button shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm leading-5 whitespace-nowrap text-muted-foreground hover:text-foreground"
-                        }
-                      >
-                        {tab.label}
-                      </button>
-                    )
-                  })}
-                </div>
+              <AnalyticsTabs value={activeEegTab} onValueChange={setActiveEegTab} options={EEG_TABS} label="Vistas EEG">
 
                 <EegTab
                   key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
@@ -269,28 +283,9 @@ export default function DashboardPage() {
                   scenario={selectedScenario}
                   view={activeEegTab}
                 />
-              </>
+              </AnalyticsTabs>
             ) : (
-              <>
-                <div className="dashboard-tab-list flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border px-2 text-muted-foreground [scrollbar-width:none] 2xl:gap-2 2xl:px-5 [&::-webkit-scrollbar]:hidden">
-                  {ANALYTICS_TABS.map((tab) => {
-                    const isActive = activeTab === tab.key
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setActiveTab(tab.key)}
-                        className={
-                          isActive
-                            ? "dashboard-tab-button dashboard-tab-button-active shrink-0 border-b-2 border-foreground px-3 py-2.5 text-sm leading-5 font-semibold whitespace-nowrap text-foreground"
-                            : "dashboard-tab-button shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm leading-5 whitespace-nowrap text-muted-foreground hover:text-foreground"
-                        }
-                      >
-                        {tab.label}
-                      </button>
-                    )
-                  })}
-                </div>
+              <AnalyticsTabs value={activeTab} onValueChange={setActiveTab} options={ANALYTICS_TABS} label="Vistas Eye Tracker">
 
                 {FIXATION_DERIVED_TABS.has(activeTab) &&
                   selectedParticipant && (
@@ -372,7 +367,7 @@ export default function DashboardPage() {
                     />
                   </div>
                 )}
-              </>
+              </AnalyticsTabs>
             )}
           </main>
         </div>

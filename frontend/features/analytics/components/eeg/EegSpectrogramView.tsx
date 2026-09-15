@@ -1,14 +1,18 @@
 "use client"
+import { EegChannelSelector } from "./EegChannelSelector"
+
+
+import { Skeleton } from "@/components/ui/skeleton"
 
 import { type Dispatch, type SetStateAction } from "react"
 import { Activity, Radio, TrendingUp, Waves } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card"
-import { KpiCard } from "@/components/ui/KpiCard"
-import { cn } from "@/lib/utils"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
+
 import { StimulusFixationCard } from "../StimulusFixationCard"
 import { type EegSpectrogramData } from "../../types"
-import { formatChannel, VIRIDIS_GRADIENT } from "../../eegPresentation"
-import { EEG_CHANNELS, CHANNEL_COLORS, type EegView, type SpectrogramStats } from "./eegViewShared"
+import { VIRIDIS_GRADIENT } from "../../eegPresentation"
+import { EEG_CHANNELS, type EegView, type SpectrogramStats } from "./eegViewShared"
 import { SpectrogramStatsTable } from "./EegStatsTables"
 import { SpectrogramPanel } from "./EegCanvasPanels"
 
@@ -123,33 +127,10 @@ export function EegSpectrogramView({
               />
             </div>
 
-            <div className="mb-5 flex flex-wrap gap-2">
-              {EEG_CHANNELS.map((channel) => {
-                const isActive = selectedChannels.includes(channel)
-                const isAvailable = availableChannels.includes(channel)
-                return (
-                  <button
-                    key={channel}
-                    type="button"
-                    onClick={() => handleChannelToggle(channel)}
-                    disabled={!isAvailable}
-                    className={cn(
-                      "inline-flex min-w-12 items-center justify-center rounded-md border px-3 py-1.5 text-sm font-medium transition",
-                      isActive && isAvailable
-                        ? "border-transparent text-white"
-                        : "border-border bg-background text-muted-foreground hover:bg-muted",
-                      !isAvailable && "cursor-not-allowed opacity-40"
-                    )}
-                    style={isActive && isAvailable ? { backgroundColor: CHANNEL_COLORS[channel] } : undefined}
-                  >
-                    {formatChannel(channel)}
-                  </button>
-                )
-              })}
-            </div>
+            <EegChannelSelector channels={EEG_CHANNELS} availableChannels={availableChannels} selectedChannels={selectedChannels} onToggle={handleChannelToggle} />
 
             {spectrogramLoading ? (
-              <div className="h-[520px] w-full animate-pulse rounded-lg bg-muted" />
+              <Skeleton className="h-[520px] w-full animate-pulse rounded-lg bg-muted" />
             ) : spectrogramError ? (
               <div className="flex h-[420px] items-center justify-center text-sm text-muted-foreground">
                 No se pudo cargar el espectrograma de EEG.
@@ -225,7 +206,7 @@ export function EegSpectrogramView({
           </CardHeader>
           <CardContent>
             {spectrogramLoading ? (
-              <div className="h-52 w-full animate-pulse rounded-lg bg-muted" />
+              <Skeleton className="h-52 w-full animate-pulse rounded-lg bg-muted" />
             ) : spectrogramStats.length === 0 ? (
               <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">
                 No hay datos suficientes para calcular estadísticas del espectrograma.

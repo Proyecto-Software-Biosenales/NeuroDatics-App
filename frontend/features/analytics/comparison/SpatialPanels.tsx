@@ -1,5 +1,7 @@
 "use client"
 
+import { Skeleton } from "@/components/ui/skeleton"
+
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import {
   Bar,
@@ -101,7 +103,7 @@ function StimulusSurface({
 
   if (image.loading) {
     return (
-      <div className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
+      <Skeleton className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
     )
   }
   if (image.error) return <MessageSurface>{image.error}</MessageSurface>
@@ -245,7 +247,7 @@ export function PointOnStimulusPanel({
       </div>
       {stimulusStatus === "loading-gaze" ||
       stimulusStatus === "loading-preview" ? (
-        <div className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
+        <Skeleton className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
       ) : stimulusStatus === "no-gaze" ? (
         <MessageSurface Icon={CircleOff}>
           No se pudo ubicar la mirada para este instante.
@@ -358,7 +360,7 @@ export function HeatmapPanel({
 }) {
   if (loading)
     return (
-      <div className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
+      <Skeleton className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
     )
   if (error) return <MessageSurface>{error}</MessageSurface>
   if (!fixation?.fixations.length)
@@ -427,7 +429,7 @@ export function ScanpathPanel({
 }) {
   if (loading)
     return (
-      <div className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
+      <Skeleton className="analytics-state-frame w-full animate-pulse rounded-xl bg-muted" />
     )
   if (error) return <MessageSurface>{error}</MessageSurface>
   if (!data?.objectives.length)

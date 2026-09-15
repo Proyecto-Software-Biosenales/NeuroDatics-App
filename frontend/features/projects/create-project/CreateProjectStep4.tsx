@@ -1,5 +1,8 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+
 import { useState } from "react"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import type { scenaries } from "./types"
@@ -34,14 +37,15 @@ export const CreateProjectStep4 = ({
           const scenaryAois = scenary.aois || []
 
           return (
-            <div
+            <Collapsible
               key={scenary.id}
+              open={isOpen}
+              onOpenChange={(open) => setOpenScenaryId(open ? scenary.id : "")}
               className="overflow-hidden rounded-xl border border-border bg-card"
             >
-              <button
+              <CollapsibleTrigger asChild><Button variant="ghost"
                 type="button"
-                onClick={() => setOpenScenaryId(isOpen ? "" : scenary.id)}
-                className="flex w-full items-center justify-between p-4 transition-colors hover:bg-muted/50"
+                className="h-auto w-full justify-between p-4"
               >
                 <span className="font-medium text-foreground">{scenary.name}</span>
                 {isOpen ? (
@@ -49,10 +53,9 @@ export const CreateProjectStep4 = ({
                 ) : (
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 )}
-              </button>
+              </Button></CollapsibleTrigger>
 
-              {isOpen && (
-                <div className="border-t border-border px-4 pb-4">
+                <CollapsibleContent className="border-t border-border px-4 pb-4">
                   <div className="pt-4">
                     <AoiEditor
                       projectId={scenary.projectId}
@@ -63,9 +66,8 @@ export const CreateProjectStep4 = ({
                       onAoisChange={(nextAois) => onScenaryAoisChange?.(scenary.id, nextAois)}
                     />
                   </div>
-                </div>
-              )}
-            </div>
+                </CollapsibleContent>
+            </Collapsible>
           )
         })}
 

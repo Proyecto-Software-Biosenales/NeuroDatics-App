@@ -1,5 +1,9 @@
 "use client"
 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
 import { useMemo } from "react"
 import {
   Card,
@@ -7,7 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
+} from "@/components/ui/card"
 import type { ComparisonData } from "./useComparisonData"
 import type { VisualizationId } from "./registry"
 
@@ -567,9 +571,9 @@ export function ComparisonStatistics({
             </p>
           </div>
           <div className="max-h-[440px] overflow-auto rounded-xl border border-border">
-            <table className="w-full min-w-[1180px] text-left text-sm tabular-nums">
-              <thead className="sticky top-0 z-20 bg-muted/95 text-xs text-muted-foreground backdrop-blur">
-                <tr>
+            <Table className="w-full min-w-[1180px] text-left text-sm tabular-nums">
+              <TableHeader className="sticky top-0 z-20 bg-muted/95 text-xs text-muted-foreground backdrop-blur">
+                <TableRow>
                   {[
                     "Sensor",
                     "Visualización",
@@ -584,79 +588,79 @@ export function ComparisonStatistics({
                     "Línea base",
                     "Pico vs. base",
                   ].map((label) => (
-                    <th
+                    <TableHead
                       key={label}
                       className="px-3 py-3 font-semibold whitespace-nowrap"
                     >
                       {label}
-                    </th>
+                    </TableHead>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-border">
                 {numericRows.length ? (
                   numericRows.map((row) => (
-                    <tr
+                    <TableRow
                       key={`${row.visualization}-${row.series}`}
                       className="hover:bg-muted/20"
                     >
-                      <td className="sticky left-0 bg-card px-3 py-3 font-medium">
+                      <TableCell className="sticky left-0 bg-card px-3 py-3 font-medium">
                         {row.sensor}
-                      </td>
-                      <td className="px-3 py-3">{row.visualization}</td>
-                      <td className="px-3 py-3 font-medium">{row.series}</td>
+                      </TableCell>
+                      <TableCell className="px-3 py-3">{row.visualization}</TableCell>
+                      <TableCell className="px-3 py-3 font-medium">{row.series}</TableCell>
                       {"state" in row ? (
-                        <td
+                        <TableCell
                           colSpan={9}
                           className="px-3 py-3 text-muted-foreground"
                         >
                           {row.state}
-                        </td>
+                        </TableCell>
                       ) : (
                         <>
-                          <td className="px-3 py-3 text-muted-foreground">
+                          <TableCell className="px-3 py-3 text-muted-foreground">
                             {row.unit}
-                          </td>
-                          <td className="px-3 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
                             {row.count.toLocaleString("es-CO")}
-                          </td>
-                          <td className="px-3 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
                             {format(row.mean)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
                             {format(row.median)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
                             {format(row.std)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
                             {format(row.min)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
                             {format(row.max)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
                             {format(row.baseline)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
                             {row.peak == null ? "—" : `${format(row.peak, 2)}%`}
-                          </td>
+                          </TableCell>
                         </>
                       )}
-                    </tr>
+                    </TableRow>
                   ))
                 ) : (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={12}
                       className="px-4 py-10 text-center text-muted-foreground"
                     >
                       No hay señales numéricas seleccionadas o disponibles.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </section>
 
@@ -669,9 +673,9 @@ export function ComparisonStatistics({
             </p>
           </div>
           <div className="max-h-[440px] overflow-auto rounded-xl border border-border">
-            <table className="w-full min-w-[760px] text-left text-sm tabular-nums">
-              <thead className="sticky top-0 z-20 bg-muted/95 text-xs text-muted-foreground backdrop-blur">
-                <tr>
+            <Table className="w-full min-w-[760px] text-left text-sm tabular-nums">
+              <TableHeader className="sticky top-0 z-20 bg-muted/95 text-xs text-muted-foreground backdrop-blur">
+                <TableRow>
                   {[
                     "Sensor",
                     "Visualización",
@@ -679,56 +683,57 @@ export function ComparisonStatistics({
                     "Valor",
                     "Unidad",
                   ].map((label) => (
-                    <th key={label} className="px-3 py-3 font-semibold">
+                    <TableHead key={label} className="px-3 py-3 font-semibold">
                       {label}
-                    </th>
+                    </TableHead>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-border">
                 {metricRows.length ? (
                   metricRows.map((row, index) => (
-                    <tr
+                    <TableRow
                       key={`${row.visualization}-${row.metric}-${index}`}
                       className="hover:bg-muted/20"
                     >
-                      <td className="sticky left-0 bg-card px-3 py-3 font-medium">
+                      <TableCell className="sticky left-0 bg-card px-3 py-3 font-medium">
                         {row.sensor}
-                      </td>
-                      <td className="px-3 py-3">{row.visualization}</td>
-                      <td className="px-3 py-3 font-medium">{row.metric}</td>
-                      <td className="px-3 py-3 text-right">
+                      </TableCell>
+                      <TableCell className="px-3 py-3">{row.visualization}</TableCell>
+                      <TableCell className="px-3 py-3 font-medium">{row.metric}</TableCell>
+                      <TableCell className="px-3 py-3 text-right">
                         {format(row.value)}
-                      </td>
-                      <td className="px-3 py-3 text-muted-foreground">
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-muted-foreground">
                         {row.unit}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 ) : (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={5}
                       className="px-4 py-10 text-center text-muted-foreground"
                     >
                       No hay métricas específicas seleccionadas.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </section>
 
         {selected.has("aoi") && data.aoi.data?.aois.length ? (
-          <details className="rounded-xl border border-border bg-muted/10">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
+          <Collapsible className="rounded-xl border border-border bg-muted/10">
+            <CollapsibleTrigger asChild><Button variant="ghost" className="h-auto w-full justify-start px-4 py-3 font-semibold">
               Detalle por AOI ({data.aoi.data.aois.length})
-            </summary>
+            </Button></CollapsibleTrigger>
+            <CollapsibleContent>
             <div className="overflow-x-auto border-t border-border">
-              <table className="w-full min-w-[880px] text-sm tabular-nums">
-                <thead className="bg-muted/40 text-xs text-muted-foreground">
-                  <tr>
+              <Table className="w-full min-w-[880px] text-sm tabular-nums">
+                <TableHeader className="bg-muted/40 text-xs text-muted-foreground">
+                  <TableRow>
                     {[
                       "AOI",
                       "Fijaciones",
@@ -738,49 +743,49 @@ export function ComparisonStatistics({
                       "TTFF",
                       "Hit rate",
                     ].map((label) => (
-                      <th
+                      <TableHead
                         key={label}
                         className="px-3 py-3 text-left font-semibold"
                       >
                         {label}
-                      </th>
+                      </TableHead>
                     ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-border">
                   {data.aoi.data.aois.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-3 py-3 font-medium">
+                    <TableRow key={item.id}>
+                      <TableCell className="px-3 py-3 font-medium">
                         <span
                           className="mr-2 inline-block h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: item.color }}
                         />
                         {item.name}
-                      </td>
-                      <td className="px-3 py-3">{item.fixation_count}</td>
-                      <td className="px-3 py-3">
+                      </TableCell>
+                      <TableCell className="px-3 py-3">{item.fixation_count}</TableCell>
+                      <TableCell className="px-3 py-3">
                         {format(item.total_dwell_time_ms)} ms
-                      </td>
-                      <td className="px-3 py-3">
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
                         {format(item.total_dwell_time_percent)}%
-                      </td>
-                      <td className="px-3 py-3">
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
                         {format(item.avg_fixation_duration_ms)} ms
-                      </td>
-                      <td className="px-3 py-3">
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
                         {item.ttff_ms == null
                           ? "—"
                           : `${format(item.ttff_ms)} ms`}
-                      </td>
-                      <td className="px-3 py-3">
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
                         {format(item.hit_rate_percent)}%
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
-          </details>
+          </CollapsibleContent></Collapsible>
         ) : null}
       </CardContent>
     </Card>

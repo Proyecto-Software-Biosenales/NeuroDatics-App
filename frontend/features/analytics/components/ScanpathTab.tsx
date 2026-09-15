@@ -1,4 +1,8 @@
 "use client"
+import { Slider } from "@/components/ui/slider"
+
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Clock, MapPin, Route, Ruler, Timer } from "lucide-react"
@@ -8,8 +12,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
-import { KpiCard } from "@/components/ui/KpiCard"
+} from "@/components/ui/card"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import { useAoiMetrics, useScanpathData } from "../hooks/useAnalyticsData"
@@ -21,7 +25,6 @@ import {
 } from "../scanpathScale"
 import type { FixationDurationMs } from "../types"
 import {
-  AoiContextPanel,
   AoiLegend,
   AoiOverlay,
   AoiToggleButton,
@@ -60,7 +63,7 @@ export function ScanpathTab({
     scenario,
     minFixationDurationMs
   )
-  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
+  const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
     projectId,
     participantCode,
     scenario,
@@ -218,7 +221,7 @@ export function ScanpathTab({
               </div>
 
               {loading ? (
-                <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
+                <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
               ) : error ? (
                 <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
                   Error al cargar los datos: {error}
@@ -249,7 +252,7 @@ export function ScanpathTab({
                     <>
                       <div className="relative" ref={imageContainerRef}>
                         {!scenarioImageUrl ? (
-                          <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
+                          <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
                         ) : (
                           <img
                             ref={imageRef}
@@ -353,22 +356,22 @@ export function ScanpathTab({
                           <span className="shrink-0 text-sm font-medium text-foreground">
                             Fijación {shown} de {total}
                           </span>
-                          <input
-                            type="range"
+                          <Slider
+                            aria-label="Fijaciones visibles"
                             min={1}
                             max={total}
-                            value={shown}
-                            onChange={(e) => setVisibleCount(Number(e.target.value))}
-                            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-200 accent-blue-500 dark:bg-gray-700"
+                            step={1}
+                            value={[shown]}
+                            onValueChange={([value]) => setVisibleCount(value)}
                           />
                           {shown < total && (
-                            <button
+                            <Button size="sm" variant="outline"
                               type="button"
                               onClick={() => setVisibleCount(total)}
-                              className="shrink-0 rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                              className="shrink-0"
                             >
                               Ver todos
-                            </button>
+                            </Button>
                           )}
                         </div>
                       )}
@@ -381,15 +384,6 @@ export function ScanpathTab({
         </CardContent>
       </Card>
 
-      {participantCode && scenario !== "all" ? (
-        <AoiContextPanel
-          data={aoiData}
-          loading={aoiLoading}
-          error={aoiError}
-          title="AOIs en mapa de recorridos"
-          description="Compara el orden de fijaciones del recorrido con las areas delimitadas."
-        />
-      ) : null}
     </div>
   )
 }

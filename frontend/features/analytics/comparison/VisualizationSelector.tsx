@@ -1,8 +1,10 @@
 "use client"
 
+import { Label } from "@/components/ui/label"
+
 import { useState } from "react"
 import { Check, ChevronDown, SlidersHorizontal } from "lucide-react"
-import { Popover as PopoverPrimitive } from "radix-ui"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
@@ -61,8 +63,8 @@ export function VisualizationSelector({
   }
 
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={handleOpenChange}>
-      <PopoverPrimitive.Trigger asChild>
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
         <Button
           type="button"
           variant="outline"
@@ -80,10 +82,8 @@ export function VisualizationSelector({
             className={cn("h-4 w-4 transition-transform", open && "rotate-180")}
           />
         </Button>
-      </PopoverPrimitive.Trigger>
-
-      <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Content
+      </PopoverTrigger>
+        <PopoverContent
           side="bottom"
           align="start"
           sideOffset={8}
@@ -91,7 +91,7 @@ export function VisualizationSelector({
           avoidCollisions
           sticky="always"
           aria-label="Seleccionar gráficas a comparar"
-          className="z-50 flex max-h-[var(--radix-popover-content-available-height)] w-[min(360px,var(--radix-popover-content-available-width))] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl outline-none"
+          className="gap-0 p-0 z-50 flex max-h-[var(--radix-popover-content-available-height)] w-[min(360px,var(--radix-popover-content-available-width))] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl outline-none"
         >
           <div className="shrink-0 border-b border-border px-4 py-3">
             <div className="flex items-center justify-between gap-3">
@@ -126,7 +126,7 @@ export function VisualizationSelector({
                   const enabled = available.has(item.id)
                   const checked = draft.has(item.id)
                   return (
-                    <label
+                    <Label
                       key={item.id}
                       className={cn(
                         "flex items-start gap-3 rounded-lg px-2 py-2",
@@ -155,7 +155,7 @@ export function VisualizationSelector({
                           </span>
                         ) : null}
                       </span>
-                    </label>
+                    </Label>
                   )
                 })}
               </section>
@@ -192,8 +192,7 @@ export function VisualizationSelector({
               Aplicar selección
             </Button>
           </div>
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
-    </PopoverPrimitive.Root>
+        </PopoverContent>
+    </Popover>
   )
 }
