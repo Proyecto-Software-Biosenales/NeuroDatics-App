@@ -1,12 +1,15 @@
 import hashlib
 import json
 import logging
-from typing import List, Optional
+from collections.abc import Awaitable, Callable
+from typing import List, Optional, TypeVar
 from uuid import UUID
 
 import anyio
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -160,25 +163,96 @@ def _fixation_duration(value: int) -> int:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-async def _resolve_transform_token(db, project, participant_code, generation, *, cache_only=False):
+class AnalyticsFrameReader:
+    """Request-local reader, constructed only when a cache miss needs a frame."""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def read(self, project_id, participant_code, generation, *, cache_only=False):
+        reader = ParquetReaderService(self.db)
+        try:
+            if cache_only:
+                df = await reader.read_from_cache_only(
+                    project_id, participant_code, generation=generation,
+                )
+                if df is not None:
+                    return df
+            return await reader.read(project_id, participant_code, generation=generation)
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+async def get_frame_reader(db: AsyncSession = Depends(get_db)) -> AnalyticsFrameReader:
+    # Resolving dependencies must not construct ParquetReaderService: it has work
+    # of its own, and persisted-token cache hits do not need it at all.
+    return AnalyticsFrameReader(db)
+
+
+async def _resolve_transform_token(
+    db, project, participant_code, generation, *, cache_only=False, reader=None,
+):
     """Resolve old rows lazily; a persisted token needs no reader or Parquet."""
     token = stored_transform_token(project, participant_code, generation)
     if token is not None:
         return token, None
-    reader = ParquetReaderService(db)
-    try:
-        df = None
-        if cache_only:
-            df = await reader.read_from_cache_only(project.id, participant_code, generation=generation)
-        if df is None:
-            df = await reader.read(project.id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    reader = reader or AnalyticsFrameReader(db)
+    df = await reader.read(project.id, participant_code, generation, cache_only=cache_only)
     token = await anyio.to_thread.run_sync(lambda: transform_cache_token(df))
     await persist_transform_token(db, project, participant_code, generation, token)
     return token, df
+
+
+ResponseModel = TypeVar("ResponseModel", bound=BaseModel)
+
+
+async def cached_frame_endpoint(
+    *,
+    reader: AnalyticsFrameReader,
+    project: Project,
+    participant_code: str,
+    scenario: str,
+    endpoint: str | Callable[[str], str],
+    compute: Callable[[pd.DataFrame], dict],
+    response_model: type[ResponseModel],
+    ttl: Optional[int] = None,
+    computation_error_status: Optional[int] = None,
+    enrich: Optional[Callable[[dict], Awaitable[dict]]] = None,
+    cached_fields: Optional[dict] = None,
+) -> ResponseModel:
+    """Resolve provenance, check Redis, then read/compute only on a miss.
+
+    A callable endpoint requests a transform token. Legacy rows may need one
+    read to discover that token; its frame is reused on a response-cache miss.
+    Read failures and computation failures intentionally have separate scopes.
+    """
+    generation = _cache_generation(project)
+    df = None
+    if callable(endpoint):
+        token, df = await _resolve_transform_token(
+            reader.db, project, participant_code, generation, reader=reader,
+        )
+        endpoint = endpoint(token)
+    cache_key = _redis.build_key(
+        project.id, participant_code, endpoint, scenario, generation=generation,
+    )
+    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    if cached:
+        return response_model(**{**cached, **(cached_fields or {})})
+    if df is None:
+        df = await reader.read(project.id, participant_code, generation)
+    try:
+        response_data = await anyio.to_thread.run_sync(lambda: compute(df))
+    except ValueError as exc:
+        if computation_error_status is None:
+            raise
+        raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
+    if enrich is not None:
+        response_data = await enrich(response_data)
+    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
+    return response_model(**response_data)
 
 
 def _aoi_cache_token(scenary, aois) -> str:
@@ -406,42 +480,23 @@ async def pupil_timeseries(
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        f"timeseries_pupil:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
-        scenario,
-        generation=generation,
-    )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return PupilTimeseriesResponse(**cached)
-
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_timeseries(
+    return await cached_frame_endpoint(
+        reader=reader, project=project, participant_code=participant_code,
+        scenario=scenario, endpoint=f"timeseries_pupil:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
+        compute=lambda df: PupilAnalyticsService.compute_timeseries(
             df,
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
             max_points=max_points,
-        )
+        ),
+        response_model=PupilTimeseriesResponse,
     )
-
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
-    return PupilTimeseriesResponse(**result_data)
 
 
 @router.get("/statistics/pupil", response_model=PupilStatisticsResponse)
@@ -453,41 +508,22 @@ async def pupil_statistics(
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        f"statistics_pupil:{_time_window_key(start_time_s, end_time_s)}",
-        scenario,
-        generation=generation,
-    )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return PupilStatisticsResponse(**cached)
-
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_statistics(
+    return await cached_frame_endpoint(
+        reader=reader, project=project, participant_code=participant_code,
+        scenario=scenario, endpoint=f"statistics_pupil:{_time_window_key(start_time_s, end_time_s)}",
+        compute=lambda df: PupilAnalyticsService.compute_statistics(
             df,
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
-        )
+        ),
+        response_model=PupilStatisticsResponse,
     )
-
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
-    return PupilStatisticsResponse(**result_data)
 
 
 @router.get("/gaze-at", response_model=GazeAtResponse)
@@ -725,42 +761,23 @@ async def distance_timeseries(
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        f"timeseries_distance:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
-        scenario,
-        generation=generation,
-    )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return DistanceTimeseriesResponse(**cached)
-
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_distance_timeseries(
+    return await cached_frame_endpoint(
+        reader=reader, project=project, participant_code=participant_code,
+        scenario=scenario, endpoint=f"timeseries_distance:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
+        compute=lambda df: PupilAnalyticsService.compute_distance_timeseries(
             df,
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
             max_points=max_points,
-        )
+        ),
+        response_model=DistanceTimeseriesResponse,
     )
-
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
-    return DistanceTimeseriesResponse(**result_data)
 
 
 @router.get("/statistics/distance", response_model=DistanceStatisticsResponse)
@@ -772,41 +789,22 @@ async def distance_statistics(
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        f"statistics_distance:{_time_window_key(start_time_s, end_time_s)}",
-        scenario,
-        generation=generation,
-    )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return DistanceStatisticsResponse(**cached)
-
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    result_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_distance_statistics(
+    return await cached_frame_endpoint(
+        reader=reader, project=project, participant_code=participant_code,
+        scenario=scenario, endpoint=f"statistics_distance:{_time_window_key(start_time_s, end_time_s)}",
+        compute=lambda df: PupilAnalyticsService.compute_distance_statistics(
             df,
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
-        )
+        ),
+        response_model=DistanceStatisticsResponse,
     )
-
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
-    return DistanceStatisticsResponse(**result_data)
 
 
 @router.get("/timeseries/gsr", response_model=GsrTimeseriesResponse)
