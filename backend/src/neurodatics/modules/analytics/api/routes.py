@@ -817,42 +817,23 @@ async def gsr_timeseries(
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        f"timeseries_gsr:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
-        scenario,
-        generation=generation,
-    )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return GsrTimeseriesResponse(**cached)
-
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    result_data = await anyio.to_thread.run_sync(
-        lambda: GsrAnalyticsService.compute_timeseries(
+    return await cached_frame_endpoint(
+        reader=reader, project=project, participant_code=participant_code,
+        scenario=scenario, endpoint=f"timeseries_gsr:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
+        compute=lambda df: GsrAnalyticsService.compute_timeseries(
             df,
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
             max_points=max_points,
-        )
+        ),
+        response_model=GsrTimeseriesResponse,
     )
-
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
-    return GsrTimeseriesResponse(**result_data)
 
 
 @router.get("/statistics/gsr", response_model=GsrStatisticsResponse)
@@ -864,41 +845,22 @@ async def gsr_statistics(
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        f"statistics_gsr:{_time_window_key(start_time_s, end_time_s)}",
-        scenario,
-        generation=generation,
-    )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return GsrStatisticsResponse(**cached)
-
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    result_data = await anyio.to_thread.run_sync(
-        lambda: GsrAnalyticsService.compute_statistics(
+    return await cached_frame_endpoint(
+        reader=reader, project=project, participant_code=participant_code,
+        scenario=scenario, endpoint=f"statistics_gsr:{_time_window_key(start_time_s, end_time_s)}",
+        compute=lambda df: GsrAnalyticsService.compute_statistics(
             df,
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
-        )
+        ),
+        response_model=GsrStatisticsResponse,
     )
-
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
-    return GsrStatisticsResponse(**result_data)
 
 
 @router.get("/timeseries/eeg", response_model=EegTimeseriesResponse)
@@ -913,9 +875,9 @@ async def eeg_timeseries(
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
     requested_channels = [
@@ -926,27 +888,10 @@ async def eeg_timeseries(
     channels_key = ",".join(requested_channels) if requested_channels else "all"
     time_window_key = _time_window_key(start_time_s, end_time_s)
     cache_endpoint = f"timeseries_eeg:{channels_key}:{smooth_window_s}:{max_points}:{time_window_key}"
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        cache_endpoint,
-        scenario,
-        generation=generation,
-    )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return EegTimeseriesResponse(**cached)
-
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    result_data = await anyio.to_thread.run_sync(
-        lambda: EegAnalyticsService.compute_timeseries(
+    return await cached_frame_endpoint(
+        reader=reader, project=project, participant_code=participant_code,
+        scenario=scenario, endpoint=cache_endpoint,
+        compute=lambda df: EegAnalyticsService.compute_timeseries(
             df,
             scenario=scenario,
             channels=requested_channels,
@@ -954,11 +899,9 @@ async def eeg_timeseries(
             max_points=max_points,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
-        )
+        ),
+        response_model=EegTimeseriesResponse,
     )
-
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
-    return EegTimeseriesResponse(**result_data)
 
 
 @router.get("/psd/eeg", response_model=EegPsdResponse)
@@ -974,9 +917,9 @@ async def eeg_psd(
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
     _validate_time_window(start_time_s, end_time_s)
 
     requested_channels = [
@@ -989,27 +932,10 @@ async def eeg_psd(
     scale_key = "db" if use_db else "linear"
     time_window_key = _time_window_key(start_time_s, end_time_s)
     cache_endpoint = f"psd_eeg:{channels_key}:{max_freq_key}:{scale_key}:{max_points}:{time_window_key}"
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        cache_endpoint,
-        scenario,
-        generation=generation,
-    )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return EegPsdResponse(**cached)
-
-    reader = ParquetReaderService(db)
-    try:
-        df = await reader.read(project_id, participant_code, generation=generation)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    result_data = await anyio.to_thread.run_sync(
-        lambda: EegAnalyticsService.compute_psd(
+    return await cached_frame_endpoint(
+        reader=reader, project=project, participant_code=participant_code,
+        scenario=scenario, endpoint=cache_endpoint,
+        compute=lambda df: EegAnalyticsService.compute_psd(
             df,
             scenario=scenario,
             channels=requested_channels,
@@ -1018,11 +944,9 @@ async def eeg_psd(
             max_points=max_points,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
-        )
+        ),
+        response_model=EegPsdResponse,
     )
-
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, result_data))
-    return EegPsdResponse(**result_data)
 
 
 @router.get("/spectrogram/eeg", response_model=EegSpectrogramResponse)
