@@ -1,5 +1,8 @@
 "use client"
 
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Clock, Flame, Hash, Timer } from "lucide-react"
 import {
@@ -8,8 +11,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
-import { KpiCard } from "@/components/ui/KpiCard"
+} from "@/components/ui/card"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import {
@@ -19,7 +22,6 @@ import {
 } from "../hooks/useAnalyticsData"
 import type { FixationDurationMs } from "../types"
 import {
-  AoiContextPanel,
   AoiLegend,
   AoiOverlay,
   AoiToggleButton,
@@ -80,7 +82,6 @@ export function HeatmapTab({
   const {
     data: aoiData,
     loading: aoiLoading,
-    error: aoiError,
   } = useAoiMetrics(projectId, participantCode, scenario, minFixationDurationMs)
 
   const loading = fixLoading || heatmapLoading
@@ -229,7 +230,7 @@ export function HeatmapTab({
 
               {/* Image + overlay area */}
               {loading ? (
-                <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
+                <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
               ) : heatmapError ? (
                 <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
                   Error al cargar el mapa de calor: {heatmapError}
@@ -250,7 +251,7 @@ export function HeatmapTab({
                   >
                     {/* Background scenario image */}
                     {!scenarioImageUrl ? (
-                      <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
+                      <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
                     ) : (
                       <img
                         ref={imageRef}
@@ -299,17 +300,13 @@ export function HeatmapTab({
                         disabled={aois.length === 0 || aoiLoading}
                         count={aois.length}
                       />
-                      <button
+                      <Button aria-pressed={showPurple} size="sm" variant="selection"
                         type="button"
                         onClick={() => setShowPurple((p) => !p)}
-                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                          showPurple
-                            ? "border-violet-500 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
-                            : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
+                        className=""
                       >
                         Filtro violeta
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </>
@@ -319,15 +316,6 @@ export function HeatmapTab({
         </CardContent>
       </Card>
 
-      {participantCode && scenario !== "all" ? (
-        <AoiContextPanel
-          data={aoiData}
-          loading={aoiLoading}
-          error={aoiError}
-          title="AOIs en mapa de calor"
-          description="Relaciona la densidad del mapa de calor con las areas delimitadas del escenario."
-        />
-      ) : null}
     </div>
   )
 }

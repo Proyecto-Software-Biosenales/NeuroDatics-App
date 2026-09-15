@@ -1,10 +1,14 @@
 "use client"
+import { EegChannelSelector } from "./EegChannelSelector"
 
-import { type ChangeEvent } from "react"
+
+import { Skeleton } from "@/components/ui/skeleton"
+
+import { Slider } from "@/components/ui/slider"
 import { Activity, Brain, Clock, TrendingUp } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card"
-import { KpiCard } from "@/components/ui/KpiCard"
-import { cn } from "@/lib/utils"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
+
 import { type EegTopographyData } from "../../types"
 import { formatChannel, formatNumber, VIRIDIS_GRADIENT, type TopographyFrameRow } from "../../eegPresentation"
 import { TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, type EegView } from "./eegViewShared"
@@ -13,7 +17,7 @@ import { TopographyScene } from "./EegCanvasPanels"
 interface EegTopographyViewProps {
   availableTopographyChannels: string[]
   handleTopographyChannelToggle: (channel: string) => void
-  handleTopographyFrameChange: (event: ChangeEvent<HTMLInputElement>) => void
+  handleTopographyFrameChange: (value: number) => void
   participantCode: string | null
   projectId: string
   selectedChannels: string[]
@@ -109,33 +113,10 @@ export function EegTopographyView({
               />
             </div>
 
-            <div className="mb-5 flex flex-wrap gap-2">
-              {TOPOGRAPHY_CHANNELS.map((channel) => {
-                const isActive = selectedChannels.includes(channel)
-                const isAvailable = availableTopographyChannels.includes(channel)
-                return (
-                  <button
-                    key={channel}
-                    type="button"
-                    onClick={() => handleTopographyChannelToggle(channel)}
-                    disabled={!isAvailable}
-                    className={cn(
-                      "inline-flex min-w-12 items-center justify-center rounded-md border px-3 py-1.5 text-sm font-medium transition",
-                      isActive && isAvailable
-                        ? "border-transparent text-white"
-                        : "border-border bg-background text-muted-foreground hover:bg-muted",
-                      !isAvailable && "cursor-not-allowed opacity-40"
-                    )}
-                    style={isActive && isAvailable ? { backgroundColor: CHANNEL_COLORS[channel] } : undefined}
-                  >
-                    {formatChannel(channel)}
-                  </button>
-                )
-              })}
-            </div>
+            <EegChannelSelector channels={TOPOGRAPHY_CHANNELS} availableChannels={availableTopographyChannels} selectedChannels={selectedChannels} onToggle={handleTopographyChannelToggle} />
 
             {topographyLoading ? (
-              <div className="h-[560px] w-full animate-pulse rounded-lg bg-muted" />
+              <Skeleton className="h-[560px] w-full animate-pulse rounded-lg bg-muted" />
             ) : topographyError ? (
               <div className="flex h-[420px] items-center justify-center text-sm text-muted-foreground">
                 No se pudo cargar la topografía EEG.
@@ -178,13 +159,14 @@ export function EegTopographyView({
                         t≈{topographyStats.frameTime?.toFixed(2) ?? "0.00"}s
                       </span>
                     </div>
-                    <input
-                      type="range"
+                    <Slider
+                      aria-label="Ventana temporal de topografía"
                       min={0}
                       max={Math.max(0, topographyData.time.length - 1)}
-                      value={topographyFrameIndex}
-                      onChange={handleTopographyFrameChange}
-                      className="w-full accent-foreground"
+                      step={1}
+                      value={[topographyFrameIndex]}
+                      onValueChange={([value]) => handleTopographyFrameChange(value)}
+                      disabled={topographyData.time.length < 2}
                     />
                   </div>
                 </div>

@@ -1,5 +1,9 @@
 "use client"
 
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+
 export type TimeWindow = {
   start: number | null
   end: number | null
@@ -77,53 +81,51 @@ export function TimeWindowControls({
     <div className="mb-5 rounded-lg border border-border bg-muted/30 px-4 py-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <label className="space-y-1">
+          <Label className="block space-y-1">
             <span className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Inicio
             </span>
-            <input
+            <Input
               type="number"
               min={0}
               step="0.1"
               value={draftStart}
               onChange={(event) => onDraftStartChange(event.target.value)}
               placeholder="20"
-              className="h-9 w-28 rounded-md border border-border bg-background px-3 text-sm outline-none transition focus:border-foreground"
+              className="h-9 w-28"
             />
-          </label>
+          </Label>
 
-          <label className="space-y-1">
+          <Label className="block space-y-1">
             <span className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Fin
             </span>
-            <input
+            <Input
               type="number"
               min={0}
               step="0.1"
               value={draftEnd}
               onChange={(event) => onDraftEndChange(event.target.value)}
               placeholder="25"
-              className="h-9 w-28 rounded-md border border-border bg-background px-3 text-sm outline-none transition focus:border-foreground"
+              className="h-9 w-28"
             />
-          </label>
+          </Label>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button size="lg"
               type="button"
               onClick={onApply}
               disabled={loading}
-              className="h-9 rounded-md bg-foreground px-4 text-sm font-semibold text-background transition hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Aplicar
-            </button>
-            <button
+            </Button>
+            <Button variant="outline" size="lg"
               type="button"
               onClick={onReset}
               disabled={loading || !hasWindow}
-              className="h-9 rounded-md border border-border bg-background px-4 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               Restablecer
-            </button>
+            </Button>
           </div>
         </div>
 

@@ -1,4 +1,7 @@
 "use client"
+import { AnalyticsModeSelector } from "@/features/analytics/components/AnalyticsModeSelector"
+
+import { Skeleton } from "@/components/ui/skeleton"
 
 import { useMemo, useState } from "react"
 import {
@@ -26,10 +29,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
-import { KpiCard } from "@/components/ui/KpiCard"
-import { StatisticsTable } from "@/components/ui/StatisticsTable"
-import type { StatRow } from "@/components/ui/StatisticsTable"
+} from "@/components/ui/card"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
+import { StatisticsTable } from "@/features/analytics/components/StatisticsTable"
+import type { StatRow } from "@/features/analytics/components/StatisticsTable"
 import { cn } from "@/lib/utils"
 import {
   useGsrStatistics,
@@ -249,27 +252,11 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
             </CardDescription>
           </div>
 
-          <div className="inline-flex overflow-hidden rounded-lg border border-border">
-            {[
+          <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
               { key: "smooth", label: "Suavizada" },
               { key: "raw", label: "Cruda" },
               { key: "both", label: "Ambas" },
-            ].map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setSignalMode(option.key as SignalMode)}
-                className={cn(
-                  "px-3 py-1.5 text-sm",
-                  signalMode === option.key
-                    ? "bg-foreground text-background"
-                    : "bg-background text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+            ]} />
         </CardHeader>
 
         <CardContent>
@@ -348,7 +335,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
           </div>
 
           {timeseriesLoading ? (
-            <div className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
+            <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
           ) : chartData.length === 0 ? (
             <div className="analytics-state-frame flex items-center justify-center text-sm text-muted-foreground">
               No hay datos de GSR para los filtros seleccionados.

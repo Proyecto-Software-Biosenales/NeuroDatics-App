@@ -104,7 +104,7 @@ async function fixture(t, mode, disabled = false) {
 
 test("project selection preserves placeholder, rich options, controlled label and focus", async (t) => {
   const page = await fixture(t, "project")
-  const trigger = page.locator('[data-slot="combobox-trigger"]')
+  const trigger = page.locator('[data-slot="select-trigger"]')
   await expect(trigger).toContainText("Selecciona un proyecto")
   await expect(trigger).toHaveAttribute("role", "combobox")
   await trigger.click()
@@ -125,7 +125,7 @@ test("project selection preserves placeholder, rich options, controlled label an
 
 test("keyboard navigation selects an option and Escape cancels without changing selection", async (t) => {
   const page = await fixture(t, "project")
-  const trigger = page.locator('[data-slot="combobox-trigger"]')
+  const trigger = page.locator('[data-slot="select-trigger"]')
   await trigger.focus()
   await page.keyboard.press("ArrowDown")
   await expect(page.getByRole("option", { name: /Alpha study/ })).toBeFocused()
@@ -147,7 +147,7 @@ test("keyboard navigation selects an option and Escape cancels without changing 
 
 test("typeahead finds project names while the option list is open", async (t) => {
   const page = await fixture(t, "project")
-  const trigger = page.locator('[data-slot="combobox-trigger"]')
+  const trigger = page.locator('[data-slot="select-trigger"]')
   await trigger.click()
   await expect(page.getByRole("option", { name: /Alpha study/ })).toBeFocused()
   await page.keyboard.type("Beta")
@@ -159,7 +159,7 @@ test("typeahead finds project names while the option list is open", async (t) =>
 
 test("analytics filters preserve all-scenarios and null participant selection", async (t) => {
   const page = await fixture(t, "filters")
-  const triggers = page.locator('[data-slot="combobox-trigger"]')
+  const triggers = page.locator('[data-slot="select-trigger"]')
   await expect(triggers.nth(0)).toContainText("Todos los escenarios")
   await expect(triggers.nth(1)).toContainText("Sin sujetos")
   await triggers.nth(0).click()
@@ -174,7 +174,7 @@ test("analytics filters preserve all-scenarios and null participant selection", 
 
 test("loading and empty participant lists leave both analytics triggers disabled", async (t) => {
   const page = await fixture(t, "filters", true)
-  const triggers = page.locator('[data-slot="combobox-trigger"]')
+  const triggers = page.locator('[data-slot="select-trigger"]')
   await expect(triggers.nth(0)).toBeDisabled()
   await expect(triggers.nth(1)).toBeDisabled()
   assert.equal(await page.getByRole("option").count(), 0)
@@ -182,7 +182,7 @@ test("loading and empty participant lists leave both analytics triggers disabled
 
 test("report participant selection remains operable inside its radio label", async (t) => {
   const page = await fixture(t, "report")
-  const trigger = page.locator('[data-slot="combobox-trigger"]')
+  const trigger = page.locator('[data-slot="select-trigger"]')
   await expect(trigger).toContainText("Selecciona un participante")
   await trigger.click()
   await page.getByRole("option", { name: "Sujeto P01", exact: true }).click()
@@ -192,7 +192,7 @@ test("report participant selection remains operable inside its radio label", asy
 
 test("report loading state shows its placeholder and disables selection", async (t) => {
   const page = await fixture(t, "report", true)
-  const trigger = page.locator('[data-slot="combobox-trigger"]')
+  const trigger = page.locator('[data-slot="select-trigger"]')
   await expect(trigger).toContainText("Cargando...")
   await expect(trigger).toBeDisabled()
 })

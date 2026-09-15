@@ -1,5 +1,9 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+
 import { useState } from "react"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -62,16 +66,15 @@ export const CreateProjectStep3 = ({
           const isOpen = openParticipant === participant.id
 
           return (
-            <div
+            <Collapsible
               key={participant.id}
+              open={isOpen}
+              onOpenChange={(open) => setOpenParticipant(open ? participant.id : "")}
               className="border border-border rounded-xl bg-card overflow-hidden"
             >
-              <button
+              <CollapsibleTrigger asChild><Button variant="ghost"
                 type="button"
-                onClick={() =>
-                  setOpenParticipant(isOpen ? "" : participant.id)
-                }
-                className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                className="h-auto w-full justify-between p-4"
               >
                 <div className="flex items-center">
                   <span className="font-medium text-foreground">
@@ -88,32 +91,25 @@ export const CreateProjectStep3 = ({
                 ) : (
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 )}
-              </button>
+              </Button></CollapsibleTrigger>
 
-              {isOpen && (
-                <div className="px-4 pb-4 space-y-4 border-t border-border">
+                <CollapsibleContent className="px-4 pb-4 space-y-4 border-t border-border">
                   <div className="pt-4">
-                    <Label className="text-sm font-medium text-foreground mb-3 block">
+                    <Label id={`sex-${participant.id}`} className="mb-3 block">
                       Sexo
                     </Label>
-                    <div className="flex gap-2">
+                    <RadioGroup aria-labelledby={`sex-${participant.id}`} value={participant.sex} onValueChange={(value) => onUpdateParticipant(participant.id, "sex", value)} className="flex flex-wrap gap-2">
                       {sexOptions.map((option) => (
-                        <button
+                        <Label
                           key={option.value}
-                          type="button"
-                          onClick={() =>
-                            onUpdateParticipant(participant.id, "sex", option.value)
-                          }
-                          className={`flex-1 px-4 py-2 rounded-lg border transition-all duration-200 text-sm font-medium ${
-                            participant.sex === option.value
-                              ? "border-foreground bg-foreground text-background"
-                              : "border-border bg-card text-foreground hover:border-foreground/40"
-                          }`}
+                          htmlFor={`sex-${participant.id}-${option.value}`}
+                          className="flex-1 cursor-pointer rounded-lg border border-border px-3 py-2 has-[[data-state=checked]]:bg-muted"
                         >
+                          <RadioGroupItem id={`sex-${participant.id}-${option.value}`} value={option.value} />
                           {option.label}
-                        </button>
+                        </Label>
                       ))}
-                    </div>
+                    </RadioGroup>
                   </div>
 
                   <div>
@@ -137,9 +133,8 @@ export const CreateProjectStep3 = ({
                       }
                     />
                   </div>
-                </div>
-              )}
-            </div>
+                </CollapsibleContent>
+            </Collapsible>
           )
         })}
       </div>

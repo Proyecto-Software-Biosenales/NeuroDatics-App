@@ -1,5 +1,9 @@
 "use client"
 
+import { Skeleton } from "@/components/ui/skeleton"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+
 import type { ElementType } from "react"
 import { Info } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -87,25 +91,15 @@ export function KpiCard({
 
   if (loading) {
     return (
-      <div className={cn("rounded-xl border border-border p-4 2xl:p-5", className)}>
-        <div className="mb-4 h-3 w-16 animate-pulse rounded bg-muted" />
-        <div className="h-8 w-24 animate-pulse rounded bg-muted" />
-      </div>
+      <Card className={cn("p-4 2xl:p-5", className)}>
+        <Skeleton className="mb-4 h-3 w-16 animate-pulse rounded bg-muted" />
+        <Skeleton className="h-8 w-24 animate-pulse rounded bg-muted" />
+      </Card>
     )
   }
 
   return (
-    <div
-      role={isInteractive ? "button" : undefined}
-      tabIndex={isInteractive ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={
-        isInteractive
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") onClick()
-            }
-          : undefined
-      }
+    <Card
       className={cn(
         "relative rounded-xl border p-4 transition-all duration-200 2xl:p-5",
         bgClass,
@@ -117,13 +111,20 @@ export function KpiCard({
         className,
       )}
     >
+      {isInteractive && (
+        <Button variant="ghost" onClick={onClick} aria-pressed={active}
+          aria-label={`${label}: ${value != null ? value.toFixed(decimals).replace(".", ",") : "—"} ${unit}`}
+          className="absolute inset-0 z-0 h-full w-full rounded-xl hover:bg-transparent focus-visible:ring-inset" />
+      )}
       {/* Info icon with shadcn tooltip — only rendered when tooltip text is provided */}
       {(tooltip || tooltipExtra) && (
-        <div className="absolute right-4 top-4">
+        <div className="absolute right-3 top-3 z-10">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="h-4 w-4 cursor-help text-muted-foreground/40 hover:text-muted-foreground" />
+                <Button variant="ghost" size="icon-xs" aria-label={`Información sobre ${label}`} className="cursor-help text-muted-foreground">
+                  <Info className="size-4" />
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="top" className="space-y-1">
                 {tooltip && <p>{tooltip}</p>}
@@ -136,7 +137,7 @@ export function KpiCard({
         </div>
       )}
 
-      <div className="flex items-start gap-3 2xl:gap-4">
+      <div className="pointer-events-none relative flex items-start gap-3 2xl:gap-4">
         {/* Accent icon circle */}
         <div
           className={cn(
@@ -165,6 +166,6 @@ export function KpiCard({
           )}
         </div>
       </div>
-    </div>
+    </Card>
   )
 }

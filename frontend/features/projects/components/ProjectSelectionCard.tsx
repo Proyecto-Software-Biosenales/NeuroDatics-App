@@ -1,4 +1,4 @@
-import { Card } from "../../../components/ui/Card"
+import { Card } from "@/components/ui/card"
 import { ProjectSelect } from "../../../features/projects/components/ProjectSelect"
 import { SelectedProjectInfo } from "./SelectedProjectInfo"
 import type { Project } from "@/features/projects/types"
@@ -15,7 +15,7 @@ export const ProjectSelectionCard = ({
   onProjectChange,
 }: ProjectSelectionCardProps) => {
   return (
-    <Card className="p-8 hover:shadow-md transition-shadow duration-300">
+    <Card className="p-4 sm:p-6">
       <div className="flex items-start gap-4 mb-6">
         <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
           <span className="text-foreground font-semibold text-lg">1</span>
@@ -30,7 +30,7 @@ export const ProjectSelectionCard = ({
         </div>
       </div>
 
-      <div className="pl-14">
+      <div className="sm:pl-14">
         <ProjectSelect
           projects={projects}
           value={selectedProject?.id || ""}

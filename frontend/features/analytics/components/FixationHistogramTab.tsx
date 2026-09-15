@@ -1,5 +1,9 @@
 "use client"
 
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+
 import {
   Bar,
   BarChart,
@@ -15,10 +19,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
+} from "@/components/ui/card"
 import { Activity, TrendingDown, TrendingUp } from "lucide-react"
 
-import { KpiCard } from "@/components/ui/KpiCard"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
 import { AnalyticsChartShell } from "./AnalyticsChartShell"
 import { useFixationHistogram } from "../hooks/useAnalyticsData"
 import type {
@@ -103,7 +107,7 @@ function FixationSensitivityCard({
       </CardHeader>
       <CardContent>
         {loading && !data ? (
-          <div className="h-44 animate-pulse rounded-lg bg-muted" />
+          <Skeleton className="h-44 animate-pulse rounded-lg bg-muted" />
         ) : error && !data ? (
           <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-red-200 bg-red-50/50 px-4 text-center text-sm text-red-500 dark:border-red-900/50 dark:bg-red-900/10">
             No se pudo cargar la comparación de umbrales: {error}
@@ -115,34 +119,34 @@ function FixationSensitivityCard({
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">Umbral</th>
-                  <th className="px-4 py-3 text-right font-semibold">
+            <Table className="w-full min-w-[760px] text-left text-sm">
+              <TableHeader className="bg-muted/50 text-xs text-muted-foreground uppercase">
+                <TableRow>
+                  <TableHead className="px-4 py-3 font-semibold">Umbral</TableHead>
+                  <TableHead className="px-4 py-3 text-right font-semibold">
                     Fijaciones
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold">
+                  </TableHead>
+                  <TableHead className="px-4 py-3 text-right font-semibold">
                     Dwell total
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold">Media</th>
-                  <th className="px-4 py-3 text-right font-semibold">
+                  </TableHead>
+                  <TableHead className="px-4 py-3 text-right font-semibold">Media</TableHead>
+                  <TableHead className="px-4 py-3 text-right font-semibold">
                     Mediana
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold">
+                  </TableHead>
+                  <TableHead className="px-4 py-3 text-right font-semibold">
                     Dwell retenido
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold">
+                  </TableHead>
+                  <TableHead className="px-4 py-3 text-right font-semibold">
                     Selección
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-border">
                 {data.points.map((point) => {
                   const selected =
                     point.min_fixation_duration_ms === selectedDurationMs
                   return (
-                    <tr
+                    <TableRow
                       key={point.min_fixation_duration_ms}
                       className={
                         selected
@@ -150,45 +154,41 @@ function FixationSensitivityCard({
                           : "hover:bg-muted/25"
                       }
                     >
-                      <td className="px-4 py-3 font-semibold text-foreground tabular-nums">
+                      <TableCell className="px-4 py-3 font-semibold text-foreground tabular-nums">
                         {point.min_fixation_duration_ms} ms
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums">
                         {point.n_fixations}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums">
                         {formatDwellTime(point.total_duration_ms)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums">
                         {Math.round(point.mean_duration_ms)} ms
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums">
                         {Math.round(point.median_duration_ms)} ms
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums">
                         {point.retained_dwell_percent.toFixed(1)}%
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right">
+                        <Button size="sm" variant="selection"
                           type="button"
                           aria-pressed={selected}
                           onClick={() =>
                             onSelectDuration(point.min_fixation_duration_ms)
                           }
-                          className={
-                            selected
-                              ? "rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white"
-                              : "rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-foreground transition-colors hover:border-blue-400 hover:text-blue-600"
-                          }
+                          className="rounded-full"
                         >
                           {selected ? "Activo" : "Usar"}
-                        </button>
-                      </td>
-                    </tr>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </CardContent>
@@ -235,12 +235,12 @@ export function FixationHistogramTab({
       {loading ? (
         <>
           <div className="analytics-kpi-grid">
-            <div className="h-28 animate-pulse rounded-lg bg-muted" />
-            <div className="h-28 animate-pulse rounded-lg bg-muted" />
-            <div className="h-28 animate-pulse rounded-lg bg-muted" />
+            <Skeleton className="h-28 animate-pulse rounded-lg bg-muted" />
+            <Skeleton className="h-28 animate-pulse rounded-lg bg-muted" />
+            <Skeleton className="h-28 animate-pulse rounded-lg bg-muted" />
           </div>
-          <div className="analytics-state-frame-compact w-full animate-pulse rounded-lg bg-muted" />
-          <div className="h-64 animate-pulse rounded-lg bg-muted" />
+          <Skeleton className="analytics-state-frame-compact w-full animate-pulse rounded-lg bg-muted" />
+          <Skeleton className="h-64 animate-pulse rounded-lg bg-muted" />
         </>
       ) : error ? (
         <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-red-200 bg-red-50/50 px-4 text-center dark:border-red-900/50 dark:bg-red-900/10">
@@ -360,43 +360,43 @@ export function FixationHistogramTab({
 
           <Card>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-muted/50 text-muted-foreground">
-                  <tr>
-                    <th className="px-6 py-3 font-medium">Rango (ms)</th>
-                    <th className="px-6 py-3 font-medium">Fijaciones</th>
-                    <th className="px-6 py-3 font-medium">Porcentaje</th>
-                    <th className="px-6 py-3 font-medium">Promedio (ms)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+              <Table className="w-full text-left text-sm">
+                <TableHeader className="bg-muted/50 text-muted-foreground">
+                  <TableRow>
+                    <TableHead className="px-6 py-3 font-medium">Rango (ms)</TableHead>
+                    <TableHead className="px-6 py-3 font-medium">Fijaciones</TableHead>
+                    <TableHead className="px-6 py-3 font-medium">Porcentaje</TableHead>
+                    <TableHead className="px-6 py-3 font-medium">Promedio (ms)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-border">
                   {data.bins.map((bin) => (
-                    <tr
+                    <TableRow
                       key={bin.label}
                       className="transition-colors hover:bg-muted/30"
                     >
-                      <td className="px-6 py-3">{bin.label}</td>
-                      <td className="px-6 py-3">{bin.conteo}</td>
-                      <td className="px-6 py-3">
+                      <TableCell className="px-6 py-3">{bin.label}</TableCell>
+                      <TableCell className="px-6 py-3">{bin.conteo}</TableCell>
+                      <TableCell className="px-6 py-3">
                         {bin.porcentaje.toFixed(1)}%
-                      </td>
-                      <td className="px-6 py-3">
+                      </TableCell>
+                      <TableCell className="px-6 py-3">
                         {Math.round(bin.promedio_ms)} ms
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-                <tfoot className="bg-muted/30 font-medium">
-                  <tr>
-                    <td className="px-6 py-3">Total</td>
-                    <td className="px-6 py-3">{data.n_fixations}</td>
-                    <td className="px-6 py-3">100%</td>
-                    <td className="px-6 py-3">
+                </TableBody>
+                <TableFooter className="bg-muted/30 font-medium">
+                  <TableRow>
+                    <TableCell className="px-6 py-3">Total</TableCell>
+                    <TableCell className="px-6 py-3">{data.n_fixations}</TableCell>
+                    <TableCell className="px-6 py-3">100%</TableCell>
+                    <TableCell className="px-6 py-3">
                       {Math.round(data.mean_duration_ms)} ms
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
             </div>
           </Card>
         </>

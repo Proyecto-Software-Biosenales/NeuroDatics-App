@@ -162,7 +162,7 @@
 @layer components {
   .app-page-shell {
     min-height: calc(100svh - var(--app-nav-height));
-    @apply bg-gray-50 dark:bg-black;
+    @apply bg-muted/30;
   }
 
   .app-page-container {
@@ -206,44 +206,6 @@
     display: flex;
     flex-direction: column;
     gap: clamp(0.875rem, 1.2vh, 1.25rem);
-  }
-
-  .dashboard-tab-list {
-    display: flex;
-    min-width: 0;
-    gap: 0.25rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    border-bottom: 1px solid var(--border);
-    padding-inline: 0.5rem;
-    color: var(--muted-foreground);
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .dashboard-tab-list::-webkit-scrollbar {
-    display: none;
-  }
-
-  .dashboard-tab-button {
-    flex: 0 0 auto;
-    border-bottom: 2px solid transparent;
-    padding: 0.625rem 0.75rem 0.6rem;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    white-space: nowrap;
-    color: var(--muted-foreground);
-    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
-  }
-
-  .dashboard-tab-button:hover {
-    color: var(--foreground);
-  }
-
-  .dashboard-tab-button-active {
-    border-bottom-color: var(--foreground);
-    color: var(--foreground);
-    font-weight: 600;
   }
 
   .analytics-kpi-grid {

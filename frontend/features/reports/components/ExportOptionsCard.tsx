@@ -1,5 +1,9 @@
+
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
-import { Card } from "../../../components/ui/Card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ReportStepCard } from "./ReportStepCard"
 import type { ExportOptions } from "@/features/reports/types"
 
 interface ExportOptionsCardProps {
@@ -33,29 +37,14 @@ export const ExportOptionsCard = ({
   loading = false,
 }: ExportOptionsCardProps) => {
   return (
-    <Card
-      className={`p-8 transition-all duration-300 ${
-        enabled ? "opacity-100" : "opacity-50 pointer-events-none"
-      }`}
-    >
-      <div className="flex items-start gap-4 mb-6">
-        <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-          <span className="text-foreground font-semibold text-lg">4</span>
-        </div>
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Opciones de exportación
-          </h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Personaliza el formato y metadatos del documento PDF
-          </p>
-        </div>
-      </div>
+    <ReportStepCard step={4} title="Opciones de exportación" description="Personaliza el formato y metadatos del documento PDF" disabled={!enabled}>
 
-      <div className="pl-14 space-y-3">
+
+      <div className="sm:pl-14 space-y-3">
         {exportOptions.map((option) => (
-          <label
+          <Label
             key={option.key}
+            htmlFor={`export-${option.key}`}
             className={`flex items-start gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
               enabled
                 ? options[option.key]
@@ -64,12 +53,12 @@ export const ExportOptionsCard = ({
                 : ""
             }`}
           >
-            <input
-              type="checkbox"
+            <Checkbox
+              id={`export-${option.key}`}
               checked={options[option.key]}
-              onChange={() => onToggleOption(option.key)}
+              onCheckedChange={() => onToggleOption(option.key)}
               disabled={!enabled}
-              className="mt-1 w-4 h-4 accent-gray-950"
+              className="mt-1"
             />
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-foreground mb-1">
@@ -79,22 +68,18 @@ export const ExportOptionsCard = ({
                 {option.description}
               </p>
             </div>
-          </label>
+          </Label>
         ))}
 
-        <button
+        <Button size="lg"
           onClick={onDownload}
           disabled={!canDownload || loading}
-          className={`w-full mt-6 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold text-white transition-all duration-200 ${
-            canDownload && !loading
-              ? "bg-gray-950 hover:bg-gray-700 hover:scale-[1.02] active:scale-[0.98]"
-              : "bg-gray-400 cursor-not-allowed"
-          }`}
+          className="mt-6 w-full"
         >
           <Download className={`w-5 h-5 ${loading ? "animate-pulse" : ""}`} />
           {loading ? "Generando PDF..." : "Descargar reporte PDF"}
-        </button>
+        </Button>
       </div>
-    </Card>
+    </ReportStepCard>
   )
 }

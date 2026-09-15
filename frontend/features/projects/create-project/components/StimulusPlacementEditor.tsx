@@ -3,6 +3,7 @@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { FixationScreenGeometryInput } from "../types"
 import type { StimulusPlacementDraft } from "../stimulusPlacement"
 
@@ -120,21 +121,22 @@ export const StimulusPlacementEditor = ({
             <>
               <div className="space-y-1.5">
                 <Label htmlFor={`placement-mode-${placement.sourceEntryPath}`}>Modo de presentación</Label>
-                <select
-                  id={`placement-mode-${placement.sourceEntryPath}`}
+                <Select
                   value={placement.displayMode}
-                  onChange={(event) => changeMode(
+                  onValueChange={(value) => changeMode(
                     placement,
-                    event.target.value as StimulusPlacementDraft["displayMode"],
+                    value as StimulusPlacementDraft["displayMode"],
                   )}
                   disabled={disabled}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
                 >
-                  <option value="contain">Contain</option>
-                  <option value="cover">Cover</option>
-                  <option value="crop">Crop</option>
-                  <option value="fullscreen">Fullscreen explícito</option>
-                </select>
+                  <SelectTrigger id={`placement-mode-${placement.sourceEntryPath}`} className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="contain">Contain</SelectItem>
+                    <SelectItem value="cover">Cover</SelectItem>
+                    <SelectItem value="crop">Crop</SelectItem>
+                    <SelectItem value="fullscreen">Fullscreen explícito</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

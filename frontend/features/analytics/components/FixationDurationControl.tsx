@@ -1,5 +1,7 @@
 "use client"
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 import { FIXATION_DURATION_OPTIONS_MS, type FixationDurationMs } from "../types"
 
 interface FixationDurationControlProps {
@@ -40,25 +42,26 @@ export function FixationDurationControl({
   const checkingAvailability = loading || availableDurations === undefined
 
   return (
-    <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
+    <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
       <span className="hidden whitespace-nowrap sm:inline">
         {checkingAvailability ? "Comprobando umbrales" : "Duración mínima"}
       </span>
-      <select
-        aria-label="Duración mínima de fijación"
-        value={value}
+      <Select
+        value={String(value)}
         disabled={checkingAvailability}
-        onChange={(event) =>
-          onChange(Number(event.target.value) as FixationDurationMs)
+        onValueChange={(value) =>
+          onChange(Number(value) as FixationDurationMs)
         }
-        className="h-8 rounded-md border border-border bg-background px-2 text-sm font-medium text-foreground shadow-sm transition-colors outline-none hover:border-foreground/40 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60"
       >
+        <SelectTrigger aria-label="Duración mínima de fijación"><SelectValue /></SelectTrigger>
+        <SelectContent>
         {durations.map((duration) => (
-          <option key={duration} value={duration}>
+          <SelectItem key={duration} value={String(duration)}>
             {duration} ms
-          </option>
+          </SelectItem>
         ))}
-      </select>
-    </label>
+        </SelectContent>
+      </Select>
+    </div>
   )
 }

@@ -1,5 +1,8 @@
 "use client"
 
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Clock,
@@ -15,7 +18,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
+} from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { getStimulusPreviewUrl } from "@/features/projects/api/stimulusUrls"
@@ -256,7 +259,7 @@ export function StimulusPreviewScreen({
           {emptyText}
         </div>
       ) : gazeLoading ? (
-        <div className="min-h-[260px] animate-pulse bg-muted" />
+        <Skeleton className="min-h-[260px] animate-pulse bg-muted" />
       ) : !gazeData ? (
         <div className="flex min-h-[260px] items-center justify-center bg-muted/30 px-6 text-center text-sm text-muted-foreground">
           No se pudo ubicar la mirada para este instante.
@@ -275,7 +278,7 @@ export function StimulusPreviewScreen({
           </div>
         </div>
       ) : scenarioPreviewLoading ? (
-        <div className="min-h-[260px] animate-pulse bg-muted" />
+        <Skeleton className="min-h-[260px] animate-pulse bg-muted" />
       ) : scenarioImageUrl ? (
         <div
           className="relative flex min-h-[260px] items-center justify-center bg-gray-950"
@@ -522,14 +525,14 @@ export function StimulusFixationCard({
               />
             ) : null}
             {canClearSelection ? (
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={clearSelection}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="gap-1.5 text-muted-foreground"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Limpiar selección
-              </button>
+              </Button>
             ) : null}
           </div>
         )}
@@ -596,7 +599,7 @@ export function StimulusFixationCard({
             {emptyText}
           </div>
         ) : gazeLoading ? (
-          <div className="h-48 animate-pulse rounded-xl bg-muted" />
+          <Skeleton className="h-48 animate-pulse rounded-xl bg-muted" />
         ) : gazeData && (gazeData.gx == null || gazeData.gy == null) ? (
           <div className="flex h-48 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
             <span>Sin coordenadas de mirada registradas para t = {gazeData.nearest_time_s.toFixed(1)}s</span>
@@ -620,7 +623,7 @@ export function StimulusFixationCard({
         ) : gazeData ? (
           <div className="overflow-hidden rounded-xl bg-card">
             {scenarioPreviewLoading ? (
-              <div className="h-48 animate-pulse rounded-xl bg-muted" />
+              <Skeleton className="h-48 animate-pulse rounded-xl bg-muted" />
             ) : scenarioImageUrl ? (
               <div className="relative" ref={imageContainerRef}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}

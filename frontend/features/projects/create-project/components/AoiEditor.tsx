@@ -1,5 +1,7 @@
 "use client"
 
+import { Label } from "@/components/ui/label"
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Circle as CircleIcon, Loader2, Palette, PenLine, Square, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -607,28 +609,23 @@ export function AoiEditor({
             {AOI_DRAW_MODES.map((mode) => {
               const ModeIcon = mode.Icon
               return (
-                <button
+                <Button aria-pressed={drawMode === mode.value} size="sm" variant="selection"
                   key={mode.value}
                   type="button"
                   title={mode.title}
                   aria-label={mode.title}
                   onClick={() => setDrawMode(mode.value)}
-                  className={cn(
-                    "inline-flex h-8 items-center gap-1.5 rounded px-2 text-xs font-semibold transition-colors",
-                    drawMode === mode.value
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
+                  className="gap-1.5 border-transparent"
                 >
                   <ModeIcon className="h-4 w-4" />
                   <span>{mode.label}</span>
-                </button>
+                </Button>
               )
             })}
           </div>
 
           {AOI_COLORS.map((color) => (
-            <button
+            <Button variant="ghost"
               key={color}
               type="button"
               aria-label={`Usar color ${color}`}
@@ -641,19 +638,19 @@ export function AoiEditor({
               style={{ backgroundColor: color }}
             />
           ))}
-          <label
+          <Label
             className="relative flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-border bg-background text-muted-foreground hover:text-foreground"
             title="Elegir color personalizado"
             aria-label="Elegir color personalizado"
           >
             <Palette className="h-4 w-4" />
-            <input
+            <Input
               type="color"
               value={activeAoiColor}
               onChange={(event) => setActiveAoiColor(event.target.value)}
               className="absolute inset-0 cursor-pointer opacity-0"
             />
-          </label>
+          </Label>
         </div>
       </div>
 
@@ -896,7 +893,7 @@ export function AoiEditor({
               >
                 <div className="flex items-center gap-2">
                   {AOI_COLORS.map((color) => (
-                    <button
+                    <Button variant="ghost"
                       key={color}
                       type="button"
                       aria-label={`Color ${color}`}
@@ -909,19 +906,19 @@ export function AoiEditor({
                       style={{ backgroundColor: color }}
                     />
                   ))}
-                  <label
+                  <Label
                     className="relative flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-border bg-background text-muted-foreground hover:text-foreground"
                     title="Elegir color personalizado"
                     aria-label="Elegir color personalizado"
                   >
                     <Palette className="h-4 w-4" />
-                    <input
+                    <Input
                       type="color"
                       value={aoi.color}
                       onChange={(event) => updateAoi(aoi.id, { color: event.target.value })}
                       className="absolute inset-0 cursor-pointer opacity-0"
                     />
-                  </label>
+                  </Label>
                 </div>
 
                 <Input

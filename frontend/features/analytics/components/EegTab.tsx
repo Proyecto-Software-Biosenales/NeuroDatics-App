@@ -5,7 +5,7 @@ import { EegPsdView } from "./eeg/EegPsdView"
 import { EegSpectrogramView } from "./eeg/EegSpectrogramView"
 import { EegTopographyView } from "./eeg/EegTopographyView"
 
-import { useMemo, useState, type ChangeEvent } from "react"
+import { useMemo, useState } from "react"
 import { useEegPsd, useEegSpectrogram, useEegTimeseries, useEegTopography } from "../hooks/useAnalyticsData"
 import { EMPTY_TIME_WINDOW, EMPTY_TIME_WINDOW_DRAFT, parseTimeWindowValue, validateTimeWindowDraft, type TimeWindow, type TimeWindowDraft } from "./TimeWindowControls"
 import { EEG_CHANNELS, TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, type SignalMode, type EegTabProps, type EegChartPoint, type EegPsdChartPoint, type PsdStats, type SpectrogramStats } from "./eeg/eegViewShared"
@@ -474,8 +474,8 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     setPsdWindowError(null)
   }
 
-  const handleTopographyFrameChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSelectedTopographyFrame(Number(event.target.value))
+  const handleTopographyFrameChange = (value: number) => {
+    setSelectedTopographyFrame(value)
   }
 
   return (
