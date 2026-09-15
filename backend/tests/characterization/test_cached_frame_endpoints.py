@@ -60,6 +60,29 @@ def test_computation_error_stays_422_after_successful_read(http_client, monkeypa
     assert response.json() == {"detail": "unsupported fixation variant"}
 
 
+def test_fixation_cache_hit_restores_missing_generation(http_client, monkeypatch):
+    monkeypatch.setattr(routes, "_cache_generation", lambda project: 17)
+    first = http_client.get(PREFIX + "/fixations", params=PARAMS)
+    assert first.status_code == 200, first.text
+    expected = first.json()
+    assert expected["cache_generation"] == 17
+    cached = dict(expected)
+    cached.pop("cache_generation")
+
+    async def stored_token(*args, **kwargs):
+        return "persisted", None
+
+    def unexpected_read(db):
+        pytest.fail("legacy cached payload should not need a frame")
+
+    monkeypatch.setattr(routes, "_resolve_transform_token", stored_token)
+    monkeypatch.setattr(routes._redis, "get_json", lambda key: cached)
+    monkeypatch.setattr(routes, "ParquetReaderService", unexpected_read)
+    second = http_client.get(PREFIX + "/fixations", params=PARAMS)
+    assert second.status_code == 200, second.text
+    assert second.json() == expected
+
+
 def test_shared_compute_runs_off_the_request_thread(http_client, monkeypatch):
     request_threads = []
     compute_threads = []
