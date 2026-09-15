@@ -148,6 +148,7 @@ async def test_scanpath_route_uses_v4_cache_namespace(monkeypatch):
         scenario="A",
         min_fixation_duration_ms=200,
         db=object(),
+        reader=routes.AnalyticsFrameReader(object()),
         current_user=current_user,
     )
 

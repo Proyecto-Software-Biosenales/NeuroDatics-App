@@ -266,6 +266,7 @@ async def test_scanpath_route_requires_one_concrete_scenario():
             participant_code="P-01",
             scenario="all",
             db=object(),
+            reader=routes.AnalyticsFrameReader(object()),
             current_user=str(uuid4()),
         )
 
@@ -299,6 +300,7 @@ async def test_empty_aoi_response_still_exposes_transform_provenance(monkeypatch
         participant_code="P-01",
         scenario="A",
         db=object(),
+        reader=routes.AnalyticsFrameReader(object()),
         current_user=str(uuid4()),
     )
 

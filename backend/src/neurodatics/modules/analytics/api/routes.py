@@ -380,10 +380,14 @@ async def correlations(
 
     canonical_scenario = str(scenary.name).strip()
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=canonical_scenario, endpoint=_CORRELATIONS_CACHE_ENDPOINT,
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=canonical_scenario,
+        endpoint=_CORRELATIONS_CACHE_ENDPOINT,
         compute=lambda df: {
-            "participant_code": participant_code, "scenario": canonical_scenario,
+            "participant_code": participant_code,
+            "scenario": canonical_scenario,
             **CorrelationAnalyticsService.compute(df, canonical_scenario),
         },
         response_model=CorrelationsResponse,
@@ -412,14 +416,21 @@ async def comparison_charts(
 
     views_token = hashlib.sha256(json.dumps(requested_visualizations).encode()).hexdigest()[:20]
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=lambda transform_token: f"comparison_charts:v1:stimulus-v1:{transform_token}:{max_points}:{views_token}",
-        compute=lambda df: {"charts": ChartConfigBuilder.build_many(
-            df,
-            scenario,
-            requested_visualizations,
-            max_points=max_points,
-        )},
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=lambda transform_token: (
+            f"comparison_charts:v1:stimulus-v1:{transform_token}:{max_points}:{views_token}"
+        ),
+        compute=lambda df: {
+            "charts": ChartConfigBuilder.build_many(
+                df,
+                scenario,
+                requested_visualizations,
+                max_points=max_points,
+            )
+        },
         response_model=ComparisonChartsResponse,
     )
 
@@ -440,8 +451,11 @@ async def pupil_timeseries(
     _validate_time_window(start_time_s, end_time_s)
 
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=f"timeseries_pupil:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=f"timeseries_pupil:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
         compute=lambda df: PupilAnalyticsService.compute_timeseries(
             df,
             scenario,
@@ -468,8 +482,11 @@ async def pupil_statistics(
     _validate_time_window(start_time_s, end_time_s)
 
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=f"statistics_pupil:{_time_window_key(start_time_s, end_time_s)}",
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=f"statistics_pupil:{_time_window_key(start_time_s, end_time_s)}",
         compute=lambda df: PupilAnalyticsService.compute_statistics(
             df,
             scenario,
@@ -618,9 +635,14 @@ async def gaze_timeseries(
     _validate_time_window(start_time_s, end_time_s)
 
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=lambda transform_token: f"timeseries_gaze:v2:stimulus-v1:{transform_token}:{max_points}:"
-        f"{_time_window_key(start_time_s, end_time_s)}",
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=lambda transform_token: (
+            f"timeseries_gaze:v2:stimulus-v1:{transform_token}:{max_points}:"
+            f"{_time_window_key(start_time_s, end_time_s)}"
+        ),
         compute=lambda df: PupilAnalyticsService.compute_gaze_timeseries(
             df,
             scenario,
@@ -647,8 +669,13 @@ async def gaze_statistics(
     _validate_time_window(start_time_s, end_time_s)
 
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=lambda transform_token: f"statistics_gaze:v2:stimulus-v1:{transform_token}:{_time_window_key(start_time_s, end_time_s)}",
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=lambda transform_token: (
+            f"statistics_gaze:v2:stimulus-v1:{transform_token}:{_time_window_key(start_time_s, end_time_s)}"
+        ),
         compute=lambda df: PupilAnalyticsService.compute_gaze_statistics(
             df,
             scenario,
@@ -675,8 +702,11 @@ async def distance_timeseries(
     _validate_time_window(start_time_s, end_time_s)
 
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=f"timeseries_distance:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=f"timeseries_distance:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
         compute=lambda df: PupilAnalyticsService.compute_distance_timeseries(
             df,
             scenario,
@@ -703,8 +733,11 @@ async def distance_statistics(
     _validate_time_window(start_time_s, end_time_s)
 
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=f"statistics_distance:{_time_window_key(start_time_s, end_time_s)}",
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=f"statistics_distance:{_time_window_key(start_time_s, end_time_s)}",
         compute=lambda df: PupilAnalyticsService.compute_distance_statistics(
             df,
             scenario,
@@ -731,8 +764,11 @@ async def gsr_timeseries(
     _validate_time_window(start_time_s, end_time_s)
 
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=f"timeseries_gsr:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=f"timeseries_gsr:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
         compute=lambda df: GsrAnalyticsService.compute_timeseries(
             df,
             scenario,
@@ -759,8 +795,11 @@ async def gsr_statistics(
     _validate_time_window(start_time_s, end_time_s)
 
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=f"statistics_gsr:{_time_window_key(start_time_s, end_time_s)}",
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=f"statistics_gsr:{_time_window_key(start_time_s, end_time_s)}",
         compute=lambda df: GsrAnalyticsService.compute_statistics(
             df,
             scenario,
@@ -797,8 +836,11 @@ async def eeg_timeseries(
     time_window_key = _time_window_key(start_time_s, end_time_s)
     cache_endpoint = f"timeseries_eeg:{channels_key}:{smooth_window_s}:{max_points}:{time_window_key}"
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=cache_endpoint,
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=cache_endpoint,
         compute=lambda df: EegAnalyticsService.compute_timeseries(
             df,
             scenario=scenario,
@@ -841,8 +883,11 @@ async def eeg_psd(
     time_window_key = _time_window_key(start_time_s, end_time_s)
     cache_endpoint = f"psd_eeg:{channels_key}:{max_freq_key}:{scale_key}:{max_points}:{time_window_key}"
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=cache_endpoint,
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=cache_endpoint,
         compute=lambda df: EegAnalyticsService.compute_psd(
             df,
             scenario=scenario,
@@ -898,8 +943,11 @@ async def eeg_spectrogram(
         f"{max_time_bins}:{max_frequency_bins}"
     )
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=cache_endpoint,
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=cache_endpoint,
         compute=lambda df: EegAnalyticsService.compute_spectrogram(
             df,
             scenario=scenario,
@@ -947,8 +995,11 @@ async def eeg_topography(
         f"{channels_key}:{window_s}:{overlap_ratio}:{dc_key}:{max_frames}"
     )
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=cache_endpoint,
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=cache_endpoint,
         compute=lambda df: EegAnalyticsService.compute_topography(
             df,
             scenario=scenario,
@@ -970,59 +1021,38 @@ async def scanpath(
     min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     if is_all_scenarios(scenario):
         raise HTTPException(status_code=400, detail="scenario must be specified")
     min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
 
-    transform_token, df = await _resolve_transform_token(
-        db, project, participant_code, generation,
-    )
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        (
+    async def enrich(result_data):
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        return {
+            **result_data,
+            "scenario_file_id": str(scenary.file_id) if scenary and scenary.file_id else None,
+        }
+
+    return await cached_frame_endpoint(
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=lambda transform_token: (
             f"scanpath_v4:stimulus-v1:{transform_token}:"
             f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
         ),
-        scenario,
-        generation=generation,
+        compute=lambda df: ScanpathAnalyticsService.compute_scanpath(
+            df,
+            scenario,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        ),
+        response_model=ScanpathResponse,
+        computation_error_status=422,
+        enrich=enrich,
     )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return ScanpathResponse(**cached)
-
-    if df is None:
-        reader = ParquetReaderService(db)
-        try:
-            df = await reader.read(project_id, participant_code, generation=generation)
-        except (ValueError, FileNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    try:
-        result_data = await anyio.to_thread.run_sync(
-            lambda: ScanpathAnalyticsService.compute_scanpath(
-                df,
-                scenario,
-                min_fixation_duration_ms=min_fixation_duration_ms,
-            )
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    scenario_file_id = None
-    if not is_all_scenarios(scenario):
-        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
-        if scenary and scenary.file_id:
-            scenario_file_id = str(scenary.file_id)
-
-    response_data = {**result_data, "scenario_file_id": scenario_file_id}
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data))
-    return ScanpathResponse(**response_data)
 
 
 @router.get("/fixations", response_model=FixationDataResponse)
@@ -1033,6 +1063,7 @@ async def fixation_data(
     min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     if is_all_scenarios(scenario):
         raise HTTPException(status_code=400, detail="scenario must be specified")
@@ -1040,59 +1071,34 @@ async def fixation_data(
     project = await _verify_ownership(db, project_id, current_user)
     generation = _cache_generation(project)
 
-    transform_token, df = await _resolve_transform_token(
-        db, project, participant_code, generation,
-    )
-    cache_key = _redis.build_key(
-        project_id,
-        participant_code,
-        (
+    async def enrich(result_data):
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        return {
+            **result_data,
+            "scenario_file_id": str(scenary.file_id) if scenary and scenary.file_id else None,
+            "cache_generation": generation,
+        }
+
+    return await cached_frame_endpoint(
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=lambda transform_token: (
             f"fixations_v3:stimulus-v1:{transform_token}:"
             f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
         ),
-        scenario,
-        generation=generation,
+        compute=lambda df: FixationDataService.compute_fixation_data(
+            df,
+            scenario,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        ),
+        response_model=FixationDataResponse,
+        computation_error_status=422,
+        enrich=enrich,
+        # Old cached payloads must still report the live generation.
+        cached_fields={"cache_generation": generation},
     )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        # A hit can only belong to the current generation, since the key embeds
-        # it - but the field is taken from the live value anyway, so a payload
-        # written before it existed reports the real generation instead of 0 and
-        # cannot leave the overlay client requesting a superseded heatmap URL.
-        return FixationDataResponse(**{**cached, "cache_generation": generation})
-
-    if df is None:
-        reader = ParquetReaderService(db)
-        try:
-            df = await reader.read(project_id, participant_code, generation=generation)
-        except (ValueError, FileNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    try:
-        result_data = await anyio.to_thread.run_sync(
-            lambda: FixationDataService.compute_fixation_data(
-                df,
-                scenario,
-                min_fixation_duration_ms=min_fixation_duration_ms,
-            )
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    scenario_file_id = None
-    scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
-    if scenary and scenary.file_id:
-        scenario_file_id = str(scenary.file_id)
-
-    response_data = {
-        **result_data,
-        "scenario_file_id": scenario_file_id,
-        "cache_generation": generation,
-    }
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data))
-    return FixationDataResponse(**response_data)
 
 
 @router.get("/heatmap")
@@ -1224,9 +1230,16 @@ async def fixation_duration_sensitivity(
 
     project = await _verify_ownership(db, project_id, current_user)
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=lambda transform_token: f"fixation_sensitivity_v1:stimulus-v1:{transform_token}",
-        compute=lambda df: FixationDurationVariantService.compute_sensitivity(df, scenario),
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=lambda transform_token: (
+            f"fixation_sensitivity_v1:stimulus-v1:{transform_token}"
+        ),
+        compute=lambda df: FixationDurationVariantService.compute_sensitivity(
+            df, scenario
+        ),
         response_model=FixationDurationSensitivityResponse,
         computation_error_status=422,
     )
@@ -1246,14 +1259,19 @@ async def fixation_histogram(
     project = await _verify_ownership(db, project_id, current_user)
 
     return await cached_frame_endpoint(
-        reader=reader, project=project, participant_code=participant_code,
-        scenario=scenario, endpoint=lambda transform_token: f"fixation_histogram_v3:stimulus-v1:{transform_token}:"
-            f"{_fixation_duration_cache_token(min_fixation_duration_ms)}",
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=lambda transform_token: (
+            f"fixation_histogram_v3:stimulus-v1:{transform_token}:"
+            f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+        ),
         compute=lambda df: FixationHistogramService.compute_histogram(
-                df,
-                scenario,
-                min_fixation_duration_ms=min_fixation_duration_ms,
-            ),
+            df,
+            scenario,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        ),
         response_model=FixationHistogramResponse,
         computation_error_status=422,
     )
@@ -1267,13 +1285,13 @@ async def aoi_metrics(
     min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     if is_all_scenarios(scenario):
         raise HTTPException(status_code=400, detail="scenario must be specified")
     min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
 
     project = await _verify_ownership(db, project_id, current_user)
-    generation = _cache_generation(project)
 
     scenary = await _resolve_scenary_for_analytics(
         db,
@@ -1287,87 +1305,64 @@ async def aoi_metrics(
     scenario_file_id = str(scenary.file_id) if scenary.file_id else None
     aois = list(scenary.aois or [])
 
-    transform_token, df = await _resolve_transform_token(
-        db, project, participant_code, generation,
-    )
-    cache_key = _redis.build_key(
-        project_id, participant_code,
-        f"aois:v1:stimulus-v1:{transform_token}:{_aoi_cache_token(scenary, aois)}:"
-        f"{_fixation_duration_cache_token(min_fixation_duration_ms)}",
-        scenario, generation=generation,
-    )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
-    if cached:
-        return AoiMetricsResponse(**cached)
-    if df is None:
-        reader = ParquetReaderService(db)
-        try:
-            df = await reader.read(project_id, participant_code, generation=generation)
-        except (ValueError, FileNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    if not aois:
-        try:
-            fixation_metadata = await anyio.to_thread.run_sync(
-                lambda: FixationDataService.compute_fixation_data(
-                    df,
-                    scenary.name,
+    def compute(df):
+        if not aois:
+            try:
+                fixation_metadata = FixationDataService.compute_fixation_data(
+                    df, scenary.name,
                     min_fixation_duration_ms=min_fixation_duration_ms,
                 )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            response = AoiMetricsResponse(
+                scenario=scenary.name,
+                scenario_file_id=scenario_file_id,
+                aois=[],
+                transitions=[],
+                events=[],
+                total_fixations=0,
+                total_dwell_time_ms=0.0,
+                observed_aoi_dwell_time_ms=0.0,
+                observed_aoi_dwell_time_percent=0.0,
+                algorithm_version=fixation_metadata.get("algorithm_version"),
+                method=fixation_metadata.get("method"),
+                source=fixation_metadata.get("source"),
+                estimated=bool(fixation_metadata.get("estimated", False)),
+                effective_sampling_rate_hz=fixation_metadata.get(
+                    "effective_sampling_rate_hz"
+                ),
+                min_fixation_duration_ms=fixation_metadata.get(
+                    "min_fixation_duration_ms"
+                ),
+                available_min_fixation_durations_ms=fixation_metadata.get(
+                    "available_min_fixation_durations_ms", []
+                ),
+                warnings=fixation_metadata.get("warnings", []),
+                coordinate_transform=fixation_metadata.get("coordinate_transform"),
             )
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-        response = AoiMetricsResponse(
-            scenario=scenary.name,
-            scenario_file_id=scenario_file_id,
-            aois=[],
-            transitions=[],
-            events=[],
-            total_fixations=0,
-            total_dwell_time_ms=0.0,
-            observed_aoi_dwell_time_ms=0.0,
-            observed_aoi_dwell_time_percent=0.0,
-            algorithm_version=fixation_metadata.get("algorithm_version"),
-            method=fixation_metadata.get("method"),
-            source=fixation_metadata.get("source"),
-            estimated=bool(fixation_metadata.get("estimated", False)),
-            effective_sampling_rate_hz=fixation_metadata.get(
-                "effective_sampling_rate_hz"
-            ),
-            min_fixation_duration_ms=fixation_metadata.get(
-                "min_fixation_duration_ms"
-            ),
-            available_min_fixation_durations_ms=fixation_metadata.get(
-                "available_min_fixation_durations_ms", []
-            ),
-            warnings=fixation_metadata.get("warnings", []),
-            coordinate_transform=fixation_metadata.get("coordinate_transform"),
-        )
-
-        await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response.model_dump(mode="json")))
-        return response
-
-    # The stored label is what the AOIs were drawn against, and the service
-    # resolves it onto whatever spelling the Parquet holds - so the retry that
-    # used to recompute under the other spelling is no longer needed.
-    try:
-        result_data = await anyio.to_thread.run_sync(
-            lambda: AoiAnalyticsService.compute_metrics(
-                df,
-                scenary.name,
-                aois,
-                min_fixation_duration_ms=min_fixation_duration_ms,
+        else:
+            # Resolve the stored AOI label against the frame in the service.
+            try:
+                result_data = AoiAnalyticsService.compute_metrics(
+                    df, scenary.name, aois,
+                    min_fixation_duration_ms=min_fixation_duration_ms,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            response = AoiMetricsResponse(
+                scenario=scenary.name, scenario_file_id=scenario_file_id, **result_data,
             )
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return response.model_dump(mode="json")
 
-    response = AoiMetricsResponse(
-        scenario=scenary.name,
-        scenario_file_id=scenario_file_id,
-        **result_data,
+    return await cached_frame_endpoint(
+        reader=reader,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint=lambda transform_token: (
+            f"aois:v1:stimulus-v1:{transform_token}:{_aoi_cache_token(scenary, aois)}:"
+            f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+        ),
+        compute=compute,
+        response_model=AoiMetricsResponse,
     )
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response.model_dump(mode="json")))
-    return response
