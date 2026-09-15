@@ -3,7 +3,7 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   CartesianGrid,
   Line,
@@ -37,8 +37,6 @@ import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
-import { StatisticsTable } from "@/features/analytics/components/StatisticsTable"
-import type { StatRow } from "@/features/analytics/components/StatisticsTable"
 import {
   useAoiMetrics,
   useDistanceStatistics,
@@ -54,16 +52,10 @@ import {
   imagePointToContainerPercent,
   type ContainedImageBox,
 } from "./AoiOverlay"
-import {
-  EMPTY_TIME_WINDOW,
-  EMPTY_TIME_WINDOW_DRAFT,
-  TimeWindowControls,
-  validateTimeWindowDraft,
-  type TimeWindow,
-  type TimeWindowDraft,
-} from "./TimeWindowControls"
+import type { DistanceTimeseriesData } from "../types"
+import { useSingleSignalData } from "../hooks/useSingleSignalData"
+import { SingleSignalTab } from "./SingleSignalTab"
 import { MissingStimulusImage } from "./MissingStimulusImage"
-import { AnalyticsChartShell } from "./AnalyticsChartShell"
 
 interface DeviceDistanceTabProps {
   projectId: string
@@ -74,6 +66,16 @@ interface DeviceDistanceTabProps {
 interface LinePoint {
   time: number
   distance_cm: number
+}
+
+const DISTANCE_SIGNAL = {
+  useTimeseries: useDistanceTimeseries,
+  useStatistics: useDistanceStatistics,
+  serie: "Distancia",
+  toPoints: (data: DistanceTimeseriesData): LinePoint[] => data.time.map((time, index) => ({
+    time, distance_cm: data.distance_cm[index],
+  })),
+  valueOf: (point: LinePoint) => point.distance_cm,
 }
 
 interface DistanceTooltipPayloadEntry {
@@ -114,12 +116,8 @@ export function DeviceDistanceTab({
   participantCode,
   scenario,
 }: DeviceDistanceTabProps) {
-  const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
-  const [timeWindowDraft, setTimeWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
-  const [timeWindowError, setTimeWindowError] = useState<string | null>(null)
   // Refs for letterbox-corrected gaze positioning
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
@@ -127,20 +125,6 @@ export function DeviceDistanceTab({
   const [gazeOffset, setGazeOffset] = useState<{ x: number; y: number } | null>(null)
   const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
 
-  const { data: timeseriesData, loading: timeseriesLoading } = useDistanceTimeseries(
-    projectId,
-    participantCode,
-    scenario,
-    timeWindow.start,
-    timeWindow.end
-  )
-  const { data: stats, loading: statsLoading } = useDistanceStatistics(
-    projectId,
-    participantCode,
-    scenario,
-    timeWindow.start,
-    timeWindow.end
-  )
   const {
     data: gazeData,
     loading: gazeLoading,
@@ -158,77 +142,12 @@ export function DeviceDistanceTab({
   const gazeY = gazeData?.gy
   const currentAoi = findAoiAtPoint(aois, gazeX, gazeY)
 
-  const chartData = useMemo<LinePoint[]>(() => {
-    if (!timeseriesData) return []
-    return timeseriesData.time.map((time, index) => ({
-      time,
-      distance_cm: timeseriesData.distance_cm[index],
-    }))
-  }, [timeseriesData])
-
-  // Pin the XAxis domain to the full data range so ReferenceLine never causes zoom.
-  const chartDomain = useMemo<[number, number] | ["dataMin", "dataMax"]>(() => {
-    if (chartData.length === 0) return ["dataMin", "dataMax"]
-    return [chartData[0].time, chartData[chartData.length - 1].time]
-  }, [chartData])
+  const signal = useSingleSignalData(
+    { projectId, participantCode, scenario }, DISTANCE_SIGNAL, clearGaze
+  )
+  const { chartData, chartDomain, minTime, maxTime, selectedPoint, selectedTime, setSelectedTime, stats, statsLoading } = signal
+  const selectedValue = selectedPoint?.distance_cm ?? null
   const chartLegend = [{ label: "Distancia ojo-pantalla", color: "#3B82F6" }]
-
-  const minTime = useMemo(() => {
-    if (chartData.length === 0) return null
-    let minVal = Infinity
-    let minT = chartData[0].time
-    for (const pt of chartData) {
-      if (pt.distance_cm < minVal) {
-        minVal = pt.distance_cm
-        minT = pt.time
-      }
-    }
-    return minT
-  }, [chartData])
-
-  const maxTime = useMemo(() => {
-    if (chartData.length === 0) return null
-    let maxVal = -Infinity
-    let maxT = chartData[0].time
-    for (const pt of chartData) {
-      if (pt.distance_cm > maxVal) {
-        maxVal = pt.distance_cm
-        maxT = pt.time
-      }
-    }
-    return maxT
-  }, [chartData])
-
-  const selectedValue = useMemo<number | null>(() => {
-    if (selectedTime == null || chartData.length === 0) return null
-    let nearest = chartData[0]
-    let minDiff = Math.abs(chartData[0].time - selectedTime)
-    for (const pt of chartData) {
-      const diff = Math.abs(pt.time - selectedTime)
-      if (diff < minDiff) {
-        minDiff = diff
-        nearest = pt
-      }
-    }
-    return nearest.distance_cm
-  }, [selectedTime, chartData])
-
-  const tableRows = useMemo<StatRow[]>(() => {
-    const distRow: StatRow = {
-      serie: "Distancia",
-      count: chartData.length > 0 ? chartData.length : null,
-      baseline: stats?.baseline ?? null,
-      std: stats?.std ?? null,
-      median: stats?.median ?? null,
-      min: stats?.min ?? null,
-      max: stats?.max ?? null,
-      peak:
-        stats?.max != null && stats?.baseline != null && stats.baseline !== 0
-          ? ((stats.max - stats.baseline) / Math.abs(stats.baseline)) * 100
-          : null,
-    }
-    return [distRow]
-  }, [stats, chartData])
 
   /**
    * Remaps gaze coordinates from "% of image" to "% of container".
@@ -317,158 +236,104 @@ export function DeviceDistanceTab({
     fetchGaze(time)
   }
 
-  const handleApplyTimeWindow = () => {
-    const { window, error } = validateTimeWindowDraft(timeWindowDraft)
-    if (error || !window) {
-      setTimeWindowError(error)
-      return
-    }
-
-    setTimeWindow(window)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    clearGaze()
-  }
-
-  const handleResetTimeWindow = () => {
-    setTimeWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
-    setTimeWindow(EMPTY_TIME_WINDOW)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    clearGaze()
-  }
-
   return (
-    <div className="analytics-stack">
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-xl">Distancia dispositivo</CardTitle>
-            <CardDescription>
-              Distancia ojo-pantalla (cm) a lo largo del tiempo.
-            </CardDescription>
-          </div>
-        </CardHeader>
+    <SingleSignalTab
+      label="Distancia dispositivo"
+      description="Distancia ojo-pantalla (cm) a lo largo del tiempo."
+      unit="cm"
+      emptyText="No hay datos de distancia para los filtros seleccionados."
+      statisticsDescription="Resumen numérico de la señal de distancia ojo-pantalla: tendencia, variabilidad y extremos."
+      signal={signal}
+      legend={chartLegend}
+      kpis={[
+        {
+          label: "Media",
+          value: stats?.mean,
+          description: "Promedio de distancia",
+          tooltip: "Promedio de distancia ojo-pantalla en el intervalo visualizado",
+          Icon: Activity,
+          iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
+          iconColorClass: "text-indigo-500",
+          labelColorClass: "text-indigo-600 dark:text-indigo-400",
+          hoverBgClass: "hover:bg-indigo-50 dark:hover:bg-indigo-950/30",
+          activeBgClass: "bg-indigo-50 dark:bg-indigo-950/30",
+          onClick: undefined as (() => void) | undefined,
+          active: false,
+        },
+        {
+          label: "Mínimo",
+          value: stats?.min,
+          description: "Valor más bajo registrado",
+          tooltip: "Valor mínimo registrado en la distancia ojo-pantalla",
+          Icon: TrendingDown,
+          iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
+          iconColorClass: "text-emerald-500",
+          labelColorClass: "text-emerald-600 dark:text-emerald-400",
+          hoverBgClass: "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30",
+          activeBgClass: "bg-emerald-50/50 dark:bg-emerald-950/30",
+          onClick: minTime != null ? () => handleKpiClick(minTime) : undefined,
+          active: selectedTime === minTime,
+        },
+        {
+          label: "Máximo",
+          value: stats?.max,
+          description: "Distancia más alta registrada",
+          tooltip: "Valor máximo registrado en la distancia ojo-pantalla",
+          Icon: TrendingUp,
+          iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
+          iconColorClass: "text-rose-500",
+          labelColorClass: "text-rose-600 dark:text-rose-400",
+          hoverBgClass: "hover:bg-rose-50/50 dark:hover:bg-rose-950/30",
+          activeBgClass: "bg-rose-50/50 dark:bg-rose-950/30",
+          onClick: maxTime != null ? () => handleKpiClick(maxTime) : undefined,
+          active: selectedTime === maxTime,
+        },
+      ].map((cardProps) => (
+        <KpiCard key={cardProps.label} loading={statsLoading} unit="cm" {...cardProps} />
+      ))}
+      chart={
+        <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
+          <LineChart data={chartData} onClick={handleChartClick} margin={{ top: 12, right: 24, left: 16, bottom: 28 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <XAxis
+              dataKey="time"
+              type="number"
+              domain={chartDomain}
+              tickFormatter={(value) => String(Math.round(Number(value)))}
+              tickMargin={8}
+            />
+            <YAxis
+              width={72}
+              label={{ value: "Distancia (cm)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
+            />
+            <RechartsTooltip content={<DistanceTooltip />} />
 
-        <CardContent>
-          <TimeWindowControls
-            draftStart={timeWindowDraft.start}
-            draftEnd={timeWindowDraft.end}
-            appliedWindow={timeWindow}
-            error={timeWindowError}
-            loading={timeseriesLoading || statsLoading}
-            onDraftStartChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, start: value }))
-            }
-            onDraftEndChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, end: value }))
-            }
-            onApply={handleApplyTimeWindow}
-            onReset={handleResetTimeWindow}
-          />
+            {typeof stats?.mean === "number" ? (
+              <ReferenceLine y={stats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
+            ) : null}
 
-          <div className="analytics-kpi-grid">
-            {[
-              {
-                label: "Media",
-                value: stats?.mean,
-                description: "Promedio de distancia",
-                tooltip: "Promedio de distancia ojo-pantalla en el intervalo visualizado",
-                Icon: Activity,
-                iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
-                iconColorClass: "text-indigo-500",
-                labelColorClass: "text-indigo-600 dark:text-indigo-400",
-                hoverBgClass: "hover:bg-indigo-50 dark:hover:bg-indigo-950/30",
-                activeBgClass: "bg-indigo-50 dark:bg-indigo-950/30",
-                onClick: undefined as (() => void) | undefined,
-                active: false,
-              },
-              {
-                label: "Mínimo",
-                value: stats?.min,
-                description: "Valor más bajo registrado",
-                tooltip: "Valor mínimo registrado en la distancia ojo-pantalla",
-                Icon: TrendingDown,
-                iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
-                iconColorClass: "text-emerald-500",
-                labelColorClass: "text-emerald-600 dark:text-emerald-400",
-                hoverBgClass: "hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30",
-                activeBgClass: "bg-emerald-50/50 dark:bg-emerald-950/30",
-                onClick: minTime != null ? () => handleKpiClick(minTime) : undefined,
-                active: selectedTime === minTime,
-              },
-              {
-                label: "Máximo",
-                value: stats?.max,
-                description: "Distancia más alta registrada",
-                tooltip: "Valor máximo registrado en la distancia ojo-pantalla",
-                Icon: TrendingUp,
-                iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
-                iconColorClass: "text-rose-500",
-                labelColorClass: "text-rose-600 dark:text-rose-400",
-                hoverBgClass: "hover:bg-rose-50/50 dark:hover:bg-rose-950/30",
-                activeBgClass: "bg-rose-50/50 dark:bg-rose-950/30",
-                onClick: maxTime != null ? () => handleKpiClick(maxTime) : undefined,
-                active: selectedTime === maxTime,
-              },
-            ].map((cardProps) => (
-              <KpiCard key={cardProps.label} loading={statsLoading} unit="cm" {...cardProps} />
-            ))}
-          </div>
+            {selectedTime != null ? (
+              <ReferenceLine
+                x={selectedTime}
+                stroke="#374151"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                label={{ value: `${Math.round(selectedTime)}s`, position: "top", fontSize: 11, fill: "#374151" }}
+              />
+            ) : null}
 
-          {timeseriesLoading ? (
-            <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
-          ) : chartData.length === 0 ? (
-            <div className="analytics-state-frame flex items-center justify-center text-sm text-muted-foreground">
-              No hay datos de distancia para los filtros seleccionados.
-            </div>
-          ) : (
-            <AnalyticsChartShell legend={chartLegend}>
-            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
-              <LineChart data={chartData} onClick={handleChartClick} margin={{ top: 12, right: 24, left: 16, bottom: 28 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis
-                  dataKey="time"
-                  type="number"
-                  domain={chartDomain}
-                  tickFormatter={(value) => String(Math.round(Number(value)))}
-                  tickMargin={8}
-                />
-                <YAxis
-                  width={72}
-                  label={{ value: "Distancia (cm)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
-                />
-                <RechartsTooltip content={<DistanceTooltip />} />
-
-                {typeof stats?.mean === "number" ? (
-                  <ReferenceLine y={stats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
-                ) : null}
-
-                {selectedTime != null ? (
-                  <ReferenceLine
-                    x={selectedTime}
-                    stroke="#374151"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 3"
-                    label={{ value: `${Math.round(selectedTime)}s`, position: "top", fontSize: 11, fill: "#374151" }}
-                  />
-                ) : null}
-
-                <Line
-                  type="monotone"
-                  dataKey="distance_cm"
-                  name="Distancia ojo-pantalla"
-                  stroke="#3B82F6"
-                  strokeWidth={1.5}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-            </AnalyticsChartShell>
-          )}
-        </CardContent>
-      </Card>
-
+            <Line
+              type="monotone"
+              dataKey="distance_cm"
+              name="Distancia ojo-pantalla"
+              stroke="#3B82F6"
+              strokeWidth={1.5}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      }
+    >
       {/* Gaze Snapshot Section */}
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
@@ -665,25 +530,6 @@ export function DeviceDistanceTab({
           )}
         </CardContent>
       </Card>
-
-      {/* Statistics Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Estadísticas</CardTitle>
-          <CardDescription>
-            Resumen numérico de la señal de distancia ojo-pantalla: tendencia, variabilidad y extremos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <StatisticsTable
-            rows={tableRows}
-            summaryRow={tableRows[0]}
-            loading={statsLoading || !stats}
-            unit=" cm"
-          />
-        </CardContent>
-      </Card>
-
-    </div>
+    </SingleSignalTab>
   )
 }
