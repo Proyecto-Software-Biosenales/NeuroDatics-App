@@ -377,3 +377,104 @@ Recorded so nobody "fixes" it:
 3. **Should Redis get a `maxmemory` and an eviction policy?** Analytics responses are a cache, not
    durable state, so `--appendonly yes` persisting them is arguably wrong regardless of size. That
    is a deployment decision, not a code one.
+
+---
+
+## Completion review — 2026-09-15
+
+### Recent commits and performance
+
+Reviewed `ecce3e0..61a0bf0`: upload hardening `e5634d5`, the case-only Card rename
+`9ddd2af`, and UI refactor `61a0bf0`. No reverted performance fix was found. Analytics
+algorithms, point caps, offloaded Parquet reads, transform-token storage, migrations 023/024,
+the image conditional-GET path and hook cancellation remain intact. Upload publication still
+bumps the ingestion generation in its publication transaction.
+
+Resource-use changes are real, but were not benchmarked in this review:
+
+- ZIP validation, extraction and stimulus-placement validation now run in worker threads.
+  Admission precedes bounded multipart parsing, reducing rejected-upload resource use.
+- Drive operations use transports per thread and bounded streaming. Reserved IDs and SHA-256
+  plus MD5 integrity checks add upload work to support recovery and verified content.
+- Project mutations reserve a separate connection for the advisory lock; recovery runs every
+  60 seconds with limits of 32 projects and 32 cleanup records per sweep.
+- Dashboard automatically selects the first project and supported sensor, starting analytics
+  earlier than the previous manual-selection flow. Manual keyboard tab activation avoids
+  loading intermediate views, and one EEG content host preserves its state. New UI primitives'
+  bundle/rendering impact was not measured; no speed improvement is claimed for moving files.
+- Shared upload polling and progress presentation supersede step 8c. Upload files were left
+  outside this completion work.
+
+### Step 7: one cache/read ordering
+
+Nineteen JSON handlers now use a shared helper and lazy reader dependency. Resolving the
+dependency creates only a lightweight wrapper. A persisted-token hit never constructs the
+Parquet service; legacy token discovery loads one frame and reuses it on a response miss.
+Redis operations and computation remain off the request thread. Read `ValueError`/
+`FileNotFoundError` map to 404 and read `RuntimeError` to 503; the existing spatial computation
+422 mappings remain separate. Other computation exceptions retain their earlier behavior.
+
+Correlations keep canonical scenario names and their 900-second TTL. Scanpath/fixation
+scenario-file enrichment runs only on misses. Fixation hits restore the live generation even
+for an older payload missing that field. AOI geometry and presentation changes remain in the
+key, including empty-AOI provenance. Gaze-at, PNG heatmaps and database-only lists retain their
+special handlers. No HTTP/numeric golden or route-inventory file changed.
+
+The new HTTP regressions cover plain cache hits, read-error mapping, computation 422s,
+worker-thread execution and old fixation payloads with a nonzero live generation. Existing
+transform-cache tests cover participant/generation isolation, point/view key differences,
+AOI edits and heatmap 304s. Scoped contracts passed after each batch; the backend integration
+gate passed 749 tests/24 snapshots, followed by the additional generation regression.
+
+### PostgreSQL migration and concurrency evidence
+
+Native PostgreSQL 18.3 was available although Docker remained stopped. The checked-in
+`bench/check_postgres_migrations.py` creates a unique loopback-only scratch cluster, disables
+dotenv loading and supplies an explicit local URL. It does not start the application or access
+the live database. Logs and scratch files go to `output/perf-postgres/`.
+
+Passed: 022→023→024, downgrade to 023 then 022, and re-upgrade; all six index transitions;
+nullable token-column transitions; preservation of an existing project; two participant
+writes under observed PostgreSQL row-lock contention; unchanged project `updated_at`; rejection
+of a stale-generation write blocked behind a committed generation bump; current-generation
+writes; and recovery from malformed JSON scalar/array token storage. Scratch servers stopped.
+Evidence: `output/perf-postgres/reproducible-smoke.log`.
+
+**Qualification:** the predecessor fixture is current ORM tables minus the six indexes and token
+column, stamped at 022. It validates actual migrations 023/024, not migrations 000–022. A fresh
+base→022 attempt on PostgreSQL 18 failed in existing
+`004_fix_participants_sex_constraint.py`: its broad CHECK-constraint loop attempts to drop
+`participants_id_not_null`, which belongs to a primary-key column. This predates the reviewed
+commits. Evidence: `output/perf-postgres/full-chain-pg18-failure.log`. Fix that separately before
+a fresh PostgreSQL 18 rollout. No live migrations ran; previous configured connections were
+unavailable, so deployment revision remains unknown.
+
+Other recorded findings outside the numbered remaining steps (report loading, video timing,
+repository upserts, EEG service preamble and Redis deployment policy) are not represented as
+completed by this campaign closure.
+
+### Step 8b and final integration
+
+`SingleSignalTab` shares the repeated cards, loading/empty states, time controls and statistics,
+using `AnalyticsChartShell`. `useSingleSignalData` shares request/window state, extrema,
+nearest-sample selection, the pinned time domain and statistics rows. Stable per-signal
+configuration keeps data conversion memoized. GSR retains raw/smoothed/both modes and selected
+point presentation; distance retains its specialized gaze, image and AOI controller. Across
+both tabs and the two shared files, production code shrank from 1,198 to 1,109 lines.
+
+Pupil was deliberately excluded, as the plan permits: it computes left/right/both statistics
+locally with validity/baseline rules and maintains stimulus/video preview and AOI state. Folding
+it into this controller would require different statistical and state behavior.
+
+Five dashboard E2E tests passed: both single-signal tabs plus existing EEG persistence and
+dashboard navigation/empty-state checks. The new tests cover unchanged request counts after
+load, one timeseries/statistics pair per window change, validation/reset, first-sample tie
+selection, GSR mode behavior, chart clicks/axis stability, gaze clearing, statistics units and
+count/peak, delayed loading and empty participant responses. Next development StrictMode's
+mount-effect replay is accounted for; it is not claimed to have been removed.
+
+Final integrated `verify.ps1` passed **750 backend tests, 24 snapshots, 48 frontend unit tests,
+36 Chromium regressions**, TypeScript, Ruff, Vulture, deptry and import boundaries, with ESLint
+**0 errors / 6 existing warnings**. Production `npm run build` passed. Evidence:
+`output/perf-completion-gate.log` and `output/perf-completion-build.log`. No golden snapshots,
+route inventory or upload-pipeline source files changed in the completion commits.

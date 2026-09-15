@@ -1,5 +1,42 @@
 # Performance & quality campaign — the plan
 
+## Current status — 2026-09-15
+
+The campaign resumed at `61a0bf0` after reviewing the intervening upload-hardening
+and UI commits. The historical instructions below remain as implementation context;
+their old line numbers, baseline counts and uncommitted-upload warnings are superseded
+by this section and [HANDOFF.md](HANDOFF.md).
+
+| Step | Status |
+|---|---|
+| 1–6 | Complete; recent commits preserved the read offloading, indexes, image 304 path, point caps, numeric optimizations and persisted transform tokens. |
+| 7 | Complete in five batches (`ed8401d`, `a46d701`, `05d646d`, `380d8de`, `65afb61`): 19 JSON routes share `cached_frame_endpoint` and a lazy `AnalyticsFrameReader` dependency. |
+| 8a | Complete; hook factory, cancellation and independent signal-bearing blob requests retained. Optional JSON deduplication remains excluded. |
+| 8b | Complete in `0a625db`: GSR/distance share a controller and `SingleSignalTab` composition. Pupil remains specialized as this plan permits. |
+| 8c | Superseded by the committed upload-hardening work; no additional extraction needed. |
+
+Step 7 keeps ownership/window validation in the routes, and centralizes token resolution,
+Redis lookup, frame loading, threaded computation and cache writes. Existing cache namespaces,
+caps, correlation TTL, AOI edit invalidation, error mappings and fixation generation fields are
+preserved. Gaze-at, heatmap PNGs and database-only lists remain specialized. The route module
+shrunk from 1,633 to 1,368 lines; the original “roughly half” estimate was optimistic once public
+query signatures, special handlers and readable formatting were retained. No new latency gain
+is claimed for this structural refactor.
+
+Final integration: `verify.ps1` **ALL GREEN** — 750 backend tests, 24 unchanged snapshots,
+48 frontend unit tests, 36 Chromium regressions and all static checks (ESLint 0 errors /
+6 existing warnings). Five dashboard E2E tests and the production build also passed.
+Evidence: `output/perf-completion-gate.log` and `output/perf-completion-build.log`.
+
+PostgreSQL 18.3 scratch checks passed for migrations 023/024, concurrent token merging and
+stale-generation rejection. Reproduce with
+`.venv/Scripts/python.exe docs/perf/bench/check_postgres_migrations.py` (optional
+`--postgres-bin PATH`). This uses an explicit predecessor-022 schema fixture. A full fresh
+bootstrap on PostgreSQL 18 fails in pre-existing migration 004; live deployment migration
+status remains unverified. See [FINDINGS.md](FINDINGS.md) for details and evidence.
+
+---
+
 **Audience:** an agent starting cold. Everything needed to work a step is in this file or in
 `FINDINGS.md` next to it. Do not re-derive the audit.
 
