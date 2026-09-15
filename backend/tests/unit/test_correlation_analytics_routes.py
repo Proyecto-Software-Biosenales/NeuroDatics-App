@@ -85,6 +85,7 @@ async def test_correlations_rejects_all_after_ownership_check(monkeypatch):
             participant_code="P-01",
             scenario=" ALL ",
             db=object(),
+            reader=routes.AnalyticsFrameReader(object()),
             current_user=CURRENT_USER,
         )
 
@@ -109,6 +110,7 @@ async def test_correlations_preserves_ownership_404(monkeypatch):
             participant_code="P-01",
             scenario="Scenario",
             db=object(),
+            reader=routes.AnalyticsFrameReader(object()),
             current_user=CURRENT_USER,
         )
 
@@ -130,6 +132,7 @@ async def test_correlations_returns_404_for_unknown_scenario(monkeypatch):
             participant_code="P-01",
             scenario="Missing",
             db=object(),
+            reader=routes.AnalyticsFrameReader(object()),
             current_user=CURRENT_USER,
         )
 
@@ -227,6 +230,7 @@ async def test_correlations_uses_canonical_scenario_and_writes_versioned_15_minu
         participant_code="P-01",
         scenario="scenario canonical",
         db=object(),
+        reader=routes.AnalyticsFrameReader(object()),
         current_user=CURRENT_USER,
     )
 
@@ -263,6 +267,7 @@ async def test_correlations_cache_hit_skips_parquet_loading(monkeypatch):
         participant_code="P-01",
         scenario="Scenario canonical",
         db=object(),
+        reader=routes.AnalyticsFrameReader(object()),
         current_user=CURRENT_USER,
     )
 
@@ -300,6 +305,7 @@ async def test_correlations_maps_parquet_errors(
             participant_code="P-01",
             scenario="Scenario canonical",
             db=object(),
+            reader=routes.AnalyticsFrameReader(object()),
             current_user=CURRENT_USER,
         )
 
