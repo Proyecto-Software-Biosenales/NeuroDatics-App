@@ -1,35 +1,85 @@
-# Performance campaign safe-exit handoff
+# Performance campaign completion handoff
 
-The user requested fixes 5–8, then requested finishing the current step and a safe exit.
-Stop here; do not automatically continue the remaining work.
+Updated 2026-09-15. The user requested reviewing recent commits for performance effects
+and finishing the remaining `docs/perf` plan, superseding the previous safe-exit stop.
 
-## Completed in the shared `dashboard` checkout
+## Implementation
 
-- **5a** `91cbdc0`: scenario scoping resolves distinct labels once, preserving raw string comparisons and legacy coercion. Benchmark: 42.1 → 14.8 ms on 300,000 rows.
-- **5b** `cef502e`: nearest gaze lookup uses guarded binary search and transforms only the selected applied row. Unsorted/duplicate times retain historical ordering; legacy samples retain full scenario interpolation and smoothing. Legacy benchmark: 101 → 46 ms; applied-transform frame: 122.7 → 5.8 ms. A real recording's ordering was not assumed.
-- **6** `38006cf`: lazily persist transform tokens on the project, keyed by participant and ingestion generation. Atomic PostgreSQL JSON merging prevents concurrent participants from overwriting each other; a generation predicate prevents old readers from publishing after re-ingestion. Cache hits and heatmap 304s skip reader construction. Comparison and AOI metrics now cache; current AOI geometry/presentation fields participate in their key.
-- **8a** `a779f99` and `6eb5af5`: hook factory and request cancellation, including comparison/gaze callers. Signal-bearing blob requests do not share an in-flight fetch, preventing a cancelled sibling or StrictMode cleanup from cancelling a surviving caller. Completed blob caching remains intact. Optional JSON deduplication was not added.
+- Steps **1–6 and 8a** were already integrated and remain intact after `e5634d5`,
+  `9ddd2af` and `61a0bf0`. The upload work is committed now; the previous warning about
+  its uncommitted baseline no longer describes this checkout.
+- **7** is complete in five commits: `ed8401d`, `a46d701`, `05d646d`, `380d8de`,
+  `65afb61`. Nineteen JSON routes use `cached_frame_endpoint` and the lazy reader
+  dependency. Ownership/validation, cache keys/caps/TTLs, AOI edits, error mappings and
+  fixation generation fields are preserved. Gaze-at and PNG heatmaps remain specialized.
+- **8b** is integrated in `0a625db`: GSR and distance share `SingleSignalTab` and
+  `useSingleSignalData`, reusing `AnalyticsChartShell`. Specialized scientific series,
+  gaze/stimulus behavior, units and controls remain in their tabs. Production code across
+  both tabs and the shared files shrank from 1,198 to 1,109 lines.
+- **Pupil remains separate**, as step 8b permits: its two-eye selection, local validity/
+  baseline statistics and stimulus/video state do not fit the single-signal controller.
+- **8c** is superseded by shared upload polling/progress work. Optional JSON request
+  deduplication was not added.
 
-Concurrent work independently landed steps 1–4. Integration retained its decimation helper, point caps, cache-key arguments, indexes and image conditional-GET behavior. No snapshots were regenerated.
+Recent commits affect resource use: uploads move more work off the event loop but add
+integrity/recovery work and lock connections; dashboard now starts the first project's
+analytics automatically. No prior performance optimization was reverted. New UI bundle/
+render latency effects were not measured. Details are in [FINDINGS.md](FINDINGS.md).
 
-## Verification and deployment
+## Verification
 
-- Step 6 in isolation: `verify.ps1` **ALL GREEN**, 696 backend tests, 24 snapshots, frontend typecheck/browser tests, ESLint 0 errors / 6 existing warnings.
-- Final integrated gate: `verify.ps1` **ALL GREEN** — **730 backend tests, 24 snapshots, 48 frontend unit tests, 32 browser regressions**, TypeScript, Ruff, Vulture, deptry, import boundaries, and ESLint **0 errors / 6 warnings**. Evidence: `output/perf-safe-exit-gate.log`. The only later change is this handoff document.
-- Migration **024** adds nullable `projects.analytics_transform_tokens`, chained to the concurrently added **023**. Apply the pending migrations before running the upgraded backend. No live database was modified.
-- Migration upgrade/downgrade passed on a scratch SQLite database; PostgreSQL-specific merge SQL was compiled and checked. Live PostgreSQL validation was unavailable because the Docker daemon was stopped. A PostgreSQL migration/concurrency smoke test remains a deployment check.
-- Existing migration **022** and the upload-hardening edits remain the other workstream's uncommitted changes. Do not stage, discard, or overwrite them.
+- Baseline: `verify.ps1` **ALL GREEN**, 730 backend tests, 24 snapshots, 48 frontend
+  unit tests, 36 Chromium regressions, ESLint 0 errors / 6 warnings.
+  Evidence: `output/perf-resume-baseline.log`.
+- Step 7: scoped HTTP/numeric contracts passed between batches. Its full gate passed
+  749 backend tests and 24 snapshots, plus all frontend/static checks; the subsequent
+  nonzero-generation cache regression passed in the 20-test targeted suite.
+  Evidence: `output/perf-step7-batch*.log`, `output/perf-step7-final-gate.log`.
+- Frontend browser verification: 5 tests passed for the two shared tabs, EEG state
+  persistence and dashboard navigation/empty state.
+- Final integrated `verify.ps1`: **ALL GREEN** — **750 backend tests, 24 snapshots,
+  48 frontend unit tests, 36 Chromium regressions**, TypeScript, Ruff, Vulture,
+  deptry, app boot/import boundaries, and ESLint **0 errors / 6 warnings**.
+  Production `npm run build` passed. Evidence: `output/perf-completion-gate.log`
+  and `output/perf-completion-build.log`.
+- Protected snapshots and `tests/fixtures/route_inventory.json` were not changed.
 
-Migration application was requested after the safe exit. Read-only connection checks failed for both configured Supabase URLs: `backend/.env` (port 6543) and root `.env` (port 5432) returned `FATAL: (ENOTFOUND) tenant/user ... not found`. No migration or other database mutation ran. Restore database access or provide working configuration before retrying `alembic upgrade head`; then verify revision 024 and the token column. Do not assume either environment has been migrated.
+## Database deployment
 
-## Remaining work
+Native PostgreSQL 18.3 scratch verification now passes for **023/024**: upgrade,
+downgrade and re-upgrade; six indexes and nullable token column; existing project
+preservation; real concurrent token merging; stale-generation rejection; unchanged
+project timestamp; malformed token-state recovery. All scratch servers were stopped.
 
-1. **Step 7 has not started.** Introduce the cached-frame helper and reader dependency, then migrate routes in small verified batches. Preserve the new cache-before-read ordering, 404/503 read errors versus 422 computation errors, mutable AOI key material, and step 4's point caps. Keep gaze-at and heatmap specialized.
-2. **Step 8b has not started.** Extract `SingleSignalTab` for GSR and device distance using `AnalyticsChartShell`; assess pupil separately as allowed in the plan.
-3. **Step 8c is superseded** by upload-hardening work; do not repeat that extraction.
+Reproduce from the root:
 
-Resume with the current model selection; high effort is appropriate for either Claude or Codex. Run scoped HTTP/numeric contracts between route batches and the full repository gate at integration boundaries. Protect all golden snapshots and route inventory.
+```powershell
+.venv/Scripts/python.exe docs/perf/bench/check_postgres_migrations.py
+# Optional: --postgres-bin "C:/Program Files/PostgreSQL/18/bin"
+```
 
-## Preserved worktrees
+The harness disables dotenv and uses only a new loopback scratch cluster. Evidence:
+`output/perf-postgres/reproducible-smoke.log`.
 
-The sibling `NeuroDatics-App-perf-step5`, `NeuroDatics-App-perf-step67`, and `NeuroDatics-App-perf-step8` worktrees remain for recovery. Completed changes were integrated into `dashboard`. They also contain copies of the inherited uncommitted baseline; these are not new work to merge. Do not force-delete them or their dependency junctions as part of unrelated cleanup.
+**Limits and next deployment action:** this starts from an explicit predecessor-022
+schema fixture, not a verified fresh migration chain. Pre-existing migration 004 fails
+on PostgreSQL 18 because its CHECK-constraint loop also tries to drop a primary-key
+NOT NULL constraint. Fix that separately before a fresh PostgreSQL 18 rollout.
+`output/perf-postgres/full-chain-pg18-failure.log` records the failure.
+
+No live database was accessed or migrated. The earlier configured Supabase connections
+failed with tenant/user-not-found, and live revision remains unknown. Restore working
+configuration before applying pending migrations; verify revision 024, the token column
+and indexes before running the upgraded backend.
+
+## Preserved worktrees and scope
+
+Earlier `NeuroDatics-App-perf-step5`, `-perf-step67`, `-perf-step8` and upload worktrees
+remain for recovery; do not re-merge their inherited baseline. The new
+`NeuroDatics-App-perf-finish-ui` worktree holds the integrated step 8b commit. Do not
+delete unrelated worktrees or dependency targets as part of this task.
+
+Report loading, video timing, repository upserts, the EEG service preamble and Redis
+deployment policy remain findings outside these remaining numbered implementation
+steps. They are not silently marked complete. Keep existing model settings; high effort
+is appropriate for either Claude or Codex if a separate follow-up is requested.
