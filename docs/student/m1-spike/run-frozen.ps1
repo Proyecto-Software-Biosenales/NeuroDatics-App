@@ -1,7 +1,14 @@
 # M1 frozen-runtime test driver. Assembles the package at an accented path with spaces,
 # then runs selftest, pg-lifecycle, orphan adoption and the real FastAPI app.
+#
+# Every path defaults to somewhere under this script's own folder, so a copy of m1-spike/
+# placed anywhere (including the clean VM that owes us the proof gate) runs unchanged.
+# The accents and spaces in the default package name are deliberate: they are the
+# non-ASCII install path the spike has to keep exercising.
 param(
-    [string]$Pkg = 'C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\output\student-m1\Estudiantes ñandú\NeuroDatics Estudiantes',
+    [string]$Pkg = (Join-Path $PSScriptRoot 'Estudiantes ñandú\NeuroDatics Estudiantes'),
+    [string]$PgSource = (Join-Path $PSScriptRoot 'pgsql'),
+    [string]$TemplateSource = (Join-Path $env:TEMP 'ndtest\pg-template'),
     [switch]$Assemble,
     [string]$Only = ''
 )
@@ -14,12 +21,23 @@ New-Item -ItemType Directory -Force $results | Out-Null
 function MB($p) { [math]::Round(((Get-ChildItem $p -Recurse -File -Force | Measure-Object Length -Sum).Sum) / 1048576, 1) }
 
 if ($Assemble) {
+    # Fail with the missing input named, not with an empty package that fails much later.
+    foreach ($src in @(
+        @{ Path = "$m1\dist\neurodatics-m1"; Hint = 'run build.ps1 first' },
+        @{ Path = "$m1\tools";               Hint = 'put ffmpeg.exe and ffprobe.exe there' },
+        @{ Path = $PgSource;                 Hint = 'extract bin, lib and share from the EDB PostgreSQL 16 zip there, or pass -PgSource' },
+        @{ Path = $TemplateSource;           Hint = 'build it with initdb -A trust -E UTF8 --locale=C from an ASCII path, or pass -TemplateSource' }
+    )) {
+        if (-not (Test-Path $src.Path)) { throw "missing input: $($src.Path)  ($($src.Hint))" }
+    }
     New-Item -ItemType Directory -Force $Pkg | Out-Null
     robocopy "$m1\dist\neurodatics-m1" $Pkg /E /NFL /NDL /NJH /NJS /NP | Out-Null
     robocopy "$m1\tools" "$Pkg\tools" /E /NFL /NDL /NJH /NJS /NP | Out-Null
-    robocopy "$m1\prueba ñandú áéí\NeuroDatics Estudiantes\pgsql" "$Pkg\pgsql" /E /NFL /NDL /NJH /NJS /NP | Out-Null
-    robocopy 'C:\Users\jacob\AppData\Local\Temp\ndtest\pg-template' "$Pkg\pg-template" /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    robocopy $PgSource "$Pkg\pgsql" /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    robocopy $TemplateSource "$Pkg\pg-template" /E /NFL /NDL /NJH /NJS /NP | Out-Null
     "assembled: $Pkg"
+    "  from pgsql      : $PgSource"
+    "  from template   : $TemplateSource"
     "  exe+_internal MB : " + (MB "$m1\dist\neurodatics-m1")
     "  tools MB         : " + (MB "$Pkg\tools")
     "  pgsql MB         : " + (MB "$Pkg\pgsql")
@@ -32,6 +50,8 @@ if ($Assemble) {
 $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
 Remove-Item Env:PYTHONPATH, Env:PYTHONHOME, Env:VIRTUAL_ENV -ErrorAction SilentlyContinue
 $zip = "$m1\data\saio-raw.zip"
+if (-not (Test-Path $exe)) { throw "no package at $Pkg (run -Assemble first, or pass -Pkg)" }
+if (-not (Test-Path $zip)) { throw "no raw experiment ZIP at $zip (it is private data and is not committed)" }
 Set-Location $results
 
 if ($Only -in @('', 'selftest')) {
@@ -106,6 +126,40 @@ if ($Only -eq 'offline') {
     $seen.Keys | ForEach-Object { "  $_" }
     Get-Content "$fresh\selftest.out.txt" | Select-Object -Last 3
     "fresh profile grew to MB: " + (MB $fresh)
-    "files created in the fresh profile outside work/: "
-    Get-ChildItem $fresh -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notlike "$fresh\work\*" -and $_.FullName -notlike "$fresh\selftest*" } | Select-Object -First 8 | ForEach-Object { "  " + $_.FullName.Substring($fresh.Length) + "  " + $_.Length }
+    $strays = @(Get-ChildItem $fresh -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notlike "$fresh\work\*" -and $_.FullName -notlike "$fresh\selftest*" })
+    "files created in the fresh profile outside work/: " + $strays.Count
+    $strays | Select-Object -First 8 | ForEach-Object { "  " + $_.FullName.Substring($fresh.Length) + "  " + $_.Length }
+
+    # This run is the stand-in for the clean-profile proof gate, so it has to leave an
+    # artifact behind. Console-only numbers cannot be diffed against the real VM run.
+    $selftest = $null
+    $tripwireBlocked = @()
+    if (Test-Path "$fresh\selftest.json") {
+        $selftest = Get-Content "$fresh\selftest.json" -Raw | ConvertFrom-Json
+        $tripwireBlocked = @($selftest.network_attempts_blocked)
+    }
+    [ordered]@{
+        kind                    = 'offline-substitute-evidence'
+        note                    = 'Empty profile on the dev machine with 4 logical cores. NOT the clean-machine, network-off proof gate.'
+        recorded_utc            = (Get-Date).ToUniversalTime().ToString('o')
+        machine                 = $env:COMPUTERNAME
+        package                 = $Pkg
+        profile_root            = $fresh
+        processor_affinity_mask = '0xF'
+        selftest_exit_code      = $proc.ExitCode
+        wall_seconds            = [math]::Round($watch.Elapsed.TotalSeconds, 1)
+        connection_samples      = $samples
+        non_loopback_count      = $seen.Count
+        non_loopback            = @($seen.Keys)
+        profile_mb              = (MB $fresh)
+        files_outside_work      = $strays.Count
+        python_tripwire_blocked = $tripwireBlocked
+        selftest_all_ok         = $selftest.all_ok
+        tripwire_blind_spots    = @(
+            'native code (ffmpeg, Typst) does not go through the Python socket module',
+            'asyncio on Windows connects through ConnectEx, not socket.socket.connect, so it evades the tripwire; only the TCP sampling below covers it',
+            'sampling every 700 ms can miss a short-lived connection'
+        )
+    } | ConvertTo-Json -Depth 4 | Set-Content "$results\offline-evidence.json" -Encoding utf8
+    "wrote $results\offline-evidence.json"
 }

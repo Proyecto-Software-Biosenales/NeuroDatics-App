@@ -85,6 +85,26 @@ Plan approved as written on 2026-09-20, which closed M0 (recorded in the ledger)
 | M3 | Local frontend: static build served locally, fonts and Drive dependencies removed | Full flow with networking off |
 | M4 | Package, clean-laptop test, student guide | Fresh Windows laptop from the Drive download to a visible dashboard |
 
+### M2 entry conditions (from the M1 review, 2026-09-20)
+
+M1's finding 9 promotes the frozen selftest to a gate, so the gate has to be trustworthy before M2
+leans on it. Full detail in [M1-SPIKE.md](M1-SPIKE.md), "Gaps found reviewing the spike".
+
+- **Make the selftest fail when it does no work.** Assert the probed media dimensions are real,
+  fail when the fixture carries no video instead of skipping the ffmpeg branch, and assert each
+  analytics result is non-empty. Today a missing ffprobe or an empty result set still shows green,
+  and the frozen-versus-unfrozen digest comparison cannot see it.
+- **Harden the launcher for a second simultaneous launch.** A student double-clicking the `.exe`
+  twice currently races in `ensure_cluster` and `free_port`; PostgreSQL stops the second postmaster,
+  but as a traceback. Take a single-instance lock, adopt or exit with a message.
+- **Close the offline tripwire's asyncio blind spot before M3.** M3's proof is a full flow with
+  networking off, and the served app is the async one; the current tripwire only sees synchronous
+  connects. Guard `loop.sock_connect` as well, or wrap the served run in the TCP sampler.
+- Carry the launcher traps M1 already fixed (template cluster, no piped `pg_ctl`, stale pid file,
+  app-local VC++ runtime, UTC template) into product code rather than re-deriving them.
+- Decide which dependency resolution the student package ships: the freeze inherited the dev venv
+  (pyarrow 25.0.0), not `backend/poetry.lock` (16.1.0, constraint `^16.0.0`).
+
 ## Suggested execution settings
 
 Recommendations only; they do not change a running session.
