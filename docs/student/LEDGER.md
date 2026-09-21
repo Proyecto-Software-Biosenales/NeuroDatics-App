@@ -69,6 +69,14 @@ Full report: [M1-SPIKE.md](M1-SPIKE.md); scripts: [m1-spike/](m1-spike/).
   cluster template), `pg_ctl` hangs a piped parent, `pg_ctl start -w` succeeds too early after a
   crash (stale pid file), missing Visual C++ runtime for the PostgreSQL binaries (ship it app-local),
   builder timezone baked into the template, orphaned server after a closed console.
+- **Reviewed 2026-09-20** (the spike had been run on a weaker model than the plan called for). Every
+  headline number was re-checked against the saved JSON in `output/student-m1/` and every harness
+  call against current app signatures; all matched, and no `backend/` or `frontend/` file was
+  modified during the spike, so the result stands and was not re-run. Four gaps were found and are
+  recorded in [M1-SPIKE.md](M1-SPIKE.md) ("Gaps found reviewing the spike") and carried into the M2
+  entry conditions in [PLAN.md](PLAN.md). The one that changes a claim above: the offline tripwire
+  is blind to asyncio on Windows, so "0 non-loopback" is strong for the batch path and weak for the
+  served app.
 - **Owner asks:** a clean machine or VM for the proof gate; classroom dataset sizes; ffmpeg GPL versus
   LGPL; governance of raw participant data (still unconfirmed). See PLAN.md open items.
 

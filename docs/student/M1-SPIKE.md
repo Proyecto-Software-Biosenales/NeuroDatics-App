@@ -82,8 +82,24 @@ three PDFs the same byte length. All 43 OpenAPI paths import in the frozen app.
 - Python-level socket tripwire in every run: **0** non-loopback connects or DNS lookups.
 - Fresh empty profile (`USERPROFILE`, `APPDATA`, `LOCALAPPDATA`, `TEMP` redirected), 4 cores: passes,
   and 64 samples of every TCP connection owned by any package process show **0** non-loopback ones.
-- Limits: the tripwire does not cover native code (ffmpeg, Typst); sampling can miss a short
-  connection; VC++ runtime, .NET and Defender are installed here.
+- Limits, in the order they weaken the claim:
+  - **The tripwire is blind to asyncio on Windows.** It replaces `socket.socket.connect`, but the
+    Proactor event loop connects through `ConnectEx`, so an async outbound call is neither recorded
+    nor refused. Measured on this machine: an `asyncio.open_connection` to a non-loopback address
+    passed straight through while the synchronous path was caught. The frozen runtime bundles
+    `httpx` 0.25.2. Name lookups are still caught, because `loop.getaddrinfo` defers to
+    `socket.getaddrinfo`.
+  - **The serve run had only the tripwire.** The TCP sampling is in the `-Only offline` branch,
+    which runs `selftest`. So the strong evidence covers the synchronous ingestion, analytics and
+    report path; the real FastAPI app, which is the async one, is covered only by the weak check.
+    (Nothing in the serve log contradicts it: Redis defaults to `redis://localhost:6379` and its
+    readiness timeout was a loopback attempt, not an outbound one.)
+  - The tripwire does not cover native code (ffmpeg, Typst).
+  - Sampling every 700 ms can miss a short-lived connection.
+  - VC++ runtime, .NET and Defender are installed here.
+- The `-Only offline` run now writes `frozen-results/offline-evidence.json` so the clean-machine run
+  has something to be compared against. The 2026-09-20 numbers above predate it and live only in the
+  session transcript.
 
 ## Findings that change M2 to M4
 
@@ -123,6 +139,33 @@ Each trap below was hit for real; the fix is in the launcher prototype
     99 MiB each for ffmpeg and ffprobe. Redistributing it carries GPL obligations. The app only reads
     dimensions and extracts one frame, so an LGPL build should be enough. Decide before M4.
 
+## Gaps found reviewing the spike (2026-09-20)
+
+The results above stand; these are defects in the harness and in the build's provenance, not in
+what it measured. They are carried into M2 as entry conditions in [PLAN.md](PLAN.md), because
+finding 9 makes the frozen selftest the gate M2 leans on.
+
+1. **The selftest can pass without doing the work.** `media_probe_and_ffmpeg` asserts nothing about
+   what `probe_stimulus` returned, and that function is documented never to raise, so a missing or
+   broken ffprobe yields null dimensions and a green stage; a ZIP with no video skips the ffmpeg
+   branch entirely and still passes. The `analytics` stage asserts only that the heatmap PNG is
+   non-empty, so the other seven computations would pass on empty output. Comparing frozen with
+   unfrozen digests does not catch any of this, because both sides would fail identically. The
+   2026-09-20 run was sound (416x832 at 60 fps recorded, digests non-trivial); the exposure is to
+   every later run that treats the selftest as a gate.
+2. **Concurrent launch is untested.** Stage C covers a *sequential* second launch. Two launchers
+   racing — a student double-clicking the `.exe` twice — meet no interlock in `ensure_cluster`, and
+   `free_port` picks a port by binding and closing it. PostgreSQL's own shared-memory check would
+   stop the second postmaster, but as an unhandled traceback rather than a message.
+3. **The offline tripwire is blind to asyncio on Windows**, so the evidence for the served app is
+   much weaker than for the batch path. Measured; detail under "Offline evidence" above.
+4. **The freeze inherited the dev venv, not the lock.** `requirements-frozen.txt` was resolved from
+   the root `.venv`, which carries pyarrow 25.0.0 while `backend/pyproject.toml` declares
+   `pyarrow = "^16.0.0"` and `backend/poetry.lock` pins 16.1.0. That divergence predates this spike
+   and is not caused by it, but it means "identical to the unfrozen app" is identical *to this dev
+   venv*, not to any locked resolution of the teacher app. M2 or M4 has to decide which resolution
+   the student package ships and re-check the digests against it.
+
 ## Not proven
 
 - **Clean Windows profile with networking off.** See the outcome above. Needs a VM or a fresh laptop;
@@ -142,11 +185,22 @@ Each trap below was hit for real; the fix is in the launcher prototype
 
 ## Reproduce
 
-Copy [m1-spike/](m1-spike/) to `output/student-m1/` (git-ignored), then: create a venv there named
-`build-venv` and `pip install -r requirements-frozen.txt`; place `ffmpeg.exe` and `ffprobe.exe` in
-`tools/`; extract the `bin`, `lib` and `share` folders of the EDB PostgreSQL 16 Windows zip into a
-`pgsql` folder and build the template with `initdb -A trust -E UTF8 --locale=C` from an ASCII path;
-run `build.ps1`, then `run-frozen.ps1 -Assemble` and `run-frozen.ps1` (`-Only selftest|pg|serve|offline`).
+Copy [m1-spike/](m1-spike/) to `output/student-m1/` (git-ignored). Every path below is relative to
+that copy, which is what `run-frozen.ps1` assumes, so the same steps work on any machine — including
+the VM that still owes us the proof gate. Inputs, all beside the script:
+
+| Path | What goes there |
+| --- | --- |
+| `build-venv/` | a venv, then `pip install -r requirements-frozen.txt` |
+| `tools/` | `ffmpeg.exe` and `ffprobe.exe` |
+| `pgsql/` | the `bin`, `lib` and `share` folders of the EDB PostgreSQL 16 Windows zip |
+| `data/saio-raw.zip` | the raw experiment ZIP (private data, not committed) |
+| `%TEMP%\ndtest\pg-template` | a cluster built with `initdb -A trust -E UTF8 --locale=C` **from an ASCII path** |
+
+Then `build.ps1`, `run-frozen.ps1 -Assemble`, and `run-frozen.ps1` (`-Only selftest|pg|serve|offline`).
+`-Assemble` names any missing input instead of producing a package that fails later. `-Pkg`,
+`-PgSource` and `-TemplateSource` override the three locations; the default package path keeps its
+accents and spaces on purpose, because that is the non-ASCII install path being tested.
 [dll_audit.py](m1-spike/dll_audit.py) lists imported DLLs a clean Windows may lack, and
 [pg-path-matrix.ps1](m1-spike/pg-path-matrix.ps1) reproduces the non-ASCII path failure.
 Local evidence (not committed, contains private-dataset names): `output/student-m1/results-unfrozen.json`
