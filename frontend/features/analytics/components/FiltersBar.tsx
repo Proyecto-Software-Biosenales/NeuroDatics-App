@@ -34,7 +34,7 @@ export function FiltersBar({
   participantsLoading,
 }: FiltersBarProps) {
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 py-3 lg:flex-nowrap xl:gap-3 xl:px-6 xl:py-4">
+    <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 py-2.5 lg:flex-nowrap xl:gap-3 xl:px-6 roomy:py-4">
       <div className="flex shrink-0 items-center gap-2.5 text-sm font-medium text-muted-foreground">
         <SlidersHorizontal className="h-4 w-4 shrink-0" />
         <span>Filtros</span>

@@ -17,7 +17,7 @@ export function AnalyticsTabs<T extends string>({ value, onValueChange, options,
       <div className="min-w-0 overflow-x-auto border-b border-border px-2 [scrollbar-width:none] 2xl:px-5">
         <TabsList variant="line" aria-label={label} className="h-auto min-h-10 justify-start py-0 group-data-horizontal/tabs:h-auto">
           {options.map((option) => (
-            <TabsTrigger key={option.key} value={option.key} className="h-auto flex-none px-3 py-2.5 after:bottom-0">
+            <TabsTrigger key={option.key} value={option.key} className="h-auto flex-none px-3 py-2 after:bottom-0 roomy:py-2.5">
               {option.label}
             </TabsTrigger>
           ))}

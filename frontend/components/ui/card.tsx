@@ -11,7 +11,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "group/card min-w-0 rounded-xl border border-border bg-card text-card-foreground shadow-sm [--card-spacing:--spacing(4)] 2xl:[--card-spacing:--spacing(5)] data-[size=sm]:[--card-spacing:--spacing(3)]",
+        "group/card min-w-0 rounded-xl border border-border bg-card text-card-foreground shadow-sm [--card-spacing:--spacing(4)] roomy:[--card-spacing:--spacing(5)] data-[size=sm]:[--card-spacing:--spacing(3)]",
         className
       )}
       {...props}
@@ -37,7 +37,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
     <h3
       data-slot="card-title"
       className={cn(
-        "text-lg leading-none font-semibold tracking-tight 2xl:text-xl group-data-[size=sm]/card:text-base",
+        "text-lg leading-none font-semibold tracking-tight roomy:text-xl group-data-[size=sm]/card:text-base",
         className
       )}
       {...props}

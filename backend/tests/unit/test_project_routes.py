@@ -25,6 +25,7 @@ async def test_get_project_serializes_aoi_scenary_id(monkeypatch):
         drive_root_folder_id=None,
         drive_root_folder_name=None,
         drive_root_folder_url=None,
+        source_folder_name=None,
         files=[],
         sensors=[],
         participants=[],

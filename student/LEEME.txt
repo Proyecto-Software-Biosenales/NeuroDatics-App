@@ -1,0 +1,70 @@
+NEURODATICS ESTUDIANTES - GUÍA RÁPIDA
+=====================================
+
+NeuroDatics para tu computador: procesa y analiza los datos de un experimento (eye tracker, GSR, EEG).
+No necesita cuenta, ni Google Drive, ni internet (solo para descargar este paquete).
+
+Necesitas: Windows 10 u 11 de 64 bits, 8 GB de memoria y unos 5 GB libres en el disco C:.
+
+
+1. EXTRAER (no lo abras desde el ZIP)
+-------------------------------------
+Clic derecho sobre el archivo ZIP > "Extraer todo..." y espera a que termine. Son unos 5.000 archivos:
+puede tardar varios minutos mientras Windows los revisa. Si ejecutas el programa desde dentro del ZIP,
+no arranca.
+
+Consejo: antes de extraer, clic derecho sobre el ZIP > Propiedades. Si al final ves la casilla
+"Desbloquear", márcala y pulsa Aceptar. Así Windows no te muestra el aviso del paso 2.
+
+
+2. ABRIR
+--------
+Dentro de la carpeta extraída, doble clic en  neurodatics-estudiantes.exe
+
+Windows puede mostrar "Windows protegió tu PC" porque el programa no tiene firma comercial.
+No es un virus: solo significa que Microsoft no conoce este archivo.
+   - Pulsa "Más información" y luego "Ejecutar de todas formas".
+
+Si Windows lo bloquea y NO ofrece "Ejecutar de todas formas" (mensaje de "Smart App Control"),
+no cambies configuraciones de seguridad: avisa a tu docente.
+
+
+3. USAR
+-------
+Se abre una ventana negra (no la cierres) y, unos segundos después, tu navegador con NeuroDatics.
+La primera vez tarda más (hasta un minuto) porque prepara la base de datos.
+
+   - Proyectos > "Crear nuevo proyecto": sube el ZIP del experimento. Procesarlo toma unos minutos.
+   - Dashboard: analiza EyeTracker, GSR, EEG y comparaciones.
+   - Reportes: genera el informe en PDF.
+
+Puedes tener el navegador cerrado y volver a abrirlo con doble clic en el .exe: te lleva a la app que
+ya está abierta.
+
+
+4. CERRAR
+---------
+Cierra la ventana negra. La app guarda todo y se detiene sola. Tus proyectos siguen ahí la próxima vez.
+
+
+5. DÓNDE QUEDAN TUS DATOS
+-------------------------
+   %LOCALAPPDATA%\NeuroDatics Estudiantes      (pega esa ruta en la barra del Explorador de archivos)
+
+Ahí están tus proyectos y los archivos de los experimentos que subiste. Borrar la carpeta del programa
+NO borra esos datos. Si trabajas con datos de participantes y ya terminaste, cierra la app y borra esa
+carpeta. Guarda copias de lo que necesites antes.
+
+
+6. SI ALGO FALLA
+----------------
+   - "Otra ventana de NeuroDatics se esta iniciando": espera unos segundos y vuelve a abrir.
+   - "No puede ejecutarse como administrador": ábrelo con doble clic normal, no con "Ejecutar como administrador".
+   - Un antivirus puede retrasar el primer arranque uno o dos minutos. Espera.
+   - La ventana negra muestra un error y dice "Pulsa Enter para cerrar": copia el mensaje, abre la carpeta de
+     datos (paso 5), luego la carpeta "logs", y envía a tu docente los archivos que allí aparezcan
+     (launcher-errors.log y los .log de PostgreSQL).
+   - No muevas ni borres carpetas del programa mientras la app está abierta.
+
+
+Licencias de los componentes incluidos: THIRD-PARTY-NOTICES.txt (en esta misma carpeta).

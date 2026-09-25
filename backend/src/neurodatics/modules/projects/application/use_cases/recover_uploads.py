@@ -7,9 +7,7 @@ from uuid import uuid4
 from sqlalchemy import select, func
 
 from .....infra.db.session import AsyncSessionLocal
-from ....integrations.google_drive.infrastructure.configure_client import (
-    configure_gdrive_client_with_oauth,
-)
+from ....integrations.storage_provider import configure_gdrive_client_with_oauth
 from ...domain.entities import Project, UploadAttempt
 from ...infrastructure.drive_cleanup import drain_drive_cleanup
 from ...infrastructure.mutation_lock import (

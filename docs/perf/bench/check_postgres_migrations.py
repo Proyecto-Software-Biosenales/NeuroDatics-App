@@ -40,7 +40,6 @@ from sqlalchemy import inspect, select, text, update
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from neurodatics.config.settings import settings
 assert settings.database_url == URL
-from neurodatics.infra.db.base import Base
 from neurodatics.modules.projects.domain.entities import Project
 from neurodatics.modules.participants.domain.entities import Participant
 from neurodatics.modules.scenaries.domain.entities import Scenaries, AOI
@@ -101,15 +100,33 @@ async def seed_project():
         await engine.dispose()
 
 
-async def create_022_fixture():
+async def prepare_004_regression():
     engine = create_async_engine(URL)
     try:
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-            await conn.execute(text('ALTER TABLE projects DROP COLUMN analytics_transform_tokens'))
-            for index in sorted(INDEXES):
-                await conn.execute(text(f'DROP INDEX {index}'))
-        print('Created explicit predecessor-schema fixture; this does not validate migrations000-022')
+            await conn.execute(text("ALTER TABLE participants ADD CONSTRAINT legacy_sex CHECK (sex IN ('male', 'female', 'other'))"))
+            await conn.execute(text('ALTER TABLE participants ADD CONSTRAINT preserve_age CHECK (age >= 0)'))
+            await conn.execute(text('ALTER TABLE participants ADD CONSTRAINT preserve_multi_column CHECK (sex IS NULL OR age IS NULL OR age >= 0)'))
+    finally:
+        await engine.dispose()
+
+
+async def check_004_regression():
+    engine = create_async_engine(URL)
+    try:
+        async with engine.connect() as conn:
+            constraints = dict((await conn.execute(text("SELECT conname, contype FROM pg_constraint WHERE conrelid='participants'::regclass"))).all())
+            assert 'legacy_sex' not in constraints
+            assert constraints['participants_sex_allowed'] == 'c'
+            assert constraints['preserve_age'] == 'c'
+            assert constraints['preserve_multi_column'] == 'c'
+            columns = await conn.run_sync(lambda c: inspect(c).get_columns('participants'))
+            for column in columns:
+                if column['name'] in {'id', 'project_id', 'participant_code', 'created_at'}:
+                    assert not column['nullable'], column['name']
+            pk = await conn.run_sync(lambda c: inspect(c).get_pk_constraint('participants'))
+            assert pk['constrained_columns'] == ['id']
+        print('PASS migration004 preserves primary key, NOT NULLs, unrelated and multi-column CHECKs')
     finally:
         await engine.dispose()
 
@@ -200,15 +217,16 @@ try:
     pg_run('initdb.exe', '-D', DATA, '-U', 'perf_smoke', '-A', 'trust', '--encoding=UTF8', '--locale=C')
     pg_run('pg_ctl.exe', '-D', DATA, '-l', RUN / 'server.log', '-o', f'-h 127.0.0.1 -p {PORT} -F', '-w', 'start')
     started = True
-    print(f'Isolated PostgreSQL 18.3 scratch cluster on 127.0.0.1:{PORT}; dotenv disabled')
-    # PostgreSQL18 full-chain bootstrap is blocked by pre-existing migration004;
-    # see full-chain-pg18-failure.log. Isolate only the requested perf migrations.
-    asyncio.run(create_022_fixture())
-    command.stamp(config, '022')
+    print(f'Isolated PostgreSQL scratch cluster on 127.0.0.1:{PORT}; dotenv disabled')
+    command.upgrade(config, '003')
+    asyncio.run(prepare_004_regression())
+    command.upgrade(config, '004')
+    asyncio.run(check_004_regression())
+    command.upgrade(config, '022')
     asyncio.run(check_schema('022', False, False))
     asyncio.run(seed_project())
     command.upgrade(config, 'head')
-    asyncio.run(check_schema('024', True, True))
+    asyncio.run(check_schema('025', True, True))
     asyncio.run(tokens_smoke())
     command.downgrade(config, '023')
     asyncio.run(check_schema('023', False, True))
@@ -216,7 +234,7 @@ try:
     asyncio.run(check_schema('022', False, False))
     asyncio.run(check_preserved())
     command.upgrade(config, 'head')
-    asyncio.run(check_schema('024', True, True))
+    asyncio.run(check_schema('025', True, True))
     asyncio.run(check_preserved())
     print('ALL POSTGRES PERFORMANCE SMOKE CHECKS PASSED')
 finally:

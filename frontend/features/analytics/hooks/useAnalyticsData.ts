@@ -253,7 +253,8 @@ export const useEegTimeseries = makeAnalyticsHook(
     smoothWindowS: number = 0.2,
     maxPoints: number = 5000,
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    decimation: string = "linspace"
   ): ApiArgs<typeof AnalyticsApi.getEegTimeseries> | null =>
     projectId && participantCode
       ? [
@@ -265,6 +266,7 @@ export const useEegTimeseries = makeAnalyticsHook(
           maxPoints,
           startTimeS,
           endTimeS,
+          decimation,
         ]
       : null,
   "Error loading EEG timeseries"
@@ -281,7 +283,8 @@ export const useEegPsd = makeAnalyticsHook(
     useDb: boolean = true,
     maxPoints: number = 5000,
     startTimeS: number | null = null,
-    endTimeS: number | null = null
+    endTimeS: number | null = null,
+    excludeArtifactWindows: boolean = false
   ): ApiArgs<typeof AnalyticsApi.getEegPsd> | null =>
     projectId && participantCode
       ? [
@@ -294,6 +297,7 @@ export const useEegPsd = makeAnalyticsHook(
           maxPoints,
           startTimeS,
           endTimeS,
+          excludeArtifactWindows,
         ]
       : null,
   "Error loading EEG PSD"
@@ -308,9 +312,12 @@ export const useEegSpectrogram = makeAnalyticsHook(
     channels: string[] = [],
     maxFreqHz: number | null = 25,
     useDb: boolean = true,
-    normalize: string = "freq_demean",
+    normalize: string = "none",
     maxTimeBins: number = 600,
-    maxFrequencyBins: number = 256
+    maxFrequencyBins: number = 256,
+    startTimeS: number | null = null,
+    endTimeS: number | null = null,
+    perChannelColorDomain: boolean = false
   ): ApiArgs<typeof AnalyticsApi.getEegSpectrogram> | null =>
     projectId && participantCode
       ? [
@@ -323,6 +330,9 @@ export const useEegSpectrogram = makeAnalyticsHook(
           normalize,
           maxTimeBins,
           maxFrequencyBins,
+          startTimeS,
+          endTimeS,
+          perChannelColorDomain,
         ]
       : null,
   "Error loading EEG spectrogram"
@@ -335,10 +345,12 @@ export const useEegTopography = makeAnalyticsHook(
     participantCode: string | null,
     scenario: string = "all",
     channels: string[] = [],
-    windowS: number = 0.33,
-    overlapRatio: number = 0,
+    windowS: number = 2.0,
+    overlapRatio: number = 0.5,
     removeDc: boolean = true,
-    maxFrames: number = 5000
+    maxFrames: number = 600,
+    startTimeS: number | null = null,
+    endTimeS: number | null = null
   ): ApiArgs<typeof AnalyticsApi.getEegTopography> | null =>
     projectId && participantCode
       ? [
@@ -350,6 +362,8 @@ export const useEegTopography = makeAnalyticsHook(
           overlapRatio,
           removeDc,
           maxFrames,
+          startTimeS,
+          endTimeS,
         ]
       : null,
   "Error loading EEG topography"

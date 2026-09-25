@@ -41,6 +41,8 @@ class Project(BaseModel):
     drive_root_folder_id = Column(String(255), nullable=True)
     drive_root_folder_name = Column(String(255), nullable=True)
     drive_root_folder_url = Column(String(500), nullable=True)
+    # Name of the folder the user picked; the browser-built ZIP is not stored.
+    source_folder_name = Column(String(255), nullable=True)
 
     # Relationships
     files = relationship("ProjectFile", back_populates="project", cascade="all, delete-orphan")

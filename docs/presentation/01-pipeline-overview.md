@@ -14,7 +14,7 @@ flowchart TD
     D --> E["Extract to temp dir<br/>path-traversal safe"]
     E --> F["Probe stimulus files<br/>intrinsic width/height"]
     F --> G["CSV → Parquet<br/>THE ALGORITHMS LIVE HERE"]
-    G --> H["Upload to Google Drive<br/>media + parquets + original zip"]
+    G --> H["Upload to Google Drive<br/>media + parquets"]
     H --> I["DB swap in one transaction<br/>project_files, scenaries"]
     I --> J["ingestion_status = READY"]
     J --> K["Analytics endpoints<br/>read Parquet from cache/Drive"]

@@ -78,8 +78,34 @@ class HeatmapAnalyticsService:
             scenario=scenario,
             min_fixation_duration_ms=min_fixation_duration_ms,
         )
+        png_bytes = cls.render_overlay(
+            events,
+            gamma=gamma,
+            threshold=threshold,
+            alpha=alpha,
+            width=width,
+            height=height,
+        )
+        return png_bytes, metadata
+
+    @classmethod
+    def render_overlay(
+        cls,
+        events: pd.DataFrame,
+        gamma: float = 0.7,
+        threshold: float = 0.10,
+        alpha: float = 0.75,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ) -> Optional[bytes]:
+        """Render canonical fixation events as the RGBA heatmap PNG.
+
+        Callers that pool events from several recordings, such as the group
+        report, share the exact density, smoothing and colour mapping of the
+        single-recording overlay.
+        """
         if events.empty:
-            return None, metadata
+            return None
 
         import io
         from scipy.ndimage import gaussian_filter
@@ -109,7 +135,7 @@ class HeatmapAnalyticsService:
         weights = weights[valid]
 
         if x_px.size == 0:
-            return None, metadata
+            return None
 
         # --- Density grid with square cells, so the blur below is circular ---
         grid_scale = min(1.0, cls.GRID_MAX_EDGE / max(out_w, out_h))
@@ -152,4 +178,4 @@ class HeatmapAnalyticsService:
 
         buf = io.BytesIO()
         img.save(buf, format="PNG", optimize=False)
-        return buf.getvalue(), metadata
+        return buf.getvalue()

@@ -13,7 +13,7 @@ Interfaz Next.js App Router, TypeScript y Tailwind CSS. La aplicación se inicia
 
 - El navegador usa `/api` en el mismo origen.
 - Next.js reenvía las solicitudes al backend interno mediante `NEXT_INTERNAL_API_BASE_URL`.
-- El login principal usa Google OAuth; el callback es `/authorize`.
+- El inicio de sesión es exclusivamente con Google OAuth; el callback es `/authorize`.
 
 ## Comprobaciones de código
 

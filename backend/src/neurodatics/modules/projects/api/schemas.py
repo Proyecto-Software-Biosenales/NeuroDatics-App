@@ -228,6 +228,7 @@ class ProjectDetailResponse(BaseModel):
     drive_root_folder_id: Optional[str] = None
     drive_root_folder_name: Optional[str] = None
     drive_root_folder_url: Optional[str] = None
+    source_folder_name: Optional[str] = None
     files: List[ProjectFileResponse] = []
     sensors: List[ProjectSensorResponse] = []
     participants: List[ParticipantResponse] = []

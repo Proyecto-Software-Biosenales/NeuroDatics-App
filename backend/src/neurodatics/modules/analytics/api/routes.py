@@ -68,7 +68,7 @@ from .schemas import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/analytics", tags=["analytics"])
 _redis = AnalyticsRedisCache()
-_CORRELATIONS_CACHE_ENDPOINT = "correlations:v2"
+_CORRELATIONS_CACHE_ENDPOINT = "correlations:v3"
 _CORRELATIONS_CACHE_TTL_SECONDS = 900
 
 
@@ -134,6 +134,39 @@ async def _verify_ownership(db: AsyncSession, project_id: UUID, current_user: st
 def _validate_time_window(start_time_s: Optional[float], end_time_s: Optional[float]) -> None:
     if start_time_s is not None and end_time_s is not None and end_time_s <= start_time_s:
         raise HTTPException(status_code=400, detail="end_time_s must be greater than start_time_s")
+
+
+def _eeg_processing(
+    reference: str,
+    bandpass_low_hz: Optional[float],
+    bandpass_high_hz: Optional[float],
+    notch_hz: Optional[float],
+) -> tuple[dict, str]:
+    """Validate the optional EEG processing and return kwargs plus a cache key.
+
+    Every option here changes samples, so it is part of the cache identity: two
+    requests that differ only in the filter must never answer for each other.
+    """
+
+    if (bandpass_low_hz is None) != (bandpass_high_hz is None):
+        raise HTTPException(
+            status_code=400,
+            detail="bandpass_low_hz and bandpass_high_hz must be given together",
+        )
+    band = None
+    if bandpass_low_hz is not None and bandpass_high_hz is not None:
+        if bandpass_high_hz <= bandpass_low_hz:
+            raise HTTPException(
+                status_code=400,
+                detail="bandpass_high_hz must be greater than bandpass_low_hz",
+            )
+        band = (bandpass_low_hz, bandpass_high_hz)
+    band_key = "off" if band is None else f"{band[0]:g}-{band[1]:g}"
+    notch_key = "off" if notch_hz is None else f"{float(notch_hz):g}"
+    return (
+        {"reference": reference, "bandpass_hz": band, "notch_hz": notch_hz},
+        f"ref:{reference}:band:{band_key}:notch:{notch_key}",
+    )
 
 
 def _time_window_key(start_time_s: Optional[float], end_time_s: Optional[float]) -> str:
@@ -421,7 +454,7 @@ async def comparison_charts(
         participant_code=participant_code,
         scenario=scenario,
         endpoint=lambda transform_token: (
-            f"comparison_charts:v1:stimulus-v1:{transform_token}:{max_points}:{views_token}"
+            f"comparison_charts:v2:stimulus-v1:{transform_token}:{max_points}:{views_token}"
         ),
         compute=lambda df: {
             "charts": ChartConfigBuilder.build_many(
@@ -816,16 +849,24 @@ async def eeg_timeseries(
     participant_code: str = Query(...),
     scenario: str = Query(default="all"),
     channels: str = Query(default=""),
-    smooth_window_s: float = Query(default=0.2, ge=0.0, le=5.0),
+    smooth_window_s: float = Query(default=0.0, ge=0.0, le=5.0),
     max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
+    decimation: str = Query(default="linspace", pattern="^(linspace|minmax_envelope)$"),
+    reference: str = Query(default="as_exported", pattern="^(as_exported|common_average)$"),
+    bandpass_low_hz: Optional[float] = Query(default=None, gt=0.0),
+    bandpass_high_hz: Optional[float] = Query(default=None, gt=0.0),
+    notch_hz: Optional[float] = Query(default=None, gt=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
     reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
     _validate_time_window(start_time_s, end_time_s)
+    processing, processing_key = _eeg_processing(
+        reference, bandpass_low_hz, bandpass_high_hz, notch_hz
+    )
 
     requested_channels = [
         channel.strip().lower()
@@ -834,7 +875,10 @@ async def eeg_timeseries(
     ] or None
     channels_key = ",".join(requested_channels) if requested_channels else "all"
     time_window_key = _time_window_key(start_time_s, end_time_s)
-    cache_endpoint = f"timeseries_eeg:{channels_key}:{smooth_window_s}:{max_points}:{time_window_key}"
+    cache_endpoint = (
+        f"timeseries_eeg:v2:{channels_key}:{smooth_window_s}:{max_points}:"
+        f"{time_window_key}:{decimation}:{processing_key}"
+    )
     return await cached_frame_endpoint(
         reader=reader,
         project=project,
@@ -849,6 +893,8 @@ async def eeg_timeseries(
             max_points=max_points,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
+            decimation=decimation,
+            **processing,
         ),
         response_model=EegTimeseriesResponse,
     )
@@ -865,12 +911,20 @@ async def eeg_psd(
     max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
+    exclude_artifact_windows: bool = Query(default=False),
+    reference: str = Query(default="as_exported", pattern="^(as_exported|common_average)$"),
+    bandpass_low_hz: Optional[float] = Query(default=None, gt=0.0),
+    bandpass_high_hz: Optional[float] = Query(default=None, gt=0.0),
+    notch_hz: Optional[float] = Query(default=None, gt=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
     reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
     _validate_time_window(start_time_s, end_time_s)
+    processing, processing_key = _eeg_processing(
+        reference, bandpass_low_hz, bandpass_high_hz, notch_hz
+    )
 
     requested_channels = [
         channel.strip().lower()
@@ -881,7 +935,11 @@ async def eeg_psd(
     max_freq_key = "auto" if max_freq_hz is None else f"{float(max_freq_hz):g}"
     scale_key = "db" if use_db else "linear"
     time_window_key = _time_window_key(start_time_s, end_time_s)
-    cache_endpoint = f"psd_eeg:{channels_key}:{max_freq_key}:{scale_key}:{max_points}:{time_window_key}"
+    windows_key = "drop_flagged" if exclude_artifact_windows else "keep_flagged"
+    cache_endpoint = (
+        f"psd_eeg:v2:{channels_key}:{max_freq_key}:{scale_key}:{max_points}:"
+        f"{time_window_key}:{windows_key}:{processing_key}"
+    )
     return await cached_frame_endpoint(
         reader=reader,
         project=project,
@@ -897,6 +955,8 @@ async def eeg_psd(
             max_points=max_points,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
+            exclude_artifact_windows=exclude_artifact_windows,
+            **processing,
         ),
         response_model=EegPsdResponse,
     )
@@ -911,21 +971,32 @@ async def eeg_spectrogram(
     max_freq_hz: Optional[float] = Query(default=25.0, gt=0.0),
     use_db: bool = Query(default=True),
     normalize: str = Query(
-        default="freq_demean",
+        default="none",
         pattern="^(none|freq_demean|freq_zscore)$",
     ),
     window_s: float = Query(default=1.5, gt=0.0, le=10.0),
     overlap_ratio: float = Query(default=0.75, ge=0.0, lt=1.0),
-    smooth_sigma: float = Query(default=0.8, ge=0.0, le=5.0),
+    smooth_sigma: float = Query(default=0.0, ge=0.0, le=5.0),
     clip_low_percentile: float = Query(default=2.0, ge=0.0, le=100.0),
     clip_high_percentile: float = Query(default=98.0, ge=0.0, le=100.0),
     max_time_bins: int = Query(default=600, ge=1, le=5000),
     max_frequency_bins: int = Query(default=256, ge=1, le=2048),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
+    per_channel_color_domain: bool = Query(default=False),
+    reference: str = Query(default="as_exported", pattern="^(as_exported|common_average)$"),
+    bandpass_low_hz: Optional[float] = Query(default=None, gt=0.0),
+    bandpass_high_hz: Optional[float] = Query(default=None, gt=0.0),
+    notch_hz: Optional[float] = Query(default=None, gt=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
     reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
+    processing, processing_key = _eeg_processing(
+        reference, bandpass_low_hz, bandpass_high_hz, notch_hz
+    )
 
     requested_channels = [
         channel.strip().lower()
@@ -935,12 +1006,14 @@ async def eeg_spectrogram(
     channels_key = ",".join(requested_channels) if requested_channels else "all"
     max_freq_key = "auto" if max_freq_hz is None else f"{float(max_freq_hz):g}"
     scale_key = "db" if use_db else "linear"
+    color_key = "per_channel" if per_channel_color_domain else "shared"
     cache_endpoint = (
-        "spectrogram_eeg:"
+        "spectrogram_eeg:v2:"
         f"{channels_key}:{max_freq_key}:{scale_key}:{normalize}:"
         f"{window_s}:{overlap_ratio}:{smooth_sigma}:"
         f"{clip_low_percentile}:{clip_high_percentile}:"
-        f"{max_time_bins}:{max_frequency_bins}"
+        f"{max_time_bins}:{max_frequency_bins}:"
+        f"{_time_window_key(start_time_s, end_time_s)}:{color_key}:{processing_key}"
     )
     return await cached_frame_endpoint(
         reader=reader,
@@ -962,6 +1035,10 @@ async def eeg_spectrogram(
             clip_high_percentile=clip_high_percentile,
             max_time_bins=max_time_bins,
             max_frequency_bins=max_frequency_bins,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+            per_channel_color_domain=per_channel_color_domain,
+            **processing,
         ),
         response_model=EegSpectrogramResponse,
     )
@@ -977,11 +1054,21 @@ async def eeg_topography(
     overlap_ratio: float = Query(default=0.5, ge=0.0, lt=1.0),
     remove_dc: bool = Query(default=True),
     max_frames: int = Query(default=600, ge=1, le=5000),
+    start_time_s: Optional[float] = Query(default=None, ge=0.0),
+    end_time_s: Optional[float] = Query(default=None, ge=0.0),
+    reference: str = Query(default="as_exported", pattern="^(as_exported|common_average)$"),
+    bandpass_low_hz: Optional[float] = Query(default=None, gt=0.0),
+    bandpass_high_hz: Optional[float] = Query(default=None, gt=0.0),
+    notch_hz: Optional[float] = Query(default=None, gt=0.0),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
     reader: AnalyticsFrameReader = Depends(get_frame_reader),
 ):
     project = await _verify_ownership(db, project_id, current_user)
+    _validate_time_window(start_time_s, end_time_s)
+    processing, processing_key = _eeg_processing(
+        reference, bandpass_low_hz, bandpass_high_hz, notch_hz
+    )
 
     requested_channels = [
         channel.strip().lower()
@@ -991,8 +1078,9 @@ async def eeg_topography(
     channels_key = ",".join(requested_channels) if requested_channels else "all"
     dc_key = "dc_removed" if remove_dc else "raw"
     cache_endpoint = (
-        "topography_eeg:"
-        f"{channels_key}:{window_s}:{overlap_ratio}:{dc_key}:{max_frames}"
+        "topography_eeg:v2:"
+        f"{channels_key}:{window_s}:{overlap_ratio}:{dc_key}:{max_frames}:"
+        f"{_time_window_key(start_time_s, end_time_s)}:{processing_key}"
     )
     return await cached_frame_endpoint(
         reader=reader,
@@ -1008,6 +1096,9 @@ async def eeg_topography(
             overlap_ratio=overlap_ratio,
             remove_dc=remove_dc,
             max_frames=max_frames,
+            start_time_s=start_time_s,
+            end_time_s=end_time_s,
+            **processing,
         ),
         response_model=EegTopographyResponse,
     )

@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { useZipUploadAttempt } from "./useZipUploadAttempt";
 import { packageExperimentFolder } from "./packageExperimentFolder";
 import { detectedUploadMetadata } from "./uploadMetadata";
+import { resolveScenarioImageUrl } from "../driveFallbackUrl";
+import { storageCopy } from "../storageCopy";
 
 const STEP1_LOADING_TOAST_ID = "create-project-step1-drive-sync";
 
@@ -71,29 +73,6 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
     return error.message;
   }
   return fallback;
-};
-
-const extractDriveFileId = (url?: string | null): string | null => {
-  if (!url) return null;
-  const filePathMatch = url.match(/\/d\/([^/]+)/i);
-  if (filePathMatch?.[1]) return filePathMatch[1];
-  const queryMatch = url.match(/[?&]id=([^&]+)/i);
-  if (queryMatch?.[1]) return queryMatch[1];
-  return null;
-};
-
-const resolveScenarioImageUrl = (file?: {
-  drive_download_link?: string | null;
-  external_id?: string | null;
-  drive_web_view_link?: string | null;
-}): string | null => {
-  if (!file) return null;
-  if (file.drive_download_link) return file.drive_download_link;
-  const driveFileId = file.external_id || extractDriveFileId(file.drive_web_view_link);
-  if (driveFileId) {
-    return `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w2000`;
-  }
-  return file.drive_web_view_link ?? null;
 };
 
 const buildStep4ImageScenaries = (detail: ApiProjectDetail): ProjectFormData["scenaries"] => {
@@ -154,7 +133,7 @@ export const useCreateProjectWizard = (
 
   const cancelZipUpload = () => {
     uploadAttempt.cancel();
-    setSaveProgressMessage("Cancelando subida a Google Drive...");
+    setSaveProgressMessage(storageCopy.cancellingUpload);
   };
 
   const [formData, setFormData] = useState<ProjectFormData>({
@@ -385,7 +364,7 @@ export const useCreateProjectWizard = (
           const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0);
 
           if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
-            updateProgress("Preparando sincronización en Google Drive...");
+            updateProgress(storageCopy.preparingSync);
             return;
           }
 
@@ -399,7 +378,7 @@ export const useCreateProjectWizard = (
           if (snapshot.phase === "canceling") {
             updateProgress("Cancelando subida en backend...");
           } else if (percent >= 99 && snapshot.phase !== "completed") {
-            updateProgress("Finalizando sincronización con Google Drive...");
+            updateProgress(storageCopy.finalizingSync);
           } else {
             toast.loading(`Procesando archivos de ${formData.projectName} - ${percent}%`, {
               id: STEP1_LOADING_TOAST_ID,

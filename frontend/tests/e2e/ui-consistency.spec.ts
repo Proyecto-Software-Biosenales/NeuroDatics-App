@@ -14,7 +14,7 @@ for (const theme of ["light", "dark"]) {
       await page.setViewportSize({ width, height: 1000 })
       await page.addInitScript(({ theme }) => {
         localStorage.setItem("theme", theme)
-        if (["/login", "/register"].includes(location.pathname)) {
+        if (location.pathname === "/login") {
           localStorage.removeItem("neurodatics-auth-session")
           return
         }
@@ -29,12 +29,14 @@ for (const theme of ["light", "dark"]) {
       })
       const errors: string[] = []
       page.on("pageerror", error => errors.push(error.message))
-      for (const route of ["/", "/login", "/register", "/proyectos", "/reportes", "/dashboard"]) {
+      for (const route of ["/", "/login", "/proyectos", "/reportes", "/dashboard"]) {
         await page.goto(route)
         await expect(page.locator("body")).not.toBeEmpty()
         if (route === "/dashboard") await expect(page.getByRole("button", { name: "Eye Tracker", exact: true })).toHaveAttribute("aria-pressed", "true")
-        if (route === "/login") await expect(page.getByLabel("Correo electrónico", { exact: true })).toBeVisible()
-        if (route === "/register") await expect(page.getByLabel("Correo electrónico", { exact: true })).toBeVisible()
+        if (route === "/login") {
+          await expect(page.getByRole("button", { name: "Continuar con Google", exact: true })).toBeVisible()
+          await expect(page.getByRole("textbox")).toHaveCount(0)
+        }
         if (route === "/proyectos") await expect(page.getByText(project.name, { exact: true })).toBeVisible()
         if (route === "/reportes") {
           await page.getByRole("combobox").click()

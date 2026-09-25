@@ -201,6 +201,7 @@ export type ApiProjectFile = {
 };
 
 export type ApiProjectDetail = ApiProject & {
+  source_folder_name?: string | null;
   files?: ApiProjectFile[];
   participants?: ApiProjectParticipant[];
   scenaries?: ApiProjectScenary[];

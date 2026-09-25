@@ -577,16 +577,16 @@ export function StimulusFixationCard({
             ].map(({ label, value, sub, Icon, bg, iconColor }) => (
               <div
                 key={label}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm roomy:p-4"
               >
-                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", bg)}>
-                  <Icon className={cn("h-5 w-5", iconColor)} />
+                <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg roomy:h-10 roomy:w-10 roomy:rounded-xl", bg)}>
+                  <Icon className={cn("h-4 w-4 roomy:h-5 roomy:w-5", iconColor)} />
                 </div>
                 <div className="min-w-0 flex flex-col">
                   <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
                     {label}
                   </p>
-                  <p className="mt-2 text-3xl font-bold leading-tight text-foreground">{value}</p>
+                  <p className="mt-0.5 text-xl font-bold leading-tight text-foreground roomy:mt-2 roomy:text-3xl">{value}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
                 </div>
               </div>

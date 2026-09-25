@@ -49,6 +49,10 @@ async def check_redis() -> bool:
 
 async def collect_readiness() -> Dict[str, str]:
     """Collect sanitized status for every dependency required by the API."""
+    if settings.is_local:
+        # The cache is in-process and cannot be down, so it is not a dependency to report.
+        return {"database": "ok" if await check_database() else "error"}
+
     database_ok, redis_ok = await asyncio.gather(check_database(), check_redis())
     return {
         "database": "ok" if database_ok else "error",

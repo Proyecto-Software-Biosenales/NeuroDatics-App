@@ -6,23 +6,35 @@ import { EegSpectrogramView } from "./eeg/EegSpectrogramView"
 import { EegTopographyView } from "./eeg/EegTopographyView"
 
 import { useMemo, useState } from "react"
+import { AlertTriangle } from "lucide-react"
+import type { AnalyticsChartNote } from "./AnalyticsChartShell"
 import { useEegPsd, useEegSpectrogram, useEegTimeseries, useEegTopography } from "../hooks/useAnalyticsData"
-import { EMPTY_TIME_WINDOW, EMPTY_TIME_WINDOW_DRAFT, parseTimeWindowValue, validateTimeWindowDraft, type TimeWindow, type TimeWindowDraft } from "./TimeWindowControls"
-import { EEG_CHANNELS, TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, type SignalMode, type EegTabProps, type EegChartPoint, type EegPsdChartPoint, type PsdStats, type SpectrogramStats } from "./eeg/eegViewShared"
-import { buildStats, finiteValues, formatChannel, mean, median, readClickedTime, rotateTopographyPositionClockwise, std, type ChannelStats, type TopographyFrameRow } from "../eegPresentation"
+import { useTimeWindow, useZoomHistory } from "../hooks/useZoomHistory"
+import { normalizeZoomRange, sameZoomRange, zoomSpan, sliceEegPsd, sliceEegSpectrogram, type ZoomRange } from "../chartZoom"
+import { EEG_CHANNELS, EEG_QUALITY_NOTES_ID, EEG_TIMESERIES_CHART_ID, TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, scrollToSection, type SignalMode, type ChartLayout, type EegTabProps, type EegChartPoint, type EegPsdChartPoint, type PsdStats, type SpectrogramStats } from "./eeg/eegViewShared"
+import { buildStats, finiteValues, fullResolutionStats, montageLanes, nearestTimeIndex, formatChannel, mean, median, readClickedTime, robustDomain, rotateTopographyPositionClockwise, std, visibleArtifactSpans, type ChannelStats, type TopographyFrameRow } from "../eegPresentation"
+import { EegArtifactSpanList, EegChannelQualityTable, EegQualityNotes, eegQualityLines } from "./eeg/EegQualityPanel"
 const EMPTY_CHANNELS: string[] = []
 
 export function EegTab({ projectId, participantCode, scenario, view }: EegTabProps) {
   const [selectedChannels, setSelectedChannels] = useState<string[]>(EEG_CHANNELS)
-  const [signalMode, setSignalMode] = useState<SignalMode>("smooth")
+  const [signalMode, setSignalMode] = useState<SignalMode>("raw")
+  const [chartLayout, setChartLayout] = useState<ChartLayout>("overlay")
+  const [focusChannel, setFocusChannel] = useState<string | null>(null)
+  const [excludeArtifactWindows, setExcludeArtifactWindows] = useState(false)
+  const [perChannelSpectrogramColor, setPerChannelSpectrogramColor] = useState(false)
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [selectedTopographyFrame, setSelectedTopographyFrame] = useState(0)
-  const [timeseriesWindowDraft, setTimeseriesWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
-  const [timeseriesWindow, setTimeseriesWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
-  const [timeseriesWindowError, setTimeseriesWindowError] = useState<string | null>(null)
-  const [psdWindowDraft, setPsdWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
-  const [psdWindow, setPsdWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
-  const [psdWindowError, setPsdWindowError] = useState<string | null>(null)
+  const timeseriesWindowState = useTimeWindow(() => setSelectedTime(null))
+  const timeseriesWindow = timeseriesWindowState.window
+  const psdWindowState = useTimeWindow()
+  const psdWindow = psdWindowState.window
+  const spectrogramWindowState = useTimeWindow(() => setSelectedTime(null))
+  const spectrogramWindow = spectrogramWindowState.window
+  const topographyWindowState = useTimeWindow(() => setSelectedTopographyFrame(0))
+  const topographyWindow = topographyWindowState.window
+  const psdFrequencyZoom = useZoomHistory<ZoomRange>(sameZoomRange)
+  const spectrogramTimeZoom = useZoomHistory<ZoomRange>(sameZoomRange)
 
   const {
     data: timeseriesData,
@@ -36,10 +48,13 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     0.2,
     5000,
     timeseriesWindow.start,
-    timeseriesWindow.end
+    timeseriesWindow.end,
+    // Evenly spaced selection hid one-sample peaks outright; the envelope keeps
+    // both extremes of every bucket inside the same point budget.
+    "minmax_envelope"
   )
   const {
-    data: psdData,
+    data: fullPsdData,
     loading: psdLoading,
     error: psdError,
   } = useEegPsd(
@@ -51,17 +66,26 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     true,
     5000,
     psdWindow.start,
-    psdWindow.end
+    psdWindow.end,
+    excludeArtifactWindows
   )
   const {
-    data: spectrogramData,
+    data: fullSpectrogramData,
     loading: spectrogramLoading,
     error: spectrogramError,
   } = useEegSpectrogram(
     projectId,
     view === "spectrogram" ? participantCode : null,
     scenario,
-    selectedChannels
+    selectedChannels,
+    25,
+    true,
+    "none",
+    600,
+    256,
+    spectrogramWindow.start,
+    spectrogramWindow.end,
+    perChannelSpectrogramColor
   )
   const {
     data: topographyData,
@@ -71,7 +95,23 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     projectId,
     view === "topography" ? participantCode : null,
     scenario,
-    selectedChannels
+    selectedChannels,
+    2.0,
+    0.5,
+    true,
+    600,
+    topographyWindow.start,
+    topographyWindow.end
+  )
+
+  // Drag zoom narrows what PSD and spectrogram show; every derived statistic follows it.
+  const psdData = useMemo(
+    () => sliceEegPsd(fullPsdData, psdFrequencyZoom.range),
+    [fullPsdData, psdFrequencyZoom.range]
+  )
+  const spectrogramData = useMemo(
+    () => sliceEegSpectrogram(fullSpectrogramData, spectrogramTimeZoom.range),
+    [fullSpectrogramData, spectrogramTimeZoom.range]
   )
 
   const chartData = useMemo<EegChartPoint[]>(() => {
@@ -80,8 +120,8 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     return timeseriesData.time.map((time, index) => {
       const point: EegChartPoint = { time }
       for (const channel of timeseriesData.channels) {
-        point[`${channel}_raw`] = timeseriesData.raw[channel]?.[index] ?? 0
-        point[`${channel}_smooth`] = timeseriesData.smooth[channel]?.[index] ?? 0
+        point[`${channel}_raw`] = timeseriesData.raw[channel]?.[index] ?? Number.NaN
+        point[`${channel}_smooth`] = timeseriesData.smooth[channel]?.[index] ?? Number.NaN
       }
       return point
     })
@@ -98,7 +138,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     return psdData.frequency.map((frequency, index) => {
       const point: EegPsdChartPoint = { frequency }
       for (const channel of psdData.channels) {
-        point[channel] = psdData.power[channel]?.[index] ?? 0
+        point[channel] = psdData.power[channel]?.[index] ?? Number.NaN
       }
       return point
     })
@@ -123,34 +163,29 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     return nearest
   }, [chartData, selectedTime])
 
-  const channelStats = useMemo<ChannelStats[]>(() => {
-    if (!timeseriesData) return []
-    return timeseriesData.channels
-      .map((channel) => {
-        const values = finiteValues(timeseriesData.smooth[channel] ?? [])
-        return buildStats(channel, values)
-      })
-      .filter((row): row is ChannelStats => row != null)
-  }, [timeseriesData])
+  const channelStats = useMemo<ChannelStats[]>(
+    () => fullResolutionStats(timeseriesData, signalMode),
+    [timeseriesData, signalMode]
+  )
+  const statisticsMode = signalMode === "smooth" ? "smooth" : "raw"
+
+  // Channel medians in SAIO block 5 run from -1,256 uV (C4) to +988 uV (LE), so
+  // a mean over channels describes no electrode, and it moved whenever a chip
+  // was toggled. These three numbers now name whose they are.
+  const activeFocusChannel = useMemo(() => {
+    const available = channelStats.map((row) => row.channel)
+    if (available.length === 0) return null
+    return focusChannel && available.includes(focusChannel) ? focusChannel : available[0]
+  }, [channelStats, focusChannel])
 
   const timeRepresentativeStats = useMemo(() => {
-    const values = channelStats.flatMap((row) =>
-      finiteValues(timeseriesData?.smooth[row.channel] ?? [])
-    )
-    if (values.length === 0) {
-      return {
-        meanValue: null,
-        minValue: null,
-        maxValue: null,
-      }
-    }
-
+    const row = channelStats.find((item) => item.channel === activeFocusChannel)
     return {
-      meanValue: mean(values),
-      minValue: Math.min(...values),
-      maxValue: Math.max(...values),
+      meanValue: row?.mean ?? null,
+      minValue: row?.min ?? null,
+      maxValue: row?.max ?? null,
     }
-  }, [channelStats, timeseriesData])
+  }, [channelStats, activeFocusChannel])
 
   const psdStats = useMemo<PsdStats[]>(() => {
     if (!psdData) return []
@@ -160,17 +195,17 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         const stats = buildStats(channel, values)
         if (!stats || values.length === 0) return null
 
-        let peakIndex = 0
-        for (let index = 1; index < values.length; index += 1) {
-          if (values[index] > values[peakIndex]) {
-            peakIndex = index
-          }
-        }
+        const original = psdData.power[channel] ?? []
+        let peakIndex = -1
+        original.forEach((value, index) => {
+          if (typeof value === "number" && Number.isFinite(value) &&
+              (peakIndex < 0 || value > (original[peakIndex] ?? -Infinity))) peakIndex = index
+        })
 
         return {
           ...stats,
           peakFrequency: psdData.frequency[peakIndex] ?? 0,
-          peakPower: values[peakIndex],
+          peakPower: original[peakIndex] as number,
         }
       })
       .filter((row): row is PsdStats => row != null)
@@ -240,7 +275,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
 
         matrix.forEach((row, frequencyIndex) => {
           row.forEach((value, timeIndex) => {
-            if (!Number.isFinite(value)) return
+            if (typeof value !== "number" || !Number.isFinite(value)) return
             if (value > peakPower) {
               peakPower = value
               peakFrequencyIndex = frequencyIndex
@@ -317,6 +352,68 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     }
   }, [topographyData, topographyFrameIndex, topographyRows])
 
+  const timeseriesChannels = timeseriesData?.channels ?? EMPTY_CHANNELS
+
+  const artifactSpans = useMemo(
+    () => visibleArtifactSpans(timeseriesData?.metadata, timeseriesChannels),
+    [timeseriesData, timeseriesChannels]
+  )
+
+  /** Per-channel robust span: sets both the shared y range and the lane pitch. */
+  const channelDomains = useMemo(() => {
+    const domains: Record<string, { min: number; max: number }> = {}
+    const source = statisticsMode === "smooth" ? timeseriesData?.smooth : timeseriesData?.raw
+    for (const channel of timeseriesChannels) {
+      const domain = robustDomain(finiteValues(source?.[channel] ?? []))
+      if (domain) domains[channel] = { min: domain.min, max: domain.max }
+    }
+    return domains
+  }, [timeseriesData, timeseriesChannels, statisticsMode])
+
+  const yDomain = useMemo(() => {
+    const source = statisticsMode === "smooth" ? timeseriesData?.smooth : timeseriesData?.raw
+    return robustDomain(
+      timeseriesChannels.flatMap((channel) => finiteValues(source?.[channel] ?? []))
+    )
+  }, [timeseriesData, timeseriesChannels, statisticsMode])
+
+  const montage = useMemo(
+    () =>
+      montageLanes(
+        timeseriesChannels,
+        Object.fromEntries(
+          Object.entries(channelDomains).map(([channel, domain]) => [
+            channel,
+            domain.max - domain.min,
+          ])
+        )
+      ),
+    [timeseriesChannels, channelDomains]
+  )
+
+  /** The montage keeps the recorded value in the row and plots a shifted copy,
+   *  so the tooltip and every statistic still read microvolts. */
+  const laneChartData = useMemo<EegChartPoint[]>(() => {
+    if (chartLayout !== "stacked") return chartData
+    const centre: Record<string, number> = {}
+    for (const lane of montage.lanes) {
+      const domain = channelDomains[lane.channel]
+      centre[lane.channel] = domain ? (domain.min + domain.max) / 2 : 0
+    }
+    return chartData.map((point) => {
+      const next: EegChartPoint = { ...point }
+      for (const lane of montage.lanes) {
+        for (const mode of ["raw", "smooth"] as const) {
+          const value = point[`${lane.channel}_${mode}`]
+          next[`${lane.channel}_${mode}_lane`] = Number.isFinite(value)
+            ? value - (centre[lane.channel] ?? 0) + lane.offset
+            : Number.NaN
+        }
+      }
+      return next
+    })
+  }, [chartData, chartLayout, montage, channelDomains])
+
   const availableChannels =
     timeseriesData?.available_channels ??
     psdData?.available_channels ??
@@ -326,18 +423,20 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   const visiblePsdChannels = psdData?.channels ?? EMPTY_CHANNELS
   const visibleSpectrogramChannels = spectrogramData?.channels ?? EMPTY_CHANNELS
   const availableTopographyChannels = topographyData?.available_channels ?? TOPOGRAPHY_CHANNELS
-  const eegChartLegend = visibleChannels.flatMap((channel) => {
-    const color = CHANNEL_COLORS[channel] ?? "#4B5563"
-    const channelLabel = formatChannel(channel)
-    return [
-      ...(signalMode === "smooth" || signalMode === "both"
-        ? [{ label: `${channelLabel} suavizada`, color }]
-        : []),
-      ...(signalMode === "raw" || signalMode === "both"
-        ? [{ label: `${channelLabel} cruda`, color }]
-        : []),
-    ]
-  })
+  // One entry per channel: the mode selector already says Cruda or Suavizada,
+  // and in "Ambas" two style keys explain the thick and the faded stroke.
+  const eegChartLegend = [
+    ...visibleChannels.map((channel) => ({
+      label: formatChannel(channel),
+      color: CHANNEL_COLORS[channel] ?? "#4B5563",
+    })),
+    ...(signalMode === "both"
+      ? [
+          { label: "suavizada", color: "#6B7280", thick: true },
+          { label: "cruda", color: "#6B7280", opacity: 0.36 },
+        ]
+      : []),
+  ]
   const psdChartLegend = visiblePsdChannels.map((channel) => ({
     label: formatChannel(channel),
     color: CHANNEL_COLORS[channel] ?? "#4B5563",
@@ -346,45 +445,37 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   const selectedEegValue = useMemo(() => {
     if (!selectedPoint || visibleChannels.length === 0) return null
     const values = visibleChannels
-      .map((channel) => selectedPoint[`${channel}_smooth`])
+      .map((channel) => selectedPoint[`${channel}_${statisticsMode}`])
       .filter((value): value is number => Number.isFinite(value))
     return values.length > 0 ? mean(values) : null
-  }, [selectedPoint, visibleChannels])
+  }, [selectedPoint, visibleChannels, statisticsMode])
 
   const timeExtremePoints = useMemo(() => {
     let minPoint: { time: number; value: number } | null = null
     let maxPoint: { time: number; value: number } | null = null
 
     for (const point of chartData) {
-      for (const channel of visibleChannels) {
-        const value = point[`${channel}_smooth`]
-        if (!Number.isFinite(value)) continue
-        if (!minPoint || value < minPoint.value) {
-          minPoint = { time: point.time, value }
-        }
-        if (!maxPoint || value > maxPoint.value) {
-          maxPoint = { time: point.time, value }
-        }
+      if (!activeFocusChannel) break
+      const value = point[`${activeFocusChannel}_${statisticsMode}`]
+      if (!Number.isFinite(value)) continue
+      if (!minPoint || value < minPoint.value) {
+        minPoint = { time: point.time, value }
+      }
+      if (!maxPoint || value > maxPoint.value) {
+        maxPoint = { time: point.time, value }
       }
     }
 
     return { minPoint, maxPoint }
-  }, [chartData, visibleChannels])
+  }, [chartData, activeFocusChannel, statisticsMode])
 
   const spectrogramSelectedValue = useMemo(() => {
     if (selectedTime == null || !spectrogramData || visibleSpectrogramChannels.length === 0) {
       return null
     }
 
-    let timeIndex = 0
-    let minDiff = Math.abs((spectrogramData.time[0] ?? 0) - selectedTime)
-    for (let index = 1; index < spectrogramData.time.length; index += 1) {
-      const diff = Math.abs(spectrogramData.time[index] - selectedTime)
-      if (diff < minDiff) {
-        minDiff = diff
-        timeIndex = index
-      }
-    }
+    const timeIndex = nearestTimeIndex(spectrogramData.time, selectedTime, Number(spectrogramData.metadata?.display_hop_s ?? spectrogramData.metadata?.hop_s))
+    if (timeIndex < 0) return null
 
     const values = visibleSpectrogramChannels
       .flatMap((channel) => (spectrogramData.power[channel] ?? []).map((row) => row[timeIndex]))
@@ -423,73 +514,76 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     setSelectedTime(time)
   }
 
-  const handleApplyTimeseriesWindow = () => {
-    const start = parseTimeWindowValue(timeseriesWindowDraft.start)
-    const end = parseTimeWindowValue(timeseriesWindowDraft.end)
-
-    if (Number.isNaN(start) || Number.isNaN(end)) {
-      setTimeseriesWindowError("Usa valores numéricos válidos para la ventana temporal.")
-      return
-    }
-
-    if ((start != null && start < 0) || (end != null && end < 0)) {
-      setTimeseriesWindowError("Los segundos deben ser mayores o iguales a 0.")
-      return
-    }
-
-    if (start != null && end != null && end <= start) {
-      setTimeseriesWindowError("El segundo final debe ser mayor que el segundo inicial.")
-      return
-    }
-
-    setTimeseriesWindow({
-      start: start == null ? null : Number(start.toFixed(4)),
-      end: end == null ? null : Number(end.toFixed(4)),
-    })
-    setTimeseriesWindowError(null)
-    setSelectedTime(null)
+  const handleZoomPsdFrequency = (start: number, end: number) => {
+    const range = normalizeZoomRange(start, end, { decimals: 2 })
+    if (range && fullPsdData && zoomSpan(fullPsdData.frequency, range)) psdFrequencyZoom.zoomTo(range)
   }
 
-  const handleResetTimeseriesWindow = () => {
-    setTimeseriesWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
-    setTimeseriesWindow(EMPTY_TIME_WINDOW)
-    setTimeseriesWindowError(null)
-    setSelectedTime(null)
+  const handleZoomSpectrogramTime = (start: number, end: number) => {
+    const range = normalizeZoomRange(start, end)
+    if (range && fullSpectrogramData && zoomSpan(fullSpectrogramData.time, range)) spectrogramTimeZoom.zoomTo(range)
   }
 
-  const handleApplyPsdWindow = () => {
-    const { window, error } = validateTimeWindowDraft(psdWindowDraft)
-    if (error || !window) {
-      setPsdWindowError(error)
-      return
-    }
-
-    setPsdWindow(window)
-    setPsdWindowError(null)
-  }
-
-  const handleResetPsdWindow = () => {
-    setPsdWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
-    setPsdWindow(EMPTY_TIME_WINDOW)
-    setPsdWindowError(null)
-  }
+  // A zoom the current data cannot show (for example after a reload) offers no zoom actions.
+  const psdZoomed = psdData !== fullPsdData
+  const spectrogramZoomed = spectrogramData !== fullSpectrogramData
 
   const handleTopographyFrameChange = (value: number) => {
     setSelectedTopographyFrame(value)
   }
 
+  const currentData = view === "timeseries" ? timeseriesData : view === "psd" ? psdData : view === "spectrogram" ? spectrogramData : topographyData
+  // Warnings and unit caveats close the tab; each chart carries one chip that
+  // counts them, previews the first few on hover and jumps to the full card.
+  const qualityLines = eegQualityLines(currentData?.metadata)
+  const qualityNote: AnalyticsChartNote | null =
+    qualityLines.length > 0
+      ? {
+          id: "quality-notes",
+          tone: "warning",
+          Icon: AlertTriangle,
+          label: `${qualityLines.length} ${qualityLines.length === 1 ? "aviso" : "avisos"} de calidad`,
+          detail: (
+            <>
+              <ul className="list-disc space-y-0.5 pl-4">
+                {qualityLines.slice(0, 3).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+              <p className="text-muted-foreground">
+                {qualityLines.length > 3 ? `Y ${qualityLines.length - 3} más. ` : ""}Clic para verlos al final de la página.
+              </p>
+            </>
+          ),
+          onClick: () => scrollToSection(EEG_QUALITY_NOTES_ID),
+        }
+      : null
+  // A span chip marks the instant and brings the chart back into view.
+  const showArtifactOnChart = (time: number) => {
+    setSelectedTime(time)
+    scrollToSection(EEG_TIMESERIES_CHART_ID)
+  }
   return (
     <div className="analytics-stack">
       <EegTimeseriesView
         availableChannels={availableChannels}
+        artifactSpans={artifactSpans}
+        chartLayout={chartLayout}
+        setChartLayout={setChartLayout}
+        focusChannel={activeFocusChannel}
+        setFocusChannel={setFocusChannel}
+        montage={montage}
+        yDomain={yDomain}
         channelStats={channelStats}
-        chartData={chartData}
+        chartData={chartLayout === "stacked" ? laneChartData : chartData}
         chartDomain={chartDomain}
         eegChartLegend={eegChartLegend}
-        handleApplyTimeseriesWindow={handleApplyTimeseriesWindow}
+        handleApplyTimeseriesWindow={timeseriesWindowState.apply}
+        handleBackTimeseriesWindow={timeseriesWindowState.canGoBack ? timeseriesWindowState.back : undefined}
         handleChannelToggle={handleChannelToggle}
         handleChartClick={handleChartClick}
-        handleResetTimeseriesWindow={handleResetTimeseriesWindow}
+        handleResetTimeseriesWindow={timeseriesWindowState.reset}
+        handleZoomTimeseriesWindow={timeseriesWindowState.zoomTo}
         participantCode={participantCode}
         projectId={projectId}
         scenario={scenario}
@@ -499,8 +593,8 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         selectedTime={selectedTime}
         setSelectedTime={setSelectedTime}
         setSignalMode={setSignalMode}
-        setTimeseriesWindowDraft={setTimeseriesWindowDraft}
-        setTimeseriesWindowError={setTimeseriesWindowError}
+        setTimeseriesWindowDraft={timeseriesWindowState.setDraft}
+        setTimeseriesWindowError={timeseriesWindowState.setError}
         signalMode={signalMode}
         timeExtremePoints={timeExtremePoints}
         timeRepresentativeStats={timeRepresentativeStats}
@@ -508,21 +602,35 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         timeseriesError={timeseriesError}
         timeseriesLoading={timeseriesLoading}
         timeseriesWindow={timeseriesWindow}
-        timeseriesWindowDraft={timeseriesWindowDraft}
-        timeseriesWindowError={timeseriesWindowError}
+        timeseriesWindowDraft={timeseriesWindowState.draft}
+        timeseriesWindowError={timeseriesWindowState.error}
         view={view}
         visibleChannels={visibleChannels}
+        qualityNote={qualityNote}
       />
 
+      {view === "timeseries" ? (
+        <EegArtifactSpanList
+          metadata={timeseriesData?.metadata}
+          channels={timeseriesChannels}
+          selectedTime={selectedTime}
+          onSelectTime={showArtifactOnChart}
+        />
+      ) : null}
 
-
+      {view === "timeseries" ? (
+        <EegChannelQualityTable metadata={timeseriesData?.metadata} channels={timeseriesChannels} />
+      ) : null}
 
 
       <EegPsdView
         availableChannels={availableChannels}
-        handleApplyPsdWindow={handleApplyPsdWindow}
+        handleApplyPsdWindow={psdWindowState.apply}
         handleChannelToggle={handleChannelToggle}
-        handleResetPsdWindow={handleResetPsdWindow}
+        handleResetPsdWindow={psdWindowState.reset}
+        handleZoomPsdFrequency={handleZoomPsdFrequency}
+        handleResetPsdFrequencyZoom={psdZoomed ? psdFrequencyZoom.reset : undefined}
+        handleBackPsdFrequencyZoom={psdZoomed && psdFrequencyZoom.canGoBack ? psdFrequencyZoom.back : undefined}
         psdChartData={psdChartData}
         psdChartLegend={psdChartLegend}
         psdData={psdData}
@@ -532,13 +640,16 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         psdRepresentativeStats={psdRepresentativeStats}
         psdStats={psdStats}
         psdWindow={psdWindow}
-        psdWindowDraft={psdWindowDraft}
-        psdWindowError={psdWindowError}
+        psdWindowDraft={psdWindowState.draft}
+        psdWindowError={psdWindowState.error}
+        excludeArtifactWindows={excludeArtifactWindows}
+        setExcludeArtifactWindows={setExcludeArtifactWindows}
         selectedChannels={selectedChannels}
-        setPsdWindowDraft={setPsdWindowDraft}
-        setPsdWindowError={setPsdWindowError}
+        setPsdWindowDraft={psdWindowState.setDraft}
+        setPsdWindowError={psdWindowState.setError}
         view={view}
         visiblePsdChannels={visiblePsdChannels}
+        qualityNote={qualityNote}
       />
 
 
@@ -546,6 +657,9 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
       <EegSpectrogramView
         availableChannels={availableChannels}
         handleChannelToggle={handleChannelToggle}
+        handleZoomSpectrogramTime={handleZoomSpectrogramTime}
+        handleResetSpectrogramZoom={spectrogramZoomed ? spectrogramTimeZoom.reset : undefined}
+        handleBackSpectrogramZoom={spectrogramZoomed && spectrogramTimeZoom.canGoBack ? spectrogramTimeZoom.back : undefined}
         participantCode={participantCode}
         projectId={projectId}
         scenario={scenario}
@@ -559,8 +673,18 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         spectrogramRepresentativeStats={spectrogramRepresentativeStats}
         spectrogramSelectedValue={spectrogramSelectedValue}
         spectrogramStats={spectrogramStats}
+        spectrogramWindow={spectrogramWindow}
+        spectrogramWindowDraft={spectrogramWindowState.draft}
+        spectrogramWindowError={spectrogramWindowState.error}
+        setSpectrogramWindowDraft={spectrogramWindowState.setDraft}
+        setSpectrogramWindowError={spectrogramWindowState.setError}
+        handleApplySpectrogramWindow={spectrogramWindowState.apply}
+        handleResetSpectrogramWindow={spectrogramWindowState.reset}
+        perChannelColorDomain={perChannelSpectrogramColor}
+        setPerChannelColorDomain={setPerChannelSpectrogramColor}
         view={view}
         visibleSpectrogramChannels={visibleSpectrogramChannels}
+        qualityNote={qualityNote}
       />
 
 
@@ -580,11 +704,18 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         topographyLoading={topographyLoading}
         topographyRows={topographyRows}
         topographyStats={topographyStats}
+        topographyWindow={topographyWindow}
+        topographyWindowDraft={topographyWindowState.draft}
+        topographyWindowError={topographyWindowState.error}
+        setTopographyWindowDraft={topographyWindowState.setDraft}
+        setTopographyWindowError={topographyWindowState.setError}
+        handleApplyTopographyWindow={topographyWindowState.apply}
+        handleResetTopographyWindow={topographyWindowState.reset}
         view={view}
+        qualityNote={qualityNote}
       />
 
-
-
+      <EegQualityNotes metadata={currentData?.metadata} />
     </div>
   )
 }

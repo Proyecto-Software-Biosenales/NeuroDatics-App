@@ -4,7 +4,7 @@ import asyncio
 import logging
 from uuid import uuid4
 
-from .....infra.storage.gdrive_client import gdrive_client
+from ....integrations.storage_provider import gdrive_client
 from ...infrastructure.upload_attempt_store import UploadAttemptStore
 from ...infrastructure.mutation_lock import assert_project_mutation_lock
 from ..services.drive_upload_progress_registry import drive_upload_progress_registry

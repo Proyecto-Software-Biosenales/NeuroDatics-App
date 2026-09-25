@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { ProjectsApi, type ApiProjectAoi, type ApiProjectDetail, type ApiProjectFile } from "@/features/projects/api/projectsApi"
 import { apiAoiToFormAoi, normalizeAoiPoints } from "@/features/projects/create-project/aoiUtils"
+import { resolveScenarioImageUrl } from "@/features/projects/driveFallbackUrl"
 
 interface ViewProjectDialogProps {
   projectId: string
@@ -33,7 +34,10 @@ interface ViewProjectDialogProps {
   onOpenChange?: (open: boolean) => void
 }
 
-const getLatestZipFilename = (files: ApiProjectFile[] | undefined): string => {
+const getSourceFolderName = (detail: ApiProjectDetail | null): string => {
+  if (detail?.source_folder_name) return detail.source_folder_name
+  // Projects ingested before the folder name was recorded kept the uploaded ZIP.
+  const files = detail?.files
   if (!files || files.length === 0) return "No disponible"
 
   const zipFiles = files.filter((file) => file.kind === "experiment_zip")
@@ -65,25 +69,6 @@ const toScenaryTypeLabel = (type?: string | null): string => {
   if (type.toLowerCase() === "image") return "Imagen"
   if (type.toLowerCase() === "video") return "Video"
   return type
-}
-
-const extractDriveFileId = (url?: string | null): string | null => {
-  if (!url) return null
-  const filePathMatch = url.match(/\/d\/([^/]+)/i)
-  if (filePathMatch?.[1]) return filePathMatch[1]
-  const queryMatch = url.match(/[?&]id=([^&]+)/i)
-  if (queryMatch?.[1]) return queryMatch[1]
-  return null
-}
-
-const resolveScenarioImageUrl = (file?: ApiProjectFile): string | null => {
-  if (!file) return null
-  if (file.drive_download_link) return file.drive_download_link
-  const driveFileId = file.external_id || extractDriveFileId(file.drive_web_view_link)
-  if (driveFileId) {
-    return `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w2000`
-  }
-  return file.drive_web_view_link ?? null
 }
 
 export const ViewProjectDialog = ({
@@ -150,7 +135,7 @@ export const ViewProjectDialog = ({
     }
     return map
   }, [projectDetail?.files])
-  const zipFilename = useMemo(() => getLatestZipFilename(projectDetail?.files), [projectDetail?.files])
+  const zipFilename = useMemo(() => getSourceFolderName(projectDetail), [projectDetail])
 
   useEffect(() => {
     if (!isOpen) {

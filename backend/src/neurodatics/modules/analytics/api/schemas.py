@@ -139,18 +139,23 @@ class EegTimeseriesResponse(BaseModel):
     channels: List[str]
     available_channels: List[str]
     sampling_rate_hz: float
-    raw: Dict[str, List[float]]
-    smooth: Dict[str, List[float]]
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    raw: Dict[str, List[Optional[float]]]
+    smooth: Dict[str, List[Optional[float]]]
+    statistics: Dict[str, Dict[str, Optional[Dict[str, float]]]] = Field(default_factory=dict)
 
 
 class EegPsdResponse(BaseModel):
+    band_power: Dict[str, Dict[str, Optional[float]]] = Field(default_factory=dict)
+    total_power: Dict[str, float] = Field(default_factory=dict)
     frequency: List[float]
     channels: List[str]
     available_channels: List[str]
     sampling_rate_hz: float
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     use_db: bool
     unit: str
-    power: Dict[str, List[float]]
+    power: Dict[str, List[Optional[float]]]
 
 
 class ColorDomain(BaseModel):
@@ -164,10 +169,11 @@ class EegSpectrogramResponse(BaseModel):
     channels: List[str]
     available_channels: List[str]
     sampling_rate_hz: float
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     use_db: bool
     normalize: str
     unit: str
-    power: Dict[str, List[List[float]]]
+    power: Dict[str, List[List[Optional[float]]]]
     color_domain: ColorDomain
 
 
@@ -176,9 +182,10 @@ class EegTopographyResponse(BaseModel):
     channels: List[str]
     available_channels: List[str]
     sampling_rate_hz: float
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     unit: str
-    positions: Dict[str, List[float]]
-    power: Dict[str, List[float]]
+    positions: Dict[str, List[Optional[float]]]
+    power: Dict[str, List[Optional[float]]]
     color_domain: ColorDomain
     window_s: float
     overlap_ratio: float

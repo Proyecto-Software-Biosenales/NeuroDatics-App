@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 from copy import deepcopy
 
+from ....integrations.storage_provider import STORAGE_PROVIDER
 from ....scenaries.domain.entities import AOI
 
 
@@ -70,10 +71,11 @@ async def publish_ingestion(
             "ingestion_status": "READY",
             "ingestion_error": None,
             "last_ingested_at": datetime.now(timezone.utc),
-            "storage_provider": "gdrive",
+            "storage_provider": STORAGE_PROVIDER,
             "drive_root_folder_id": root["id"],
             "drive_root_folder_name": root["name"],
             "drive_root_folder_url": root["url"],
+            "source_folder_name": root["source_folder_name"],
         },
     )
     generation = await repository.bump_ingestion_generation(project_id)

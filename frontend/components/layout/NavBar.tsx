@@ -10,6 +10,7 @@ import { LoaderCircle, Menu, Moon, Sun, User } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
+import { IS_LOCAL_MODE } from '@/lib/appMode'
 import { useAuth } from '@/lib/providers/AuthProvider'
 import { cn } from '@/lib/utils'
 
@@ -24,15 +25,14 @@ const navItems: NavItem[] = [
   { path: '/proyectos', label: 'Proyectos', protected: true },
   { path: '/dashboard', label: 'Dashboard', protected: true },
   { path: '/reportes', label: 'Reportes', protected: true },
-]
+  { path: '/configuracion', label: 'Configuración', protected: true },
+].filter((item) => !(IS_LOCAL_MODE && item.path === '/configuracion')) // no Google Drive to set up locally
 
 export const NavBar = () => {
   const pathname = usePathname()
   const router = useRouter()
   const { currentUser, loading, signOut } = useAuth()
-  const isLoginPage = pathname === "/login"
-  const isRegisterPage = pathname === '/register'
-  const isAuthPage = isLoginPage || isRegisterPage
+  const isLoginPage = pathname === '/login'
 
   const handleProtectedNavigation = (event: React.MouseEvent<HTMLAnchorElement>, item: NavItem) => {
     if (item.protected && !currentUser) {
@@ -129,19 +129,22 @@ export const NavBar = () => {
                 <LoaderCircle className="h-5 w-5 animate-spin" />
               </div>
             ) : currentUser ? (
-              <Button variant="outline"
-                type="button"
-                onClick={handleSignOut}
-                className="gap-2"
-              >
-                Salir
-              </Button>
+              // The student edition has one fixed user and nothing to sign out of.
+              IS_LOCAL_MODE ? null : (
+                <Button variant="outline"
+                  type="button"
+                  onClick={handleSignOut}
+                  className="gap-2"
+                >
+                  Salir
+                </Button>
+              )
             ) : (
               <Link
                 href="/login"
                 className={cn(
                   'p-2 rounded-lg transition-all duration-200',
-                  isAuthPage
+                  isLoginPage
                     ? 'text-foreground bg-muted'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted',
                 )}

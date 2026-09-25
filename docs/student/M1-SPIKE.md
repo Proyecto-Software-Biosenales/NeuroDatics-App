@@ -141,6 +141,9 @@ Each trap below was hit for real; the fix is in the launcher prototype
 
 ## Gaps found reviewing the spike (2026-09-20)
 
+**All four were closed in M2 (2026-09-21); how is in the table under "M2 entry conditions" in
+[PLAN.md](PLAN.md).** The text below is kept as found.
+
 The results above stand; these are defects in the harness and in the build's provenance, not in
 what it measured. They are carried into M2 as entry conditions in [PLAN.md](PLAN.md), because
 finding 9 makes the frozen selftest the gate M2 leans on.

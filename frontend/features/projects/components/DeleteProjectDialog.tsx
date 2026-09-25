@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { DeleteProjectResult } from "@/features/projects/api/projectsApi"
+import { storageCopy } from "@/features/projects/storageCopy"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,9 +77,9 @@ export const DeleteProjectDialog = ({
       
       if (result?.drive_folder_found) {
         if (result.drive_folder_deleted) {
-          toast.success(`Proyecto "${projectName}" y carpeta de Drive eliminados correctamente.`)
+          toast.success(storageCopy.deletedWithFolder(projectName))
         } else {
-          toast.success(`Proyecto "${projectName}" eliminado. Carpeta de Drive no confirmada.`)
+          toast.success(storageCopy.deletedFolderUnconfirmed(projectName))
         }
       } else {
         toast.success(`Proyecto "${projectName}" eliminado correctamente.`)
@@ -105,7 +106,7 @@ export const DeleteProjectDialog = ({
               <span className="font-semibold text-foreground">
                 &quot;{projectName}&quot;
               </span>
-              , sus registros asociados y su carpeta en Google Drive.
+              {storageCopy.deleteWarningTail}
             </AlertDialogDescription>
           ) : (
             <div className="space-y-2">

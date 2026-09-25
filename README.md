@@ -4,6 +4,12 @@ Plataforma de análisis de bioseñales para neuromarketing. La aplicación se ej
 
 ## Inicio rápido
 
+Para entregar la aplicación a una persona sin entorno de desarrollo, usa el
+[paquete instalable en español](deployment/README.md). En Windows basta con
+abrir `INSTALAR.bat`: comprueba y prepara WSL/Docker Desktop, configura y carga
+las imágenes incluidas. Después se utiliza desde Docker Desktop.
+La guía del mantenedor está en [deployment/MANTENIMIENTO.md](deployment/MANTENIMIENTO.md).
+
 Requisitos: Docker Desktop y Git. No necesitas instalar Node.js, Python, PostgreSQL ni Redis.
 
 ```powershell

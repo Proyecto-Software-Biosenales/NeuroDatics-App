@@ -31,6 +31,7 @@ Los controles generales se importan desde `@/components/ui`. Se usa shadcn con e
 | Progreso de creación/edición | `ProjectSaveProgress` |
 | Pasos de reportes | `ReportStepCard` |
 | KPI y estadísticas | `features/analytics/components/KpiCard` y `StatisticsTable` |
+| Salvedad, aviso o salto junto a una gráfica | `features/analytics/components/InfoChip`; en gráficas Recharts, mediante `notes` de `AnalyticsChartShell`; en vistas canvas, en la fila de la barra de color |
 
 Las variantes definen colores, foco y estados deshabilitados. Los consumidores añaden principalmente distribución y dimensiones. Evitar copiar las clases internas de una base en cada pantalla.
 
@@ -43,6 +44,7 @@ Las superficies de interfaz usan `background`, `card`, `muted`, `foreground`, `b
 - `Slider` propaga el nombre accesible al thumb. Sus callbacks entregan valores numéricos, no eventos de inputs nativos.
 - `AnalyticsTabs` usa activación manual por teclado y un único contenedor de contenido para conservar el estado de EEG entre vistas.
 - Las tarjetas KPI tienen un botón real para seleccionar y otro independiente para el tooltip; no simulan botones con `div` y eventos de teclado.
+- `InfoChip` es un `Button` outline `xs` con `Tooltip`. Con `onClick` actúa (por ejemplo, salta a una sección y le pasa el foco); sin acción, un clic o un toque abre su explicación, porque el tooltip de Radix no se abre en pantallas táctiles. Las explicaciones junto a una gráfica van en fichas, no en párrafos ni cajas ámbar; los avisos completos de una pestaña la cierran, y la ficha de la gráfica lleva hasta ellos.
 - En pantallas menores de 768 px, Dashboard inicia con el panel compacto. El proyecto sigue desplegado en su estado interno y el sensor está seleccionado. Expandir el panel muestra los proyectos por encima del contenido. La navegación superior usa `DropdownMenu`.
 
 ## Excepciones
@@ -69,7 +71,7 @@ npm run build
 
 Las pruebas cubren selección inicial de Dashboard, preservación del estado EEG, comparativas, scroll de tablas, formularios de proyectos, carga/cancelación, selectores en diálogos, radios de reportes, exportación, teclado y foco.
 
-`tests/e2e/ui-consistency.spec.ts` recorre Inicio, login, registro, proyectos, reportes configurados y Dashboard a 390, 768, 1366 y 1920 px, con temas claro y oscuro. Comprueba errores de navegador, contenido esperado y ausencia de scroll horizontal del documento. Las capturas son referencias de revisión humana, no snapshots que acepten diferencias automáticamente.
+`tests/e2e/ui-consistency.spec.ts` recorre Inicio, login con Google, proyectos, reportes configurados y Dashboard a 390, 768, 1366 y 1920 px, con temas claro y oscuro. Comprueba errores de navegador, contenido esperado y ausencia de scroll horizontal del documento. Las capturas son referencias de revisión humana, no snapshots que acepten diferencias automáticamente.
 
 ```powershell
 $env:UI_CAPTURE='after'
@@ -96,6 +98,7 @@ Controles HTML identificados en la primera pasada, agrupados por consumidor. Los
 | `features/analytics/components/AnalyticsSidebar.tsx` | Button |
 | `features/analytics/components/AoiComparisonTab.tsx` | Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow |
 | `features/analytics/components/AoiOverlay.tsx` | Button, Skeleton |
+| `features/analytics/components/ChartDragZoom.tsx` | Button |
 | `features/analytics/components/DeviceDistanceTab.tsx` | Button, Skeleton |
 | `features/analytics/components/eeg/EegPsdView.tsx` | Button, Skeleton |
 | `features/analytics/components/eeg/EegSpectrogramView.tsx` | Button, Skeleton |
@@ -112,9 +115,8 @@ Controles HTML identificados en la primera pasada, agrupados por consumidor. Los
 | `features/analytics/components/ScanpathTab.tsx` | Button, Skeleton |
 | `features/analytics/components/StatisticsTable.tsx` | Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow |
 | `features/analytics/components/StimulusFixationCard.tsx` | Button, Skeleton |
-| `features/analytics/components/TimeWindowControls.tsx` | Button, Input, Label |
+| `features/analytics/components/TimeWindowControls.tsx` | Button, Input, Label, Popover |
 | `features/auth/components/LoginForm.tsx` | Button |
-| `features/auth/components/RegisterForm.tsx` | Button |
 | `features/projects/components/EditProjectDialog.tsx` | Button |
 | `features/projects/components/ProjectsGrid.tsx` | Button, Skeleton |
 | `features/projects/components/ViewProjectDialog.tsx` | Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow |

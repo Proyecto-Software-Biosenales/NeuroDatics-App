@@ -1,3 +1,5 @@
+import { IS_LOCAL_MODE } from "@/lib/appMode";
+import { ensureLocalSession } from "@/lib/auth/localAuth";
 import { clearStoredAuthSession, getAccessToken, isAccessTokenExpired } from "@/lib/auth/sessionStore";
 
 const BASE = "";
@@ -101,16 +103,20 @@ function redirectToLogin(message = SESSION_EXPIRED_MESSAGE): never {
   throw new Error(message);
 }
 
-function ensureAccessTokenIsValid() {
-  if (isAccessTokenExpired()) {
-    redirectToLogin();
+async function ensureAccessTokenIsValid() {
+  if (!isAccessTokenExpired()) return;
+  // There is no login to go back to in the student edition: ask the local backend for a new session.
+  if (IS_LOCAL_MODE) {
+    await ensureLocalSession();
+    return;
   }
+  redirectToLogin();
 }
 
 export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
   const { timeoutMs = API_REQUEST_TIMEOUT_MS, ...requestInit } = init;
 
-  ensureAccessTokenIsValid();
+  await ensureAccessTokenIsValid();
 
   const token = getAccessToken();
 
@@ -159,7 +165,7 @@ export async function apiUploadFormWithProgress<T>(
   onProgress?: UploadProgressCallback,
   signal?: AbortSignal
 ): Promise<T> {
-  ensureAccessTokenIsValid();
+  await ensureAccessTokenIsValid();
 
   const uploadOnce = async (): Promise<Response> => {
     const token = getAccessToken();
@@ -332,7 +338,7 @@ export async function apiFetchBlobWithHeaders(
 ): Promise<ApiBlobResponse> {
   const { timeoutMs = API_REQUEST_TIMEOUT_MS, ...requestInit } = init;
 
-  ensureAccessTokenIsValid();
+  await ensureAccessTokenIsValid();
 
   const token = getAccessToken();
   const method = (requestInit.method ?? "GET").toUpperCase();
@@ -384,7 +390,7 @@ export async function apiFetchBlobWithHeaders(
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`API ${res.status}: ${text || res.statusText}`);
+      throw buildApiError(res.status, res.statusText, text);
     }
 
     const blob = await res.blob();

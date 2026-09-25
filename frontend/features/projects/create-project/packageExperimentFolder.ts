@@ -1,4 +1,4 @@
-import { getFileRelativePath, toArchivePath } from "./folderStructure";
+import { getFileRelativePath, isAcquisitionEntry, toArchivePath } from "./folderStructure";
 
 export const MAX_EXPERIMENT_ZIP_BYTES = 500 * 1024 * 1024;
 
@@ -19,7 +19,9 @@ export async function packageExperimentFolder(files: File[], signal: AbortSignal
       throw new Error(`La carpeta contiene una ruta duplicada o vacía: ${relativePath}`);
     }
     paths.add(relativePath);
-    zip.file(relativePath, file, { compression: "STORE" });
+    // The server derives recordings from Acquisition/ paths alone, so its
+    // files travel empty instead of adding their full size to the upload.
+    zip.file(relativePath, isAcquisitionEntry(relativePath) ? "" : file, { compression: "STORE" });
   }
   const blob = await zip.generateAsync({ type: "blob" }, assertActive);
   assertActive();

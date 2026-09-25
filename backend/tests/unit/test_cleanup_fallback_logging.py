@@ -13,7 +13,9 @@ from PIL import Image
 from neurodatics.diagnostics import network_preflight
 import neurodatics.infra.storage.gdrive_client as drive
 from neurodatics.modules.projects.application.services import stimulus_probe_service as probe
-from neurodatics.modules.reports.application.services import executive_report_service as report
+from neurodatics.modules.reports.application.sensor_reports import common as report_common
+from neurodatics.modules.reports.application.sensor_reports import eye_tracking
+from neurodatics.modules.reports.application.sensor_reports import stimulus as report
 
 
 SENSITIVE_ERROR = "token=private-test-token; /private/participant.csv"
@@ -95,20 +97,19 @@ def test_heatmap_warning_preserves_missing_overlay(monkeypatch, caplog):
 
 
 def test_fixation_warning_preserves_other_report_assets(monkeypatch, caplog):
-    monkeypatch.setattr(report, "_open_base_image", lambda value: Image.new("RGBA", (16, 16)))
     monkeypatch.setattr(
-        report.HeatmapAnalyticsService, "compute_heatmap_overlay", lambda *a, **k: None
+        eye_tracking.FixationEventService, "build_events", fail_with_sensitive_error
     )
-    monkeypatch.setattr(
-        report.ScanpathAnalyticsService, "compute_scanpath", lambda *a, **k: {"n_objectives": 0}
-    )
-    monkeypatch.setattr(
-        report.FixationDataService, "compute_fixation_data", fail_with_sensitive_error
-    )
+    frame = pd.DataFrame({
+        "scenario": ["scenario"] * 4,
+        "time": [0.0, 0.1, 0.2, 0.3],
+        "distance": [650.0, 651.0, 652.0, 653.0],
+    })
+    participant = report_common.ReportParticipant("P1", "P1", "#2a78d6", frame)
 
-    assets = report.build_spatial_assets([], pd.DataFrame(), "scenario", None, [])
+    recording = eye_tracking.collect(participant, report_common.ReportScenario("scenario", "scenario", 1))
 
-    assert assets.heatmap is None
-    assert assets.scanpath is None
-    assert assets.spatial_metrics == []
-    assert_safe_warning(caplog, "Executive report fixation summary")
+    assert recording is not None
+    assert recording.fixation_count == 0
+    assert recording.distance_stats is not None
+    assert_safe_warning(caplog, "Eye Tracking report fixation events")

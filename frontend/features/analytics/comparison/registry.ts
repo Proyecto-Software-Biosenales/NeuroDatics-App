@@ -106,7 +106,7 @@ export const VISUALIZATION_REGISTRY: VisualizationDefinition[] = [
     id: "eeg_timeseries",
     label: "EEG por canal",
     shortLabel: "EEG por canal",
-    description: "Actividad eléctrica suavizada de los canales disponibles.",
+    description: "Amplitud registrada de los canales disponibles.",
     group: "temporal",
     sensor: "EEG",
     spatial: false,

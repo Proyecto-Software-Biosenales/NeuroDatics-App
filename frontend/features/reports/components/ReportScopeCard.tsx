@@ -55,7 +55,7 @@ export const ReportScopeCard = ({
               Un participante
             </Label>
             <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-              Genera el informe ejecutivo para un solo sujeto.
+              Gráficas y estadísticas completas de un solo sujeto en cada escenario.
             </p>
             {scopeKind === "participant" ? (
               <Select
@@ -64,9 +64,9 @@ export const ReportScopeCard = ({
                 disabled={loading || !hasParticipants}
               >
                 <SelectTrigger className="flex w-full max-w-md items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50">
-                  <SelectValue placeholder={loading ? "Cargando..." : "Selecciona un participante"}>
-                    {selectedParticipant || undefined}
-                  </SelectValue>
+                  {/* Radix renders the selected item's own label; passing children here
+                      would make the trigger both a portal container and a text node. */}
+                  <SelectValue placeholder={loading ? "Cargando..." : "Selecciona un participante"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -105,7 +105,7 @@ export const ReportScopeCard = ({
               Resumen de todos los participantes
             </h3>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Promedia metricas por participante y agrupa mapas por escenario.
+              Compara a todos los participantes: mapas agregados, tablas por participante y media del grupo.
             </p>
           </div>
         </Label>

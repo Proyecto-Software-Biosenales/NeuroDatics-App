@@ -1,6 +1,8 @@
 "use client"
 
-import { Fragment, useEffect, useRef } from "react"
+import { nearestTimeIndex } from "../eegPresentation"
+
+import { Fragment, useEffect, useMemo, useRef } from "react"
 import {
   Bar,
   BarChart,
@@ -14,7 +16,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { cn } from "@/lib/utils"
 import { AnalyticsChartShell } from "../components/AnalyticsChartShell"
+import { useChartDragZoom, usePointerDragZoom, ZoomControls } from "../components/ChartDragZoom"
+import { useZoomHistory } from "../hooks/useZoomHistory"
+import {
+  axisTickDecimals,
+  formatAxisTick,
+  normalizeZoomRange,
+  sameZoomRange,
+  zoomSpan,
+  sliceEegPsd,
+  sliceEegSpectrogram,
+  type ZoomRange,
+} from "../chartZoom"
 import type {
   EegPsdData,
   EegSpectrogramData,
@@ -128,9 +143,24 @@ export function TemporalLineChart({
   synchronized?: boolean
   height?: number
 }) {
-  const domain: [number, number] | ["dataMin", "dataMax"] = data.length
-    ? (xDomain ?? [data[0].time, data[data.length - 1].time])
-    : ["dataMin", "dataMax"]
+  const zoomHistory = useZoomHistory<ZoomRange>(sameZoomRange)
+  const zoomRange = zoomHistory.range
+  const times = useMemo(() => data.map((point) => point.time), [data])
+  // A zoom that no longer covers two observations (new data) shows the full view.
+  const zoom = zoomRange && zoomSpan(times, zoomRange) ? zoomRange : null
+  const visibleData = useMemo(
+    () => (zoom ? data.filter((point) => point.time >= zoom.start && point.time <= zoom.end) : data),
+    [data, zoom]
+  )
+  const dragZoom = useChartDragZoom((start, end) => {
+    const range = normalizeZoomRange(start, end)
+    if (range && zoomSpan(times, range)) zoomHistory.zoomTo(range)
+  })
+  const domain: [number, number] | ["dataMin", "dataMax"] = zoom
+    ? [zoom.start, zoom.end]
+    : data.length
+      ? (xDomain ?? [data[0].time, data[data.length - 1].time])
+      : ["dataMin", "dataMax"]
   const chartVariant = height >= 380 ? "eeg" : "mid"
   const chartLegend = series.map((item) => ({
     label: item.label,
@@ -138,6 +168,7 @@ export function TemporalLineChart({
   }))
 
   return (
+    <div className="relative">
     <div
       role="img"
       aria-label={`${yLabel}. ${data.length} observaciones; eje horizontal en segundos absolutos.${interactionHint ? ` ${interactionHint}` : ""}`}
@@ -147,17 +178,18 @@ export function TemporalLineChart({
         legend={chartLegend}
         xAxisLabel={xLabel}
         variant={chartVariant}
+        dragZoom={dragZoom}
       >
       <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
         <LineChart
-          data={data}
+          data={visibleData}
           syncId={synchronized ? "comparison-temporal-signals" : undefined}
           syncMethod={synchronized ? "value" : undefined}
           margin={{ top: 24, right: 22, left: 12, bottom: 12 }}
-          onClick={(state) => {
-            const point = resolveClickedPoint(data, state)
+          {...dragZoom.chartProps((state) => {
+            const point = resolveClickedPoint(visibleData, state)
             if (point) onPin?.(point)
-          }}
+          })}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -170,7 +202,7 @@ export function TemporalLineChart({
             domain={domain}
             height={32}
             tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-            tickFormatter={(value) => Number(value).toFixed(0)}
+            tickFormatter={(value) => formatAxisTick(value, axisTickDecimals(domain))}
           />
           <YAxis
             width={62}
@@ -246,6 +278,10 @@ export function TemporalLineChart({
       </AnalyticsChartShell>
       {interactionHint ? <span className="sr-only">{interactionHint}</span> : null}
     </div>
+    {zoom ? (
+      <ZoomControls onBack={zoomHistory.canGoBack ? zoomHistory.back : undefined} onReset={zoomHistory.reset} />
+    ) : null}
+    </div>
   )
 }
 
@@ -298,12 +334,19 @@ export function FixationHistogramChart({
   )
 }
 
-export function EegPsdChart({ data }: { data: EegPsdData }) {
+export function EegPsdChart({ data: fullData }: { data: EegPsdData }) {
+  const zoomHistory = useZoomHistory<ZoomRange>(sameZoomRange)
+  const zoom = zoomHistory.range && zoomSpan(fullData.frequency, zoomHistory.range) ? zoomHistory.range : null
+  const data = sliceEegPsd(fullData, zoom) ?? fullData
+  const dragZoom = useChartDragZoom((start, end) => {
+    const range = normalizeZoomRange(start, end, { decimals: 2 })
+    if (range && zoomSpan(fullData.frequency, range)) zoomHistory.zoomTo(range)
+  })
   const points = data.frequency.map((frequency, index) => {
     const row: Record<string, number> = { frequency }
     for (const channel of data.channels) {
       const value = data.power[channel]?.[index]
-      if (Number.isFinite(value)) row[channel] = value
+      if (typeof value === "number" && Number.isFinite(value)) row[channel] = value
     }
     return row
   })
@@ -312,15 +355,17 @@ export function EegPsdChart({ data }: { data: EegPsdData }) {
     color: EEG_CHANNEL_COLORS[channel] ?? "#64748B",
   }))
   return (
+    <div className="relative">
     <div
       role="img"
       aria-label={`Densidad espectral de ${data.channels.length} canales EEG.`}
     >
-      <AnalyticsChartShell legend={chartLegend} xAxisLabel="Frecuencia (Hz)" variant="mid">
+      <AnalyticsChartShell legend={chartLegend} xAxisLabel="Frecuencia (Hz)" variant="mid" dragZoom={dragZoom}>
       <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
         <LineChart
           data={points}
           margin={{ top: 18, right: 20, left: 12, bottom: 12 }}
+          {...dragZoom.chartProps()}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -366,6 +411,10 @@ export function EegPsdChart({ data }: { data: EegPsdData }) {
       </ResponsiveContainer>
       </AnalyticsChartShell>
     </div>
+    {zoom ? (
+      <ZoomControls onBack={zoomHistory.canGoBack ? zoomHistory.back : undefined} onReset={zoomHistory.reset} />
+    ) : null}
+    </div>
   )
 }
 
@@ -392,14 +441,31 @@ function spectrogramColor(ratio: number) {
 
 function SpectrogramCanvas({
   matrix,
+  time,
+  hopS,
   domain,
   label,
+  onTimeZoom,
+  onZoomReset,
+  onZoomBack,
 }: {
-  matrix: number[][]
+  matrix: Array<Array<number | null>>
+  time: number[]
+  hopS?: number
   domain: { min: number; max: number }
   label: string
+  onTimeZoom?: (start: number, end: number) => void
+  onZoomReset?: () => void
+  onZoomBack?: () => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const firstTime = time[0] ?? 0
+  const lastTime = time.at(-1) ?? 0
+  const dragZoom = usePointerDragZoom(
+    onTimeZoom
+      ? (from, to) => onTimeZoom(firstTime + from * (lastTime - firstTime), firstTime + to * (lastTime - firstTime))
+      : undefined
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -428,11 +494,10 @@ function SpectrogramCanvas({
           Math.round((1 - y / Math.max(1, height - 1)) * (frequencyCount - 1))
         )
         for (let x = 0; x < width; x += 1) {
-          const timeIndex = Math.min(
-            timeCount - 1,
-            Math.round((x / Math.max(1, width - 1)) * (timeCount - 1))
-          )
+          const target = (time[0] ?? 0) + x / Math.max(1, width - 1) * ((time.at(-1) ?? 0) - (time[0] ?? 0))
+          const timeIndex = nearestTimeIndex(time, target, hopS)
           const value = matrix[frequencyIndex]?.[timeIndex]
+          if (typeof value !== "number" || !Number.isFinite(value)) continue
           const color = spectrogramColor((value - domain.min) / span)
           const offset = (y * width + x) * 4
           image.data[offset] = color.r
@@ -447,18 +512,31 @@ function SpectrogramCanvas({
     const observer = new ResizeObserver(draw)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [domain.max, domain.min, matrix])
+  }, [domain.max, domain.min, matrix, time, hopS])
 
   return (
-    <canvas
-      ref={canvasRef}
-      aria-label={label}
-      className="eeg-spectrogram-canvas w-full rounded-md bg-gray-950"
-    />
+    <div className="relative select-none">
+      <canvas
+        ref={canvasRef}
+        aria-label={label}
+        className={cn("eeg-spectrogram-canvas w-full rounded-md bg-gray-950", onTimeZoom && "cursor-crosshair")}
+        onClick={dragZoom.consumeDragClick}
+        {...dragZoom.handlers}
+      />
+      {dragZoom.bandElement}
+      <ZoomControls onBack={onZoomBack} onReset={onZoomReset} />
+    </div>
   )
 }
 
-export function EegSpectrogramGrid({ data }: { data: EegSpectrogramData }) {
+export function EegSpectrogramGrid({ data: fullData }: { data: EegSpectrogramData }) {
+  const zoomHistory = useZoomHistory<ZoomRange>(sameZoomRange)
+  const zoom = zoomHistory.range && zoomSpan(fullData.time, zoomHistory.range) ? zoomHistory.range : null
+  const data = sliceEegSpectrogram(fullData, zoom) ?? fullData
+  const zoomTo = (start: number, end: number) => {
+    const range = normalizeZoomRange(start, end)
+    if (range && zoomSpan(fullData.time, range)) zoomHistory.zoomTo(range)
+  }
   return (
     <div className="grid gap-3 lg:grid-cols-2 2xl:gap-4">
       {data.channels.map((channel) => (
@@ -477,8 +555,13 @@ export function EegSpectrogramGrid({ data }: { data: EegSpectrogramData }) {
           </div>
           <SpectrogramCanvas
             matrix={data.power[channel] ?? []}
+            time={data.time}
+            hopS={Number(data.metadata?.display_hop_s ?? data.metadata?.hop_s)}
             domain={data.color_domain}
             label={`Espectrograma del canal ${channel.toUpperCase()}`}
+            onTimeZoom={zoomTo}
+            onZoomReset={zoom ? zoomHistory.reset : undefined}
+            onZoomBack={zoom && zoomHistory.canGoBack ? zoomHistory.back : undefined}
           />
           <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
             <span>{data.time[0]?.toFixed(1) ?? "0"} s</span>

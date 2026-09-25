@@ -5,13 +5,18 @@ import { EegChannelSelector } from "./EegChannelSelector"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { type Dispatch, type SetStateAction } from "react"
-import { Activity, Radio, TrendingUp, Waves } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Activity, Radio, SlidersHorizontal, TrendingUp, Waves } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
 
 import { StimulusFixationCard } from "../StimulusFixationCard"
+import { InfoChip } from "../InfoChip"
+import type { AnalyticsChartNote } from "../AnalyticsChartShell"
+import { TimeWindowControls, type TimeWindow, type TimeWindowDraft } from "../TimeWindowControls"
 import { type EegSpectrogramData } from "../../types"
-import { VIRIDIS_GRADIENT } from "../../eegPresentation"
+import { formatChannel, VIRIDIS_GRADIENT } from "../../eegPresentation"
 import { EEG_CHANNELS, type EegView, type SpectrogramStats } from "./eegViewShared"
 import { SpectrogramStatsTable } from "./EegStatsTables"
 import { SpectrogramPanel } from "./EegCanvasPanels"
@@ -19,6 +24,9 @@ import { SpectrogramPanel } from "./EegCanvasPanels"
 interface EegSpectrogramViewProps {
   availableChannels: string[]
   handleChannelToggle: (channel: string) => void
+  handleZoomSpectrogramTime: (start: number, end: number) => void
+  handleResetSpectrogramZoom?: () => void
+  handleBackSpectrogramZoom?: () => void
   participantCode: string | null
   projectId: string
   scenario: string
@@ -32,13 +40,27 @@ interface EegSpectrogramViewProps {
   spectrogramRepresentativeStats: { maxPower: number | null; meanPower: number | null; maxFrequency: number | null; }
   spectrogramSelectedValue: number | null
   spectrogramStats: SpectrogramStats[]
+  spectrogramWindow: TimeWindow
+  spectrogramWindowDraft: TimeWindowDraft
+  spectrogramWindowError: string | null
+  setSpectrogramWindowDraft: Dispatch<SetStateAction<TimeWindowDraft>>
+  setSpectrogramWindowError: Dispatch<SetStateAction<string | null>>
+  handleApplySpectrogramWindow: () => void
+  handleResetSpectrogramWindow: () => void
+  perChannelColorDomain: boolean
+  setPerChannelColorDomain: Dispatch<SetStateAction<boolean>>
   view: EegView
   visibleSpectrogramChannels: string[]
+  /** Points at the quality card that closes the tab; absent on a clean export. */
+  qualityNote: AnalyticsChartNote | null
 }
 
 export function EegSpectrogramView({
   availableChannels,
   handleChannelToggle,
+  handleZoomSpectrogramTime,
+  handleResetSpectrogramZoom,
+  handleBackSpectrogramZoom,
   participantCode,
   projectId,
   scenario,
@@ -52,8 +74,18 @@ export function EegSpectrogramView({
   spectrogramRepresentativeStats,
   spectrogramSelectedValue,
   spectrogramStats,
+  spectrogramWindow,
+  spectrogramWindowDraft,
+  spectrogramWindowError,
+  setSpectrogramWindowDraft,
+  setSpectrogramWindowError,
+  handleApplySpectrogramWindow,
+  handleResetSpectrogramWindow,
+  perChannelColorDomain,
+  setPerChannelColorDomain,
   view,
   visibleSpectrogramChannels,
+  qualityNote,
 }: EegSpectrogramViewProps) {
   return <>
 {view === "spectrogram" ? (
@@ -65,13 +97,13 @@ export function EegSpectrogramView({
                 Espectrograma de frecuencias
               </CardTitle>
               <CardDescription>
-                Variación temporal de potencia por frecuencia para los canales EEG seleccionados.
+                Densidad espectral por ventana. dB referidos a 1 uV²/Hz; los huecos indican ventanas no disponibles.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
               <div>
                 <span className="block text-xs uppercase tracking-widest text-muted-foreground">Unidad</span>
-                <span className="font-semibold text-foreground">{spectrogramData?.unit ?? "dB centrado"}</span>
+                <span className="font-semibold text-foreground">{spectrogramData?.unit ?? "dB"}</span>
               </div>
               <div>
                 <span className="block text-xs uppercase tracking-widest text-muted-foreground">Ventanas</span>
@@ -81,6 +113,25 @@ export function EegSpectrogramView({
                 <span className="block text-xs uppercase tracking-widest text-muted-foreground">Frecuencias</span>
                 <span className="font-semibold text-foreground">{(spectrogramData?.frequency.length ?? 0).toLocaleString()}</span>
               </div>
+              {/* The window is recomputed on the server, so the colour limits
+                  follow what is visible instead of the whole block. */}
+              <TimeWindowControls
+                draftStart={spectrogramWindowDraft.start}
+                draftEnd={spectrogramWindowDraft.end}
+                appliedWindow={spectrogramWindow}
+                error={spectrogramWindowError}
+                loading={spectrogramLoading}
+                onDraftStartChange={(value) => {
+                  setSpectrogramWindowDraft((current) => ({ ...current, start: value }))
+                  setSpectrogramWindowError(null)
+                }}
+                onDraftEndChange={(value) => {
+                  setSpectrogramWindowDraft((current) => ({ ...current, end: value }))
+                  setSpectrogramWindowError(null)
+                }}
+                onApply={handleApplySpectrogramWindow}
+                onReset={handleResetSpectrogramWindow}
+              />
             </div>
           </CardHeader>
           <CardContent>
@@ -98,9 +149,9 @@ export function EegSpectrogramView({
                 labelColorClass="text-violet-700 dark:text-violet-400"
               />
               <KpiCard
-                label="Potencia máxima"
+                label="Nivel máximo"
                 value={spectrogramRepresentativeStats.maxPower}
-                unit={spectrogramData?.unit ?? "dB centrado"}
+                unit={spectrogramData?.unit ?? "dB"}
                 decimals={4}
                 description="Mayor valor visible"
                 Icon={TrendingUp}
@@ -114,9 +165,9 @@ export function EegSpectrogramView({
                 labelColorClass="text-rose-700 dark:text-rose-400"
               />
               <KpiCard
-                label="Potencia media"
+                label="Nivel medio"
                 value={spectrogramRepresentativeStats.meanPower}
-                unit={spectrogramData?.unit ?? "dB centrado"}
+                unit={spectrogramData?.unit ?? "dB"}
                 decimals={4}
                 description="Promedio de la matriz visible"
                 Icon={Activity}
@@ -155,6 +206,45 @@ export function EegSpectrogramView({
                   <span className="w-24 text-right text-xs text-muted-foreground">
                     {spectrogramData.color_domain.max.toFixed(2)} {spectrogramData.unit}
                   </span>
+                  {/* In SAIO block 5, F3 sits ~25 dB above its neighbours and
+                      flattens every one of them onto the shared ramp. */}
+                  <Label
+                    htmlFor="spectrogram-per-channel-color"
+                    className="flex items-center gap-2 whitespace-nowrap text-xs font-normal text-muted-foreground"
+                  >
+                    <Checkbox
+                      id="spectrogram-per-channel-color"
+                      checked={perChannelColorDomain}
+                      onCheckedChange={(value) => setPerChannelColorDomain(value === true)}
+                    />
+                    Escala de color por canal
+                  </Label>
+                  {perChannelColorDomain && spectrogramData.channel_color_domain ? (
+                    <InfoChip
+                      Icon={SlidersHorizontal}
+                      label="Límites por panel"
+                      detail={
+                        <>
+                          <p>Cada panel usa sus propios límites; no compares colores entre canales.</p>
+                          <dl className="grid grid-cols-[auto_auto] gap-x-3 tabular-nums">
+                            {visibleSpectrogramChannels.map((channel) => {
+                              const domain = spectrogramData.channel_color_domain?.[channel]
+                              return domain ? (
+                                <div key={channel} className="contents">
+                                  <dt className="font-semibold">{formatChannel(channel)}</dt>
+                                  <dd>
+                                    {domain.min.toFixed(1)}…{domain.max.toFixed(1)} {spectrogramData.unit}
+                                  </dd>
+                                </div>
+                              ) : null
+                            })}
+                          </dl>
+                          <p className="text-muted-foreground">Esta barra es la escala compartida.</p>
+                        </>
+                      }
+                    />
+                  ) : null}
+                  {qualityNote ? <InfoChip {...qualityNote} /> : null}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -165,10 +255,17 @@ export function EegSpectrogramView({
                       time={spectrogramData.time}
                       frequency={spectrogramData.frequency}
                       matrix={spectrogramData.power[channel] ?? []}
-                      colorDomain={spectrogramData.color_domain}
+                      hopS={Number(spectrogramData.metadata?.display_hop_s ?? spectrogramData.metadata?.hop_s)}
+                      colorDomain={
+                        spectrogramData.channel_color_domain?.[channel] ??
+                        spectrogramData.color_domain
+                      }
                       unit={spectrogramData.unit}
                       selectedTime={selectedTime}
                       onTimeSelect={setSelectedTime}
+                      onTimeZoom={handleZoomSpectrogramTime}
+                      onZoomReset={handleResetSpectrogramZoom}
+                      onZoomBack={handleBackSpectrogramZoom}
                     />
                   ))}
                 </div>
@@ -190,7 +287,7 @@ export function EegSpectrogramView({
           selectedValueDecimals={4}
           totalDurationS={spectrogramData?.time[spectrogramData.time.length - 1] ?? null}
           description="Ubicación de la mirada del participante durante el instante seleccionado del espectrograma."
-          emptyText="Haz clic en un espectrograma o en Potencia máxima para ver la mirada del participante"
+          emptyText="Haz clic en un espectrograma o en Nivel máximo para ver la mirada del participante"
           metricDescription="la potencia EEG del espectrograma"
           onClearSelection={() => setSelectedTime(null)}
         />
@@ -201,7 +298,7 @@ export function EegSpectrogramView({
           <CardHeader>
             <CardTitle className="text-lg">Estadísticas del espectrograma</CardTitle>
             <CardDescription>
-              Resumen de potencia, frecuencia pico y tiempo pico para los canales seleccionados.
+              Estadísticas descriptivas de los píxeles visibles; el promedio en dB no es potencia integrada.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -212,7 +309,7 @@ export function EegSpectrogramView({
                 No hay datos suficientes para calcular estadísticas del espectrograma.
               </div>
             ) : (
-              <SpectrogramStatsTable rows={spectrogramStats} unit={spectrogramData?.unit ?? "dB centrado"} />
+              <SpectrogramStatsTable rows={spectrogramStats} unit={spectrogramData?.unit ?? "dB"} />
             )}
           </CardContent>
         </Card>

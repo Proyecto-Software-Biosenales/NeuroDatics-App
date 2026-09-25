@@ -110,84 +110,25 @@ Galvanic skin response — sympathetic arousal. Slow signal, so:
 
 ## 5.4 EEG
 
-Channels: `le, f4, c4, p4, p3, c3, f3` (`trg` is a trigger channel, not scalp
-data). Topography uses only the six scalp channels — `le` is a
-reference/auxiliary channel and is deliberately excluded from spatial and
-correlation analyses.
+The scientific contract was revised in September 2026 after auditing eight
+reference CSVs and local acquisition files. See [EEG methods](../eeg-audit/METHODS.md)
+and [recording findings](../eeg-audit/FINDINGS.md) for equations, evidence,
+source limitations and validation.
 
-### 5.4.1 Timeseries
-
-Raw plus a moving average (default window 0.2 s), then **uniform decimation** to
-at most 5 000 points via `np.linspace` index selection. The decimation is index
-selection, not averaging, so the returned samples are real measurements — no
-invented values reach the chart.
-
-### 5.4.2 PSD — Welch's method
-
-```python
-welch(values, fs=fs, nperseg=min(1024, shortest_channel),
-      noverlap=None,          # defaults to nperseg // 2
-      detrend="constant", scaling="density")
-power_db = 10 * log10(psd + 1e-12)
-```
-
-**Why Welch and not a plain FFT.** A single FFT of the whole recording gives one
-noisy periodogram whose variance does not decrease as you add data. Welch splits
-the signal into overlapping windowed segments, computes a periodogram of each and
-averages them: variance drops roughly as `1/n_segments`, at the cost of frequency
-resolution. For EEG — where you want to see the alpha band clearly, not resolve
-10.1 Hz from 10.2 Hz — that is the right trade.
-
-- `detrend="constant"` removes each segment's DC offset, so electrode drift does
-  not dominate the low-frequency bins.
-- `+ 1e-12` before the log guards against `log10(0)` → `-inf` and a broken JSON
-  response.
-- `nperseg` is capped at the shortest channel so a short recording still returns
-  something instead of erroring.
-
-### 5.4.3 Spectrogram
-
-Time-resolved spectrum: how the frequency content evolves.
-
-| Parameter | Default | Reason |
-| --- | --- | --- |
-| window | Hann, 1.5 s | Hann has low spectral leakage; 1.5 s balances time vs frequency resolution |
-| overlap | 75 % | smooth in time without exploding the output size |
-| `max_freq_hz` | 25 | above ~25 Hz is mostly muscle artefact for this hardware |
-| `normalize` | `freq_demean` | **subtract the per-frequency median across time** |
-| `smooth_sigma` | 0.8 | 2-D Gaussian, removes speckle |
-| colour clip | 2nd–98th percentile | two outlier cells cannot flatten the colour scale |
-| output cap | 600 time × 256 freq bins | keeps the JSON payload sane |
-
-**`freq_demean` is the important one.** Raw EEG power follows a `1/f` curve —
-low frequencies are orders of magnitude stronger, so an un-normalised
-spectrogram is a bright band at the bottom and black everywhere else. Subtracting
-each frequency's own median across time turns every row into "louder or quieter
-than usual **at this frequency**", which is what makes an alpha burst visible.
-`freq_zscore` (subtract mean, divide by std) is also offered.
-
-### 5.4.4 Topography
-
-Broadband power per electrode over time, for the head-map animation.
-
-```python
-values = interp(gaps)                 # linear over non-finite samples
-values -= mean(values)                # remove DC  (remove_dc, default True)
-window = hanning(window_size)         # 2.0 s, 50 % overlap
-power  = mean((segment * window)²) / mean(window²)
-```
-
-- Dividing by `mean(window²)` compensates for the energy the Hann window itself
-  removes, so power is comparable across windows.
-- **DC removal is essential**: without it you would be plotting each electrode's
-  offset, and the map would show impedance differences rather than brain
-  activity.
-- Requires ≥ 3 usable channels — you cannot interpolate a surface from two
-  points.
-- Colour domain uses the 5th–95th percentile.
-- Electrode positions come from a fixed 2-D layout
-  (`f3(−0.5, 0.6) … p4(0.5, −0.6)`) rescaled so the outermost electrode sits at
-  radius 0.85 — inside the head outline the frontend draws.
+- Raw EEG is the initial display; the optional 0.2 s moving mean is a trend
+  display and can suppress EEG rhythms.
+- Missing values remain missing. All spectral windows require contiguous finite
+  data and retain the actual time axis; conditions and gaps are never joined.
+- Welch uses periodic Hann, 50% overlap and segment-mean removal. Constant
+  detrending removes DC, not arbitrary drift or other artifacts.
+- Band powers are integrated from the complete linear PSD. Means of dB bins or
+  normalized image pixels are not integrated physical powers.
+- Spectrogram defaults are 1.5 s, 75% overlap, no normalization or smoothing.
+  The 25 Hz display limit is a viewing choice, not an artifact classification.
+- Topography uses local mean removal and Hann-energy-normalized mean squares.
+  Its sparse schematic sensor map is an interpolation, not source localization.
+- Explicit voltage units and the verified vendor kilo scale are normalized at
+  ingestion. Older parquet must be re-ingested to receive this correction.
 
 ---
 
@@ -215,7 +156,7 @@ length on a common, scenario-relative time base.
 | `gaze_x_pct`, `gaze_y_pct` | % | median | full `_clean_gaze` pipeline |
 | `distance_cm` | cm | median | mm ÷ 10 |
 | `gsr_smoothed_us` | µS | median | 1 s smoothing |
-| `eeg_broadband_power_db` | dB | **mean** | per channel: DC removed, squared, mean per bin; averaged across the 6 scalp channels; `10·log10` |
+| `eeg_broadband_power_db` | dB | **mean** | per channel: bin mean removed, squared and averaged; fixed scalp channel set, complete samples and ≥80% coverage (minimum 8 samples); `10·log10` |
 
 **Median for measurements, mean for power.** The median resists outliers in a
 measured quantity. Power is an energy, and energy averages — a median of squared

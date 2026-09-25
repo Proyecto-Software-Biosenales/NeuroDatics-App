@@ -60,16 +60,12 @@ import {
   imagePointToContainerPercent,
   type ContainedImageBox,
 } from "./AoiOverlay"
-import {
-  EMPTY_TIME_WINDOW,
-  EMPTY_TIME_WINDOW_DRAFT,
-  TimeWindowControls,
-  validateTimeWindowDraft,
-  type TimeWindow,
-  type TimeWindowDraft,
-} from "./TimeWindowControls"
+import { TimeWindowControls } from "./TimeWindowControls"
+import { useTimeWindow } from "../hooks/useZoomHistory"
 import { MissingStimulusImage } from "./MissingStimulusImage"
-import { AnalyticsChartShell } from "./AnalyticsChartShell"
+import { AnalyticsChartShell, LINE_CHART_MARGIN } from "./AnalyticsChartShell"
+import { useChartDragZoom } from "./ChartDragZoom"
+import { axisTickDecimals, formatAxisTick } from "../chartZoom"
 
 type ViewMode = "both" | "x" | "y"
 
@@ -129,9 +125,17 @@ export function GazePointTab({
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
-  const [timeWindowDraft, setTimeWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
-  const [timeWindowError, setTimeWindowError] = useState<string | null>(null)
+  const {
+    data: gazeData,
+    loading: gazeLoading,
+    fetchGaze,
+    clear: clearGaze,
+  } = useGazeAt(projectId, participantCode)
+  const windowState = useTimeWindow(() => {
+    setSelectedTime(null)
+    clearGaze()
+  })
+  const timeWindow = windowState.window
   // Refs for letterbox-corrected gaze positioning
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
@@ -153,12 +157,6 @@ export function GazePointTab({
     timeWindow.start,
     timeWindow.end
   )
-  const {
-    data: gazeData,
-    loading: gazeLoading,
-    fetchGaze,
-    clear: clearGaze,
-  } = useGazeAt(projectId, participantCode)
   const aoiScenario = scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
   const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
     projectId,
@@ -356,62 +354,45 @@ export function GazePointTab({
     fetchGaze(time)
   }
 
-  const handleApplyTimeWindow = () => {
-    const { window, error } = validateTimeWindowDraft(timeWindowDraft)
-    if (error || !window) {
-      setTimeWindowError(error)
-      return
-    }
-
-    setTimeWindow(window)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    clearGaze()
-  }
-
-  const handleResetTimeWindow = () => {
-    setTimeWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
-    setTimeWindow(EMPTY_TIME_WINDOW)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    clearGaze()
-  }
+  // A dragged range behaves exactly like typing it into the window controls.
+  const dragZoom = useChartDragZoom(windowState.zoomTo)
 
   return (
     <div className="analytics-stack">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
             <CardTitle className="text-xl">Gaze point</CardTitle>
             <CardDescription>
               Posición de la mirada en pantalla (%) a lo largo del tiempo.
             </CardDescription>
           </div>
 
-          <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
-              { key: "both", label: "Ambos ejes" },
-              { key: "x", label: "Eje X" },
-              { key: "y", label: "Eje Y" },
-            ]} />
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
+                { key: "both", label: "Ambos ejes" },
+                { key: "x", label: "Eje X" },
+                { key: "y", label: "Eje Y" },
+              ]} />
+            <TimeWindowControls
+              draftStart={windowState.draft.start}
+              draftEnd={windowState.draft.end}
+              appliedWindow={timeWindow}
+              error={windowState.error}
+              loading={timeseriesLoading || statsLoading}
+              onDraftStartChange={(value) =>
+                windowState.setDraft((current) => ({ ...current, start: value }))
+              }
+              onDraftEndChange={(value) =>
+                windowState.setDraft((current) => ({ ...current, end: value }))
+              }
+              onApply={windowState.apply}
+              onReset={windowState.reset}
+            />
+          </div>
         </CardHeader>
 
         <CardContent>
-          <TimeWindowControls
-            draftStart={timeWindowDraft.start}
-            draftEnd={timeWindowDraft.end}
-            appliedWindow={timeWindow}
-            error={timeWindowError}
-            loading={timeseriesLoading || statsLoading}
-            onDraftStartChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, start: value }))
-            }
-            onDraftEndChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, end: value }))
-            }
-            onApply={handleApplyTimeWindow}
-            onReset={handleResetTimeWindow}
-          />
-
           <div className="analytics-kpi-grid">
             {[
               {
@@ -471,19 +452,24 @@ export function GazePointTab({
               No hay datos de gaze para los filtros seleccionados.
             </div>
           ) : (
-            <AnalyticsChartShell legend={chartLegend}>
+            <AnalyticsChartShell
+              legend={chartLegend}
+              dragZoom={dragZoom}
+              onZoomReset={windowState.isZoomed ? windowState.reset : undefined}
+              onZoomBack={windowState.canGoBack ? windowState.back : undefined}
+            >
             <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
               <LineChart
                 data={chartData}
-                onClick={handleChartClick}
-                margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
+                {...dragZoom.chartProps(handleChartClick)}
+                margin={LINE_CHART_MARGIN}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
                   dataKey="time"
                   type="number"
                   domain={chartDomain}
-                  tickFormatter={(value) => String(Math.round(Number(value)))}
+                  tickFormatter={(value) => formatAxisTick(value, axisTickDecimals(chartDomain))}
                   tickMargin={8}
                 />
                 <YAxis
@@ -505,6 +491,7 @@ export function GazePointTab({
                 {selectedTime != null ? (
                   <ReferenceLine
                     x={selectedTime}
+                    className="analytics-selected-time"
                     stroke="#374151"
                     strokeWidth={1.5}
                     strokeDasharray="4 3"
@@ -625,21 +612,21 @@ export function GazePointTab({
               ].map(({ label, value, sub, Icon, bg, iconColor }) => (
                 <div
                   key={label}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm roomy:p-4"
                 >
                   <div
                     className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg roomy:h-10 roomy:w-10 roomy:rounded-xl",
                       bg
                     )}
                   >
-                    <Icon className={cn("h-5 w-5", iconColor)} />
+                    <Icon className={cn("h-4 w-4 roomy:h-5 roomy:w-5", iconColor)} />
                   </div>
                   <div className="min-w-0 flex flex-col">
                     <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
                       {label}
                     </p>
-                    <p className="mt-2 text-3xl font-bold leading-tight text-foreground">{value}</p>
+                    <p className="mt-0.5 text-xl font-bold leading-tight text-foreground roomy:mt-2 roomy:text-3xl">{value}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
                   </div>
                 </div>

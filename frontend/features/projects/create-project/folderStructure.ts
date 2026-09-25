@@ -87,6 +87,10 @@ const namedAncestor = (archivePath: string, folderName: string): string | null =
   return null
 }
 
+/** Acquisition/ is read for its folder and file names only, never its contents. */
+export const isAcquisitionEntry = (archivePath: string): boolean =>
+  namedAncestor(archivePath, ACQUISITION_FOLDER_NAME) !== null
+
 const parseAcquisitionFolderName = (folderName: string): AcquisitionRecording => {
   const match = ACQUISITION_FOLDER_PATTERN.exec(folderName.trim())
   if (!match) {
