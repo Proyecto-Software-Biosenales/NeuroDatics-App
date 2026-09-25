@@ -12,7 +12,7 @@ export function EegStatsTable({ rows }: { rows: ChannelStats[] }) {
       <Table className="w-full text-sm">
         <TableHeader>
           <TableRow className="border-b border-border bg-muted/60">
-            {["Canal", "N", "Base", "Media", "Desv.", "Mediana", "Min", "Max", "Pico %"].map((header, index) => (
+            {["Canal", "N válidas", "RMS", "Media", "Desv.", "Mediana", "Min", "Max"].map((header, index) => (
               <TableHead
                 key={header}
                 className={cn(
@@ -38,15 +38,12 @@ export function EegStatsTable({ rows }: { rows: ChannelStats[] }) {
                 </div>
               </TableCell>
               <TableCell className="px-4 py-4 text-right text-muted-foreground">{row.count}</TableCell>
-              <TableCell className="px-4 py-4 text-right text-muted-foreground">{formatNumber(row.baseline, 4, " uV")}</TableCell>
+              <TableCell className="px-4 py-4 text-right text-muted-foreground">{formatNumber(row.rms, 4, " uV")}</TableCell>
               <TableCell className="px-4 py-4 text-right font-semibold text-foreground">{formatNumber(row.mean, 4, " uV")}</TableCell>
               <TableCell className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.std, 4, " uV")}</TableCell>
               <TableCell className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.median, 4, " uV")}</TableCell>
               <TableCell className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">{formatNumber(row.min, 4, " uV")}</TableCell>
               <TableCell className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">{formatNumber(row.max, 4, " uV")}</TableCell>
-              <TableCell className="px-4 py-4 text-right font-semibold text-emerald-600 dark:text-emerald-400">
-                {row.peakPercent != null ? `${row.peakPercent >= 0 ? "+" : ""}${row.peakPercent.toFixed(1)}%` : "—"}
-              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -61,7 +58,7 @@ export function PsdStatsTable({ rows, unit }: { rows: PsdStats[]; unit: string }
       <Table className="w-full text-sm">
         <TableHeader>
           <TableRow className="border-b border-border bg-muted/60">
-            {["Canal", "Bins", "Freq. pico", "Pot. pico", "Pot. media", "Desv.", "Mediana", "Min", "Max"].map((header, index) => (
+            {["Canal", "Bins", "Freq. pico", "Nivel pico", "Nivel medio", "Desv.", "Mediana", "Min", "Max"].map((header, index) => (
               <TableHead
                 key={header}
                 className={cn(
@@ -113,8 +110,8 @@ export function SpectrogramStatsTable({ rows, unit }: { rows: SpectrogramStats[]
               "Matriz",
               "Freq. pico",
               "Tiempo pico",
-              "Pot. pico",
-              "Pot. media",
+              "Nivel pico",
+              "Nivel medio",
               "Desv.",
               "Mediana",
               "Min",

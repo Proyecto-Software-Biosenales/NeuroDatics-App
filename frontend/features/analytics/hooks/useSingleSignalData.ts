@@ -2,13 +2,8 @@
 
 import { useMemo, useState } from "react"
 import type { StatRow } from "../components/StatisticsTable"
-import {
-  EMPTY_TIME_WINDOW,
-  EMPTY_TIME_WINDOW_DRAFT,
-  validateTimeWindowDraft,
-  type TimeWindow,
-  type TimeWindowDraft,
-} from "../components/TimeWindowControls"
+import { useChartDragZoom } from "../components/ChartDragZoom"
+import { useTimeWindow } from "./useZoomHistory"
 
 interface SignalStatistics {
   mean: number
@@ -45,9 +40,11 @@ export function useSingleSignalData<T, Point extends { time: number }, Stats ext
   onTimeWindowChange?: () => void
 ) {
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
-  const [timeWindowDraft, setTimeWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
-  const [timeWindowError, setTimeWindowError] = useState<string | null>(null)
+  const windowState = useTimeWindow(() => {
+    setSelectedTime(null)
+    onTimeWindowChange?.()
+  })
+  const timeWindow = windowState.window
   const { data, loading: timeseriesLoading } = useTimeseries(
     projectId, participantCode, scenario, timeWindow.start, timeWindow.end
   )
@@ -105,38 +102,25 @@ export function useSingleSignalData<T, Point extends { time: number }, Stats ext
       : null,
   }], [serie, chartData.length, stats])
 
-  const applyWindow = () => {
-    const { window, error } = validateTimeWindowDraft(timeWindowDraft)
-    if (error || !window) {
-      setTimeWindowError(error)
-      return
-    }
-    setTimeWindow(window)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    onTimeWindowChange?.()
-  }
-  const resetWindow = () => {
-    setTimeWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
-    setTimeWindow(EMPTY_TIME_WINDOW)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    onTimeWindowChange?.()
-  }
+  // A dragged range behaves exactly like typing it into the window controls.
+  const dragZoom = useChartDragZoom(windowState.zoomTo)
 
   return {
     chartData, chartDomain, minTime, maxTime, selectedPoint, selectedTime, setSelectedTime,
     stats, statsLoading, timeseriesLoading, tableRows,
+    dragZoom,
+    onZoomReset: windowState.isZoomed ? windowState.reset : undefined,
+    onZoomBack: windowState.canGoBack ? windowState.back : undefined,
     timeWindowControls: {
-      draftStart: timeWindowDraft.start,
-      draftEnd: timeWindowDraft.end,
+      draftStart: windowState.draft.start,
+      draftEnd: windowState.draft.end,
       appliedWindow: timeWindow,
-      error: timeWindowError,
+      error: windowState.error,
       loading: timeseriesLoading || statsLoading,
-      onDraftStartChange: (start: string) => setTimeWindowDraft(current => ({ ...current, start })),
-      onDraftEndChange: (end: string) => setTimeWindowDraft(current => ({ ...current, end })),
-      onApply: applyWindow,
-      onReset: resetWindow,
+      onDraftStartChange: (start: string) => windowState.setDraft(current => ({ ...current, start })),
+      onDraftEndChange: (end: string) => windowState.setDraft(current => ({ ...current, end })),
+      onApply: windowState.apply,
+      onReset: windowState.reset,
     },
   }
 }

@@ -1,9 +1,8 @@
 import type { SensorType } from "@/features/projects/types"
 
-export type ReportMode = "comparative" | "by-sensor"
+/** One device report, or every device of the project as one PDF each in a ZIP. */
+export type ReportDevice = SensorType | "all"
 export type ReportScopeKind = "participant" | "all-participants"
-
-export type ReportType = ReportMode | null
 
 export interface ExecutiveReportPayload {
   project_id: string
@@ -18,18 +17,12 @@ export interface ExecutiveReportPayload {
   include_metadata: boolean
 }
 
+export interface GeneratedReportFile {
+  blob: Blob
+  filename: string
+}
+
 export interface ExportOptions {
   includeCover: boolean
   includeMetadata: boolean
-}
-
-export type ContentType =
-  | "individual-charts"
-  | "statistics"
-  | "comparative-charts"
-
-export interface ReportContent {
-  "individual-charts": boolean
-  statistics: boolean
-  "comparative-charts": boolean
 }

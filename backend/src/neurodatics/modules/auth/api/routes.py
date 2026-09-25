@@ -102,7 +102,9 @@ async def google_login_url(redirect_uri: str | None = None):
         "response_type": "code",
         "scope": "openid email profile",
         "state": str(uuid.uuid4()),
-        "prompt": "consent",
+        # Sign-in only needs basic profile scopes, so let returning users pick an
+        # account instead of re-approving the same consent screen on every login.
+        "prompt": "select_account",
     }
 
     return GoogleLoginUrlResponse(

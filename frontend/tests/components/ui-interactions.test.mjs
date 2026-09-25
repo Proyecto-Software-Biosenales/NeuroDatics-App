@@ -20,8 +20,7 @@ const bundle = browserBundle(`
     const [participants,setParticipants]=useState([{id:'P01',sex:'male',age:'25'},{id:'P02',sex:'',age:''}]);
     const [scope,setScope]=useState('participant');
     const [participant,setParticipant]=useState('');
-    const [reportMode,setReportMode]=useState('comparative');
-    const [sensor,setSensor]=useState('EyeTracker');
+    const [device,setDevice]=useState('EyeTracker');
     const [options,setOptions]=useState({includeCover:true,includeMetadata:true});
     const [downloads,setDownloads]=useState(0);
     const [clicks,setClicks]=useState(0);
@@ -30,13 +29,13 @@ const bundle = browserBundle(`
       {mode==='wizard' && <><CreateProjectStep2 selectedSensors={sensors} onToggleSensor={sensor=>setSensors(prev=>prev.includes(sensor)?prev.filter(x=>x!==sensor):[...prev,sensor])}/>
       <CreateProjectStep3 participants={participants} onUpdateParticipant={(id,field,value)=>setParticipants(prev=>prev.map(p=>p.id===id?{...p,[field]:value}:p))}/></>}
       {mode==='reports' && <><ReportScopeCard participants={[{participant_code:'P01'},{participant_code:'P02'}]} selectedParticipant={participant} scopeKind={scope} onScopeKindChange={setScope} onParticipantChange={setParticipant} loading={false}/>
-      <ReportConfigurationCard reportMode={reportMode} onReportModeChange={setReportMode} availableSensors={['EyeTracker','GSR']} selectedSensor={sensor} onSensorChange={setSensor}/>
+      <ReportConfigurationCard availableSensors={['EyeTracker','GSR']} selectedDevice={device} onDeviceChange={setDevice}/>
       <ExportOptionsCard enabled options={options} onToggleOption={key=>setOptions(prev=>({...prev,[key]:!prev[key]}))} canDownload onDownload={()=>setDownloads(n=>n+1)}/></>}
       {mode==='kpi' && <KpiCard label="Mínimo" value={2.5} Icon={Activity} onClick={()=>setClicks(n=>n+1)} tooltip="Valor mínimo observado" active={clicks>0}/>}
       {mode==='dialog' && <Dialog defaultOpen><DialogContent><DialogTitle>Presentación</DialogTitle><DialogDescription>Modo del estímulo</DialogDescription>
       <Select value={placement} onValueChange={setPlacement}><SelectTrigger aria-label="Modo de presentación"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="contain">Contain</SelectItem><SelectItem value="cover">Cover</SelectItem></SelectContent></Select>
       </DialogContent></Dialog>}
-      <output id="state">{JSON.stringify({sensors,participants,scope,participant,reportMode,sensor,options,downloads,clicks,placement})}</output>
+      <output id="state">{JSON.stringify({sensors,participants,scope,participant,device,options,downloads,clicks,placement})}</output>
     </>;
   }
   const root=createRoot(document.getElementById('root'));
@@ -75,7 +74,7 @@ test("sensor cards toggle once and participant disclosures preserve demographics
   assert.deepEqual((await state(page)).participants[1], { id: "P02", sex: "female", age: "31" })
 })
 
-test("report scope, sensor radios and export options keep independent selections", async t => {
+test("report scope, device radios and export options keep independent selections", async t => {
   const page = await fixture(t, "reports")
   await page.getByRole("combobox").click()
   await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()
@@ -84,12 +83,12 @@ test("report scope, sensor radios and export options keep independent selections
   await expect(page.getByRole("combobox")).toHaveCount(0)
   await page.getByRole("radio", { name: "Un participante", exact: true }).click()
   await expect(page.getByRole("combobox")).toContainText("P02")
-  await page.getByRole("radio", { name: /Informe por sensor/ }).click()
-  await page.getByRole("radio", { name: "GSR", exact: true }).click()
+  await page.getByRole("radio", { name: /Todos los dispositivos/ }).click()
+  assert.equal((await state(page)).device, "all")
+  await page.getByRole("radio", { name: /^GSR/ }).click()
   await page.keyboard.press("ArrowLeft", { delay: 50 })
-  await expect(page.getByRole("radio", { name: "Eye tracker", exact: true })).toBeChecked()
-  assert.equal((await state(page)).sensor, "EyeTracker")
-  assert.equal((await state(page)).reportMode, "by-sensor")
+  await expect(page.getByRole("radio", { name: /^Eye Tracking/ })).toBeChecked()
+  assert.equal((await state(page)).device, "EyeTracker")
   await page.getByRole("checkbox", { name: /Incluir portada/ }).click()
   await page.getByRole("button", { name: "Descargar reporte PDF", exact: true }).click()
   assert.deepEqual((await state(page)).options, { includeCover: false, includeMetadata: true })

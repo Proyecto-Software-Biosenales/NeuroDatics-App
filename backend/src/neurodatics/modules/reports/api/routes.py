@@ -15,13 +15,15 @@ async def generate_executive_report(
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """One device returns its PDF; ``mode.kind = comparative`` returns a ZIP with one PDF per device."""
+
     service = ExecutiveReportService(db)
-    pdf_bytes, filename = await service.generate(request, current_user)
+    report = await service.generate(request, current_user)
     return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
+        content=report.content,
+        media_type=report.media_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": f'attachment; filename="{report.filename}"',
             "Cache-Control": "no-store",
         },
     )

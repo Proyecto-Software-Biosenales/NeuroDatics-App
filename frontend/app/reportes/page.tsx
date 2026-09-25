@@ -18,9 +18,10 @@ import { ReportConfigurationCard } from "@/features/reports/components/ReportCon
 import { ReportPreview } from "@/features/reports/components/ReportPreview"
 import { ExportOptionsCard } from "@/features/reports/components/ExportOptionsCard"
 import { useExportOptions } from "@/features/reports/export-report-options/useExportOptions"
+import { reportDevices } from "@/features/reports/reportContents"
 import type {
   ExecutiveReportPayload,
-  ReportMode,
+  ReportDevice,
   ReportScopeKind,
 } from "@/features/reports/types"
 
@@ -96,24 +97,13 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-function safeFilename(value: string) {
-  return (
-    value
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "proyecto"
-  )
-}
-
 export default function ReportesPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [projectsLoading, setProjectsLoading] = useState(true)
   const [selectedProjectId, setSelectedProjectId] = useState("")
   const [scopeKind, setScopeKind] = useState<ReportScopeKind>("participant")
   const [selectedParticipant, setSelectedParticipant] = useState("")
-  const [reportMode, setReportMode] = useState<ReportMode>("comparative")
-  const [selectedSensor, setSelectedSensor] = useState<SensorType | null>(null)
+  const [selectedDevice, setSelectedDevice] = useState<ReportDevice | null>(null)
   const [generating, setGenerating] = useState(false)
   const { options, toggleOption } = useExportOptions()
 
@@ -164,8 +154,7 @@ export default function ReportesPage() {
   useEffect(() => {
     setScopeKind("participant")
     setSelectedParticipant("")
-    setReportMode("comparative")
-    setSelectedSensor(null)
+    setSelectedDevice(null)
   }, [selectedProjectId])
 
   useEffect(() => {
@@ -185,30 +174,29 @@ export default function ReportesPage() {
   }, [participants, selectedParticipant])
 
   useEffect(() => {
-    if (reportMode !== "by-sensor") return
-    if (selectedSensor && availableSensors.includes(selectedSensor)) return
-    setSelectedSensor(availableSensors[0] ?? null)
-  }, [availableSensors, reportMode, selectedSensor])
+    if (selectedDevice === "all" && availableSensors.length > 1) return
+    if (selectedDevice && selectedDevice !== "all" && availableSensors.includes(selectedDevice)) return
+    setSelectedDevice(availableSensors[0] ?? null)
+  }, [availableSensors, selectedDevice])
+
+  const devices = reportDevices(selectedDevice, availableSensors)
 
   const hasSelection = Boolean(selectedProject)
   const hasParticipants = participants.length > 0
   const hasScenarios = reportableScenarios.length > 0
   const hasValidScope =
     scopeKind === "all-participants" ? hasParticipants : Boolean(selectedParticipant)
-  const hasValidMode =
-    reportMode === "comparative" ? availableSensors.length > 0 : Boolean(selectedSensor)
   const canDownload =
     hasSelection &&
     hasValidScope &&
-    hasValidMode &&
+    devices.length > 0 &&
     hasScenarios &&
     !participantsLoading &&
     !scenariosLoading &&
     !generating
 
   const buildPayload = (): ExecutiveReportPayload | null => {
-    if (!selectedProject) return null
-    if (reportMode === "by-sensor" && !selectedSensor) return null
+    if (!selectedProject || devices.length === 0) return null
     if (scopeKind === "participant" && !selectedParticipant) return null
 
     return {
@@ -218,9 +206,9 @@ export default function ReportesPage() {
           ? { kind: "participant", participant_code: selectedParticipant }
           : { kind: "all_participants" },
       mode:
-        reportMode === "comparative"
+        selectedDevice === "all"
           ? { kind: "comparative" }
-          : { kind: "sensor", sensor: selectedSensor as SensorType },
+          : { kind: "sensor", sensor: devices[0] },
       scenario_scope: "all_by_sections",
       include_cover: options.includeCover,
       include_metadata: options.includeMetadata,
@@ -229,22 +217,22 @@ export default function ReportesPage() {
 
   const handleDownload = async () => {
     const payload = buildPayload()
-    if (!payload || !selectedProject) return
+    if (!payload) return
 
-    const toastId = toast.loading("Generando informe ejecutivo...")
+    const several = devices.length > 1
+    const toastId = toast.loading(
+      several ? "Generando informes por dispositivo..." : "Generando informe..."
+    )
     setGenerating(true)
     try {
-      const blob = await ReportsApi.generateExecutiveReport(payload)
-      downloadBlob(
-        blob,
-        `informe-ejecutivo-${safeFilename(selectedProject.name)}.pdf`
-      )
-      toast.success("Informe ejecutivo generado.", { id: toastId })
+      const report = await ReportsApi.generateReport(payload)
+      downloadBlob(report.blob, report.filename)
+      toast.success(several ? "Informes generados." : "Informe generado.", { id: toastId })
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "No se pudo generar el informe ejecutivo.",
+          : "No se pudo generar el informe.",
         { id: toastId }
       )
     } finally {
@@ -262,8 +250,8 @@ export default function ReportesPage() {
               Reportes
             </h1>
             <p className="app-page-description">
-              Genera informes ejecutivos en PDF con mapas, AOIs, metricas y
-              senales temporales resumidas por escenario.
+              Genera un informe PDF por dispositivo con las gráficas y tablas de
+              estadísticas de cada escenario, listo para compartir.
             </p>
             </div>
           </div>
@@ -296,22 +284,21 @@ export default function ReportesPage() {
 
               <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300 2xl:mb-8">
                 <ReportConfigurationCard
-                  reportMode={reportMode}
-                  onReportModeChange={setReportMode}
                   availableSensors={availableSensors}
-                  selectedSensor={selectedSensor}
-                  onSensorChange={setSelectedSensor}
+                  selectedDevice={selectedDevice}
+                  onDeviceChange={setSelectedDevice}
                 />
               </div>
 
               <div className="mb-6 pl-0 sm:pl-8 sm:pr-4 2xl:mb-8 2xl:pl-14 2xl:pr-8">
                 <ReportPreview
-                  reportMode={reportMode}
+                  devices={devices}
                   scopeKind={scopeKind}
-                  selectedSensor={selectedSensor}
-                  scenarioCount={reportableScenarios.length}
+                  participantLabel={selectedParticipant}
                   participantCount={participants.length}
+                  scenarioCount={reportableScenarios.length}
                   omittedVideoScenarios={omittedVideoScenarios}
+                  includeCover={options.includeCover}
                 />
                 {!hasScenarios && !scenariosLoading ? (
                   <p className="mt-3 text-sm text-muted-foreground">
@@ -332,6 +319,9 @@ export default function ReportesPage() {
                   onDownload={handleDownload}
                   canDownload={canDownload}
                   loading={generating}
+                  downloadLabel={
+                    devices.length > 1 ? "Descargar reportes (ZIP)" : "Descargar reporte PDF"
+                  }
                 />
               </div>
             </>

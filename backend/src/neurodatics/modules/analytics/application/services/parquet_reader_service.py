@@ -8,9 +8,8 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .....infra.storage.gdrive_client import GoogleDriveClient
-from .....infra.storage.gdrive_oauth_credentials import build_google_drive_oauth_credentials
-from ....integrations.google_drive.infrastructure.repository import SystemIntegrationRepository
+from .....config.settings import settings
+from ....integrations.storage_provider import build_isolated_drive_client
 from ....participants.domain.entities import Participant
 from ....projects.domain.entities import Project, ProjectFile
 from neurodatics.shared.cache_generation import normalize_generation
@@ -24,6 +23,8 @@ GOOGLE_DRIVE_RECONNECT_MESSAGE = (
 )
 
 USER_PARQUET_METADATA_TYPE = "user_parquet"
+
+STORAGE_NAME = "el almacenamiento local" if settings.is_local else "Google Drive"
 
 # How a Parquet was matched to the requested participant. The first two are
 # identity-based and exact; the third is the historical positional guess.
@@ -151,7 +152,7 @@ class ParquetReaderService:
 
         client = await self._build_drive_client()
         if client is None:
-            raise RuntimeError("Google Drive integration not configured")
+            raise RuntimeError(f"{STORAGE_NAME} integration not configured")
 
         try:
             content = await anyio.to_thread.run_sync(
@@ -161,7 +162,7 @@ class ParquetReaderService:
             if _is_invalid_google_grant_error(exc):
                 logger.warning("Google Drive OAuth token expired or revoked while reading parquet")
                 raise RuntimeError(GOOGLE_DRIVE_RECONNECT_MESSAGE) from exc
-            raise RuntimeError("No se pudo descargar el parquet desde Google Drive") from exc
+            raise RuntimeError(f"No se pudo descargar el parquet desde {STORAGE_NAME}") from exc
 
         path = self._cache.put(project_id, participant_code, content, generation)
         return await anyio.to_thread.run_sync(lambda: pd.read_parquet(path))
@@ -356,21 +357,6 @@ class ParquetReaderService:
         )
         return list(result.scalars().all())
 
-    async def _build_drive_client(self) -> Optional[GoogleDriveClient]:
-        """Create isolated Drive client (same pattern as projects module)."""
-        repository = SystemIntegrationRepository(self._db)
-        integration = await repository.get_by_provider("google_drive")
-        if not integration:
-            return None
-
-        refresh_token = integration.get("refresh_token")
-        if not refresh_token:
-            return None
-
-        credentials = build_google_drive_oauth_credentials(
-            refresh_token=refresh_token,
-            scope=integration.get("scope"),
-        )
-        client = GoogleDriveClient()
-        client.set_oauth_credentials(credentials)
-        return client
+    async def _build_drive_client(self):
+        """Isolated store handle: a Drive client in server mode, the local store otherwise."""
+        return await build_isolated_drive_client(self._db)

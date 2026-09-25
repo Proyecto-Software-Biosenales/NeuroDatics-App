@@ -54,6 +54,7 @@ def test_login_url_includes_required_oauth_parameters(google_auth):
     assert query['redirect_uri'] == ['http://localhost/auth/callback']
     assert query['scope'] == ['openid email profile']
     assert query['response_type'] == ['code']
+    assert query['prompt'] == ['select_account']
     assert uuid.UUID(query['state'][0])
     outbound.post.assert_not_awaited()
 

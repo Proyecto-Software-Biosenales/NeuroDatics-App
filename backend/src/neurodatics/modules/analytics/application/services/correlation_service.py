@@ -5,6 +5,8 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from .eeg_signal import prepare_eeg
+
 from .analytics_service import (
     EEG_TOPOGRAPHY_CHANNELS,
     GsrAnalyticsService,
@@ -54,7 +56,7 @@ class CorrelationAnalyticsService:
         clean = scope_to_scenario(df, scenario).copy()
         clean["time"] = pd.to_numeric(clean["time"], errors="coerce")
         finite_time = np.isfinite(clean["time"].to_numpy(dtype=float))
-        clean = clean.loc[finite_time].sort_values("time").reset_index(drop=True)
+        clean = clean.loc[finite_time].reset_index(drop=True)
         if clean.empty:
             return _empty_frame()
 
@@ -307,6 +309,16 @@ class CorrelationAnalyticsService:
         frame: pd.DataFrame,
         total_bins: int,
     ) -> Tuple[pd.Series, List[str], Optional[str]]:
+        # Measured exposure of this path, SAIO block 5 scenario "Video instagram"
+        # (341 bins of 250 ms): one 4.87 s artifact fills 21 bins, which sit
+        # 37.3 dB above the median bin, and moves the Pearson coefficients
+        # against the other five signals by up to 0.19 - enough to reverse the
+        # sign reported for distance and to hide a moderate GSR relationship.
+        # The dB scale does not absorb it: a 0.25 s bin is either contaminated or
+        # it is not. Reporting and excluding those bins changes the
+        # /correlations response contract, which is a protected snapshot, so it
+        # waits for the owner. See docs/eeg-audit/PLAN.md T10.
+
         # `le` is intentionally excluded: it is a reference/auxiliary channel, not scalp data.
         source_columns = [
             channel for channel in EEG_TOPOGRAPHY_CHANNELS if channel in frame.columns
@@ -318,27 +330,26 @@ class CorrelationAnalyticsService:
                 "No se encontraron canales EEG de cuero cabelludo.",
             )
 
+        signal = prepare_eeg(frame, None, source_columns)
+        if not signal.fs or not signal.metadata["chronology_valid"]:
+            return cls._empty_series(total_bins), source_columns, "Cronología EEG no válida."
+        # Fixed montage, complete samples and at least 80% temporal bin coverage.
+        # Per-bin demeaning avoids treating DC offsets as changing neural power.
+        minimum = max(8, int(np.ceil(signal.fs * cls.BIN_SIZE_S * 0.8)))
         channel_power = []
-        bins = frame["_bin"].astype(int)
+        bins = frame["_bin"].to_numpy(dtype=int)
         for channel in source_columns:
-            values = pd.to_numeric(frame[channel], errors="coerce").to_numpy(
-                dtype=float
-            )
-            finite = np.isfinite(values)
-            if not finite.any():
-                continue
-
-            # Match the existing broadband topography semantics by removing DC before
-            # measuring mean-square power. Each result is then aligned to the same bins.
-            centered = values.copy()
-            centered[finite] = centered[finite] - float(np.mean(centered[finite]))
-            power = centered**2
-            channel_power.append(cls._aggregate_mean(bins, power, total_bins))
-
-        if not channel_power:
-            return cls._empty_series(total_bins), source_columns, None
-
-        combined_linear = pd.concat(channel_power, axis=1).mean(axis=1, skipna=True)
+            values = signal.values[channel]
+            series = cls._empty_series(total_bins)
+            for bin_id in np.unique(bins):
+                indices = np.flatnonzero(bins == bin_id)
+                segment = values[indices]
+                if (len(indices) < minimum or not np.isfinite(segment).all()
+                        or signal.boundaries[indices[1:]].any()):
+                    continue
+                series.iloc[bin_id] = float(np.mean((segment - segment.mean()) ** 2))
+            channel_power.append(series)
+        combined_linear = pd.concat(channel_power, axis=1).mean(axis=1, skipna=False)
         combined_linear = combined_linear.where(combined_linear > 0.0)
         with np.errstate(divide="ignore", invalid="ignore"):
             broadband_db = 10.0 * np.log10(combined_linear.astype(float))

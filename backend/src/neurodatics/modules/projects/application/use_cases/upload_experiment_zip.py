@@ -5,16 +5,20 @@ import uuid
 from contextlib import AsyncExitStack
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import PurePosixPath
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.concurrency import contextmanager_in_threadpool
 
 from .....config.settings import settings
-from .....infra.storage.gdrive_client import gdrive_client
-from ....integrations.google_drive.infrastructure.configure_client import configure_gdrive_client_with_oauth
+from ....integrations.storage_provider import (
+    STORAGE_PROVIDER,
+    configure_gdrive_client_with_oauth,
+    gdrive_client,
+)
 from neurodatics.shared.scenario_identity import scenario_key
 from ....analytics.infrastructure.parquet_cache import ParquetCacheService
 from ....analytics.infrastructure.redis_cache import AnalyticsRedisCache
@@ -80,6 +84,23 @@ class StimulusPlacementUploadError(ValueError):
 class ResolvedStimulusPlacements:
     by_source_entry_path: Dict[str, StimulusPlacementContract] = field(default_factory=dict)
     by_scenario_name: Dict[str, StimulusPlacementContract] = field(default_factory=dict)
+
+
+INGESTED_ENTRY_KINDS = frozenset({"raw_csv", "scenario_image", "scenario_video"})
+
+
+@dataclass(frozen=True)
+class _DriveUpload:
+    local_path: str
+    filename: str
+    mime_type: str
+    folder_path: str
+    size_bytes: int
+
+
+def _parent_folder_path(source_entry_path: str) -> str:
+    parent = str(PurePosixPath(source_entry_path).parent)
+    return "" if parent == "." else parent
 
 
 GOOGLE_DRIVE_NOT_CONNECTED_MESSAGE = (
@@ -173,18 +194,23 @@ class UploadExperimentZipUseCase:
             )
 
             zip_size_bytes = pathlib.Path(zip_path).stat().st_size
+            # Only the CSV and the scenario media are read after ingestion. Other
+            # assets stay in the manifest summary but are never stored.
+            ingested_entries = [
+                entry for entry in manifest_entries if entry.kind in INGESTED_ENTRY_KINDS
+            ]
 
             # Extraction is part of validation: it is the pass that actually
             # decompresses (CRC-checking every member and enforcing the byte
             # budget), so it has to happen before the project state changes too.
             async with AsyncExitStack() as extraction_stack:
                 extracted = await extraction_stack.enter_async_context(contextmanager_in_threadpool(
-                    ZipExtractionService.extract_to_temp(zip_path, manifest_entries)
+                    ZipExtractionService.extract_to_temp(zip_path, ingested_entries)
                 ))
                 resolved_stimulus_placements = await asyncio.to_thread(
                     self._resolve_stimulus_placements,
                     stimulus_placements or [],
-                    manifest_entries=manifest_entries,
+                    manifest_entries=ingested_entries,
                     extracted_files=extracted.files_by_entry_path,
                     screen_geometry=screen_geometry,
                 )
@@ -205,7 +231,7 @@ class UploadExperimentZipUseCase:
                     updates={
                         "ingestion_status": "PROCESSING",
                         "ingestion_error": None,
-                        "storage_provider": "gdrive",
+                        "storage_provider": STORAGE_PROVIDER,
                     },
                 )
                 await self.repository.commit()
@@ -224,8 +250,6 @@ class UploadExperimentZipUseCase:
                     await self.lifecycle.record_root(root_folder_id)
                 else:
                     raise RuntimeError("Drive did not return an upload root ID")
-
-                folder_cache: Dict[str, str] = {"": root_folder_id}
 
                 files_to_insert: List[ProjectFile] = []
                 scenaries_to_insert: List[Scenaries] = []
@@ -266,10 +290,10 @@ class UploadExperimentZipUseCase:
                 processed_output_dir.mkdir(parents=True, exist_ok=True)
 
                 raw_csv_entry_count = sum(
-                    1 for entry in manifest_entries if entry.kind == "raw_csv"
+                    1 for entry in ingested_entries if entry.kind == "raw_csv"
                 )
 
-                for csv_entry in (entry for entry in manifest_entries if entry.kind == "raw_csv"):
+                for csv_entry in (entry for entry in ingested_entries if entry.kind == "raw_csv"):
                     await self.lifecycle.check_canceled()
                     local_csv_path = extracted.files_by_entry_path.get(csv_entry.source_entry_path)
                     if not local_csv_path:
@@ -351,15 +375,48 @@ class UploadExperimentZipUseCase:
                     participant_codes=parquet_participant_codes,
                 )
 
-                total_drive_bytes = sum(
-                    max(0, int(entry.size_bytes or 0))
-                    for entry in manifest_entries
-                    if entry.kind != "raw_csv"
-                )
-                total_drive_bytes += sum(pathlib.Path(path).stat().st_size for _, path in all_user_parquet_paths)
-                total_drive_bytes += sum(
-                    pathlib.Path(path).stat().st_size for _, _, path in all_scenario_parquet_paths
-                )
+                media_entries: List[tuple[ZipManifestEntry, str]] = []
+                for entry in ingested_entries:
+                    if entry.kind == "raw_csv":
+                        csv_summary["detected"] += 1
+                        counts["csv"] += 1
+                        continue
+                    local_path = extracted.files_by_entry_path.get(entry.source_entry_path)
+                    if local_path:
+                        media_entries.append((entry, local_path))
+                media_uploads = [
+                    _DriveUpload(
+                        local_path=local_path,
+                        filename=entry.filename,
+                        mime_type=entry.mime_type,
+                        folder_path=_parent_folder_path(entry.source_entry_path),
+                        size_bytes=max(0, int(entry.size_bytes or 0)),
+                    )
+                    for entry, local_path in media_entries
+                ]
+                user_parquet_uploads = [
+                    _DriveUpload(
+                        local_path=parquet_path,
+                        filename=f"user{user_index}.parquet",
+                        mime_type="application/octet-stream",
+                        folder_path=f"processed/user{user_index}",
+                        size_bytes=pathlib.Path(parquet_path).stat().st_size,
+                    )
+                    for user_index, parquet_path in all_user_parquet_paths
+                ]
+                scenario_parquet_uploads = [
+                    _DriveUpload(
+                        local_path=parquet_path,
+                        filename=f"{pathlib.Path(parquet_path).stem}.parquet",
+                        mime_type="application/octet-stream",
+                        folder_path=f"processed/user{user_index}/escenarios",
+                        size_bytes=pathlib.Path(parquet_path).stat().st_size,
+                    )
+                    for user_index, _, parquet_path in all_scenario_parquet_paths
+                ]
+                drive_uploads = media_uploads + user_parquet_uploads + scenario_parquet_uploads
+
+                total_drive_bytes = sum(upload.size_bytes for upload in drive_uploads)
                 if zip_saved:
                     total_drive_bytes += zip_size_bytes
 
@@ -388,7 +445,7 @@ class UploadExperimentZipUseCase:
                         project_id=project_id,
                         source_zip_id=None,
                         kind="experiment_zip",
-                        storage_provider="gdrive",
+                        storage_provider=STORAGE_PROVIDER,
                         external_id=zip_upload["drive_file_id"],
                         drive_parent_external_id=root_folder_id,
                         filename=filename,
@@ -427,52 +484,49 @@ class UploadExperimentZipUseCase:
                     files_to_insert.append(zip_project_file)
                     zip_file_response = self._to_response_file(zip_project_file)
 
-                for folder_path in extracted.folders:
-                    await self.lifecycle.check_canceled()
-                    await self._ensure_folder_path(
-                        folder_path=folder_path,
-                        root_folder_id=root_folder_id,
-                        folder_cache=folder_cache,
-                        uploaded_drive_ids=uploaded_drive_ids,
-                        counters=counts,
-                    )
+                await self.lifecycle.check_canceled()
+                folder_ids = await self._create_folder_tree(
+                    {upload.folder_path for upload in drive_uploads},
+                    root_folder_id,
+                    uploaded_drive_ids,
+                    counts,
+                )
 
-                for entry in manifest_entries:
-                    await self.lifecycle.check_canceled()
-
-                    if entry.kind == "raw_csv":
-                        csv_summary["detected"] += 1
-                        counts["csv"] += 1
-                        continue
-
-                    local_path = extracted.files_by_entry_path.get(entry.source_entry_path)
-                    if not local_path:
-                        continue
-
-                    parent_path = str(PurePosixPath(entry.source_entry_path).parent)
-                    if parent_path == ".":
-                        parent_path = ""
-
-                    parent_folder_id = await self._ensure_folder_path(
-                        folder_path=parent_path,
-                        root_folder_id=root_folder_id,
-                        folder_cache=folder_cache,
-                        uploaded_drive_ids=uploaded_drive_ids,
-                        counters=counts,
-                    )
-
-                    upload_info = await asyncio.to_thread(
-                        gdrive_client.upload_file,
-                        filename=entry.filename,
-                        mime_type=entry.mime_type,
-                        parent_id=parent_folder_id,
-                        local_path=local_path,
-                    )
+                async def on_uploaded(upload: _DriveUpload, upload_info: Dict[str, Any]) -> None:
+                    nonlocal drive_uploaded_bytes
                     uploaded_drive_ids.append(upload_info["drive_file_id"])
-                    drive_uploaded_bytes += max(0, int(entry.size_bytes or 0))
-                    drive_upload_progress_registry.mark_uploaded_bytes(self.lifecycle.progress_key, drive_uploaded_bytes)
+                    drive_uploaded_bytes += upload.size_bytes
+                    drive_upload_progress_registry.mark_uploaded_bytes(
+                        self.lifecycle.progress_key, drive_uploaded_bytes
+                    )
                     await self.lifecycle.progress()
+                    await self.lifecycle.check_canceled()
 
+                upload_infos = await self._run_bounded(
+                    [
+                        (upload, partial(
+                            gdrive_client.upload_file,
+                            filename=upload.filename,
+                            mime_type=upload.mime_type,
+                            parent_id=folder_ids[upload.folder_path],
+                            local_path=upload.local_path,
+                        ))
+                        for upload in drive_uploads
+                    ],
+                    on_uploaded,
+                )
+                media_infos = upload_infos[: len(media_uploads)]
+                user_parquet_infos = upload_infos[
+                    len(media_uploads): len(media_uploads) + len(user_parquet_uploads)
+                ]
+                scenario_parquet_infos = upload_infos[
+                    len(media_uploads) + len(user_parquet_uploads):
+                ]
+
+                for (entry, local_path), upload, upload_info in zip(
+                    media_entries, media_uploads, media_infos
+                ):
+                    parent_folder_id = folder_ids[upload.folder_path]
                     if entry.kind == "scenario_image":
                         counts["images"] += 1
                     elif entry.kind == "scenario_video":
@@ -498,7 +552,7 @@ class UploadExperimentZipUseCase:
                         project_id=project_id,
                         source_zip_id=source_zip_file_id,
                         kind=entry.kind,
-                        storage_provider="gdrive",
+                        storage_provider=STORAGE_PROVIDER,
                         external_id=upload_info["drive_file_id"],
                         drive_parent_external_id=parent_folder_id,
                         filename=entry.filename,
@@ -530,167 +584,118 @@ class UploadExperimentZipUseCase:
                     if maybe_scenary:
                         scenaries_to_insert.append(maybe_scenary)
 
-                if processing_result is not None:
-                    await self._ensure_folder_path(
-                        "processed",
-                        root_folder_id,
-                        folder_cache,
-                        uploaded_drive_ids,
-                        counts,
+                for (user_index, parquet_path), upload, upload_info in zip(
+                    all_user_parquet_paths, user_parquet_uploads, user_parquet_infos
+                ):
+                    user_file_metadata: Dict[str, Any] = {
+                        "user_index": user_index,
+                        "type": "user_parquet",
+                        # Top-level identity: analytics matches on this and
+                        # never on the position of a participant row.
+                        "participant_code": parquet_participant_codes[parquet_path],
+                    }
+                    block_metadata = parquet_block_metadata.get(parquet_path)
+                    if block_metadata is not None:
+                        user_file_metadata["block_metadata"] = block_metadata
+                    user_file_metadata["stimulus_placements_by_scenario"] = (
+                        processed_stimulus_snapshots_by_scenario
+                        or stimulus_snapshots_by_scenario
                     )
+                    if physical_screen_geometry is not None:
+                        user_file_metadata["physical_screen_geometry"] = physical_screen_geometry
 
-                    for user_index, parquet_path in all_user_parquet_paths:
-                        await self.lifecycle.check_canceled()
-                        parquet_size = pathlib.Path(parquet_path).stat().st_size
+                    project_file = ProjectFile(
+                        id=uuid.uuid4(),
+                        project_id=project_id,
+                        source_zip_id=source_zip_file_id,
+                        kind="processed_parquet",
+                        storage_provider=STORAGE_PROVIDER,
+                        external_id=upload_info["drive_file_id"],
+                        drive_parent_external_id=folder_ids[upload.folder_path],
+                        filename=upload.filename,
+                        original_filename=upload.filename,
+                        source_entry_path=f"{upload.folder_path}/{upload.filename}",
+                        mime_type="application/octet-stream",
+                        extension=".parquet",
+                        size_bytes=upload.size_bytes,
+                        checksum_sha256=upload_info["checksum_sha256"],
+                        drive_web_view_link=upload_info.get("drive_web_view_link"),
+                        drive_download_link=upload_info.get("drive_download_link"),
+                        validation_status="valid",
+                        validation_errors=None,
+                        processing_status="processed",
+                        processing_errors=None,
+                        processed_at=datetime.now(timezone.utc),
+                        file_metadata=user_file_metadata,
+                        deleted_at=None,
+                    )
+                    files_to_insert.append(project_file)
+                    response_files.append(self._to_response_file(project_file))
+                    counts["files_uploaded"] += 1
 
-                        user_folder_id = await self._ensure_folder_path(
-                            f"processed/user{user_index}",
-                            root_folder_id,
-                            folder_cache,
-                            uploaded_drive_ids,
-                            counts,
+                for (user_index, scenario_name, parquet_path), upload, upload_info in zip(
+                    all_scenario_parquet_paths, scenario_parquet_uploads, scenario_parquet_infos
+                ):
+                    scenario_file_metadata: Dict[str, Any] = {
+                        "user_index": user_index,
+                        "scenario": scenario_name,
+                        "type": "scenario_parquet",
+                        "participant_code": parquet_participant_codes[parquet_path],
+                    }
+                    block_metadata = parquet_block_metadata.get(parquet_path)
+                    if block_metadata is not None:
+                        scenario_file_metadata["block_metadata"] = block_metadata
+                    scenario_contract = self._placement_for_scenario(
+                        resolved_stimulus_placements,
+                        scenario_name,
+                    )
+                    if scenario_contract is not None:
+                        scenario_file_metadata["stimulus_placement"] = (
+                            scenario_contract.to_snapshot()
                         )
+                    if physical_screen_geometry is not None:
+                        scenario_file_metadata["physical_screen_geometry"] = physical_screen_geometry
 
-                        upload_info = await asyncio.to_thread(
-                            gdrive_client.upload_file,
-                            filename=f"user{user_index}.parquet",
-                            mime_type="application/octet-stream",
-                            parent_id=user_folder_id,
-                            local_path=parquet_path,
-                        )
-                        uploaded_drive_ids.append(upload_info["drive_file_id"])
-                        drive_uploaded_bytes += parquet_size
-                        drive_upload_progress_registry.mark_uploaded_bytes(self.lifecycle.progress_key, drive_uploaded_bytes)
-                        await self.lifecycle.progress()
-
-                        file_id = uuid.uuid4()
-                        user_file_metadata: Dict[str, Any] = {
-                            "user_index": user_index,
-                            "type": "user_parquet",
-                            # Top-level identity: analytics matches on this and
-                            # never on the position of a participant row.
-                            "participant_code": parquet_participant_codes[parquet_path],
-                        }
-                        block_metadata = parquet_block_metadata.get(parquet_path)
-                        if block_metadata is not None:
-                            user_file_metadata["block_metadata"] = block_metadata
-                        user_file_metadata["stimulus_placements_by_scenario"] = (
-                            processed_stimulus_snapshots_by_scenario
-                            or stimulus_snapshots_by_scenario
-                        )
-                        if physical_screen_geometry is not None:
-                            user_file_metadata["physical_screen_geometry"] = physical_screen_geometry
-
-                        project_file = ProjectFile(
-                            id=file_id,
-                            project_id=project_id,
-                            source_zip_id=source_zip_file_id,
-                            kind="processed_parquet",
-                            storage_provider="gdrive",
-                            external_id=upload_info["drive_file_id"],
-                            drive_parent_external_id=user_folder_id,
-                            filename=f"user{user_index}.parquet",
-                            original_filename=f"user{user_index}.parquet",
-                            source_entry_path=f"processed/user{user_index}/user{user_index}.parquet",
-                            mime_type="application/octet-stream",
-                            extension=".parquet",
-                            size_bytes=parquet_size,
-                            checksum_sha256=upload_info["checksum_sha256"],
-                            drive_web_view_link=upload_info.get("drive_web_view_link"),
-                            drive_download_link=upload_info.get("drive_download_link"),
-                            validation_status="valid",
-                            validation_errors=None,
-                            processing_status="processed",
-                            processing_errors=None,
-                            processed_at=datetime.now(timezone.utc),
-                            file_metadata=user_file_metadata,
-                            deleted_at=None,
-                        )
-                        files_to_insert.append(project_file)
-                        response_files.append(self._to_response_file(project_file))
-                        counts["files_uploaded"] += 1
-
-                    for user_index, scenario_name, parquet_path in all_scenario_parquet_paths:
-                        await self.lifecycle.check_canceled()
-                        parquet_size = pathlib.Path(parquet_path).stat().st_size
-
-                        esc_folder_id = await self._ensure_folder_path(
-                            f"processed/user{user_index}/escenarios",
-                            root_folder_id,
-                            folder_cache,
-                            uploaded_drive_ids,
-                            counts,
-                        )
-
-                        clean_name = pathlib.Path(parquet_path).stem
-                        upload_info = await asyncio.to_thread(
-                            gdrive_client.upload_file,
-                            filename=f"{clean_name}.parquet",
-                            mime_type="application/octet-stream",
-                            parent_id=esc_folder_id,
-                            local_path=parquet_path,
-                        )
-                        uploaded_drive_ids.append(upload_info["drive_file_id"])
-                        drive_uploaded_bytes += parquet_size
-                        drive_upload_progress_registry.mark_uploaded_bytes(self.lifecycle.progress_key, drive_uploaded_bytes)
-                        await self.lifecycle.progress()
-
-                        file_id = uuid.uuid4()
-                        scenario_file_metadata: Dict[str, Any] = {
-                            "user_index": user_index,
-                            "scenario": scenario_name,
-                            "type": "scenario_parquet",
-                            "participant_code": parquet_participant_codes[parquet_path],
-                        }
-                        block_metadata = parquet_block_metadata.get(parquet_path)
-                        if block_metadata is not None:
-                            scenario_file_metadata["block_metadata"] = block_metadata
-                        scenario_contract = self._placement_for_scenario(
-                            resolved_stimulus_placements,
-                            scenario_name,
-                        )
-                        if scenario_contract is not None:
-                            scenario_file_metadata["stimulus_placement"] = (
-                                scenario_contract.to_snapshot()
-                            )
-                        if physical_screen_geometry is not None:
-                            scenario_file_metadata["physical_screen_geometry"] = physical_screen_geometry
-
-                        project_file = ProjectFile(
-                            id=file_id,
-                            project_id=project_id,
-                            source_zip_id=source_zip_file_id,
-                            kind="processed_parquet",
-                            storage_provider="gdrive",
-                            external_id=upload_info["drive_file_id"],
-                            drive_parent_external_id=esc_folder_id,
-                            filename=f"{clean_name}.parquet",
-                            original_filename=f"{clean_name}.parquet",
-                            source_entry_path=f"processed/user{user_index}/escenarios/{clean_name}.parquet",
-                            mime_type="application/octet-stream",
-                            extension=".parquet",
-                            size_bytes=parquet_size,
-                            checksum_sha256=upload_info["checksum_sha256"],
-                            drive_web_view_link=upload_info.get("drive_web_view_link"),
-                            drive_download_link=upload_info.get("drive_download_link"),
-                            validation_status="valid",
-                            validation_errors=None,
-                            processing_status="processed",
-                            processing_errors=None,
-                            processed_at=datetime.now(timezone.utc),
-                            file_metadata=scenario_file_metadata,
-                            deleted_at=None,
-                        )
-                        files_to_insert.append(project_file)
-                        response_files.append(self._to_response_file(project_file))
-                        counts["files_uploaded"] += 1
+                    project_file = ProjectFile(
+                        id=uuid.uuid4(),
+                        project_id=project_id,
+                        source_zip_id=source_zip_file_id,
+                        kind="processed_parquet",
+                        storage_provider=STORAGE_PROVIDER,
+                        external_id=upload_info["drive_file_id"],
+                        drive_parent_external_id=folder_ids[upload.folder_path],
+                        filename=upload.filename,
+                        original_filename=upload.filename,
+                        source_entry_path=f"{upload.folder_path}/{upload.filename}",
+                        mime_type="application/octet-stream",
+                        extension=".parquet",
+                        size_bytes=upload.size_bytes,
+                        checksum_sha256=upload_info["checksum_sha256"],
+                        drive_web_view_link=upload_info.get("drive_web_view_link"),
+                        drive_download_link=upload_info.get("drive_download_link"),
+                        validation_status="valid",
+                        validation_errors=None,
+                        processing_status="processed",
+                        processing_errors=None,
+                        processed_at=datetime.now(timezone.utc),
+                        file_metadata=scenario_file_metadata,
+                        deleted_at=None,
+                    )
+                    files_to_insert.append(project_file)
+                    response_files.append(self._to_response_file(project_file))
+                    counts["files_uploaded"] += 1
 
             preserve_unchanged_stimulus_annotations(project, files_to_insert, scenaries_to_insert)
             new_generation = await publish_ingestion(
                 self.repository, self.lifecycle, files_to_insert, scenaries_to_insert,
                 list(dict.fromkeys(parquet_participant_codes.values())),
                 all_detected_sensors,
-                {"id": root_folder_id, "name": root_folder_name, "url": root_folder_url},
+                {
+                    "id": root_folder_id,
+                    "name": root_folder_name,
+                    "url": root_folder_url,
+                    "source_folder_name": PurePosixPath(filename).stem[:255] or None,
+                },
             )
             counts["scenaries_created"] = len(scenaries_to_insert)
             drive_upload_progress_registry.complete(self.lifecycle.progress_key)
@@ -808,45 +813,80 @@ class UploadExperimentZipUseCase:
             return await asyncio.to_thread(gdrive_client.create_folder, name=folder_name, parent_id=None, file_id=root_id)
         return await asyncio.to_thread(gdrive_client.create_folder, name=folder_name, parent_id=None)
 
-    async def _ensure_folder_path(
+    async def _create_folder_tree(
         self,
-        folder_path: str,
-        root_folder_id: Optional[str],
-        folder_cache: Dict[str, str],
+        folder_paths: Set[str],
+        root_folder_id: str,
         uploaded_drive_ids: List[str],
         counters: Dict[str, int],
-    ) -> Optional[str]:
-        normalized = folder_path.strip("/") if folder_path else ""
-        if normalized in folder_cache:
-            return folder_cache[normalized]
+    ) -> Dict[str, str]:
+        """Create every folder under the fresh root, one depth level at a time.
 
-        parts = [part for part in normalized.split("/") if part]
-        current_path = ""
-        current_parent = root_folder_id
+        The root was created by this ingestion, so no folder can already exist
+        and there is nothing to look up. Siblings are created concurrently; a
+        level only starts once its parents exist.
+        """
+        wanted: Set[str] = set()
+        for folder_path in folder_paths:
+            parts = [part for part in folder_path.split("/") if part]
+            wanted.update("/".join(parts[:depth]) for depth in range(1, len(parts) + 1))
 
-        for part in parts:
-            current_path = f"{current_path}/{part}".strip("/")
-            if current_path in folder_cache:
-                current_parent = folder_cache[current_path]
-                continue
+        folder_ids: Dict[str, str] = {"": root_folder_id}
 
-            existing = (
-                await asyncio.to_thread(gdrive_client.find_child_folder_by_name, name=part, parent_id=current_parent)
-                if current_parent
-                else None
+        async def on_created(path: str, created: Dict[str, Any]) -> None:
+            folder_ids[path] = created["drive_file_id"]
+            uploaded_drive_ids.append(created["drive_file_id"])
+            counters["folders_created"] += 1
+
+        for depth in sorted({path.count("/") for path in wanted}):
+            level = sorted(path for path in wanted if path.count("/") == depth)
+            await self._run_bounded(
+                [
+                    (path, partial(
+                        gdrive_client.create_folder,
+                        name=path.rpartition("/")[2],
+                        parent_id=folder_ids[path.rpartition("/")[0]],
+                    ))
+                    for path in level
+                ],
+                on_created,
             )
-            if existing:
-                folder_id = existing["drive_file_id"]
-            else:
-                created = await asyncio.to_thread(gdrive_client.create_folder, name=part, parent_id=current_parent)
-                folder_id = created["drive_file_id"]
-                uploaded_drive_ids.append(folder_id)
-                counters["folders_created"] += 1
+            await self.lifecycle.check_canceled()
+        return folder_ids
 
-            folder_cache[current_path] = folder_id
-            current_parent = folder_id
+    @staticmethod
+    async def _run_bounded(
+        jobs: List[Tuple[Any, Callable[[], Any]]],
+        on_done: Callable[[Any, Any], Awaitable[None]],
+    ) -> List[Any]:
+        """Run blocking Drive calls on worker threads, a bounded number at a time.
 
-        return current_parent
+        Returns the results in job order. `on_done` runs on the event loop, one
+        call at a time, so it may use the request's database session. On any
+        error, calls already in flight are awaited before the error propagates:
+        everything they create then exists inside the new root before cleanup
+        deletes that root.
+        """
+        limit = max(1, int(settings.gdrive_upload_concurrency))
+        results: List[Any] = [None] * len(jobs)
+        pending: Dict["asyncio.Future[Any]", int] = {}
+        next_index = 0
+        try:
+            while next_index < len(jobs) or pending:
+                while next_index < len(jobs) and len(pending) < limit:
+                    task = asyncio.ensure_future(asyncio.to_thread(jobs[next_index][1]))
+                    pending[task] = next_index
+                    next_index += 1
+                done, _ = await asyncio.wait(set(pending), return_when=asyncio.FIRST_COMPLETED)
+                for task in done:
+                    index = pending.pop(task)
+                    results[index] = task.result()
+                    await on_done(jobs[index][0], results[index])
+        except BaseException:
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            raise
+        return results
 
     def _resolve_stimulus_placements(
         self,

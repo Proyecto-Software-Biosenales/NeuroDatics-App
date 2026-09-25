@@ -117,8 +117,8 @@ def test_eeg_timeseries_downsampling_preserves_alignment():
     )
 
     assert result["time"] == [0.0, 3.0, 6.0, 9.0]
-    assert result["raw"]["f4"] == [2.0, 5.0, 8.0, 11.0]
-    assert result["raw"]["p4"] == [4.0, 7.0, 10.0, 13.0]
+    assert result["raw"]["f4"] == [2.0, 5.0, None, 11.0]
+    assert result["raw"]["p4"] == [4.0, 7.0, None, 13.0]
     assert len(result["smooth"]["f4"]) == 4
     assert len(result["smooth"]["p4"]) == 4
 
@@ -241,8 +241,8 @@ def test_eeg_spectrogram_returns_matrix_per_default_channel():
     assert result["available_channels"] == list(EEG_CHANNELS)
     assert result["sampling_rate_hz"] == 100.0
     assert result["use_db"] is True
-    assert result["normalize"] == "freq_demean"
-    assert result["unit"] == "dB centrado"
+    assert result["normalize"] == "none"
+    assert result["unit"] == "dB"
     assert result["time"]
     assert result["frequency"]
     assert result["color_domain"]["min"] < result["color_domain"]["max"]

@@ -32,6 +32,8 @@ import { getFileRelativePath, type FolderSelection } from "@/features/projects/c
 import { useZipUploadAttempt } from "@/features/projects/create-project/useZipUploadAttempt"
 import { packageExperimentFolder } from "@/features/projects/create-project/packageExperimentFolder"
 import { detectedUploadMetadata } from "@/features/projects/create-project/uploadMetadata"
+import { resolveScenarioImageUrl } from "@/features/projects/driveFallbackUrl"
+import { storageCopy } from "@/features/projects/storageCopy"
 import {
   createEmptyStimulusPlacementDraft,
   isStimulusPlacementDraftValid,
@@ -128,29 +130,6 @@ const isGoogleSessionExpiredError = (message: string): boolean => {
   return /google drive|oauth|invalid_grant|refresh token|token has expired|no se pudo configurar google drive/i.test(message)
 }
 
-const extractDriveFileId = (url?: string | null): string | null => {
-  if (!url) return null
-  const filePathMatch = url.match(/\/d\/([^/]+)/i)
-  if (filePathMatch?.[1]) return filePathMatch[1]
-  const queryMatch = url.match(/[?&]id=([^&]+)/i)
-  if (queryMatch?.[1]) return queryMatch[1]
-  return null
-}
-
-const resolveScenarioImageUrl = (file?: {
-  drive_web_view_link?: string | null
-  drive_download_link?: string | null
-  external_id?: string | null
-}): string | null => {
-  if (!file) return null
-  if (file.drive_download_link) return file.drive_download_link
-  const driveFileId = file.external_id || extractDriveFileId(file.drive_web_view_link)
-  if (driveFileId) {
-    return `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w2000`
-  }
-  return file.drive_web_view_link ?? null
-}
-
 const parseScenaries = (project: ApiProjectDetail): scenaries[] => {
   const filesById = new Map<string, {
     drive_web_view_link?: string | null
@@ -174,6 +153,8 @@ const parseScenaries = (project: ApiProjectDetail): scenaries[] => {
 }
 
 const getCurrentZipFilename = (project: ApiProjectDetail): string => {
+  if (project.source_folder_name) return project.source_folder_name
+  // Projects ingested before the folder name was recorded kept the uploaded ZIP.
   const files = project.files || []
   const zipFiles = files.filter((file) => file.kind === "experiment_zip")
   if (zipFiles.length === 0) return ""
@@ -227,7 +208,7 @@ export const EditProjectDialog = ({
 
   const cancelZipUpload = () => {
     uploadAttempt.cancel()
-    setSaveProgressMessage("Cancelando subida a Google Drive...")
+    setSaveProgressMessage(storageCopy.cancellingUpload)
   }
 
   const [formData, setFormData] = useState<ProjectFormData>({
@@ -513,7 +494,7 @@ export const EditProjectDialog = ({
           const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0)
 
           if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
-            setSaveProgressMessage("Preparando sincronización en Google Drive...")
+            setSaveProgressMessage(storageCopy.preparingSync)
             return
           }
 
@@ -528,9 +509,9 @@ export const EditProjectDialog = ({
           if (snapshot.phase === "canceling") {
             setSaveProgressMessage("Cancelando subida en backend...")
           } else if (percent >= 99 && snapshot.phase !== "completed") {
-            setSaveProgressMessage("Finalizando sincronización con Google Drive...")
+            setSaveProgressMessage(storageCopy.finalizingSync)
           } else {
-            setSaveProgressMessage(`Sincronizando archivos en Google Drive... ${percent}%`)
+            setSaveProgressMessage(storageCopy.syncing(percent))
           }
 
         })

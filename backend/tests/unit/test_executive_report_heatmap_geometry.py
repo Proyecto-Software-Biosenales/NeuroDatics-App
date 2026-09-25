@@ -1,4 +1,4 @@
-"""The report's heatmap page must use the same convention as its scanpath page.
+"""The report's heatmap must use the same convention as its scanpath.
 
 The report centres each stimulus on a fixed 2560x1440 canvas and draws scanpath
 and AOI figures inside the resulting content box. The heatmap was pasted across
@@ -20,7 +20,8 @@ from neurodatics.modules.analytics.application.services.analytics_service import
     HeatmapAnalyticsService,
     ScanpathAnalyticsService,
 )
-from neurodatics.modules.reports.application.services.executive_report_service import (
+from neurodatics.modules.analytics.application.services.analytics_service import FixationEventService
+from neurodatics.modules.reports.application.sensor_reports.stimulus import (
     SCANPATH_RADIUS_CAP_MS,
     SCANPATH_RADIUS_MAX_PX,
     SCANPATH_RADIUS_MIN_PX,
@@ -28,16 +29,14 @@ from neurodatics.modules.reports.application.services.executive_report_service i
     _content_box,
     _draw_heatmap,
     _draw_scanpath,
-    _new_report_figure,
     _open_base_image,
-    _scanpath_image_axis,
+    _render_scale,
     _scanpath_radius,
     _scanpath_radius_cap_ms,
     _scanpath_total_duration_s,
-    build_spatial_assets,
-)
-from neurodatics.modules.reports.application.services.executive_report_service import (
-    ParticipantFrame,
+    heatmap_figure,
+    scanpath_figure,
+    scanpath_key,
 )
 
 Image = pytest.importorskip("PIL.Image", reason="report rendering needs Pillow")
@@ -146,26 +145,28 @@ def test_report_heatmap_stays_inside_the_stimulus_and_off_the_letterbox(width, h
     assert not changed[offset_y + content_height:, :].any()
 
 
-def test_build_spatial_assets_renders_the_heatmap_at_the_content_box():
-    """The service wires the content box through, not just the drawing helper."""
+@pytest.mark.parametrize("width,height", STIMULUS_SHAPES)
+def test_report_heatmap_figure_is_cropped_to_the_stimulus_and_keeps_the_hotspot(width, height):
+    """The report figure wires the content box through, not just the drawing helper."""
 
-    base = _open_base_image(_stimulus_bytes(800, 800))
+    base = _open_base_image(_stimulus_bytes(width, height))
     offset_x, offset_y, content_width, content_height = _content_box(base)
-    frame = _fixation_frame()
+    events, _ = FixationEventService.build_events(_fixation_frame(), scenario="A")
 
-    assets = build_spatial_assets(
-        [ParticipantFrame(code="P1", dataframe=frame)],
-        frame,
-        "A",
-        _stimulus_bytes(800, 800),
-        [],
-    )
+    figure = heatmap_figure(base, events)
 
-    assert assets.heatmap is not None
-    heatmap_x, heatmap_y = _changed_centroid(base, assets.heatmap)
+    assert figure is not None
+    assert figure.size == (content_width, content_height)
+    stimulus = base.crop((offset_x, offset_y, offset_x + content_width, offset_y + content_height))
+    heatmap_x, heatmap_y = _changed_centroid(stimulus, figure)
+    assert heatmap_x == pytest.approx(FIXATION_X * content_width, abs=0.03 * content_width)
+    assert heatmap_y == pytest.approx(FIXATION_Y * content_height, abs=0.03 * content_height)
 
-    assert heatmap_x == pytest.approx(offset_x + FIXATION_X * content_width, abs=0.03 * content_width)
-    assert heatmap_y == pytest.approx(offset_y + FIXATION_Y * content_height, abs=0.03 * content_height)
+
+def test_report_heatmap_figure_is_absent_without_fixations():
+    base = _open_base_image(_stimulus_bytes(800, 800))
+
+    assert heatmap_figure(base, FixationEventService.empty_events()) is None
 
 
 @pytest.mark.parametrize(
@@ -236,44 +237,24 @@ def test_report_scanpath_total_duration_prefers_api_value_and_falls_back_safely(
 
 
 @pytest.mark.parametrize("width,height", STIMULUS_SHAPES)
-def test_report_scanpath_caption_is_reserved_below_image_for_all_aspect_ratios(width, height):
-    import matplotlib.pyplot as plt
+def test_report_scanpath_key_matches_the_drawn_markers_for_all_aspect_ratios(width, height):
+    """The printed key scales with the image, so its circles equal the markers."""
 
     base = _open_base_image(_stimulus_bytes(width, height))
-    scanpath = _draw_scanpath(
-        base,
-        {
-            "objectives": [
-                {
-                    "cx": FIXATION_X,
-                    "cy": FIXATION_Y,
-                    "duration_s": 1.0,
-                }
-            ],
-            "total_duration_s": 1.0,
-        },
-        [],
-    )
-    fig = _new_report_figure()
-    try:
-        _scanpath_image_axis(fig, scanpath, "Mapa de recorridos", (0.065, 0.095, 0.870, 0.315))
-        fig.canvas.draw()
+    _, _, content_width, content_height = _content_box(base)
+    scanpath = {
+        "objectives": [{"cx": FIXATION_X, "cy": FIXATION_Y, "duration_s": 1.0}],
+        "total_duration_s": 1.0,
+        "radius_scale": {"cap_ms": 2000},
+    }
 
-        image_axis, legend_axis = fig.axes
-        assert legend_axis.get_position().y1 < image_axis.get_position().y0
-        assert len(legend_axis.collections) == 3
-        assert {text.get_text() for text in legend_axis.texts} >= {
-            "200 ms",
-            "1 s",
-            "≥ 2 s",
-            "Tamaño por duración · misma escala entre participantes",
-        }
-        assert {text.get_text() for text in fig.texts} >= {
-            "Mapa de recorridos",
-            "TIEMPO FIJADO",
-            "1.00 s",
-            "Excluye sacadas, mirada inválida y fuera del estímulo",
-        }
-        assert scanpath.size == STIMULUS_CANVAS_SIZE
-    finally:
-        plt.close(fig)
+    figure = scanpath_figure(base, scanpath)
+    key = scanpath_key(base, scanpath)
+
+    assert figure is not None
+    assert figure.size == (content_width, content_height)
+    assert [item["label"] for item in key["items"]] == ["200 ms", "1 s", "≥ 2 s"]
+    scale = _render_scale(content_width, content_height)
+    for item, duration_s in zip(key["items"], (0.2, 1.0, 2.0)):
+        assert item["radius"] * content_height == pytest.approx(_scanpath_radius(duration_s, scale, 2000))
+    assert key["fill"].startswith("#") and len(key["fill"]) == 9

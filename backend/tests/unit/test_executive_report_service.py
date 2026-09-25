@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -9,15 +8,14 @@ from neurodatics.modules.analytics.application.services.comparison_chart_config 
     ChartConfigBuilder,
 )
 from neurodatics.modules.reports.api.schemas import ExecutiveReportRequest
-from neurodatics.modules.reports.application.services.executive_report_service import (
+from neurodatics.modules.reports.application.sensor_reports.stimulus import (
     STIMULUS_CANVAS_SIZE,
-    SpatialAssets,
     _open_base_image,
-    aggregate_metric_rows,
+)
+from neurodatics.modules.reports.application.services.executive_report_service import (
+    _safe_filename,
     aggregate_summary_rows,
-    build_executive_report_pdf,
     resolve_report_sensors,
-    resolve_report_visualizations,
     select_report_scenarios,
     summarize_series,
 )
@@ -51,14 +49,9 @@ def test_resolve_report_sensors_maps_comparative_and_single_sensor():
     assert resolve_report_sensors(["GSR"], "sensor", "EEG") == []
 
 
-def test_resolve_report_visualizations_includes_sensor_specific_content():
-    visuals = resolve_report_visualizations(["EyeTracker", "EEG"])
-
-    assert "heatmap" in visuals
-    assert "scanpath" in visuals
-    assert "aoi" in visuals
-    assert "eeg_timeseries" in visuals
-    assert "gsr" not in visuals
+def test_report_filenames_are_ascii_header_safe():
+    assert _safe_filename("Bioseñales · Día 1/2") == "biosenales-dia-1-2"
+    assert _safe_filename("研究") == "informe"
 
 
 def test_select_report_scenarios_excludes_videos():
@@ -157,59 +150,3 @@ def test_aggregate_summary_rows_averages_participant_summaries():
     ]
 
 
-def test_aggregate_metric_rows_reports_average_and_range():
-    result = aggregate_metric_rows(
-        [
-            [{"metric": "GSR media", "value": 2.0, "unit": "uS"}],
-            [{"metric": "GSR media", "value": 4.0, "unit": "uS"}],
-        ]
-    )
-
-    assert result == [
-        {"metric": "GSR media promedio", "value": 3.0, "unit": "uS"},
-        {"metric": "GSR media rango", "value": "2.00 - 4.00", "unit": "uS"},
-    ]
-
-
-def test_build_executive_report_pdf_returns_pdf_bytes():
-    payload = {
-        "generated_at": datetime.now(timezone.utc),
-        "include_metadata": True,
-        "include_cover": True,
-        "project_name": "Demo",
-        "scope_label": "Participante P1",
-        "mode_label": "Informe comparativo",
-        "contents": ["Resumen ejecutivo"],
-        "participant_count": 1,
-        "scenario_count": 1,
-        "sensors": ["EyeTracker"],
-        "visualizations": ["heatmap"],
-        "warnings": [],
-        "scenarios": [
-            {
-                "name": "Escenario A",
-                "spatial": SpatialAssets(
-                    None,
-                    None,
-                    None,
-                    [
-                        {
-                            "id": "aoi-1",
-                            "name": "Logo",
-                            "color": "#3B82F6",
-                            "total_dwell_time_percent": 42.0,
-                            "fixation_count": 3,
-                        }
-                    ],
-                    [],
-                ),
-                "charts": [],
-                "metrics": [],
-            }
-        ],
-    }
-
-    pdf_bytes = build_executive_report_pdf(payload)
-
-    assert pdf_bytes.startswith(b"%PDF")
-    assert len(pdf_bytes) > 1000

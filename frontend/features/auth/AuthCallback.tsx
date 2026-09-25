@@ -3,97 +3,51 @@
 import { useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { writeStoredAuthSession } from '@/lib/auth/sessionStore'
+import { completeGoogleSignIn } from '@/lib/auth/googleAuth'
 
-interface GoogleAuthorizeResponse {
-  access_token: string
-  token_type: string
-  expires_in: number
-  user: {
-    id: string
-    email: string | null
-    name: string | null
-  }
-}
+const FALLBACK_ERROR = 'No se pudo completar el inicio de sesión con Google.'
 
 export function AuthCallback() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const errorHandledRef = useRef(false)
+  const handledRef = useRef(false)
 
   useEffect(() => {
-    if (errorHandledRef.current) {
+    if (handledRef.current) {
       return
     }
+    handledRef.current = true
 
-    const error = searchParams.get('error')
-    if (error) {
-      errorHandledRef.current = true
-      const errorDescription = searchParams.get('error_description')
-      const message = errorDescription ? decodeURIComponent(errorDescription) : 'No se pudo completar la autenticacion con Google.'
+    const failWith = (message: string) => {
       toast.error(message)
       router.replace('/login')
+    }
+
+    if (searchParams.get('error')) {
+      // Closing Google's account chooser is a choice, not a failure worth alarming about.
+      if (searchParams.get('error') === 'access_denied') {
+        router.replace('/login')
+        return
+      }
+      failWith(searchParams.get('error_description') ?? FALLBACK_ERROR)
       return
     }
 
     const code = searchParams.get('code')
     if (!code) {
-      errorHandledRef.current = true
-      toast.error('No se recibio el codigo de autorizacion de Google.')
-      router.replace('/login')
+      failWith('Google no devolvió un código de autorización.')
       return
     }
 
-    errorHandledRef.current = true
-
-    const authorizeWithBackend = async () => {
-      try {
-        const redirectUri = `${window.location.origin}/authorize`
-        const response = await fetch('/api/auth/google/authorize', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ code, redirect_uri: redirectUri }),
-        })
-
-        if (!response.ok) {
-          const message = await response.text()
-          throw new Error(message || 'No se pudo autorizar el login con Google en el backend.')
-        }
-
-        const data = (await response.json()) as GoogleAuthorizeResponse
-        const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString()
-
-        writeStoredAuthSession({
-          user: {
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.name,
-            authSource: 'google-oauth',
-          },
-          session: {
-            accessToken: data.access_token,
-            tokenType: data.token_type,
-            expiresAt,
-          },
-        })
-
-        router.replace('/dashboard')
-      } catch (authError) {
-        const message = authError instanceof Error ? authError.message : 'No se pudo completar la autenticacion con Google.'
-        toast.error(message)
-        router.replace('/login')
-      }
-    }
-
-    void authorizeWithBackend()
+    completeGoogleSignIn(code, searchParams.get('state'))
+      .then(() => router.replace('/dashboard'))
+      .catch((error: unknown) => failWith(error instanceof Error && error.message ? error.message : FALLBACK_ERROR))
   }, [router, searchParams])
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="app-page-shell flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="h-8 w-8 rounded-full border-2 border-border border-t-primary animate-spin" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
         <p className="text-sm text-muted-foreground">Iniciando sesión…</p>
       </div>
     </div>

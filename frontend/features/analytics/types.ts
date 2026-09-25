@@ -133,23 +133,87 @@ export interface GsrStatistics {
   raw_baseline: number | null
 }
 
+/** One place a detector fired, so the chart can show where instead of how many. */
+export interface EegArtifactSpan {
+  channel: string
+  start_s: number
+  end_s: number
+  peak_uV: number | null
+  z: number | null
+  detector: "amplitude" | "step" | "peak_to_peak"
+}
+
+/** Per-channel data-quality record. Describes the export, never a correction. */
+export interface EegChannelQuality {
+  transient_candidates: number
+  transient_step_threshold_uV_assumed: number
+  max_absolute_step: number | null
+  median_offset: number | null
+  valid_samples: number
+  missing_samples: number
+  repeated_adjacent_samples: number
+  quantization_step_uV: number | null
+  constant: boolean
+  amplitude_outlier_samples: number
+  amplitude_z_max: number | null
+  amplitude_z_threshold: number
+  step_threshold_ceiling_uV_assumed: number
+  peak_to_peak_window_s: number
+  peak_to_peak_max_uV: number | null
+  peak_to_peak_threshold_uV_assumed: number
+  peak_to_peak_excursions: number
+}
+
+export interface EegMetadata {
+  version: string
+  warnings: string[]
+  channels?: Record<string, EegChannelQuality>
+  artifact_spans?: EegArtifactSpan[]
+  artifact_spans_total?: number
+  source_units?: Record<string, string | null>
+  assumed_uV_channels?: string[]
+  excluded_channels?: string[]
+  reference?: string
+  incomplete_channels?: string[]
+  channel_unavailable_reason?: Record<string, string>
+  windows_total?: Record<string, number>
+  windows_flagged?: Record<string, number>
+  display_reduction?: string
+  [key: string]: unknown
+}
+
+export interface EegChannelStatistics {
+  count: number
+  mean: number
+  std: number
+  median: number
+  min: number
+  max: number
+  rms: number
+}
+
 export interface EegTimeseriesData {
   time: number[]
   channels: string[]
   available_channels: string[]
   sampling_rate_hz: number
-  raw: Record<string, number[]>
-  smooth: Record<string, number[]>
+  metadata?: EegMetadata
+  raw: Record<string, Array<number | null>>
+  smooth: Record<string, Array<number | null>>
+  statistics?: { raw: Record<string, EegChannelStatistics | null>; smooth: Record<string, EegChannelStatistics | null> }
 }
 
 export interface EegPsdData {
+  band_power?: Record<string, Record<"delta" | "theta" | "alpha" | "beta" | "gamma", number | null>>
+  total_power?: Record<string, number | null>
   frequency: number[]
   channels: string[]
   available_channels: string[]
   sampling_rate_hz: number
+  metadata?: EegMetadata
   use_db: boolean
   unit: string
-  power: Record<string, number[]>
+  power: Record<string, Array<number | null>>
 }
 
 export interface ColorDomain {
@@ -163,11 +227,15 @@ export interface EegSpectrogramData {
   channels: string[]
   available_channels: string[]
   sampling_rate_hz: number
+  metadata?: EegMetadata
   use_db: boolean
   normalize: string
   unit: string
-  power: Record<string, number[][]>
+  power: Record<string, Array<Array<number | null>>>
   color_domain: ColorDomain
+  /** Empty unless per-channel limits were requested; one channel 25 dB above
+   *  its neighbours flattens all of them onto a shared ramp. */
+  channel_color_domain?: Record<string, ColorDomain>
 }
 
 export interface EegTopographyData {
@@ -175,9 +243,10 @@ export interface EegTopographyData {
   channels: string[]
   available_channels: string[]
   sampling_rate_hz: number
+  metadata?: EegMetadata
   unit: string
   positions: Record<string, number[]>
-  power: Record<string, number[]>
+  power: Record<string, Array<number | null>>
   color_domain: ColorDomain
   window_s: number
   overlap_ratio: number

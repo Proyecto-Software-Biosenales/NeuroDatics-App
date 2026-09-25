@@ -62,9 +62,10 @@ export interface KpiCardProps {
 /**
  * Generic KPI summary card for analytics dashboards.
  *
- * Layout: large icon circle on the left, label + value + description on the right.
- * Supports click interaction, active/pinned state, and an optional shadcn Tooltip
- * via the Info icon in the top-right corner.
+ * Layout: icon on the left, label + value + description on the right. Compact by
+ * default so laptop screens keep the chart in view; `roomy:` (wide and tall screens)
+ * restores the large size. Supports click interaction, active/pinned state, and an
+ * optional shadcn Tooltip via the Info icon in the top-right corner.
  */
 export function KpiCard({
   label,
@@ -91,9 +92,9 @@ export function KpiCard({
 
   if (loading) {
     return (
-      <Card className={cn("p-4 2xl:p-5", className)}>
-        <Skeleton className="mb-4 h-3 w-16 animate-pulse rounded bg-muted" />
-        <Skeleton className="h-8 w-24 animate-pulse rounded bg-muted" />
+      <Card className={cn("p-3 roomy:p-5", className)}>
+        <Skeleton className="mb-3 h-3 w-16 animate-pulse rounded bg-muted roomy:mb-4" />
+        <Skeleton className="h-7 w-24 animate-pulse rounded bg-muted roomy:h-8" />
       </Card>
     )
   }
@@ -101,7 +102,7 @@ export function KpiCard({
   return (
     <Card
       className={cn(
-        "relative rounded-xl border p-4 transition-all duration-200 2xl:p-5",
+        "relative rounded-xl border p-3 transition-all duration-200 roomy:p-5",
         bgClass,
         borderClass,
         active ? cn("shadow-sm ring-1 ring-inset ring-foreground/10", activeBgClass) : "",
@@ -118,7 +119,7 @@ export function KpiCard({
       )}
       {/* Info icon with shadcn tooltip — only rendered when tooltip text is provided */}
       {(tooltip || tooltipExtra) && (
-        <div className="absolute right-3 top-3 z-10">
+        <div className="absolute right-2 top-2 z-10 roomy:right-3 roomy:top-3">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -137,32 +138,32 @@ export function KpiCard({
         </div>
       )}
 
-      <div className="pointer-events-none relative flex items-start gap-3 2xl:gap-4">
+      <div className="pointer-events-none relative flex items-start gap-3 roomy:gap-4">
         {/* Accent icon circle */}
         <div
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl 2xl:h-10 2xl:w-10",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg roomy:h-10 roomy:w-10 roomy:rounded-xl",
             iconBgClass,
           )}
         >
-          <Icon className={cn("h-4 w-4 2xl:h-5 2xl:w-5", iconColorClass)} />
+          <Icon className={cn("h-4 w-4 roomy:h-5 roomy:w-5", iconColorClass)} />
         </div>
 
         {/* Label / value / description */}
-        <div>
-          <p className={cn("text-sm font-medium", labelColorClass)}>{label}</p>
-          <p className="mt-1 text-xl font-bold tracking-tight text-foreground 2xl:text-2xl">
+        <div className="min-w-0">
+          <p className={cn("truncate text-xs font-medium roomy:text-sm", labelColorClass)}>{label}</p>
+          <p className="mt-0.5 text-lg leading-6 font-bold tracking-tight text-foreground roomy:mt-1 roomy:text-2xl roomy:leading-8">
             {value != null ? (
               <>
                 {value.toFixed(decimals).replace(".", ",")}
-                <span className="ml-1 text-base font-semibold text-foreground 2xl:text-lg">{unit}</span>
+                <span className="ml-1 text-sm font-semibold text-foreground roomy:text-lg">{unit}</span>
               </>
             ) : (
               "—"
             )}
           </p>
           {description && (
-            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground roomy:mt-1" title={description}>{description}</p>
           )}
         </div>
       </div>

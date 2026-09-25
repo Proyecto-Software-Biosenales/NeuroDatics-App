@@ -242,7 +242,7 @@ async def test_correlations_uses_canonical_scenario_and_writes_versioned_15_minu
     assert cache.key_args == (
         PROJECT_ID,
         "P-01",
-        "correlations:v2",
+        "correlations:v3",
         "Scenario canonical",
     )
     assert len(cache.writes) == 1

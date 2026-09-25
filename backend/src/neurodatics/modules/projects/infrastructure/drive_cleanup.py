@@ -6,7 +6,7 @@ import logging
 from sqlalchemy import delete, select, update, func
 from sqlalchemy.dialects.postgresql import insert
 
-from ....infra.storage.gdrive_client import gdrive_client
+from ...integrations.storage_provider import gdrive_client
 from ..domain.entities import DriveCleanupTask, Project, ProjectFile
 
 logger = logging.getLogger(__name__)

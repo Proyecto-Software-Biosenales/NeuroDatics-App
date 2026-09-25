@@ -96,6 +96,10 @@ for (const signal of ["gsr", "distance"] as const) {
     expect(await page.locator(".recharts-xAxis .recharts-cartesian-axis-tick-value").allTextContents()).toEqual(timeTicks)
     expect(signalRequests()).toHaveLength(initialRequestCount)
 
+    // The window inputs live in a dropdown that only opens on demand.
+    const timeWindow = page.getByRole("button", { name: /^Ventana temporal:/ })
+    await expect(page.getByLabel("Inicio", { exact: true })).toHaveCount(0)
+    await timeWindow.click()
     await page.getByLabel("Inicio", { exact: true }).fill("2")
     await page.getByLabel("Fin", { exact: true }).fill("1")
     await page.getByRole("button", { name: "Aplicar", exact: true }).click()
@@ -104,6 +108,7 @@ for (const signal of ["gsr", "distance"] as const) {
     await page.getByLabel("Inicio", { exact: true }).fill("0.5")
     await page.getByLabel("Fin", { exact: true }).fill("2.5")
     await page.getByRole("button", { name: "Aplicar", exact: true }).click()
+    await expect(page.getByLabel("Inicio", { exact: true })).toHaveCount(0)
     await expect.poll(() => signalRequests().length).toBe(initialRequestCount + 2)
     for (const url of signalRequests().slice(-2)) {
       expect(url.searchParams.get("start_time_s")).toBe("0.5")
@@ -115,19 +120,89 @@ for (const signal of ["gsr", "distance"] as const) {
     if (signal === "gsr") await expect(page.getByRole("button", { name: "Cruda", exact: true })).toHaveAttribute("aria-pressed", "true")
     await maximum.click()
     await expect(page.getByRole("button", { name: "Limpiar selección", exact: true })).toBeVisible()
+    await timeWindow.click()
     await page.getByRole("button", { name: "Restablecer", exact: true }).click()
     await expect.poll(() => signalRequests().length).toBe(initialRequestCount + 4)
+    await timeWindow.click()
     await expect(page.getByLabel("Inicio", { exact: true })).toHaveValue("")
     await expect(page.getByLabel("Fin", { exact: true })).toHaveValue("")
+    await page.keyboard.press("Escape")
     await expect(page.getByRole("button", { name: "Limpiar selección", exact: true })).toHaveCount(0)
     for (const url of signalRequests().slice(-2)) {
       expect(url.searchParams.has("start_time_s")).toBe(false)
       expect(url.searchParams.has("end_time_s")).toBe(false)
     }
+
+    // Dragging across the plot applies that range as the window; the X restores the full view.
+    const gazeBeforeDrag = gazeRequests().length
+    const box = (await plot.boundingBox())!
+    const dragY = box.y + 120
+    await page.mouse.move(box.x + box.width * 0.3, dragY)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width * 0.6, dragY, { steps: 6 })
+    await page.mouse.move(box.x + box.width * 0.9, dragY, { steps: 6 })
+    await expect(page.locator(".analytics-chart-zoom-band")).toBeVisible()
+    await page.mouse.up()
+    await expect(page.locator(".analytics-chart-zoom-band")).toHaveCount(0)
+    await expect.poll(() => signalRequests().length).toBe(initialRequestCount + 6)
+    for (const url of signalRequests().slice(-2)) {
+      const start = Number(url.searchParams.get("start_time_s"))
+      const end = Number(url.searchParams.get("end_time_s"))
+      expect(start).toBeGreaterThanOrEqual(0)
+      expect(end).toBeGreaterThan(start)
+    }
+    // The release that ends a drag is not a point selection.
+    expect(gazeRequests()).toHaveLength(gazeBeforeDrag)
+    await expect(page.getByText("Ventana activa", { exact: true })).toBeVisible()
+    await timeWindow.click()
+    await expect(page.getByLabel("Fin", { exact: true })).not.toHaveValue("")
+    await page.keyboard.press("Escape")
+
+    // One zoom offers only the X; zooming inside it adds the arrow back to that first zoom.
+    const zoomBack = page.getByRole("button", { name: "Volver al zoom anterior", exact: true })
+    await expect(zoomBack).toHaveCount(0)
+    const firstZoom = signalRequests().at(-1)!
+    const firstStart = firstZoom.searchParams.get("start_time_s")
+    const firstEnd = firstZoom.searchParams.get("end_time_s")
+    const zoomedBox = (await plot.boundingBox())!
+    await page.mouse.move(zoomedBox.x + zoomedBox.width * 0.55, dragY)
+    await page.mouse.down()
+    await page.mouse.move(zoomedBox.x + zoomedBox.width * 0.75, dragY, { steps: 6 })
+    await page.mouse.move(zoomedBox.x + zoomedBox.width * 0.97, dragY, { steps: 6 })
+    await page.mouse.up()
+    await expect.poll(() => signalRequests().length).toBe(initialRequestCount + 8)
+    const secondZoom = signalRequests().at(-1)!
+    expect(Number(secondZoom.searchParams.get("start_time_s"))).toBeGreaterThanOrEqual(Number(firstStart))
+    expect(Number(secondZoom.searchParams.get("end_time_s"))).toBeLessThanOrEqual(Number(firstEnd))
+    expect([secondZoom.searchParams.get("start_time_s"), secondZoom.searchParams.get("end_time_s")]).not.toEqual([firstStart, firstEnd])
+    await expect(zoomBack).toBeVisible()
+    await expect(page.getByRole("button", { name: "Volver a la vista completa", exact: true })).toBeVisible()
+    await zoomBack.click()
+    await expect.poll(() => signalRequests().length).toBe(initialRequestCount + 10)
+    for (const url of signalRequests().slice(-2)) {
+      expect(url.searchParams.get("start_time_s")).toBe(firstStart)
+      expect(url.searchParams.get("end_time_s")).toBe(firstEnd)
+    }
+    await expect(zoomBack).toHaveCount(0)
+    await timeWindow.click()
+    await expect(page.getByLabel("Inicio", { exact: true })).toHaveValue(firstStart!)
+    await expect(page.getByLabel("Fin", { exact: true })).toHaveValue(firstEnd!)
+    await page.keyboard.press("Escape")
+
+    await page.getByRole("button", { name: "Volver a la vista completa", exact: true }).click()
+    await expect.poll(() => signalRequests().length).toBe(initialRequestCount + 12)
+    for (const url of signalRequests().slice(-2)) {
+      expect(url.searchParams.has("start_time_s")).toBe(false)
+      expect(url.searchParams.has("end_time_s")).toBe(false)
+    }
+    await expect(page.getByRole("button", { name: "Volver a la vista completa", exact: true })).toHaveCount(0)
+    await expect(page.getByText("Todo el experimento", { exact: true })).toBeVisible()
     // Switching participant remounts the tab and handles an empty response without a plot.
     await page.getByRole("combobox").filter({ hasText: "P01" }).click()
     await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()
+    await timeWindow.click()
     await expect(page.getByRole("button", { name: "Aplicar", exact: true })).toBeDisabled()
+    await page.keyboard.press("Escape")
     await expect(page.locator('.analytics-state-frame[data-slot="skeleton"]')).toBeVisible()
     releaseEmpty()
     await expect(page.getByText(signal === "gsr" ? "No hay datos de GSR para los filtros seleccionados." : "No hay datos de distancia para los filtros seleccionados.")).toBeVisible()

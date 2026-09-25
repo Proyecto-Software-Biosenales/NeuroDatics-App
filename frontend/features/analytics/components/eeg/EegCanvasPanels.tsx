@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from "react"
 import { cn } from "@/lib/utils"
-import { formatChannel, interpolateColor, interpolateTopographyValue, scaleSpectrogramValue, type TopographyFrameRow } from "../../eegPresentation"
+import { formatChannel, nearestTimeIndex, interpolateColor, interpolateTopographyValue, scaleSpectrogramValue, type TopographyFrameRow } from "../../eegPresentation"
 import { StimulusPreviewSurface } from "../StimulusFixationCard"
+import { usePointerDragZoom, ZoomControls } from "../ChartDragZoom"
 import { CHANNEL_COLORS } from "./eegViewShared"
 
 interface SpectrogramHover {
@@ -31,15 +32,23 @@ export function SpectrogramPanel({
   unit,
   selectedTime,
   onTimeSelect,
+  onTimeZoom,
+  onZoomReset,
+  onZoomBack,
+  hopS,
 }: {
+  hopS?: number
   channel: string
   time: number[]
   frequency: number[]
-  matrix: number[][]
+  matrix: Array<Array<number | null>>
   colorDomain: { min: number; max: number }
   unit: string
   selectedTime?: number | null
   onTimeSelect?: (time: number) => void
+  onTimeZoom?: (start: number, end: number) => void
+  onZoomReset?: () => void
+  onZoomBack?: () => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hover, setHover] = useState<SpectrogramHover | null>(null)
@@ -47,10 +56,16 @@ export function SpectrogramPanel({
   const maxTime = time[time.length - 1] ?? 0
   const minFrequency = frequency[0] ?? 0
   const maxFrequency = frequency[frequency.length - 1] ?? 0
+  // A selection outside a zoomed range has no place on this axis.
   const selectedTimeRatio =
-    selectedTime != null && maxTime > minTime
-      ? Math.max(0, Math.min(1, (selectedTime - minTime) / (maxTime - minTime)))
+    selectedTime != null && maxTime > minTime && selectedTime >= minTime && selectedTime <= maxTime
+      ? (selectedTime - minTime) / (maxTime - minTime)
       : null
+  const dragZoom = usePointerDragZoom(
+    onTimeZoom
+      ? (from, to) => onTimeZoom(minTime + from * (maxTime - minTime), minTime + to * (maxTime - minTime))
+      : undefined
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -83,8 +98,9 @@ export function SpectrogramPanel({
         const freqIndex = Math.min(freqCount - 1, Math.max(0, Math.round(freqRatio * (freqCount - 1))))
         for (let x = 0; x < width; x += 1) {
           const timeRatio = x / Math.max(1, width - 1)
-          const timeIndex = Math.min(timeCount - 1, Math.max(0, Math.round(timeRatio * (timeCount - 1))))
-          const value = matrix[freqIndex]?.[timeIndex] ?? 0
+          const timeIndex = nearestTimeIndex(time, minTime + timeRatio * (maxTime - minTime), hopS)
+          const value = matrix[freqIndex]?.[timeIndex]
+          if (typeof value !== "number" || !Number.isFinite(value)) continue
           const color = interpolateColor(scaleSpectrogramValue(value, colorDomain))
           const offset = (y * width + x) * 4
           image.data[offset] = color.r
@@ -103,7 +119,7 @@ export function SpectrogramPanel({
     return () => {
       observer.disconnect()
     }
-  }, [colorDomain, matrix])
+  }, [colorDomain, matrix, time, minTime, maxTime, hopS])
 
   const getPointFromEvent = (event: MouseEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -113,7 +129,7 @@ export function SpectrogramPanel({
     const y = event.clientY - rect.top
     const xRatio = Math.max(0, Math.min(1, x / rect.width))
     const yRatio = Math.max(0, Math.min(1, y / rect.height))
-    const timeIndex = Math.min(time.length - 1, Math.max(0, Math.round(xRatio * (time.length - 1))))
+    const timeIndex = nearestTimeIndex(time, minTime + xRatio * (maxTime - minTime), hopS)
     const frequencyIndex = Math.min(
       frequency.length - 1,
       Math.max(0, Math.round((1 - yRatio) * (frequency.length - 1)))
@@ -149,6 +165,7 @@ export function SpectrogramPanel({
   }
 
   const handleClick = (event: MouseEvent<HTMLCanvasElement>) => {
+    if (dragZoom.consumeDragClick()) return
     const point = getPointFromEvent(event)
     if (!point) return
     onTimeSelect?.(point.time)
@@ -174,14 +191,17 @@ export function SpectrogramPanel({
           <span>{maxFrequency.toFixed(1)} Hz</span>
           <span>{minFrequency.toFixed(1)} Hz</span>
         </div>
-        <div className="relative h-64 overflow-hidden rounded-md bg-gray-950">
+        <div className="relative h-64 select-none overflow-hidden rounded-md bg-gray-950">
           <canvas
             ref={canvasRef}
-            className={cn("h-full w-full", onTimeSelect && "cursor-crosshair")}
+            className={cn("h-full w-full", (onTimeSelect || onTimeZoom) && "cursor-crosshair")}
             onMouseMove={handleMove}
             onMouseLeave={() => setHover(null)}
             onClick={handleClick}
+            {...dragZoom.handlers}
           />
+          {dragZoom.bandElement}
+          <ZoomControls onBack={onZoomBack} onReset={onZoomReset} />
           {selectedTimeRatio != null ? (
             <div
               className="pointer-events-none absolute inset-y-0 w-px bg-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.25)]"
@@ -200,7 +220,7 @@ export function SpectrogramPanel({
               <p>Tiempo: {hover.time.toFixed(2)}s</p>
               <p>Frecuencia: {hover.frequency.toFixed(2)} Hz</p>
               <p>
-                Potencia: {hover.value.toFixed(4)} {unit}
+                Nivel: {hover.value.toFixed(4)} {unit}
               </p>
             </div>
           ) : null}
@@ -455,13 +475,14 @@ export function TopographyScene({
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-muted/30 p-2 sm:p-3">
-      <div className="grid min-h-[360px] grid-cols-1 items-center gap-4 lg:h-[560px] lg:min-h-0 lg:grid-cols-[minmax(300px,0.46fr)_minmax(360px,0.54fr)] xl:h-[600px] 2xl:h-[620px]">
+      {/* Heights follow the viewport so, once scrolled to, head and stimulus fit a laptop screen. */}
+      <div className="grid min-h-[360px] grid-cols-1 items-center gap-4 lg:h-[clamp(360px,calc(100svh-12rem),560px)] lg:min-h-0 lg:grid-cols-[minmax(300px,0.46fr)_minmax(360px,0.54fr)] xl:h-[clamp(360px,calc(100svh-12rem),600px)] 2xl:h-[clamp(360px,calc(100svh-12rem),620px)]">
         <div className="flex min-w-0 items-center justify-center">
           <TopographyPanel
             rows={rows}
             colorDomain={colorDomain}
             unit={unit}
-            className="max-w-[550px]"
+            className="max-w-[550px] lg:max-w-[min(550px,calc(100svh-13rem))]"
           />
         </div>
         <div className="flex min-w-0 items-center justify-center">

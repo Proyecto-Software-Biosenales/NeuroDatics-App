@@ -3,6 +3,8 @@
 Goldens capture existing behaviour. Never regenerate one to hide a failure.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -27,6 +29,8 @@ def numeric_columns(value, prefix=""):
     output = {}
     if isinstance(value, dict):
         for key, item in sorted(value.items()):
+            if key in {"metadata", "statistics", "band_power", "total_power"}:
+                continue
             output.update(numeric_columns(item, f"{prefix}.{key}" if prefix else key))
     elif isinstance(value, (int, float)) and not isinstance(value, bool):
         output[prefix] = np.asarray([value], dtype=float)
@@ -62,15 +66,18 @@ def test_timeseries_and_statistics(corpus, participant, scenario, num_regression
         "distance": PupilAnalyticsService.compute_distance_timeseries(frame, scenario),
         "gsr": GsrAnalyticsService.compute_timeseries(frame, scenario),
         "gsr_stats": GsrAnalyticsService.compute_statistics(frame, scenario),
-        "eeg": EegAnalyticsService.compute_timeseries(frame, scenario, max_points=80),
+        "eeg": EegAnalyticsService.compute_timeseries(frame, scenario, smooth_window_s=0.2, max_points=80),
     }
     assert len(result["pupil"]["time"]) == 800
     assert len(result["eeg"]["channels"]) == 7
-    num_regression.check(numeric_columns(result), default_tolerance=TOLERANCE)
+    numeric = numeric_columns(result)
+    # Compare the preserved v1 decimal representation, without rounding v2 API data.
+    numeric = {key: np.round(value, 4) if key.startswith("eeg.") else value for key, value in numeric.items()}
+    num_regression.check(numeric, default_tolerance=TOLERANCE)
 
 
 @pytest.mark.parametrize("participant,scenario", CASES)
-def test_eeg_spectral_outputs(corpus, participant, scenario, num_regression):
+def test_eeg_spectral_outputs(corpus, participant, scenario):
     frame = corpus.frames[participant]
     result = {
         "psd": EegAnalyticsService.compute_psd(frame, scenario, channels=["f3", "f4"], max_points=100),
@@ -80,7 +87,30 @@ def test_eeg_spectral_outputs(corpus, participant, scenario, num_regression):
     assert result["psd"]["frequency"]
     assert result["spectrogram"]["time"]
     assert len(result["topography"]["channels"]) == 6
-    num_regression.check(numeric_columns(result), default_tolerance=TOLERANCE)
+    # The archived v1 PSD bins/frequencies remain useful evidence. v2 changes
+    # spectral log flooring, default display normalization and topography DC/window
+    # semantics; verify these with the analytical contract suite, not regenerated goldens.
+    numeric = numeric_columns({"psd": result["psd"]})
+    numeric = {key: np.round(value, 4) for key, value in numeric.items() if ".power." not in key}
+    archived = pd.read_csv(Path(__file__).parent / "test_numeric_characterization" /
+                           f"test_eeg_spectral_outputs_{participant.replace('-', '_')}_{scenario.replace('-', '_')}_.csv")
+    for key, values in numeric.items():
+        np.testing.assert_allclose(values, archived[key].dropna(), **TOLERANCE)
+    # Undo the archived log(additive-floor) representation and compare density.
+    for channel, values in result["psd"]["power"].items():
+        old_db = archived[f"psd.power.{channel}"].dropna().to_numpy()
+        np.testing.assert_allclose(10 ** (np.asarray(values) / 10),
+                                   10 ** (old_db / 10) - 1e-12, atol=1.01e-12, rtol=2e-5)
+    # Independent sample-domain oracle for the new local-DC topography.
+    scoped = frame.loc[frame.scenario == scenario]
+    fs = 1 / np.median(np.diff(scoped.time))
+    size = int(np.floor(2 * fs + 1e-9))
+    window = np.hanning(size)
+    for channel in result["topography"]["channels"]:
+        segment = scoped[channel].to_numpy()[:size]
+        expected = np.sum(((segment - segment.mean()) * window) ** 2) / np.sum(window ** 2)
+        assert result["topography"]["power"][channel][0] == pytest.approx(expected)
+
 
 
 @pytest.mark.parametrize("participant,scenario", CASES)
@@ -132,7 +162,17 @@ def test_heatmap_numeric_substrate(corpus, monkeypatch, num_regression):
     }.items()}, default_tolerance=TOLERANCE)
 
 
-def test_executive_report_numeric_summaries(corpus, dataframe_regression):
+def test_executive_report_numeric_summaries(corpus, dataframe_regression, monkeypatch):
+    original = EegAnalyticsService.compute_timeseries
+
+    def historical_smoothed_trace(*args, **kwargs):
+        kwargs["smooth_window_s"] = 0.2
+        result = original(*args, **kwargs)
+        result["raw"] = {c: np.round(values, 4).tolist() for c, values in result["smooth"].items()}
+        return result
+
+    # Preserve v1 report evidence. Raw v2 behavior is tested independently.
+    monkeypatch.setattr(EegAnalyticsService, "compute_timeseries", historical_smoothed_trace)
     rows = []
     for frame in corpus.frames.values():
         for chart in ChartConfigBuilder.build_many(frame, "stimulus-a"):

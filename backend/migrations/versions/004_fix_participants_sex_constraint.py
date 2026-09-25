@@ -6,7 +6,6 @@ Create Date: 2026-03-20 19:25:00.000000
 
 """
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
@@ -17,17 +16,21 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Drop any existing constraint on sex column
+    # Replace only single-column sex CHECKs. PostgreSQL 18 also exposes
+    # NOT NULL constraints as CHECKs in information_schema.table_constraints.
     op.execute("""
         DO $$
         DECLARE
             r RECORD;
         BEGIN
             FOR r IN (
-                SELECT constraint_name
-                FROM information_schema.table_constraints
-                WHERE table_name = 'participants'
-                  AND constraint_type = 'CHECK'
+                SELECT c.conname AS constraint_name
+                FROM pg_catalog.pg_constraint AS c
+                JOIN pg_catalog.pg_attribute AS a
+                  ON a.attrelid = c.conrelid AND a.attname = 'sex'
+                WHERE c.conrelid = 'participants'::regclass
+                  AND c.contype = 'c'
+                  AND c.conkey = ARRAY[a.attnum]
             ) LOOP
                 EXECUTE 'ALTER TABLE participants DROP CONSTRAINT IF EXISTS ' || quote_ident(r.constraint_name);
             END LOOP;

@@ -8,6 +8,10 @@ from ..config.settings import settings
 
 security = HTTPBearer(auto_error=False)
 
+# Local mode has no accounts: every request belongs to this one user, so projects
+# keep the same owner across launches without a token ever being checked.
+LOCAL_USER_ID = "00000000-0000-4000-8000-000000000001"
+
 def _encode_token(subject: str, token_type: str, expires_minutes: int, extra_claims: Optional[Dict[str, Any]] = None) -> str:
     now = datetime.now(timezone.utc)
     payload: Dict[str, Any] = {
@@ -74,6 +78,9 @@ async def verify_jwt_token(token: str, expected_type: str = "access") -> Dict[st
 
 async def get_current_user_id(credentials: Optional[HTTPAuthorizationCredentials]) -> str:
     """Extract user_id from JWT token"""
+    if settings.is_local:
+        return LOCAL_USER_ID
+
     import logging
     logger = logging.getLogger(__name__)
 

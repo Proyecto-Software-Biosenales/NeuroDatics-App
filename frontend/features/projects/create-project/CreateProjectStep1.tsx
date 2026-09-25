@@ -26,6 +26,7 @@ import {
   type FolderStructure,
   type FolderStructureQuestion,
 } from "./folderStructure"
+import { storageCopy } from "../storageCopy"
 
 interface CreateProjectStep1Props {
   projectName: string
@@ -581,7 +582,7 @@ export const CreateProjectStep1 = ({
 
                     {uploadedZip.drive_root_folder_id && (
                       <div className="flex justify-between col-span-2">
-                        <span className="text-muted-foreground">Drive root:</span>
+                        <span className="text-muted-foreground">{storageCopy.rootIdLabel}</span>
                         <span className="font-medium text-foreground">{uploadedZip.drive_root_folder_id}</span>
                       </div>
                     )}

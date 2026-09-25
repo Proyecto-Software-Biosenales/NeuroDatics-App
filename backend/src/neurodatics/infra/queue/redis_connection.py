@@ -4,6 +4,7 @@ import redis
 from redis import ConnectionPool
 
 from ...config.settings import settings
+from ..cache.memory_cache import shared_in_process_cache
 
 
 def _create_redis_client(socket_timeout_seconds: Optional[float]) -> tuple[redis.Redis, ConnectionPool]:
@@ -44,5 +45,11 @@ class RedisConnectionPool:
 
 
 def get_redis_client() -> redis.Redis:
-    """Convenience function to get a Redis client from the singleton pool."""
+    """Convenience function to get a Redis client from the singleton pool.
+
+    Local mode has no Redis server, so it answers with an in-process cache that accepts the
+    same calls.
+    """
+    if settings.is_local:
+        return shared_in_process_cache()  # type: ignore[return-value]
     return RedisConnectionPool.get_connection()

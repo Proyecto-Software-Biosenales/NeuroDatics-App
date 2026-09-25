@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = "development"
     debug: bool = False
     app_name: str = "NeuroDatics API"
+    # "local" is the offline student edition: one fixed user, files kept under
+    # local_data_dir, an in-process cache, and nothing that reaches Google. The
+    # default keeps every server behaviour exactly as it was.
+    app_mode: Literal["server", "local"] = "server"
+    local_data_dir: Optional[str] = None
+    # The exported student frontend the app serves beside /api; unset means API only.
+    local_frontend_dir: Optional[str] = None
 
     # Database
     database_url: str
@@ -68,8 +75,13 @@ class Settings(BaseSettings):
     gdrive_folder_id: Optional[str] = None
     gdrive_http_timeout_seconds: int = 300
     gdrive_request_retries: int = 5
+    # Drive uploads running at once per ingestion. Each worker thread owns its own
+    # HTTP transport, so this also bounds open connections.
+    gdrive_upload_concurrency: int = 4
     project_zip_max_size_mb: int = 500
-    ingestion_save_original_zip: bool = True
+    # The browser builds this ZIP from the selected folder and every file the app
+    # reads is uploaded on its own, so storing the ZIP too doubles the transfer.
+    ingestion_save_original_zip: bool = False
 
     # Google Drive folder sync. Empty means the sync-folder endpoints are disabled;
     # any other value is the only directory tree they are allowed to read from.
@@ -123,6 +135,15 @@ class Settings(BaseSettings):
 
 
     @property
+    def is_local(self) -> bool:
+        return self.app_mode == "local"
+
+    @property
+    def local_storage_dir(self) -> str:
+        """Where local mode keeps the files Google Drive holds in server mode."""
+        return os.path.join(self.local_data_dir or "", "storage")
+
+    @property
     def cors_origins(self) -> list[str]:
         """Return normalized origins without allowing broad private-network ranges."""
         return [
@@ -130,6 +151,25 @@ class Settings(BaseSettings):
             for origin in self.cors_allowed_origins.split(",")
             if origin.strip()
         ]
+
+    @model_validator(mode="after")
+    def apply_local_mode(self) -> "Settings":
+        """Point every disk cache under the data directory unless it was set explicitly."""
+        if not self.is_local:
+            return self
+        if not (self.local_data_dir or "").strip():
+            raise ValueError("LOCAL_DATA_DIR must be set when APP_MODE=local.")
+
+        cache_root = os.path.join(self.local_data_dir, "cache")
+        for field in (
+            "parquet_cache_dir",
+            "image_cache_dir",
+            "video_cache_dir",
+            "video_frame_cache_dir",
+        ):
+            if field not in self.model_fields_set:
+                setattr(self, field, os.path.join(cache_root, field.removesuffix("_dir")))
+        return self
 
     @model_validator(mode="after")
     def validate_production_security(self) -> "Settings":

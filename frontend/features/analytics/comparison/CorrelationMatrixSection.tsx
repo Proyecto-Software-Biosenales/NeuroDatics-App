@@ -4,16 +4,18 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Loader2, RefreshCw } from "lucide-react"
+import { Info, Loader2, RefreshCw } from "lucide-react"
 
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { InfoChip } from "../components/InfoChip"
 import { cn } from "@/lib/utils"
 import { AnalyticsApi } from "../api/analyticsApi"
 import type {
@@ -316,15 +318,17 @@ export function CorrelationMatrixSection({
             compartidos. Una asociación no implica causalidad.
           </CardDescription>
         </div>
+        <CardAction>
+          <InfoChip
+            Icon={Info}
+            label="Qué señales participan"
+            detail="Solo participan señales continuas seleccionadas: pupila, mirada X/Y, distancia, GSR y potencia EEG. Las vistas de eventos o mapas sin una señal continua permanecen descriptivas."
+          />
+        </CardAction>
       </CardHeader>
 
       <CardContent>
         <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            Solo participan señales continuas seleccionadas: pupila, mirada X/Y,
-            distancia, GSR y potencia EEG. Las vistas de eventos o mapas sin una
-            señal continua permanecen descriptivas.
-          </p>
 
           {!participantCode ? (
             <Guidance>

@@ -29,6 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
+import { LINE_CHART_MARGIN } from "@/features/analytics/components/AnalyticsChartShell"
 import { cn } from "@/lib/utils"
 import {
   useGsrStatistics,
@@ -38,6 +39,7 @@ import { StimulusFixationCard } from "./StimulusFixationCard"
 import type { GsrTimeseriesData } from "../types"
 import { useSingleSignalData } from "../hooks/useSingleSignalData"
 import { SingleSignalTab } from "./SingleSignalTab"
+import { axisTickDecimals, formatAxisTick } from "../chartZoom"
 
 type SignalMode = "smooth" | "raw" | "both"
 
@@ -212,8 +214,8 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
         <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
           <AreaChart
             data={chartData}
-            onClick={handleChartClick}
-            margin={{ top: 12, right: 24, left: 16, bottom: 28 }}
+            {...signal.dragZoom.chartProps(handleChartClick)}
+            margin={LINE_CHART_MARGIN}
           >
             <defs>
               <linearGradient id="gsrSmoothFill" x1="0" x2="0" y1="0" y2="1">
@@ -226,7 +228,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
               dataKey="time"
               type="number"
               domain={chartDomain}
-              tickFormatter={(value) => String(Math.round(Number(value)))}
+              tickFormatter={(value) => formatAxisTick(value, axisTickDecimals(chartDomain))}
               tickMargin={8}
             />
             <YAxis
@@ -242,6 +244,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
             {selectedTime != null ? (
               <ReferenceLine
                 x={selectedTime}
+                className="analytics-selected-time"
                 stroke="#374151"
                 strokeWidth={1.5}
                 strokeDasharray="4 3"
@@ -331,16 +334,16 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
               ].map(({ label, value, sub, Icon, bg, iconColor }) => (
                 <div
                   key={label}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 roomy:p-4"
                 >
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", bg)}>
-                    <Icon className={cn("h-5 w-5", iconColor)} />
+                  <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg roomy:h-10 roomy:w-10 roomy:rounded-xl", bg)}>
+                    <Icon className={cn("h-4 w-4 roomy:h-5 roomy:w-5", iconColor)} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
                       {label}
                     </p>
-                    <p className="mt-1 text-2xl font-bold leading-tight text-foreground">
+                    <p className="mt-0.5 text-lg font-bold leading-tight text-foreground roomy:mt-1 roomy:text-2xl">
                       {value}
                     </p>
                     <p className="text-xs text-muted-foreground">{sub}</p>

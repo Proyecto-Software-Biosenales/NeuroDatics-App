@@ -1,6 +1,7 @@
 import { CheckCircle2, Cloud, Gauge, Clock3, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { storageCopy } from "@/features/projects/storageCopy"
 
 interface ProjectSaveProgressProps {
   zipUploadPercent: number | null
@@ -34,9 +35,9 @@ export function ProjectSaveProgress({ zipUploadPercent, zipUploadBytes, zipUploa
                       <div>
                         <p className="text-sm font-semibold text-foreground">
                           {isDriveSyncFinalizing
-                            ? "Finalizando sincronización con Google Drive"
+                            ? storageCopy.progressFinalizing
                             : isDriveSyncInProgress
-                            ? "Sincronizando con Google Drive"
+                            ? storageCopy.progressInProgress
                             : "Sincronización completada"}
                         </p>
                         <p className="text-sm text-muted-foreground">{zipUploadPercent}% completado</p>
@@ -114,7 +115,7 @@ export function ProjectSaveProgress({ zipUploadPercent, zipUploadBytes, zipUploa
                         className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
                         style={{ animationDelay: "360ms", animationDuration: "900ms" }}
                       />
-                      <span className="ml-2">Procesando en Google Drive...</span>
+                      <span className="ml-2">{storageCopy.progressProcessing}</span>
                     </div>
                     <Button variant="ghost"
                       type="button"

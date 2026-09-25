@@ -56,6 +56,21 @@ def _decimation_indices(size: int, max_points: int) -> np.ndarray:
     return np.arange(size, dtype=int)
 
 
+def _envelope_bucket_edges(size: int, max_points: int) -> Optional[np.ndarray]:
+    """Bucket edges for a two-point-per-bucket envelope, or ``None`` if unneeded.
+
+    ``_decimation_indices`` keeps one sample in every ``size / max_points``, so a
+    one-sample peak survives only by luck: SAIO block 3 C3 displayed 806.3 uV
+    for a real 916.5 uV. Half as many buckets, reporting each bucket's minimum
+    and maximum, spend the same point budget and keep every extreme.
+    """
+
+    if max_points <= 0 or size <= max_points:
+        return None
+    buckets = max(1, int(max_points) // 2)
+    return np.linspace(0, size, buckets + 1, dtype=int)
+
+
 def _scenario_strings(df: pd.DataFrame) -> pd.Series:
     values = df["scenario"]
     # Importers already store strings. Preserve that column without another

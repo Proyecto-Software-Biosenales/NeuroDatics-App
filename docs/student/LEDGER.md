@@ -1,6 +1,6 @@
 # Student edition — M0 decision and evidence ledger
 
-2026-09-19, updated 2026-09-20. Status: **M0 closed (plan v2 approved 2026-09-20); M1 spike done except its clean-machine proof gate**.
+2026-09-19, updated 2026-09-21. Status: **M0 closed (plan v2 approved 2026-09-20); M1 spike done except its clean-machine proof gate; M2 (local mode) and M3 (local frontend) done 2026-09-21; M4 prepared 2026-09-21, laptop run open**.
 Plan: [PLAN.md](PLAN.md). Withdrawn drafts (signed `.ndpkg` proposal and its spec):
 [superseded/](superseded/). The decision register D01–D15 below belongs to that
 withdrawn proposal; treat it as background, not decisions.
@@ -79,6 +79,47 @@ Full report: [M1-SPIKE.md](M1-SPIKE.md); scripts: [m1-spike/](m1-spike/).
   served app.
 - **Owner asks:** a clean machine or VM for the proof gate; classroom dataset sizes; ffmpeg GPL versus
   LGPL; governance of raw participant data (still unconfirmed). See PLAN.md open items.
+
+### M2 result (2026-09-21)
+
+Full account: "M2 result" in [PLAN.md](PLAN.md); how to build and run the gates: [../../student/README.md](../../student/README.md).
+
+- **Done:** `APP_MODE=local` (fixed user, local file store, in-process cache, no Google), the
+  launcher for embedded PostgreSQL with every M1 trap carried, and the frozen-package gates
+  (selftest, PostgreSQL lifecycle, real HTTP upload-to-report flow, double launch, served-app
+  offline evidence). All four M1 review gaps are closed. `./verify.ps1` ALL GREEN, 884 backend
+  tests, goldens untouched.
+- **Owner decisions taken on their behalf, open to veto:** data in `%LOCALAPPDATA%` rather than
+  beside the program, a random loopback database password, a Host/Origin guard in place of a
+  login, refusal to run elevated, and shipping the dev-venv dependency resolution.
+- **Not covered by any owner answer above:** the student data outliving the deleted folder (see the
+  governance question in PLAN.md).
+
+### M3 result (2026-09-21)
+
+Full account: "M3 result" in [PLAN.md](PLAN.md); how to build and run the gates: [../../student/README.md](../../student/README.md).
+
+- **Done:** the web app builds as a static export in local mode and the backend serves it from its own
+  origin; one fixed session instead of sign-in; no Drive or Google screens, thumbnails or fonts; the
+  frozen package's `serve` gate now drives it in real Chromium with name resolution off
+  (3 of 3 pass: no account, Drive or Google anywhere; the session is minted again when it ran out; and the whole flow (wizard upload of the extracted experiment folder, demographics, stimulus images, EEG, GSR and eye-tracker analytics, delete) with 0 requests leaving the machine). `./verify.ps1` ALL GREEN, 898 backend tests, goldens untouched.
+- **Owner decisions taken on their behalf, open to veto:** Poppins is self-hosted in both editions;
+  the local user is called "Estudiante"; the app opens on the home page.
+- **Still the owner's:** the clean-machine, network-off proof gate, Smart App Control, ffmpeg licence,
+  classroom data size, governance of raw participant data.
+
+### M4 preparation (2026-09-21)
+
+Full account: "M4 result" in [PLAN.md](PLAN.md); the laptop procedure: [LAPTOP-TEST.md](LAPTOP-TEST.md).
+
+- **Done:** `student/package.ps1` (guide, notices, zip, SHA-256, extracted-zip start from an accented path),
+  `student/LEEME.txt` (student guide, Spanish), `student/make-notices.py`, `student/laptop-test.ps1` (the laptop kit,
+  run here in Windows PowerShell 5.1 with a passing run and a failing negative control), and a launcher that
+  logs a failed double-click and waits for Enter. The 270 MiB zip extracts to 5,155 files and 700 MiB; every frozen
+  gate passes on the rebuilt package.
+- **Not done, and only the owner can:** the laptop run (this also closes the M1 proof gate), the ffmpeg licence
+  decision (the bundled build is GPLv3 and has no licence file beside it), and governance of raw participant data.
+  The guide's SmartScreen wording and its RAM and disk figures are provisional until that run.
 
 ## Baseline and working scope
 

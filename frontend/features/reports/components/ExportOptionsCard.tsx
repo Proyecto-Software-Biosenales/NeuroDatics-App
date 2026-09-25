@@ -13,18 +13,19 @@ interface ExportOptionsCardProps {
   onDownload: () => void
   canDownload: boolean
   loading?: boolean
+  downloadLabel?: string
 }
 
 const exportOptions = [
   {
     key: "includeCover" as keyof ExportOptions,
     title: "Incluir portada",
-    description: "Página inicial con logo y título del proyecto",
+    description: "Página inicial con el dispositivo, el proyecto y el alcance del informe",
   },
   {
     key: "includeMetadata" as keyof ExportOptions,
     title: "Incluir fecha y nombre del proyecto",
-    description: "Metadatos en encabezado y pie de página",
+    description: "Fecha de generación y proyecto en la portada y el pie de página",
   },
 ]
 
@@ -35,9 +36,10 @@ export const ExportOptionsCard = ({
   onDownload,
   canDownload,
   loading = false,
+  downloadLabel = "Descargar reporte PDF",
 }: ExportOptionsCardProps) => {
   return (
-    <ReportStepCard step={4} title="Opciones de exportación" description="Personaliza el formato y metadatos del documento PDF" disabled={!enabled}>
+    <ReportStepCard step={4} title="Opciones de exportación" description="Personaliza la portada y los metadatos del documento PDF" disabled={!enabled}>
 
 
       <div className="sm:pl-14 space-y-3">
@@ -77,7 +79,7 @@ export const ExportOptionsCard = ({
           className="mt-6 w-full"
         >
           <Download className={`w-5 h-5 ${loading ? "animate-pulse" : ""}`} />
-          {loading ? "Generando PDF..." : "Descargar reporte PDF"}
+          {loading ? "Generando informe..." : downloadLabel}
         </Button>
       </div>
     </ReportStepCard>

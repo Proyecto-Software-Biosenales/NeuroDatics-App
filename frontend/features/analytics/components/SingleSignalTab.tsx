@@ -4,6 +4,7 @@ import type { ComponentProps, ReactNode } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AnalyticsChartShell, type AnalyticsChartLegendItem } from "./AnalyticsChartShell"
+import type { ChartDragZoom } from "./ChartDragZoom"
 import { StatisticsTable, type StatRow } from "./StatisticsTable"
 import { TimeWindowControls } from "./TimeWindowControls"
 
@@ -20,6 +21,9 @@ interface SingleSignalTabProps {
     statsLoading: boolean
     tableRows: StatRow[]
     timeWindowControls: ComponentProps<typeof TimeWindowControls>
+    dragZoom: ChartDragZoom
+    onZoomReset?: () => void
+    onZoomBack?: () => void
   }
   headerActions?: ReactNode
   kpis: ReactNode
@@ -35,15 +39,17 @@ export function SingleSignalTab({
   return (
     <div className="analytics-stack">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
             <CardTitle className="text-xl">{label}</CardTitle>
             <CardDescription>{description}</CardDescription>
           </div>
-          {headerActions}
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            {headerActions}
+            <TimeWindowControls {...signal.timeWindowControls} />
+          </div>
         </CardHeader>
         <CardContent>
-          <TimeWindowControls {...signal.timeWindowControls} />
           <div className="analytics-kpi-grid">{kpis}</div>
           {signal.timeseriesLoading ? (
             <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
@@ -52,7 +58,14 @@ export function SingleSignalTab({
               {emptyText}
             </div>
           ) : (
-            <AnalyticsChartShell legend={legend}>{chart}</AnalyticsChartShell>
+            <AnalyticsChartShell
+              legend={legend}
+              dragZoom={signal.dragZoom}
+              onZoomReset={signal.onZoomReset}
+              onZoomBack={signal.onZoomBack}
+            >
+              {chart}
+            </AnalyticsChartShell>
           )}
         </CardContent>
       </Card>

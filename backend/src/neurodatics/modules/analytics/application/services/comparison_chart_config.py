@@ -395,7 +395,7 @@ class ChartConfigBuilder:
         data = EegAnalyticsService.compute_timeseries(
             df,
             scenario=scenario,
-            smooth_window_s=0.2,
+            smooth_window_s=0.0,
             max_points=max_points,
         )
         definitions = []
@@ -411,7 +411,7 @@ class ChartConfigBuilder:
                         REPORT_PALETTE["chartSeries"][index % len(REPORT_PALETTE["chartSeries"])],
                     ),
                     "unit": "uV",
-                    "values": data.get("smooth", {}).get(channel, []),
+                    "values": data.get("raw", {}).get(channel, []),
                 }
             )
 

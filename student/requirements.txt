@@ -1,0 +1,29 @@
+# Direct runtime dependencies of the student edition, pinned to the versions the backend
+# test suite (./verify.ps1, goldens included) runs on. student/check-pins.py compares these
+# with the root .venv and fails the build when they differ, so the numbers a student sees
+# are computed by the stack the tests approved.
+#
+# Google's libraries are deliberately absent: local mode never imports them
+# (backend/tests/unit/test_local_mode.py proves it) and the frozen build is made without them.
+fastapi==0.104.1
+starlette==0.27.0
+uvicorn==0.24.0.post1
+sqlalchemy==2.0.48
+psycopg[binary]==3.3.3
+alembic==1.18.4
+pydantic==2.12.5
+pydantic-settings==2.13.1
+python-jose==3.5.0
+httpx==0.25.2
+anyio==3.7.1
+cryptography==41.0.7
+pandas==2.3.3
+numpy==2.4.4
+pyarrow==25.0.0
+python-multipart==0.0.6
+redis==5.3.1
+scipy==1.17.1
+matplotlib==3.10.9
+Pillow==12.3.0
+typst==0.15.0
+pyinstaller==6.22.3

@@ -22,3 +22,11 @@ class GoogleAuthorizeResponse(BaseModel):
     token_type: str = "Bearer"
     expires_in: int
     user: AuthUserResponse
+
+
+class LocalSessionResponse(BaseModel):
+    mode: str = "local"
+    access_token: str
+    token_type: str = "Bearer"
+    expires_in: int
+    user: AuthUserResponse

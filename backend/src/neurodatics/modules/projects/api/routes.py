@@ -23,11 +23,11 @@ from neurodatics.shared.scenario_identity import is_all_scenarios
 from ...analytics.application.services.analytics_service import PupilAnalyticsService
 from ...analytics.application.services.parquet_reader_service import ParquetReaderService
 from ....config.settings import settings
-from ....infra.storage.gdrive_oauth_credentials import build_google_drive_oauth_credentials
-from ....infra.storage.gdrive_client import gdrive_client
-from ...integrations.google_drive.infrastructure.configure_client import configure_gdrive_client_with_oauth
-from ...integrations.google_drive.infrastructure.repository import SystemIntegrationRepository
-from ....infra.storage.gdrive_client import GoogleDriveClient
+from ...integrations.storage_provider import (
+    build_isolated_drive_client,
+    configure_gdrive_client_with_oauth,
+    gdrive_client,
+)
 from ..infrastructure.repository_impl import SQLProjectRepository
 from ..application.use_cases.create_project import CreateProjectUseCase
 from ..application.use_cases.list_projects import ListProjectsUseCase
@@ -372,24 +372,6 @@ async def _cleanup_video_preview_lock(cache_key: str, lock: asyncio.Lock) -> Non
             _video_preview_locks.pop(cache_key, None)
 
 
-async def _build_isolated_drive_client(db: AsyncSession) -> Optional["GoogleDriveClient"]:
-    """Create a fresh GoogleDriveClient without touching the global singleton."""
-    repository = SystemIntegrationRepository(db)
-    integration = await repository.get_by_provider("google_drive")
-    if not integration:
-        return None
-    refresh_token = integration.get("refresh_token")
-    if not refresh_token:
-        return None
-    credentials = build_google_drive_oauth_credentials(
-        refresh_token=refresh_token,
-        scope=integration.get("scope"),
-    )
-    client = GoogleDriveClient()
-    client.set_oauth_credentials(credentials)
-    return client
-
-
 async def _load_project_file(
     project_id: UUID,
     file_id: UUID,
@@ -499,7 +481,7 @@ async def _serve_project_file_image(
                     headers={**response_headers, "X-Image-Cache": "HIT"},
                 )
 
-            drive_client = await _build_isolated_drive_client(db)
+            drive_client = await build_isolated_drive_client(db)
             if not drive_client:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
@@ -582,7 +564,7 @@ async def _ensure_video_source_cached(
     except OSError:
         pass
 
-    drive_client = await _build_isolated_drive_client(db)
+    drive_client = await build_isolated_drive_client(db)
     if not drive_client:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -924,6 +906,7 @@ async def get_project(
         drive_root_folder_id=project.drive_root_folder_id,
         drive_root_folder_name=project.drive_root_folder_name,
         drive_root_folder_url=project.drive_root_folder_url,
+        source_folder_name=project.source_folder_name,
         files=[
             ProjectFileResponse(
                 id=f.id,

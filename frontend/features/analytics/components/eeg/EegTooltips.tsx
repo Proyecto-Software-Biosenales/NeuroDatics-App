@@ -4,6 +4,20 @@ interface EegTooltipPayloadEntry {
   value: number
   name: string
   color: string
+  /** The montage view plots `<channel>_<mode>_lane`, a value shifted into its
+   *  own lane. The tooltip must still read the microvolts that were recorded,
+   *  so it prefers the unshifted key from the same row when there is one. */
+  dataKey?: string
+  payload?: Record<string, unknown>
+}
+
+function recordedValue(entry: EegTooltipPayloadEntry): number {
+  const key = entry.dataKey
+  if (key && key.endsWith("_lane") && entry.payload) {
+    const real = entry.payload[key.slice(0, -"_lane".length)]
+    if (typeof real === "number" && Number.isFinite(real)) return real
+  }
+  return Number(entry.value)
 }
 
 interface EegTooltipProps {
@@ -28,7 +42,7 @@ export function EegTooltip({ active, payload, label }: EegTooltipProps) {
               style={{ backgroundColor: entry.color }}
             />
             <span className="truncate">
-              {entry.name}: {Number(entry.value).toFixed(4)} uV
+              {entry.name}: {recordedValue(entry).toFixed(4)} uV
             </span>
           </div>
         ))}

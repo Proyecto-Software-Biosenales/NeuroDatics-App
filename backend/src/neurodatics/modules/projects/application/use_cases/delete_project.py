@@ -5,9 +5,9 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .....infra.storage.gdrive_client import gdrive_client
-from ....integrations.google_drive.infrastructure.configure_client import (
+from ....integrations.storage_provider import (
     configure_gdrive_client_with_oauth,
+    gdrive_client,
 )
 from ...domain.repository import ProjectRepository
 from ...infrastructure.drive_cleanup import enqueue_drive_cleanup, drain_drive_cleanup

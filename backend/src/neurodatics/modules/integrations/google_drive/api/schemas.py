@@ -6,6 +6,12 @@ class GoogleDriveAuthorizeResponse(BaseModel):
     authorization_url: str
 
 
+class GoogleDriveConnectionResponse(BaseModel):
+    connected: bool
+    account_email: Optional[str] = None
+    oauth_configured: bool
+
+
 class GoogleDriveCallbackResponse(BaseModel):
     connected: bool
     provider: str

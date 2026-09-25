@@ -8,7 +8,7 @@ The review followed the browser create/edit flows, API and framework request han
 
 An experiment upload takes a folder from the user's computer, packages it into one ZIP in the browser, sends that ZIP to the API, derives analytical data from its CSV, stores selected assets and derived Parquets in Google Drive, and publishes their database references. The request stays open until this work and the normal cleanup path finish.
 
-There is **one active ingestion implementation**, used by both project creation and project editing. There is no active upload queue or worker. The historical `processing_jobs` model, repository, and migration still exist, but the upload endpoint does not create or execute those jobs. Redis currently supports analytics caching; it does not make uploads durable. The earlier RQ stub was explicitly retired; see [retirement evidence](cleanup/evidence/retired-runtime-surfaces.md).
+There is **one active ingestion implementation**, used by both project creation and project editing. There is no active upload queue or worker. The historical `processing_jobs` model, repository, and migration still exist, but the upload endpoint does not create or execute those jobs. Redis currently supports analytics caching; it does not make uploads durable. The earlier RQ stub was explicitly retired; see the [change log](CHANGELOG.md).
 
 Three kinds of state must be kept separate when reading the code:
 
@@ -41,7 +41,7 @@ sequenceDiagram
     A->>G: Create a fresh root folder
     A->>A: Parse CSV, derive fixations, write Parquets
     U->>A: Poll project progress while request stays open
-    A->>G: Upload optional original ZIP, assets, Parquets
+    A->>G: Upload scenario media and Parquets in parallel
     A->>D: Replace file/scenario references, set READY, bump generation, commit
     A->>G: Best-effort delete previous root after commit
     A->>A: Best-effort prune old cache entries
@@ -166,7 +166,9 @@ Source: [csv_processing_service.py](../backend/src/neurodatics/modules/projects/
 
 Each ingestion creates a new root named from the project name, ID prefix, and UTC timestamp, optionally under `GDRIVE_FOLDER_ID`. The new root is separate from the previously published one. The request keeps a list of created Drive IDs for compensation.
 
-The upload sequence is optional original ZIP, directory structure and selected non-CSV assets, full participant Parquets, then scenario Parquets. Raw CSV entries are counted but are not uploaded as independent files; their source bytes survive in Drive only if the original received ZIP is retained. Each stored object gets a `ProjectFile` candidate with Drive ID, path, kind, size, SHA-256, URLs, and processing metadata. Children reference the saved ZIP row through `source_zip_id`, or null when ZIP retention is disabled.
+Only what the app reads afterwards is stored: the selected scenario images and videos, full participant Parquets, and scenario Parquets. Other assets stay in the manifest summary but are neither extracted nor uploaded. Folders are created level by level under the fresh root, without lookups, and files then upload `GDRIVE_UPLOAD_CONCURRENCY` (default 4) at a time on worker threads. Only the event loop touches the database for progress and cancellation. On failure, in-flight uploads are awaited before the root is deleted. `ProjectFile` rows are built afterwards in the original deterministic order.
+
+The browser-built ZIP is not stored by default (`INGESTION_SAVE_ORIGINAL_ZIP=false`): it duplicated every uploaded file. The picked folder name is kept in `projects.source_folder_name` instead. Raw CSV entries are counted but not uploaded, so with ZIP retention off their source bytes are not kept in Drive; reprocessing requires uploading the folder again. The browser also sends `Acquisition/` entries empty, since the server reads only their paths. Children reference a saved ZIP row through `source_zip_id`, or null when ZIP retention is disabled.
 
 `GoogleDriveClient.upload_file` computes SHA-256 with a separate sequential disk read, then uses `MediaFileUpload` with 8 MiB chunks and `resumable=True`. The SDK request is executed to completion inside one thread call. Resumable protocol is used for that transfer, but its session/offset is not persisted by NeuroDatics, so an application restart cannot resume the upload. Default HTTP timeout is 300 seconds and request retries are five.
 
@@ -310,4 +312,4 @@ Additional isolated probes established the cancellation flag transitions, equiva
 
 Not verified here: live PostgreSQL schema/index inventory, a real Drive round trip, deployed proxy limits, realistic peak memory/disk/load, process-kill recovery, and complete browser-to-Docker upload. Those gaps are explicit acceptance work in the proposed plan.
 
-This replaces the previous current-flow narrative. In particular, OAuth setup precedes ZIP validation; UploadFile copying is not pre-parser network enforcement; extraction failures can mutate ingestion status; SHA-256 is a separate read; old Drive deletion follows commit; all-CSV failure and generation-aware cache freshness are already fixed. Historical rationale remains available in Git and the [cleanup ledger](cleanup/LEDGER.md).
+This replaces the previous current-flow narrative. In particular, OAuth setup precedes ZIP validation; UploadFile copying is not pre-parser network enforcement; extraction failures can mutate ingestion status; SHA-256 is a separate read; old Drive deletion follows commit; all-CSV failure and generation-aware cache freshness are already fixed. Historical rationale remains available in Git (`git show 7c21bc8:docs/cleanup/LEDGER.md`) and the [change log](CHANGELOG.md).

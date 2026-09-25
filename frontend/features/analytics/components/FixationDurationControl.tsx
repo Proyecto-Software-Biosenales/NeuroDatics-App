@@ -1,6 +1,8 @@
 "use client"
 
+import { AlertTriangle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { InfoChip } from "./InfoChip"
 
 import { FIXATION_DURATION_OPTIONS_MS, type FixationDurationMs } from "../types"
 
@@ -20,13 +22,14 @@ export function FixationDurationControl({
   error = null,
 }: FixationDurationControlProps) {
   if (availableDurations && availableDurations.length === 0) {
+    // The reason used to live in a title attribute, which keyboards never open.
     return (
-      <p
-        className="text-right text-xs text-amber-700 dark:text-amber-300"
-        title="Vuelve a procesar los archivos del proyecto para generar las variantes de duración."
-      >
-        Comparación no disponible; reprocesa los datos
-      </p>
+      <InfoChip
+        tone="warning"
+        Icon={AlertTriangle}
+        label="Comparación no disponible"
+        detail="Vuelve a procesar los archivos del proyecto para generar las variantes de duración."
+      />
     )
   }
 

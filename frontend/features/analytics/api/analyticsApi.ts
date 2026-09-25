@@ -269,6 +269,7 @@ export const AnalyticsApi = {
     maxPoints: number = 5000,
     startTimeS: number | null = null,
     endTimeS: number | null = null,
+    decimation: string = "linspace",
     signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
@@ -276,6 +277,7 @@ export const AnalyticsApi = {
       scenario,
       smooth_window_s: String(smoothWindowS),
       max_points: String(maxPoints),
+      decimation,
     })
     if (channels.length > 0) {
       params.set("channels", channels.join(","))
@@ -302,6 +304,7 @@ export const AnalyticsApi = {
     maxPoints: number = 5000,
     startTimeS: number | null = null,
     endTimeS: number | null = null,
+    excludeArtifactWindows: boolean = false,
     signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
@@ -309,6 +312,7 @@ export const AnalyticsApi = {
       scenario,
       use_db: String(useDb),
       max_points: String(maxPoints),
+      exclude_artifact_windows: String(excludeArtifactWindows),
     })
     if (channels.length > 0) {
       params.set("channels", channels.join(","))
@@ -335,9 +339,12 @@ export const AnalyticsApi = {
     channels: string[] = [],
     maxFreqHz: number | null = 25,
     useDb: boolean = true,
-    normalize: string = "freq_demean",
+    normalize: string = "none",
     maxTimeBins: number = 600,
     maxFrequencyBins: number = 256,
+    startTimeS: number | null = null,
+    endTimeS: number | null = null,
+    perChannelColorDomain: boolean = false,
     signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
@@ -347,12 +354,19 @@ export const AnalyticsApi = {
       normalize,
       max_time_bins: String(maxTimeBins),
       max_frequency_bins: String(maxFrequencyBins),
+      per_channel_color_domain: String(perChannelColorDomain),
     })
     if (channels.length > 0) {
       params.set("channels", channels.join(","))
     }
     if (maxFreqHz != null) {
       params.set("max_freq_hz", String(maxFreqHz))
+    }
+    if (startTimeS != null) {
+      params.set("start_time_s", String(startTimeS))
+    }
+    if (endTimeS != null) {
+      params.set("end_time_s", String(endTimeS))
     }
     return apiFetch<EegSpectrogramData>(
       `/api/projects/${projectId}/analytics/spectrogram/eeg?${params}`,
@@ -365,10 +379,12 @@ export const AnalyticsApi = {
     participantCode: string,
     scenario: string = "all",
     channels: string[] = [],
-    windowS: number = 0.33,
-    overlapRatio: number = 0,
+    windowS: number = 2.0,
+    overlapRatio: number = 0.5,
     removeDc: boolean = true,
-    maxFrames: number = 5000,
+    maxFrames: number = 600,
+    startTimeS: number | null = null,
+    endTimeS: number | null = null,
     signal?: AbortSignal
   ) => {
     const params = new URLSearchParams({
@@ -381,6 +397,12 @@ export const AnalyticsApi = {
     })
     if (channels.length > 0) {
       params.set("channels", channels.join(","))
+    }
+    if (startTimeS != null) {
+      params.set("start_time_s", String(startTimeS))
+    }
+    if (endTimeS != null) {
+      params.set("end_time_s", String(endTimeS))
     }
     return apiFetch<EegTopographyData>(
       `/api/projects/${projectId}/analytics/topography/eeg?${params}`,

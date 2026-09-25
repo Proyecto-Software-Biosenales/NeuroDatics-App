@@ -9,7 +9,7 @@ export function EegChannelSelector({ channels, availableChannels, selectedChanne
   onToggle: (channel: string) => void
 }) {
   return (
-    <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Canales EEG">
+    <div className="mb-3 flex flex-wrap gap-2 roomy:mb-5" role="group" aria-label="Canales EEG">
       {channels.map((channel) => {
         const available = availableChannels.includes(channel)
         const active = available && selectedChannels.includes(channel)

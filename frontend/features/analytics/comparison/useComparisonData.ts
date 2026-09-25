@@ -235,7 +235,7 @@ export function useComparisonData({
     participantCode,
     scenario,
     [],
-    0.2,
+    0,
     5000
   )
 
@@ -261,7 +261,7 @@ export function useComparisonData({
     [],
     45,
     true,
-    "freq_demean",
+    "none",
     360,
     160
   )

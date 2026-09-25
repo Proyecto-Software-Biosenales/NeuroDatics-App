@@ -552,6 +552,12 @@ class CsvProcessingService:
         original_columns = next(csv.reader([lines[0]], delimiter=delimiter))
         if not original_columns:
             raise CsvProcessingError(f"Encabezado vacío en línea {source_header_line}")
+        time_columns = [name for name in original_columns if cls._canonical_column(name, False) == "time"]
+        if len(time_columns) > 1:
+            raise CsvProcessingError(
+                "CSV con múltiples columnas Time/relojes independientes: exporte una tabla "
+                "sincronizada con una única columna Time; no se pueden unir canales por fila."
+            )
 
         parsed_rows: List[List[Optional[str]]] = []
         row_lines: List[int] = []
@@ -853,6 +859,31 @@ class CsvProcessingService:
         }
         distance_factors = {"mm": 1.0, "cm": 10.0, "m": 1000.0}
         normalized = dataframe.copy()
+        eeg_names = sorted((_EEG_COLUMNS - {"trg"}) & set(normalized.columns))
+        eeg_source_units = {name: cls._channel_unit(channels, name) for name in eeg_names}
+        # 'kilo' is the vendor's display multiplier, verified against the local
+        # DSI acquisition arrays (SAIO F3). It is not a declaration of kilovolts.
+        # Blank/prefix-only units retain the explicitly disclosed legacy uV basis.
+        eeg_factors = {None: 1.0, "uv": 1.0, "µv": 1.0, "μv": 1.0,
+                       "mv": 1e3, "v": 1e6, "nv": 1e-3, "kilo": 1e3}
+        excluded = []
+        for name, unit in eeg_source_units.items():
+            if unit not in eeg_factors:
+                excluded.append(name)
+                continue
+            normalized[name] = pd.to_numeric(normalized[name], errors="coerce") * eeg_factors[unit]
+            if np.isinf(normalized[name].to_numpy(dtype=float)).any():
+                raise CsvProcessingError(f"Normalizacion EEG fuera de rango: {name}")
+        eeg_acquisition = {
+            "source_units": eeg_source_units,
+            "scale_to_uV": {name: eeg_factors.get(unit) for name, unit in eeg_source_units.items()},
+            "excluded_channels": excluded,
+            "assumed_uV_channels": [name for name, unit in eeg_source_units.items() if unit in {None, "kilo"}],
+            "declared_rates_hz": {channel.canonical_name: channel.declared_frequency_hz
+                                  for channel in channels if channel.canonical_name in eeg_names},
+        }
+        if eeg_names:
+            normalized.attrs["eeg_acquisition"] = eeg_acquisition
         for name, factors in (("time", time_factors), ("distance", distance_factors)):
             if name not in normalized.columns:
                 continue
@@ -873,6 +904,8 @@ class CsvProcessingService:
             "stored": {name: unit for name, unit in (("time", "seconds"), ("distance", "mm")) if name in normalized},
             "undeclared_policy": "legacy_seconds_mm",
         }
+        if eeg_names:
+            contract["eeg"] = eeg_acquisition
         return normalized, contract, "mm" if source["distance"] else "auto"
 
     @staticmethod
@@ -1052,6 +1085,13 @@ class CsvProcessingService:
 
         table = pa.Table.from_pandas(df, preserve_index=False)
         schema_metadata = dict(table.schema.metadata or {})
+        # pandas restores this standard metadata key into DataFrame.attrs.
+        # Set from the explicit contract: fixation processing may copy the frame.
+        units = metadata.get("recording_units", {})
+        if units.get("eeg"):
+            schema_metadata[b"PANDAS_ATTRS"] = json.dumps(
+                {**df.attrs, "eeg_acquisition": units["eeg"]}, allow_nan=False
+            ).encode("utf-8")
         for key, value in metadata.items():
             schema_metadata[str(key).encode("utf-8")] = json.dumps(
                 value,

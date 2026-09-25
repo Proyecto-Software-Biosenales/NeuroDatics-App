@@ -68,7 +68,20 @@ def test_successful_analytics_contract(http_client, endpoint, snapshot):
             for key in ("time", "frequency", "charts", "fixations", "objectives", "aois", "points"):
                 if isinstance(body, dict) and key in body:
                     assert body[key], f"{endpoint} returned empty {key}"
-            shapes[f"{participant}/{scenario}"] = response_shape(body)
+            # v2 adds provenance/full-resolution statistics. Keep the v1 shape
+            # baseline unchanged and explicitly verify the added contract here.
+            legacy_body = dict(body) if isinstance(body, dict) else body
+            if endpoint.endswith("/eeg"):
+                assert body["metadata"]["version"] == "eeg-v2"
+                assert isinstance(body["metadata"]["warnings"], list)
+                if endpoint == "/timeseries/eeg":
+                    assert body["statistics"]["raw"]["f3"]["count"] == 800
+                if endpoint == "/psd/eeg":
+                    assert body["band_power"]["f3"]["alpha"] > 0
+                    assert body["total_power"]["f3"] > 0
+                for added in ("metadata", "statistics", "band_power", "total_power"):
+                    legacy_body.pop(added, None)
+            shapes[f"{participant}/{scenario}"] = response_shape(legacy_body)
             cached = http_client.get(PREFIX + endpoint, params=params)
             assert cached.status_code == 200
             assert cached.json() == body

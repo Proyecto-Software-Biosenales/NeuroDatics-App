@@ -1,9 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+
+/* Large sizing needs width AND height. A 1920x1080 laptop at 125% scaling is 1536 px wide
+   (Tailwind's 2xl) but only ~730 px tall, so width-only 2xl gave it the largest cards. */
+@custom-variant roomy (@media (min-width: 96rem) and (min-height: 56.25rem));
+
+/* Poppins is served from public/fonts so the app never asks a third party for it (the student
+   edition runs with no network). Only the weights the app uses are shipped; the Latin subset
+   covers Spanish. */
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-500.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/poppins-latin-700.woff2") format("woff2");
+}
 
 :root {
     --font-sans: "Poppins", sans-serif;
@@ -13,7 +51,7 @@
     --analytics-chart-main-height: clamp(20rem, 43vh, 28.75rem);
     --analytics-chart-mid-height: clamp(18.5rem, 40vh, 22rem);
     --analytics-chart-compact-height: clamp(17.5rem, 36vh, 20rem);
-    --analytics-chart-eeg-height: clamp(22rem, 48vh, 31.25rem);
+    --analytics-chart-eeg-height: clamp(20.625rem, calc(48vh - 1.375rem), 29.875rem);
     --analytics-chart-visual-height: clamp(20rem, 58vh, 36rem);
     --background: oklch(100% 0.00011 271.152);
     --foreground: oklch(0.145 0 0);
@@ -143,7 +181,7 @@
     --analytics-chart-main-height: clamp(19rem, 42vh, 24.5rem);
     --analytics-chart-mid-height: clamp(17.5rem, 38vh, 21rem);
     --analytics-chart-compact-height: clamp(16.5rem, 34vh, 19rem);
-    --analytics-chart-eeg-height: clamp(20rem, 46vh, 27rem);
+    --analytics-chart-eeg-height: clamp(18.625rem, calc(46vh - 1.375rem), 25.625rem);
     --analytics-chart-visual-height: clamp(19rem, 56vh, 32rem);
   }
 }
@@ -151,10 +189,10 @@
 @media (min-width: 1024px) and (max-height: 800px) {
   :root {
     --app-nav-height: 3.75rem;
-    --analytics-chart-main-height: clamp(17.75rem, 37vh, 20rem);
+    --analytics-chart-main-height: clamp(17.75rem, 44vh, 24rem);
     --analytics-chart-mid-height: clamp(16.5rem, 36vh, 19rem);
     --analytics-chart-compact-height: clamp(15.5rem, 32vh, 17.5rem);
-    --analytics-chart-eeg-height: clamp(19rem, 44vh, 24rem);
+    --analytics-chart-eeg-height: clamp(17.625rem, calc(44vh - 1.375rem), 22.625rem);
     --analytics-chart-visual-height: clamp(18rem, 54vh, 29rem);
   }
 }
@@ -243,6 +281,19 @@
     }
   }
 
+  /* Laptop heights: every row above a chart pushes it below the fold. */
+  @media (max-height: 800px) {
+    .analytics-stack {
+      gap: 0.75rem;
+      padding-block: 0.75rem;
+    }
+
+    .analytics-kpi-grid {
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+  }
+
   .analytics-chart-frame {
     height: var(--analytics-chart-main-height) !important;
     min-height: 15rem;
@@ -283,10 +334,21 @@
   }
 
   .analytics-chart-plot-area {
+    position: relative;
     min-height: 0;
     min-width: 0;
     width: 100%;
     flex: 1 1 auto;
+  }
+
+  .analytics-chart-zoomable {
+    cursor: crosshair;
+    user-select: none;
+  }
+
+  .analytics-chart-zoom-band {
+    border-inline: 1px solid color-mix(in oklab, var(--primary) 55%, transparent);
+    background: color-mix(in oklab, var(--primary) 14%, transparent);
   }
 
   .analytics-chart-plot-frame {
@@ -332,6 +394,49 @@
     width: 1rem;
     flex: 0 0 auto;
     border-radius: 9999px;
+  }
+
+  /* Legend and note chips share one line, so a caveat costs no extra row. */
+  .analytics-chart-footer {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 1rem;
+    padding-top: 0.25rem;
+  }
+
+  .analytics-chart-footer > .analytics-chart-legend {
+    padding-top: 0;
+  }
+
+  .analytics-chart-notes {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+  }
+
+  /* Recharts writes fill-opacity as an attribute, which CSS overrides: the
+     light-theme 0.12 is invisible on a dark card. */
+  .dark .eeg-artifact-band .recharts-reference-area-rect {
+    fill-opacity: 0.26;
+  }
+
+  /* The selected instant and the grid are drawn in fixed light-theme greys. */
+  .dark .analytics-selected-time line {
+    stroke: #e5e7eb;
+  }
+
+  .dark .analytics-selected-time text {
+    fill: #e5e7eb;
+  }
+
+  .dark .analytics-chart-shell .recharts-cartesian-grid line {
+    stroke: color-mix(in oklab, var(--border) 80%, transparent);
   }
 
   .analytics-state-frame {

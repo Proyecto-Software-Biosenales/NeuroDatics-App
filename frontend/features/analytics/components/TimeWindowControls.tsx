@@ -1,8 +1,12 @@
 "use client"
 
+import { useState } from "react"
+import { ChevronDown, Clock } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { normalizeZoomRange } from "../chartZoom"
 
 export type TimeWindow = {
   start: number | null
@@ -54,6 +58,23 @@ export function validateTimeWindowDraft(draft: TimeWindowDraft): { window: TimeW
   }
 }
 
+/** Window for a range dragged on a time chart. */
+export function timeWindowFromDrag(start: number, end: number): TimeWindow | null {
+  return normalizeZoomRange(start, end, { min: 0 })
+}
+
+/** Input text that shows an applied window. */
+export function timeWindowDraftOf(window: TimeWindow | null): TimeWindowDraft {
+  return {
+    start: window?.start == null ? "" : String(window.start),
+    end: window?.end == null ? "" : String(window.end),
+  }
+}
+
+export function hasTimeWindow(window: TimeWindow) {
+  return window.start != null || window.end != null
+}
+
 export function TimeWindowControls({
   draftStart,
   draftEnd,
@@ -64,6 +85,7 @@ export function TimeWindowControls({
   onDraftEndChange,
   onApply,
   onReset,
+  zoomHint = "También puedes arrastrar sobre la gráfica para ampliar una zona.",
 }: {
   draftStart: string
   draftEnd: string
@@ -74,74 +96,98 @@ export function TimeWindowControls({
   onDraftEndChange: (value: string) => void
   onApply: () => void
   onReset: () => void
+  zoomHint?: string
 }) {
-  const hasWindow = appliedWindow.start != null || appliedWindow.end != null
+  const [open, setOpen] = useState(false)
+  const hasWindow = hasTimeWindow(appliedWindow)
+  const range = `${formatWindowBound(appliedWindow.start, "inicio")} - ${formatWindowBound(appliedWindow.end, "fin")}`
+
+  const apply = () => {
+    // The owner validates again and shows the error; keep the panel open for it.
+    const { error: draftError } = validateTimeWindowDraft({ start: draftStart, end: draftEnd })
+    onApply()
+    if (!draftError) setOpen(false)
+  }
+
+  const reset = () => {
+    onReset()
+    setOpen(false)
+  }
 
   return (
-    <div className="mb-5 rounded-lg border border-border bg-muted/30 px-4 py-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <Label className="block space-y-1">
-            <span className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Inicio
-            </span>
-            <Input
-              type="number"
-              min={0}
-              step="0.1"
-              value={draftStart}
-              onChange={(event) => onDraftStartChange(event.target.value)}
-              placeholder="20"
-              className="h-9 w-28"
-            />
-          </Label>
-
-          <Label className="block space-y-1">
-            <span className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Fin
-            </span>
-            <Input
-              type="number"
-              min={0}
-              step="0.1"
-              value={draftEnd}
-              onChange={(event) => onDraftEndChange(event.target.value)}
-              placeholder="25"
-              className="h-9 w-28"
-            />
-          </Label>
-
-          <div className="flex items-center gap-2">
-            <Button size="lg"
-              type="button"
-              onClick={onApply}
-              disabled={loading}
-            >
-              Aplicar
-            </Button>
-            <Button variant="outline" size="lg"
-              type="button"
-              onClick={onReset}
-              disabled={loading || !hasWindow}
-            >
-              Restablecer
-            </Button>
-          </div>
-        </div>
-
-        <div className="text-sm text-muted-foreground">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="lg"
+          aria-label={`Ventana temporal: ${hasWindow ? range : "Todo el experimento"}`}
+          className="max-w-full min-w-0"
+        >
+          <Clock data-icon="inline-start" className="text-muted-foreground" />
           <span className="font-semibold text-foreground">
             {hasWindow ? "Ventana activa" : "Todo el experimento"}
           </span>
-          {hasWindow ? (
-            <span>
-              {" "}
-              {formatWindowBound(appliedWindow.start, "inicio")} - {formatWindowBound(appliedWindow.end, "fin")}
-            </span>
-          ) : null}
-        </div>
-      </div>
-      {error ? <p className="mt-2 text-sm font-medium text-destructive">{error}</p> : null}
-    </div>
+          {hasWindow ? <span className="truncate text-muted-foreground">{range}</span> : null}
+          <ChevronDown data-icon="inline-end" className="text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(20rem,calc(100vw-2rem))] p-3">
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            apply()
+          }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Ventana temporal
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Label className="block space-y-1">
+              <span className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Inicio
+              </span>
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                value={draftStart}
+                onChange={(event) => onDraftStartChange(event.target.value)}
+                placeholder="20"
+                className="h-9 w-full"
+              />
+            </Label>
+
+            <Label className="block space-y-1">
+              <span className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Fin
+              </span>
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                value={draftEnd}
+                onChange={(event) => onDraftEndChange(event.target.value)}
+                placeholder="25"
+                className="h-9 w-full"
+              />
+            </Label>
+          </div>
+
+          {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="lg" type="button" onClick={reset} disabled={loading || !hasWindow}>
+              Restablecer
+            </Button>
+            <Button size="lg" type="submit" disabled={loading}>
+              Aplicar
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">{zoomHint}</p>
+        </form>
+      </PopoverContent>
+    </Popover>
   )
 }

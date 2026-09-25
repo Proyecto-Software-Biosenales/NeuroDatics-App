@@ -79,6 +79,13 @@ async def readiness_check():
     return JSONResponse(status_code=status_code, content=payload)
 
 
+if settings.is_local and settings.local_frontend_dir:
+    # Last, so the routes above take precedence over the site's catch-all.
+    from .local.static_frontend import mount_frontend
+
+    mount_frontend(app, settings.local_frontend_dir)
+
+
 def main():
     """Entry point"""
     import uvicorn

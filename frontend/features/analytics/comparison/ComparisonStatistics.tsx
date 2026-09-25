@@ -451,7 +451,7 @@ export function ComparisonStatistics({
         const values = psd.power[channel] ?? []
         let peakIndex = -1
         values.forEach((value, index) => {
-          if (peakIndex < 0 || value > values[peakIndex]) peakIndex = index
+          if (typeof value === "number" && Number.isFinite(value) && (peakIndex < 0 || value > (values[peakIndex] ?? -Infinity))) peakIndex = index
         })
         rows.push(
           {
@@ -464,7 +464,7 @@ export function ComparisonStatistics({
           {
             sensor: "EEG",
             visualization: "Densidad espectral",
-            metric: `${channel.toUpperCase()} potencia pico`,
+            metric: `${channel.toUpperCase()} densidad pico`,
             value: values[peakIndex] ?? null,
             unit: psd.unit,
           }
@@ -480,14 +480,14 @@ export function ComparisonStatistics({
           {
             sensor: "EEG",
             visualization: "Espectrograma",
-            metric: `${channel.toUpperCase()} potencia media`,
+            metric: `${channel.toUpperCase()} nivel medio`,
             value: summary?.mean ?? null,
             unit: spectrogram.unit,
           },
           {
             sensor: "EEG",
             visualization: "Espectrograma",
-            metric: `${channel.toUpperCase()} potencia pico`,
+            metric: `${channel.toUpperCase()} densidad pico`,
             value: summary?.max ?? null,
             unit: spectrogram.unit,
           }

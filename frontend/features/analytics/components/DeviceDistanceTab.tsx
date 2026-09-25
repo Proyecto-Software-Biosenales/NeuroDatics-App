@@ -55,6 +55,8 @@ import {
 import type { DistanceTimeseriesData } from "../types"
 import { useSingleSignalData } from "../hooks/useSingleSignalData"
 import { SingleSignalTab } from "./SingleSignalTab"
+import { LINE_CHART_MARGIN } from "./AnalyticsChartShell"
+import { axisTickDecimals, formatAxisTick } from "../chartZoom"
 import { MissingStimulusImage } from "./MissingStimulusImage"
 
 interface DeviceDistanceTabProps {
@@ -293,13 +295,13 @@ export function DeviceDistanceTab({
       ))}
       chart={
         <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
-          <LineChart data={chartData} onClick={handleChartClick} margin={{ top: 12, right: 24, left: 16, bottom: 28 }}>
+          <LineChart data={chartData} {...signal.dragZoom.chartProps(handleChartClick)} margin={LINE_CHART_MARGIN}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
             <XAxis
               dataKey="time"
               type="number"
               domain={chartDomain}
-              tickFormatter={(value) => String(Math.round(Number(value)))}
+              tickFormatter={(value) => formatAxisTick(value, axisTickDecimals(chartDomain))}
               tickMargin={8}
             />
             <YAxis
@@ -315,6 +317,7 @@ export function DeviceDistanceTab({
             {selectedTime != null ? (
               <ReferenceLine
                 x={selectedTime}
+                className="analytics-selected-time"
                 stroke="#374151"
                 strokeWidth={1.5}
                 strokeDasharray="4 3"
@@ -414,16 +417,16 @@ export function DeviceDistanceTab({
               ].map(({ label, value, sub, Icon, bg, iconColor }) => (
                 <div
                   key={label}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm roomy:p-4"
                 >
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", bg)}>
-                    <Icon className={cn("h-5 w-5", iconColor)} />
+                  <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg roomy:h-10 roomy:w-10 roomy:rounded-xl", bg)}>
+                    <Icon className={cn("h-4 w-4 roomy:h-5 roomy:w-5", iconColor)} />
                   </div>
                   <div className="min-w-0 flex flex-col">
                     <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
                       {label}
                     </p>
-                    <p className="mt-2 text-3xl font-bold leading-tight text-foreground">{value}</p>
+                    <p className="mt-0.5 text-xl font-bold leading-tight text-foreground roomy:mt-2 roomy:text-3xl">{value}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
                   </div>
                 </div>
