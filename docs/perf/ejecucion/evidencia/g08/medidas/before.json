@@ -1,0 +1,62 @@
+{
+  "phase": "before",
+  "runtime": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "win32",
+  "pid": 32200,
+  "corpus": "..\\output\\perf-g08\\corpus\\navigation.mp4",
+  "protocol": "warmup + n=5; each n is 4 times (1.2,2.3,3.4,2.3)",
+  "onset_navigation": {
+    "wall_ms": {
+      "min": 2.526,
+      "median": 2.661,
+      "max": 3.215,
+      "mean": 2.735,
+      "stdev": 0.276
+    },
+    "process_cpu_ms": {
+      "min": 0.0,
+      "median": 0.0,
+      "max": 15.625,
+      "mean": 3.125,
+      "stdev": 6.988
+    },
+    "counts_total_n5": {
+      "parquet_cache_reads": 20,
+      "parquet_reads": 20
+    },
+    "counts_per_navigation": {
+      "parquet_cache_reads": 4.0,
+      "parquet_reads": 4.0
+    }
+  },
+  "real_video_navigation": {
+    "wall_ms": {
+      "min": 544.769,
+      "median": 555.58,
+      "max": 563.033,
+      "mean": 553.952,
+      "stdev": 6.804
+    },
+    "process_cpu_ms": {
+      "min": 15.625,
+      "median": 46.875,
+      "max": 62.5,
+      "mean": 43.75,
+      "stdev": 20.373
+    },
+    "counts_total_n5": {
+      "ffprobe": 20,
+      "ffmpeg": 20,
+      "downloads": 0
+    },
+    "counts_per_navigation": {
+      "ffprobe": 4.0,
+      "ffmpeg": 4.0,
+      "downloads": 0.0
+    }
+  },
+  "limits": [
+    "process_cpu_ms excludes CPU consumed inside FFmpeg/FFprobe children",
+    "micro-benchmark isolates preview helpers; it is not HTTP or deployment latency"
+  ]
+}

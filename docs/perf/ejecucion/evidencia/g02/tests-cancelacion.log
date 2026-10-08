@@ -1,0 +1,30 @@
+✔ never runs more than the concurrency limit and starts visible cards first (10.6284ms)
+✔ duplicate subscribers share one request and one result (15.16ms)
+✔ releasing a queued card removes it; releasing a running card aborts it and ignores its late answer (31.1594ms)
+✔ out-of-order answers only reach their own card (46.944ms)
+✔ a failure does not block the others and can be retried (77.4076ms)
+✔ the cache is bounded by entries, weight and time (77.4531ms)
+✔ cancelAll aborts running work and drops the queue (30.9821ms)
+✔ cache keys isolate project, generation, participant, scenario and request parameters (0.6603ms)
+✔ participants keep their real codes in a stable natural order and search ignores accents (0.2301ms)
+✔ windows move through the stimulus onset, never through absolute times (0.23ms)
+✔ axes align on the onset only for a concrete scenario (0.0753ms)
+✔ spatial restrictions are explained and scales state their coverage (10.3283ms)
+✔ a card scrolled away keeps its running request, which a returning card reuses; deselection aborts it (50.1876ms)
+✔ only fixation-derived charts expose a minimum fixation that changes their cache key (0.2799ms)
+✔ usePupilTimeseries aborts the browser request on selection change and unmount (509.0716ms)
+✔ useGsrStatistics aborts the browser request on selection change and unmount (370.2798ms)
+✔ useEegTimeseries aborts the browser request on selection change and unmount (371.9138ms)
+✔ gaze scrubbing and clear cancel the real pending fetch (373.0159ms)
+✔ cancelling one heatmap fetch leaves an identical sibling fetch usable (357.9065ms)
+✔ StrictMode heatmap cleanup does not poison its replacement request (250.1552ms)
+✔ a late answer for a previous card never replaces the current card's data (299.5561ms)
+✔ a remounted card attaches to its in-flight request instead of repeating it (152.5251ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2828.5786

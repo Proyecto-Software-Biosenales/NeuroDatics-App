@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
 import { Clock, MapPin, Route, Ruler, Timer } from "lucide-react"
 import {
   Card,
@@ -14,8 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
-import { apiFetchBlob } from "@/lib/api/apiFetch"
-import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
+import { useStimulusImage } from "../participantComparison/cardHooks"
 import { useAoiMetrics, useScanpathData } from "../hooks/useAnalyticsData"
 import {
   formatScanpathObjectiveDetails,
@@ -23,6 +23,12 @@ import {
   resolveScanpathTotalDurationS,
   scanpathRadiusForDuration,
 } from "../scanpathScale"
+import {
+  ACTIVE_SCANPATH_STYLE,
+  SCANPATH_STYLES,
+  scanpathGeometry,
+  scanpathLabelFontSize,
+} from "../scanpathStyle"
 import type { FixationDurationMs } from "../types"
 import {
   AoiLegend,
@@ -32,8 +38,8 @@ import {
   type ContainedImageBox,
 } from "./AoiOverlay"
 
-const MAIN_SCANPATH_MIN_RADIUS = 12
-const MAIN_SCANPATH_MAX_RADIUS = 40
+// Switch presets in scanpathStyle.ts ("legacy" restores the previous look).
+const scanpathStyle = SCANPATH_STYLES[ACTIVE_SCANPATH_STYLE]
 
 interface ScanpathTabProps {
   projectId: string
@@ -48,7 +54,6 @@ export function ScanpathTab({
   scenario,
   minFixationDurationMs,
 }: ScanpathTabProps) {
-  const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
   
   const imageContainerRef = useRef<HTMLDivElement>(null)
@@ -80,36 +85,10 @@ export function ScanpathTab({
   }, [])
 
   // Image load / revocation
-  useEffect(() => {
-    let cancelled = false
-    let currentUrl: string | null = null
 
-    if (!data?.scenario_file_id) {
-      Promise.resolve().then(() => {
-        if (!cancelled) setScenarioImageUrl(null)
-      })
-      return () => {
-        cancelled = true
-      }
-    }
-
-    apiFetchBlob(getStimulusImageUrl(projectId, data.scenario_file_id))
-      .then((blob) => {
-        if (cancelled) return
-        currentUrl = URL.createObjectURL(blob)
-        setScenarioImageUrl(currentUrl)
-      })
-      .catch(() => {
-        if (!cancelled) setScenarioImageUrl(null)
-      })
-
-    return () => {
-      cancelled = true
-      if (currentUrl) URL.revokeObjectURL(currentUrl)
-    }
-  }, [projectId, data?.scenario_file_id])
 
   // Recalculate on window resize
+  const scenarioImageUrl = useStimulusImage(projectId, data?.scenario_file_id ?? null).url
   useEffect(() => {
     window.addEventListener("resize", computeLetterbox)
     return () => window.removeEventListener("resize", computeLetterbox)
@@ -147,12 +126,24 @@ export function ScanpathTab({
   return (
     <div className="analytics-stack">
       <Card>
-        <CardHeader>
-          <CardTitle>Mapa de recorridos</CardTitle>
-          <CardDescription>
-            Recorrido visual con nodos numerados por orden de fijación. El mismo
-            tamaño representa la misma duración entre participantes.
-          </CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
+            <CardTitle>Mapa de recorridos</CardTitle>
+            <CardDescription>
+              Recorrido visual con nodos numerados por orden de fijación. El mismo
+              tamaño representa la misma duración entre participantes.
+            </CardDescription>
+          </div>
+          <CompareParticipantsButton
+            spec={() => ({
+              kind: "scanpath",
+              title: "Mapa de recorridos",
+              scenario,
+              sourceParticipant: participantCode,
+              origin: "individual",
+              params: { minFixationDurationMs, showAois },
+            })}
+          />
         </CardHeader>
         <CardContent>
           {!participantCode ? (
@@ -239,11 +230,16 @@ export function ScanpathTab({
                   const total = data.objectives.length
                   const shown = visibleCount ?? total
                   const visibleObjectives = data.objectives.slice(0, shown)
+                  const geometry = scanpathGeometry(
+                    scanpathStyle,
+                    letterbox?.renderedW ?? 0,
+                    letterbox?.renderedH ?? 0
+                  )
                   const radiusFor = (durationS: number) => {
                     return scanpathRadiusForDuration(
                       durationS,
-                      MAIN_SCANPATH_MIN_RADIUS,
-                      MAIN_SCANPATH_MAX_RADIUS,
+                      geometry.minRadius,
+                      geometry.maxRadius,
                       radiusCapMs
                     )
                   }
@@ -283,8 +279,8 @@ export function ScanpathTab({
                                   y1={letterbox.offsetY + prev.cy * letterbox.renderedH}
                                   x2={letterbox.offsetX + obj.cx * letterbox.renderedW}
                                   y2={letterbox.offsetY + obj.cy * letterbox.renderedH}
-                                  stroke="rgba(0, 122, 255, 0.7)"
-                                  strokeWidth={2.5}
+                                  stroke={scanpathStyle.lineStroke}
+                                  strokeWidth={geometry.lineWidth}
                                   strokeLinecap="round"
                                 />
                               )
@@ -294,7 +290,7 @@ export function ScanpathTab({
                               const cx = letterbox.offsetX + obj.cx * letterbox.renderedW
                               const cy = letterbox.offsetY + obj.cy * letterbox.renderedH
                               const r = radiusFor(obj.duration_s)
-                              const fontSize = Math.max(9, Math.min(Math.round(r * 0.55), 16))
+                              const fontSize = scanpathLabelFontSize(scanpathStyle, r)
                               const details = formatScanpathObjectiveDetails(obj)
                               return (
                                 <g
@@ -312,23 +308,24 @@ export function ScanpathTab({
                                     cx={cx}
                                     cy={cy}
                                     r={r}
-                                    fill="rgba(0, 122, 255, 0.55)"
-                                    stroke="rgba(255,255,255,0.95)"
-                                    strokeWidth={2.5}
-                                    className="transition-[stroke-width] group-focus-visible:stroke-[4]"
+                                    fill={scanpathStyle.nodeFill}
+                                    stroke={scanpathStyle.nodeStroke}
+                                    strokeWidth={geometry.nodeStrokeWidth}
+                                    className={scanpathStyle.nodeClassName}
                                   />
                                   <text
                                     x={cx}
                                     y={cy}
                                     textAnchor="middle"
                                     dominantBaseline="central"
-                                    fill="white"
+                                    fill={scanpathStyle.labelFill}
                                     fontSize={fontSize}
                                     fontWeight="bold"
                                     style={{
                                       paintOrder: "stroke",
-                                      stroke: "rgba(0,0,0,0.5)",
-                                      strokeWidth: 2,
+                                      stroke: scanpathStyle.labelHalo,
+                                      strokeWidth: scanpathStyle.labelHaloWidth,
+                                      strokeLinejoin: scanpathStyle.labelHaloLineJoin,
                                     }}
                                   >
                                     {obj.id}

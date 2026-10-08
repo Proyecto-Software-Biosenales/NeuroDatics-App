@@ -3,7 +3,7 @@
 from typing import Optional
 import numpy as np
 import pandas as pd
-from .fixation_analytics_service import FixationEventService as FixationEventService
+from .fixation_analytics_service import FixationEventResult, FixationEventService
 
 
 class FixationDataService:
@@ -26,11 +26,16 @@ class FixationDataService:
           - fixations: list of {x_norm, y_norm, time_s, duration_s}
           - stats: {n_fixations, max_duration_s, avg_duration_s}
         """
-        events, metadata = FixationEventService.build_events(
+        result = FixationEventService.build_result(
             df,
             scenario=scenario,
             min_fixation_duration_ms=min_fixation_duration_ms,
         )
+        return cls.compute_fixation_data_from_events(result)
+
+    @classmethod
+    def compute_fixation_data_from_events(cls, result: FixationEventResult) -> dict:
+        events, metadata = result.events, result.metadata
         if events.empty:
             return {
                 "fixations": [],
@@ -66,11 +71,16 @@ class FixationHistogramService:
         min_fixation_duration_ms: Optional[int] = None,
     ) -> dict:
         """Compute a Sturges-binned histogram of fixation durations in milliseconds."""
-        events, metadata = FixationEventService.build_events(
+        result = FixationEventService.build_result(
             df,
             scenario=scenario,
             min_fixation_duration_ms=min_fixation_duration_ms,
         )
+        return cls.compute_histogram_from_events(result)
+
+    @classmethod
+    def compute_histogram_from_events(cls, result: FixationEventResult) -> dict:
+        events, metadata = result.events, result.metadata
         _empty = {
             "bins": [],
             "n_fixations": 0,

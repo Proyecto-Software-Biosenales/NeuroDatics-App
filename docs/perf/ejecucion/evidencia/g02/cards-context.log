@@ -1,0 +1,11 @@
+✔ a late answer for a previous card never replaces the current card's data (262.4999ms)
+✔ a remounted card attaches to its in-flight request instead of repeating it (153.0698ms)
+✔ a scoped remount waits for fresh metadata before reusing its card cache (101.3367ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1065.9192

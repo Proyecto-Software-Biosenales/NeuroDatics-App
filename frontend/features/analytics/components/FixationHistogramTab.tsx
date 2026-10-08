@@ -25,6 +25,7 @@ import { Activity, TrendingDown, TrendingUp } from "lucide-react"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
 import { AnalyticsChartShell } from "./AnalyticsChartShell"
 import { useFixationHistogram } from "../hooks/useAnalyticsData"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
 import type {
   FixationDurationMs,
   FixationHistogramBin,
@@ -301,14 +302,26 @@ export function FixationHistogramTab({
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Histograma de fijación</CardTitle>
-              <CardDescription>
-                {data.min_fixation_duration_ms == null
-                  ? "Distribución reconstruida desde datos históricos; el umbral mínimo original es desconocido."
-                  : `Distribución para el umbral de ${data.min_fixation_duration_ms} ms.`}{" "}
-                N = {data.n_fixations} fijaciones.
-              </CardDescription>
+            <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 flex-1 basis-72">
+                <CardTitle className="text-xl">Histograma de fijación</CardTitle>
+                <CardDescription>
+                  {data.min_fixation_duration_ms == null
+                    ? "Distribución reconstruida desde datos históricos; el umbral mínimo original es desconocido."
+                    : `Distribución para el umbral de ${data.min_fixation_duration_ms} ms.`}{" "}
+                  N = {data.n_fixations} fijaciones.
+                </CardDescription>
+              </div>
+              <CompareParticipantsButton
+                spec={() => ({
+                  kind: "fixation_histogram",
+                  title: "Histograma de fijación",
+                  scenario,
+                  sourceParticipant: participantCode,
+                  origin: "individual",
+                  params: { minFixationDurationMs },
+                })}
+              />
             </CardHeader>
             <CardContent>
               <AnalyticsChartShell xAxisLabel="Duración (ms)" variant="compact">

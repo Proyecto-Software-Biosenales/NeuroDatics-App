@@ -1,0 +1,15 @@
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g03\supported-env\Lib\site-packages\_pytest\config\__init__.py:331: PluggyTeardownRaisedWarning: A plugin raised an exception during an old-style hookwrapper teardown.
+Plugin: helpconfig, Hook: pytest_cmdline_parse
+ConftestImportFailure: ImportError: The SQLAlchemy asyncio module requires that the Python 'greenlet' library is installed.  In order to ensure this dependency is available, use the 'sqlalchemy[asyncio]' install target:  'pip install sqlalchemy[asyncio]' (from C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\tests\characterization\conftest.py)
+For more information see https://pluggy.readthedocs.io/en/stable/api_reference.html#pluggy.PluggyTeardownRaisedWarning
+  config = pluginmanager.hook.pytest_cmdline_parse(
+ImportError while loading conftest 'C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\tests\characterization\conftest.py'.
+tests\characterization\conftest.py:13: in <module>
+    from neurodatics.api.deps import get_db
+src\neurodatics\api\deps.py:3: in <module>
+    from sqlalchemy.ext.asyncio import AsyncSession
+..\output\perf-g03\supported-env\Lib\site-packages\sqlalchemy\ext\asyncio\__init__.py:28: in <module>
+    concurrency._concurrency_shim._initialize()
+..\output\perf-g03\supported-env\Lib\site-packages\sqlalchemy\util\concurrency.py:79: in _initialize
+    raise ImportError(_ERROR_MESSAGE) from e
+E   ImportError: The SQLAlchemy asyncio module requires that the Python 'greenlet' library is installed.  In order to ensure this dependency is available, use the 'sqlalchemy[asyncio]' install target:  'pip install sqlalchemy[asyncio]'

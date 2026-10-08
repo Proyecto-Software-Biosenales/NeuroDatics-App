@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile,
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
-from collections import OrderedDict
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 import asyncio
 import hashlib
@@ -14,14 +14,14 @@ import logging
 import os
 import subprocess
 import tempfile
-import time
 
 import anyio
 
 from ....api.deps import get_db, get_current_user
 from neurodatics.shared.scenario_identity import is_all_scenarios
-from ...analytics.application.services.analytics_service import PupilAnalyticsService
 from ...analytics.application.services.parquet_reader_service import ParquetReaderService
+from ...analytics.domain.parquet_projection import ParquetProjection
+from ...analytics.infrastructure.singleflight import settled_thread
 from ....config.settings import settings
 from ...integrations.storage_provider import (
     build_isolated_drive_client,
@@ -47,6 +47,21 @@ from ..application.services.fixation_detection_service import ScreenGeometry
 from ..application.use_cases.ingestion_lifecycle import finish_upload_on_disconnect, progress_key
 from ..infrastructure.upload_attempt_store import UploadAttemptStore, UploadAttemptConflict
 from ..infrastructure.drive_cleanup import enqueue_drive_cleanup, drain_drive_cleanup
+from ..infrastructure.image_cache import (
+    build_image_etag as _build_image_etag,
+    get_cached_project_image,
+    load_project_image,
+    project_file_cache_key as _project_file_cache_key,
+    project_image_ref,
+)
+from ..infrastructure.video_preview_metadata import (
+    cache_preview_onset,
+    compute_preview_scenario_onset_s,
+    get_cached_preview_onset,
+    get_video_duration_s,
+    invalidate_project_video_metadata,
+    observe_project_generation,
+)
 from ..application.services.zip_extraction_service import ZipExtractionService
 from ..application.services.zip_validation_service import UploadSelection, ZipValidationService
 from ..domain.entities import Project, ProjectFile, ProjectStatus
@@ -58,26 +73,32 @@ from .schemas import (
     DeleteProjectResponse, DriveUploadProgressResponse, UploadClarificationResponse,
 )
 
+from .pre_experiment_routes import router as pre_experiment_router, planning_summary
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["projects"], route_class=ProjectUploadRoute)
+router.include_router(pre_experiment_router)
 
-
-_IMAGE_CACHE_TTL_SECONDS = 300
-_IMAGE_CACHE_MAX_ITEMS = 256
-_IMAGE_CACHE_MAX_BYTES = 64 * 1024 * 1024
-_image_cache_lock = asyncio.Lock()
-_image_cache_total_bytes = 0
-_image_cache_store: "OrderedDict[str, Tuple[float, bytes, str, str]]" = OrderedDict()
-_image_cache_download_locks: dict[str, asyncio.Lock] = {}
 
 # Persistent disk cache for images - survives in-memory eviction, cleared on container restart
-_IMAGE_DISK_CACHE_DIR = os.environ.get("IMAGE_CACHE_DIR", "/data/image_cache")
 _VIDEO_DISK_CACHE_DIR = os.environ.get("VIDEO_CACHE_DIR", "/data/video_cache")
 _VIDEO_FRAME_CACHE_DIR = os.environ.get("VIDEO_FRAME_CACHE_DIR", "/data/video_frame_cache")
 _VIDEO_FRAME_MIME_TYPE = "image/jpeg"
 _VIDEO_FRAME_TIME_DECIMALS = 1
 _FFMPEG_TIMEOUT_SECONDS = 45
-_video_preview_locks: dict[str, asyncio.Lock] = {}
+_VIDEO_PREVIEW_TIMING_PROJECTION = ParquetProjection(
+    "video-preview-timing", optional=("time", "scenario")
+)
+
+
+@dataclass
+class _VideoPreviewLockEntry:
+    lock: asyncio.Lock
+    users: int = 0
+
+
+_video_preview_lock_guard = asyncio.Lock()
+_video_preview_locks: dict[str, _VideoPreviewLockEntry] = {}
 
 _UPLOAD_SPOOL_CHUNK_SIZE = 1024 * 1024
 
@@ -232,44 +253,6 @@ def _hashed_cache_id(cache_key: str) -> str:
     return hashlib.sha1(cache_key.encode("utf-8")).hexdigest()
 
 
-def _disk_cache_path(file_id: UUID) -> "Path":
-    """Return the path for the disk-cached image file."""
-    base = Path(_IMAGE_DISK_CACHE_DIR)
-    base.mkdir(parents=True, exist_ok=True)
-    return base / str(file_id)
-
-
-def _disk_cache_mime_path(file_id: UUID) -> "Path":
-    """Return the path for the disk-cached mime type file."""
-    base = Path(_IMAGE_DISK_CACHE_DIR)
-    return base / f"{file_id}.mime"
-
-
-def _read_disk_cache(file_id: UUID) -> "Optional[Tuple[bytes, str]]":
-    """Read image bytes + mime type from disk. Returns None on miss."""
-    try:
-        img_path = _disk_cache_path(file_id)
-        mime_path = _disk_cache_mime_path(file_id)
-        if img_path.exists() and mime_path.exists():
-            content = img_path.read_bytes()
-            mime_type = mime_path.read_text(encoding="utf-8").strip()
-            return content, mime_type
-    except OSError:
-        pass
-    return None
-
-
-def _write_disk_cache(file_id: UUID, content: bytes, mime_type: str) -> None:
-    """Write image bytes + mime type to disk cache. Silently ignores errors."""
-    try:
-        img_path = _disk_cache_path(file_id)
-        mime_path = _disk_cache_mime_path(file_id)
-        img_path.write_bytes(content)
-        mime_path.write_text(mime_type, encoding="utf-8")
-    except OSError as exc:
-        logger.warning("Failed to write image disk cache for %s: %s", file_id, exc)
-
-
 def _video_source_cache_path(project_file: ProjectFile, cache_key: str) -> Path:
     suffix = Path(project_file.filename or "").suffix.lower() or ".video"
     base = Path(_VIDEO_DISK_CACHE_DIR)
@@ -293,82 +276,32 @@ def _read_video_frame_cache(frame_path: Path) -> Optional[bytes]:
     return None
 
 
-def _build_image_etag(cache_key: str) -> str:
-    return f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+def _video_frame_cache_exists(frame_path: Path) -> bool:
+    try:
+        return frame_path.is_file() and frame_path.stat().st_size > 0
+    except OSError:
+        return False
 
 
-async def _get_cached_image(cache_key: str) -> Optional[Tuple[bytes, str, str]]:
-    global _image_cache_total_bytes
-
-    now = time.time()
-    async with _image_cache_lock:
-        cached = _image_cache_store.get(cache_key)
-        if not cached:
-            return None
-
-        expires_at, content, mime_type, etag = cached
-        if expires_at <= now:
-            _image_cache_total_bytes -= len(content)
-            _image_cache_store.pop(cache_key, None)
-            return None
-
-        _image_cache_store.move_to_end(cache_key)
-        return content, mime_type, etag
+async def _get_video_preview_lock(cache_key: str) -> _VideoPreviewLockEntry:
+    async with _video_preview_lock_guard:
+        entry = _video_preview_locks.get(cache_key)
+        if entry is None:
+            entry = _VideoPreviewLockEntry(lock=asyncio.Lock())
+            _video_preview_locks[cache_key] = entry
+        entry.users += 1
+        return entry
 
 
-async def _set_cached_image(cache_key: str, content: bytes, mime_type: str, etag: str) -> None:
-    global _image_cache_total_bytes
-
-    if len(content) > (_IMAGE_CACHE_MAX_BYTES // 2):
-        return
-
-    expires_at = time.time() + _IMAGE_CACHE_TTL_SECONDS
-
-    async with _image_cache_lock:
-        previous = _image_cache_store.pop(cache_key, None)
-        if previous:
-            _image_cache_total_bytes -= len(previous[1])
-
-        _image_cache_store[cache_key] = (expires_at, content, mime_type, etag)
-        _image_cache_total_bytes += len(content)
-
-        while _image_cache_store and (
-            len(_image_cache_store) > _IMAGE_CACHE_MAX_ITEMS
-            or _image_cache_total_bytes > _IMAGE_CACHE_MAX_BYTES
-        ):
-            _, evicted = _image_cache_store.popitem(last=False)
-            _image_cache_total_bytes -= len(evicted[1])
-
-
-async def _get_image_download_lock(cache_key: str) -> asyncio.Lock:
-    async with _image_cache_lock:
-        lock = _image_cache_download_locks.get(cache_key)
-        if lock is None:
-            lock = asyncio.Lock()
-            _image_cache_download_locks[cache_key] = lock
-        return lock
-
-
-async def _cleanup_image_download_lock(cache_key: str, lock: asyncio.Lock) -> None:
-    async with _image_cache_lock:
-        existing = _image_cache_download_locks.get(cache_key)
-        if existing is lock and not lock.locked():
-            _image_cache_download_locks.pop(cache_key, None)
-
-
-async def _get_video_preview_lock(cache_key: str) -> asyncio.Lock:
-    async with _image_cache_lock:
-        lock = _video_preview_locks.get(cache_key)
-        if lock is None:
-            lock = asyncio.Lock()
-            _video_preview_locks[cache_key] = lock
-        return lock
-
-
-async def _cleanup_video_preview_lock(cache_key: str, lock: asyncio.Lock) -> None:
-    async with _image_cache_lock:
+async def _cleanup_video_preview_lock(
+    cache_key: str, entry: _VideoPreviewLockEntry
+) -> None:
+    async with _video_preview_lock_guard:
         existing = _video_preview_locks.get(cache_key)
-        if existing is lock and not lock.locked():
+        if existing is not entry:
+            return
+        entry.users = max(0, entry.users - 1)
+        if entry.users == 0 and not entry.lock.locked():
             _video_preview_locks.pop(cache_key, None)
 
 
@@ -398,11 +331,6 @@ async def _load_project_file(
     return project_file
 
 
-def _project_file_cache_key(project_file: ProjectFile) -> str:
-    updated_at_part = int(project_file.updated_at.timestamp()) if project_file.updated_at else 0
-    return f"{project_file.id}:{project_file.external_id}:{updated_at_part}"
-
-
 def _is_image_file(project_file: ProjectFile) -> bool:
     return bool(project_file.mime_type and project_file.mime_type.startswith("image/"))
 
@@ -421,19 +349,20 @@ async def _serve_project_file_image(
 ) -> Response:
     """Serve an image ProjectFile through the existing authenticated cache path."""
 
-    if not project_file.mime_type or not project_file.mime_type.startswith("image/"):
+    try:
+        image_ref = project_image_ref(project_file)
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Requested file is not an image"
         )
-
-    if not project_file.external_id:
+    except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File storage reference not found"
         )
 
-    cache_key = _project_file_cache_key(project_file)
+    cache_key = image_ref.cache_key
     etag = _build_image_etag(cache_key)
 
     response_headers = {
@@ -446,70 +375,32 @@ async def _serve_project_file_image(
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
 
-    # Tier 0: disk cache (session-persistent, no TTL)
-    disk_cached = await anyio.to_thread.run_sync(
-        lambda: _read_disk_cache(project_file.id)
-    )
-    if disk_cached:
-        disk_content, disk_mime = disk_cached
-        # Also populate in-memory cache for hot path
-        await _set_cached_image(cache_key, disk_content, disk_mime, etag)
+    cached = await get_cached_project_image(image_ref)
+    if cached is not None:
         return Response(
-            content=disk_content,
-            media_type=disk_mime,
-            headers={**response_headers, "X-Image-Cache": "DISK"},
+            content=cached.content,
+            media_type=cached.mime_type,
+            headers={**response_headers, "X-Image-Cache": cached.cache_status},
         )
 
-    cached_image = await _get_cached_image(cache_key)
-    if cached_image:
-        cached_content, cached_mime_type, _ = cached_image
-        return Response(
-            content=cached_content,
-            media_type=cached_mime_type,
-            headers={**response_headers, "X-Image-Cache": "HIT"},
+    drive_client = await build_isolated_drive_client(db)
+    if not drive_client:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo configurar Google Drive para servir la imagen"
         )
-
-    download_lock = await _get_image_download_lock(cache_key)
     try:
-        async with download_lock:
-            cached_after_lock = await _get_cached_image(cache_key)
-            if cached_after_lock:
-                cached_content, cached_mime_type, _ = cached_after_lock
-                return Response(
-                    content=cached_content,
-                    media_type=cached_mime_type,
-                    headers={**response_headers, "X-Image-Cache": "HIT"},
-                )
-
-            drive_client = await build_isolated_drive_client(db)
-            if not drive_client:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="No se pudo configurar Google Drive para servir la imagen"
-                )
-
-            try:
-                # Drive client is synchronous; offload to worker thread to avoid blocking event loop.
-                content = await anyio.to_thread.run_sync(drive_client.download_file_content, project_file.external_id)
-            except Exception as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="No se pudo descargar la imagen desde Google Drive"
-                ) from exc
-
-            # Persist to disk for session-level caching
-            await anyio.to_thread.run_sync(
-                lambda: _write_disk_cache(project_file.id, content, project_file.mime_type)
-            )
-
-            await _set_cached_image(cache_key, content, project_file.mime_type, etag)
-    finally:
-        await _cleanup_image_download_lock(cache_key, download_lock)
+        loaded = await load_project_image(image_ref, drive_client)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo descargar la imagen desde Google Drive"
+        ) from exc
 
     return Response(
-        content=content,
-        media_type=project_file.mime_type,
-        headers={**response_headers, "X-Image-Cache": "MISS"},
+        content=loaded.content,
+        media_type=loaded.mime_type,
+        headers={**response_headers, "X-Image-Cache": loaded.cache_status},
     )
 
 
@@ -529,18 +420,37 @@ async def _compute_video_frame_time_s(
         # them would otherwise have the miss fall back onto a different generation
         # than the lookup that missed.
         generation = await reader.resolve_cache_generation(project_id)
-        df = await reader.read_from_cache_only(project_id, participant_code, generation)
-        if df is None:
-            df = await reader.read(project_id, participant_code, generation)
-        relative_time = await anyio.to_thread.run_sync(
-            lambda: PupilAnalyticsService.compute_scenario_relative_time(
-                df,
-                scenario,
-                absolute_time_s,
-            )
+        cacheable = observe_project_generation(project_id, generation)
+        hit, onset_s = get_cached_preview_onset(
+            project_id, generation, participant_code, str(scenario)
         )
-        if relative_time is not None:
-            return max(0.0, float(relative_time))
+        if not hit:
+            df = await reader.read_from_cache_only(
+                project_id,
+                participant_code,
+                generation,
+                projection=_VIDEO_PREVIEW_TIMING_PROJECTION,
+            )
+            if df is None:
+                df = await reader.read(
+                    project_id,
+                    participant_code,
+                    generation,
+                    projection=_VIDEO_PREVIEW_TIMING_PROJECTION,
+                )
+            onset_s = await settled_thread(
+                lambda: compute_preview_scenario_onset_s(df, scenario)
+            )
+            if cacheable:
+                cache_preview_onset(
+                    project_id,
+                    generation,
+                    participant_code,
+                    str(scenario),
+                    onset_s,
+                )
+        if onset_s is not None:
+            return round(max(0.0, float(absolute_time_s) - onset_s), 4)
     except Exception as exc:
         logger.warning(
             "Falling back to absolute video preview time for project_id=%s scenario=%r: %s",
@@ -572,10 +482,11 @@ async def _ensure_video_source_cached(
         )
 
     try:
-        await anyio.to_thread.run_sync(
-            drive_client.download_file_to_path,
-            project_file.external_id,
-            str(video_path),
+        await settled_thread(
+            lambda: drive_client.download_file_to_path(
+                project_file.external_id,
+                str(video_path),
+            )
         )
     except Exception as exc:
         raise HTTPException(
@@ -667,8 +578,15 @@ def _run_ffmpeg_frame_extract(video_path: Path, frame_path: Path, time_s: float)
     temp_frame_path.replace(frame_path)
 
 
-def _extract_video_frame(video_path: Path, frame_path: Path, frame_time_s: float) -> bytes:
-    duration_s = _probe_video_duration_s(video_path)
+def _extract_video_frame(
+    video_path: Path,
+    frame_path: Path,
+    frame_time_s: float,
+    video_identity: str,
+) -> None:
+    duration_s = get_video_duration_s(
+        video_identity, video_path, _probe_video_duration_s
+    )
     safe_time_s = max(0.0, frame_time_s)
     if duration_s is not None:
         safe_time_s = min(safe_time_s, max(0.0, duration_s - 0.05))
@@ -679,8 +597,6 @@ def _extract_video_frame(video_path: Path, frame_path: Path, frame_time_s: float
         if safe_time_s <= 0:
             raise
         _run_ffmpeg_frame_extract(video_path, frame_path, 0.0)
-
-    return frame_path.read_bytes()
 
 
 @router.get("/{project_id}/files/{file_id}/preview")
@@ -729,44 +645,54 @@ async def get_project_file_preview(
         "ETag": etag,
     }
 
-    cached_frame = await anyio.to_thread.run_sync(lambda: _read_video_frame_cache(frame_path))
-    if cached_frame:
+    frame_exists = await settled_thread(lambda: _video_frame_cache_exists(frame_path))
+    if frame_exists:
         if request.headers.get("if-none-match") == etag:
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
-        return Response(
-            content=cached_frame,
-            media_type=_VIDEO_FRAME_MIME_TYPE,
-            headers={
-                **response_headers,
-                "X-Video-Frame-Cache": "DISK",
-                "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
-            },
-        )
+        cached_frame = await settled_thread(lambda: _read_video_frame_cache(frame_path))
+        if cached_frame is not None:
+            return Response(
+                content=cached_frame,
+                media_type=_VIDEO_FRAME_MIME_TYPE,
+                headers={
+                    **response_headers,
+                    "X-Video-Frame-Cache": "DISK",
+                    "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
+                },
+            )
 
-    preview_lock = await _get_video_preview_lock(cache_key)
+    preview_entry = await _get_video_preview_lock(cache_key)
     try:
-        async with preview_lock:
-            cached_after_lock = await anyio.to_thread.run_sync(lambda: _read_video_frame_cache(frame_path))
-            if cached_after_lock:
+        async with preview_entry.lock:
+            exists_after_lock = await settled_thread(
+                lambda: _video_frame_cache_exists(frame_path)
+            )
+            if exists_after_lock:
                 if request.headers.get("if-none-match") == etag:
                     return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
-                return Response(
-                    content=cached_after_lock,
-                    media_type=_VIDEO_FRAME_MIME_TYPE,
-                    headers={
-                        **response_headers,
-                        "X-Video-Frame-Cache": "DISK",
-                        "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
-                    },
+                cached_after_lock = await settled_thread(
+                    lambda: _read_video_frame_cache(frame_path)
                 )
+                if cached_after_lock is not None:
+                    return Response(
+                        content=cached_after_lock,
+                        media_type=_VIDEO_FRAME_MIME_TYPE,
+                        headers={
+                            **response_headers,
+                            "X-Video-Frame-Cache": "DISK",
+                            "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
+                        },
+                    )
 
             video_path = await _ensure_video_source_cached(project_file, db, cache_key)
             try:
-                frame_content = await anyio.to_thread.run_sync(
-                    _extract_video_frame,
-                    video_path,
-                    frame_path,
-                    frame_time_s,
+                await settled_thread(
+                    lambda: _extract_video_frame(
+                        video_path,
+                        frame_path,
+                        frame_time_s,
+                        cache_key,
+                    )
                 )
             except RuntimeError as exc:
                 logger.warning(
@@ -780,10 +706,17 @@ async def get_project_file_preview(
                     detail="No se pudo generar el frame del video"
                 ) from exc
     finally:
-        await _cleanup_video_preview_lock(cache_key, preview_lock)
+        await _cleanup_video_preview_lock(cache_key, preview_entry)
 
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+
+    frame_content = await settled_thread(lambda: _read_video_frame_cache(frame_path))
+    if frame_content is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No se pudo leer el frame del video",
+        )
 
     return Response(
         content=frame_content,
@@ -830,7 +763,8 @@ async def create_project(
         owner_id=UUID(current_user),
         name=request.name,
         description=request.description,
-        status=request.status or ProjectStatus.DRAFT,
+        status=ProjectStatus.DRAFT if request.pre_experiment is not None else request.status or ProjectStatus.DRAFT,
+        pre_experiment=request.pre_experiment.model_dump(mode="json") if request.pre_experiment is not None else None,
     )
 
     return ProjectResponse(
@@ -845,7 +779,8 @@ async def create_project(
         drive_root_folder_name=project.drive_root_folder_name,
         drive_root_folder_url=project.drive_root_folder_url,
         sensors=[],
-        participants_count=0
+        participants_count=0,
+        **planning_summary(project),
     )
 
 
@@ -873,7 +808,8 @@ async def list_projects(
             drive_root_folder_name=project.drive_root_folder_name,
             drive_root_folder_url=project.drive_root_folder_url,
             sensors=[{"id": s.id, "sensor_type": s.sensor_type} for s in project.sensors],
-            participants_count=len(project.participants)
+            participants_count=len(project.participants),
+            **planning_summary(project),
         )
         for project in projects
     ]
@@ -907,6 +843,7 @@ async def get_project(
         drive_root_folder_name=project.drive_root_folder_name,
         drive_root_folder_url=project.drive_root_folder_url,
         source_folder_name=project.source_folder_name,
+        **planning_summary(project),
         files=[
             ProjectFileResponse(
                 id=f.id,
@@ -1038,7 +975,8 @@ async def update_project(
         drive_root_folder_name=updated_project.drive_root_folder_name,
         drive_root_folder_url=updated_project.drive_root_folder_url,
         sensors=[{"id": s.id, "sensor_type": s.sensor_type} for s in updated_project.sensors],
-        participants_count=len(updated_project.participants)
+        participants_count=len(updated_project.participants),
+        **planning_summary(updated_project),
     )
 
 
@@ -1065,6 +1003,8 @@ async def delete_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
+
+    invalidate_project_video_metadata(project_id)
 
     return DeleteProjectResponse(
         message="Project deleted successfully",

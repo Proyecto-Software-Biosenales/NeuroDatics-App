@@ -1,0 +1,10 @@
+G10 quedó listo para revisión root; G11 no se inició.
+
+- Incorporados todos los puntos de REVISION-G10 en [G10.md](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/G10.md), ESTADO y API.
+- E2E parcial/empty: se corrigió únicamente el selector ambiguo del test; cierre final 2/2 y ESLint verde. Sin cambios de producto.
+- Benchmark small/large validado por hashes y protocolo, sin repetir mediciones. Se distinguieron bytes JSON estimados, HTTP mock, topología constante y contadores instrumentados.
+- Preservación: 1.016/1.016 sin drift; base 157/157 y snapshot ajeno 145/145 intactos.
+- Manifiesto 38/38 vigente; `own.patch` reverse-check exit 0.
+- `.next` registra 05:28Z de intentos iniciales; el cierre aislado no lo modificó y no se atribuyó causa.
+
+Resumen completo: [respuesta-cierre.txt](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g10/respuesta-cierre.txt).

@@ -1,0 +1,2 @@
+git apply --reverse --check --ignore-space-change docs/perf/ejecucion/evidencia/g10/own.patch
+exit_code=0

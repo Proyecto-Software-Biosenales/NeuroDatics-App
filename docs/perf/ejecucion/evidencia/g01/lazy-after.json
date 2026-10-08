@@ -1,0 +1,2145 @@
+{
+  "variant": "G01 lazy loading: G00 fixture + GSR/comparison first access",
+  "baseURL": "http://127.0.0.1:3318",
+  "repeats": 5,
+  "warmup": 1,
+  "api_delay_ms": 20,
+  "fixture": "G00-UI: 2 EEG projects, 7 channels, 128 points, 16 frequencies; fabricated responses",
+  "samples": [
+    {
+      "sample": 0,
+      "steps": [
+        {
+          "name": "initial_A",
+          "ms_including_networkidle": 724.2775000000001,
+          "requests": [
+            {
+              "path": "/api/projects",
+              "query": "",
+              "bytes": 291
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&smooth_window_s=0.2&max_points=5000&decimation=minmax_envelope&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 35316
+            }
+          ],
+          "response_bytes": 35700
+        },
+        {
+          "name": "PSD",
+          "ms_including_networkidle": 181.44999999999982,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/psd/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&max_points=5000&exclude_artifact_windows=false&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17499
+            }
+          ],
+          "response_bytes": 17499
+        },
+        {
+          "name": "spectrogram",
+          "ms_including_networkidle": 167.43470000000025,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/spectrogram/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&normalize=none&max_time_bins=600&max_frequency_bins=256&per_channel_color_domain=false&min_time_bins=120&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3&max_freq_hz=25",
+              "bytes": 268117
+            }
+          ],
+          "response_bytes": 268117
+        },
+        {
+          "name": "topography",
+          "ms_including_networkidle": 149.36030000000028,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17835
+        },
+        {
+          "name": "B_topography",
+          "ms_including_networkidle": 166.0644999999995,
+          "requests": [
+            {
+              "path": "/api/projects/g00-B/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "return_A_topography",
+          "ms_including_networkidle": 168.01959999999963,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "first_GSR",
+          "ms_including_networkidle": 482.66219999999976,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/statistics/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 139
+            }
+          ],
+          "response_bytes": 1176
+        },
+        {
+          "name": "first_comparison",
+          "ms_including_networkidle": 499.84310000000005,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/comparison/charts",
+              "query": "?participant_code=SYN-01&scenario=all&max_points=5000&visualizations=gsr",
+              "bytes": 13
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            }
+          ],
+          "response_bytes": 1050
+        }
+      ],
+      "initialResources": [
+        {
+          "name": "/_next/static/css/c9319f1e6c48ef48.css",
+          "transfer_bytes": 23232,
+          "encoded_bytes": 22932,
+          "decoded_bytes": 141156
+        },
+        {
+          "name": "/_next/static/chunks/webpack-6e8997e1a4da58c6.js",
+          "transfer_bytes": 2379,
+          "encoded_bytes": 2079,
+          "decoded_bytes": 3870
+        },
+        {
+          "name": "/_next/static/chunks/main-app-206a7ec62be75e21.js",
+          "transfer_bytes": 828,
+          "encoded_bytes": 528,
+          "decoded_bytes": 528
+        },
+        {
+          "name": "/_next/static/chunks/8efd6a95-f6ac0bd82b26b44c.js",
+          "transfer_bytes": 62755,
+          "encoded_bytes": 62455,
+          "decoded_bytes": 198491
+        },
+        {
+          "name": "/_next/static/chunks/4872-78ebac03b5284a8b.js",
+          "transfer_bytes": 51516,
+          "encoded_bytes": 51216,
+          "decoded_bytes": 188550
+        },
+        {
+          "name": "/_next/static/chunks/3304-6bb01ca805a0bfb5.js",
+          "transfer_bytes": 10168,
+          "encoded_bytes": 9868,
+          "decoded_bytes": 30332
+        },
+        {
+          "name": "/_next/static/chunks/204-20c67ac92c0a7e1f.js",
+          "transfer_bytes": 9423,
+          "encoded_bytes": 9123,
+          "decoded_bytes": 25629
+        },
+        {
+          "name": "/_next/static/chunks/9962-2c573c2f28b53120.js",
+          "transfer_bytes": 9586,
+          "encoded_bytes": 9286,
+          "decoded_bytes": 33591
+        },
+        {
+          "name": "/_next/static/chunks/8827-c84cbaf76186fc0d.js",
+          "transfer_bytes": 13519,
+          "encoded_bytes": 13219,
+          "decoded_bytes": 34358
+        },
+        {
+          "name": "/_next/static/chunks/9749-854f46f1eb385456.js",
+          "transfer_bytes": 3848,
+          "encoded_bytes": 3548,
+          "decoded_bytes": 8744
+        },
+        {
+          "name": "/_next/static/chunks/4405-5468ff1e032ad193.js",
+          "transfer_bytes": 5729,
+          "encoded_bytes": 5429,
+          "decoded_bytes": 14348
+        },
+        {
+          "name": "/_next/static/chunks/5434-1ba2605b9fe9b997.js",
+          "transfer_bytes": 5501,
+          "encoded_bytes": 5201,
+          "decoded_bytes": 17426
+        },
+        {
+          "name": "/_next/static/chunks/app/layout-d4d547e63c12f717.js",
+          "transfer_bytes": 6671,
+          "encoded_bytes": 6371,
+          "decoded_bytes": 17535
+        },
+        {
+          "name": "/_next/static/chunks/1914-3f0fe66a2c751432.js",
+          "transfer_bytes": 7400,
+          "encoded_bytes": 7100,
+          "decoded_bytes": 22572
+        },
+        {
+          "name": "/_next/static/chunks/3530-9dbec94de0c0712c.js",
+          "transfer_bytes": 8550,
+          "encoded_bytes": 8250,
+          "decoded_bytes": 23873
+        },
+        {
+          "name": "/_next/static/chunks/5297-e43bb0357df39b01.js",
+          "transfer_bytes": 4532,
+          "encoded_bytes": 4232,
+          "decoded_bytes": 11597
+        },
+        {
+          "name": "/_next/static/chunks/4112-e968c0eb1781c849.js",
+          "transfer_bytes": 6193,
+          "encoded_bytes": 5893,
+          "decoded_bytes": 21212
+        },
+        {
+          "name": "/_next/static/chunks/5197-3356c70144916f85.js",
+          "transfer_bytes": 123339,
+          "encoded_bytes": 123039,
+          "decoded_bytes": 408639
+        },
+        {
+          "name": "/_next/static/chunks/app/dashboard/page-0fe61fb3d3aa5d20.js",
+          "transfer_bytes": 39491,
+          "encoded_bytes": 39191,
+          "decoded_bytes": 142636
+        },
+        {
+          "name": "/_next/image",
+          "transfer_bytes": 956,
+          "encoded_bytes": 656,
+          "decoded_bytes": 656
+        },
+        {
+          "name": "/_next/static/chunks/6440-5a851bf4fd17afc3.js",
+          "transfer_bytes": 3166,
+          "encoded_bytes": 2866,
+          "decoded_bytes": 8267
+        },
+        {
+          "name": "/_next/static/chunks/app/configuracion/page-0e1794c2a8017f5b.js",
+          "transfer_bytes": 3954,
+          "encoded_bytes": 3654,
+          "decoded_bytes": 10531
+        },
+        {
+          "name": "/_next/static/chunks/app/reportes/page-f0af8e34154e5b90.js",
+          "transfer_bytes": 9376,
+          "encoded_bytes": 9076,
+          "decoded_bytes": 27444
+        },
+        {
+          "name": "/_next/static/chunks/7055-e02d65882ba842c9.js",
+          "transfer_bytes": 5604,
+          "encoded_bytes": 5304,
+          "decoded_bytes": 14705
+        },
+        {
+          "name": "/_next/static/chunks/app/proyectos/page-d290917f69c522ee.js",
+          "transfer_bytes": 39466,
+          "encoded_bytes": 39166,
+          "decoded_bytes": 148439
+        },
+        {
+          "name": "/_next/static/chunks/6361-359b968080558a29.js",
+          "transfer_bytes": 15131,
+          "encoded_bytes": 14831,
+          "decoded_bytes": 49204
+        },
+        {
+          "name": "/_next/static/chunks/app/page-20b52cd45eb76248.js",
+          "transfer_bytes": 5909,
+          "encoded_bytes": 5609,
+          "decoded_bytes": 17197
+        }
+      ],
+      "longtasks": [],
+      "browserMetrics": {
+        "Nodes": 787,
+        "LayoutDuration": 0,
+        "ScriptDuration": 0,
+        "JSHeapUsedSize": 14936244,
+        "JSHeapTotalSize": 32301056
+      }
+    },
+    {
+      "sample": 1,
+      "steps": [
+        {
+          "name": "initial_A",
+          "ms_including_networkidle": 708.1147000000001,
+          "requests": [
+            {
+              "path": "/api/projects",
+              "query": "",
+              "bytes": 291
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&smooth_window_s=0.2&max_points=5000&decimation=minmax_envelope&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 35316
+            }
+          ],
+          "response_bytes": 35700
+        },
+        {
+          "name": "PSD",
+          "ms_including_networkidle": 181.60930000000008,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/psd/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&max_points=5000&exclude_artifact_windows=false&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17499
+            }
+          ],
+          "response_bytes": 17499
+        },
+        {
+          "name": "spectrogram",
+          "ms_including_networkidle": 167.08110000000033,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/spectrogram/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&normalize=none&max_time_bins=600&max_frequency_bins=256&per_channel_color_domain=false&min_time_bins=120&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3&max_freq_hz=25",
+              "bytes": 268117
+            }
+          ],
+          "response_bytes": 268117
+        },
+        {
+          "name": "topography",
+          "ms_including_networkidle": 166.46270000000004,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17835
+        },
+        {
+          "name": "B_topography",
+          "ms_including_networkidle": 166.22770000000037,
+          "requests": [
+            {
+              "path": "/api/projects/g00-B/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "return_A_topography",
+          "ms_including_networkidle": 167.26260000000002,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "first_GSR",
+          "ms_including_networkidle": 482.95769999999993,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/statistics/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 139
+            }
+          ],
+          "response_bytes": 1176
+        },
+        {
+          "name": "first_comparison",
+          "ms_including_networkidle": 483.34029999999984,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/comparison/charts",
+              "query": "?participant_code=SYN-01&scenario=all&max_points=5000&visualizations=gsr",
+              "bytes": 13
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            }
+          ],
+          "response_bytes": 1050
+        }
+      ],
+      "initialResources": [
+        {
+          "name": "/_next/static/css/c9319f1e6c48ef48.css",
+          "transfer_bytes": 23232,
+          "encoded_bytes": 22932,
+          "decoded_bytes": 141156
+        },
+        {
+          "name": "/_next/static/chunks/webpack-6e8997e1a4da58c6.js",
+          "transfer_bytes": 2379,
+          "encoded_bytes": 2079,
+          "decoded_bytes": 3870
+        },
+        {
+          "name": "/_next/static/chunks/4872-78ebac03b5284a8b.js",
+          "transfer_bytes": 51516,
+          "encoded_bytes": 51216,
+          "decoded_bytes": 188550
+        },
+        {
+          "name": "/_next/static/chunks/8efd6a95-f6ac0bd82b26b44c.js",
+          "transfer_bytes": 62755,
+          "encoded_bytes": 62455,
+          "decoded_bytes": 198491
+        },
+        {
+          "name": "/_next/static/chunks/main-app-206a7ec62be75e21.js",
+          "transfer_bytes": 828,
+          "encoded_bytes": 528,
+          "decoded_bytes": 528
+        },
+        {
+          "name": "/_next/static/chunks/3304-6bb01ca805a0bfb5.js",
+          "transfer_bytes": 10168,
+          "encoded_bytes": 9868,
+          "decoded_bytes": 30332
+        },
+        {
+          "name": "/_next/static/chunks/9962-2c573c2f28b53120.js",
+          "transfer_bytes": 9586,
+          "encoded_bytes": 9286,
+          "decoded_bytes": 33591
+        },
+        {
+          "name": "/_next/static/chunks/204-20c67ac92c0a7e1f.js",
+          "transfer_bytes": 9423,
+          "encoded_bytes": 9123,
+          "decoded_bytes": 25629
+        },
+        {
+          "name": "/_next/static/chunks/8827-c84cbaf76186fc0d.js",
+          "transfer_bytes": 13519,
+          "encoded_bytes": 13219,
+          "decoded_bytes": 34358
+        },
+        {
+          "name": "/_next/static/chunks/9749-854f46f1eb385456.js",
+          "transfer_bytes": 3848,
+          "encoded_bytes": 3548,
+          "decoded_bytes": 8744
+        },
+        {
+          "name": "/_next/static/chunks/4405-5468ff1e032ad193.js",
+          "transfer_bytes": 5729,
+          "encoded_bytes": 5429,
+          "decoded_bytes": 14348
+        },
+        {
+          "name": "/_next/static/chunks/5434-1ba2605b9fe9b997.js",
+          "transfer_bytes": 5501,
+          "encoded_bytes": 5201,
+          "decoded_bytes": 17426
+        },
+        {
+          "name": "/_next/static/chunks/app/layout-d4d547e63c12f717.js",
+          "transfer_bytes": 6671,
+          "encoded_bytes": 6371,
+          "decoded_bytes": 17535
+        },
+        {
+          "name": "/_next/static/chunks/3530-9dbec94de0c0712c.js",
+          "transfer_bytes": 8550,
+          "encoded_bytes": 8250,
+          "decoded_bytes": 23873
+        },
+        {
+          "name": "/_next/static/chunks/1914-3f0fe66a2c751432.js",
+          "transfer_bytes": 7400,
+          "encoded_bytes": 7100,
+          "decoded_bytes": 22572
+        },
+        {
+          "name": "/_next/static/chunks/5297-e43bb0357df39b01.js",
+          "transfer_bytes": 4532,
+          "encoded_bytes": 4232,
+          "decoded_bytes": 11597
+        },
+        {
+          "name": "/_next/static/chunks/5197-3356c70144916f85.js",
+          "transfer_bytes": 123339,
+          "encoded_bytes": 123039,
+          "decoded_bytes": 408639
+        },
+        {
+          "name": "/_next/static/chunks/4112-e968c0eb1781c849.js",
+          "transfer_bytes": 6193,
+          "encoded_bytes": 5893,
+          "decoded_bytes": 21212
+        },
+        {
+          "name": "/_next/static/chunks/app/dashboard/page-0fe61fb3d3aa5d20.js",
+          "transfer_bytes": 39491,
+          "encoded_bytes": 39191,
+          "decoded_bytes": 142636
+        },
+        {
+          "name": "/_next/image",
+          "transfer_bytes": 956,
+          "encoded_bytes": 656,
+          "decoded_bytes": 656
+        },
+        {
+          "name": "/_next/static/chunks/6440-5a851bf4fd17afc3.js",
+          "transfer_bytes": 3166,
+          "encoded_bytes": 2866,
+          "decoded_bytes": 8267
+        },
+        {
+          "name": "/_next/static/chunks/app/configuracion/page-0e1794c2a8017f5b.js",
+          "transfer_bytes": 3954,
+          "encoded_bytes": 3654,
+          "decoded_bytes": 10531
+        },
+        {
+          "name": "/_next/static/chunks/app/reportes/page-f0af8e34154e5b90.js",
+          "transfer_bytes": 9376,
+          "encoded_bytes": 9076,
+          "decoded_bytes": 27444
+        },
+        {
+          "name": "/_next/static/chunks/7055-e02d65882ba842c9.js",
+          "transfer_bytes": 5604,
+          "encoded_bytes": 5304,
+          "decoded_bytes": 14705
+        },
+        {
+          "name": "/_next/static/chunks/app/proyectos/page-d290917f69c522ee.js",
+          "transfer_bytes": 39466,
+          "encoded_bytes": 39166,
+          "decoded_bytes": 148439
+        },
+        {
+          "name": "/_next/static/chunks/app/page-20b52cd45eb76248.js",
+          "transfer_bytes": 5909,
+          "encoded_bytes": 5609,
+          "decoded_bytes": 17197
+        },
+        {
+          "name": "/_next/static/chunks/6361-359b968080558a29.js",
+          "transfer_bytes": 15131,
+          "encoded_bytes": 14831,
+          "decoded_bytes": 49204
+        }
+      ],
+      "longtasks": [],
+      "browserMetrics": {
+        "Nodes": 675,
+        "LayoutDuration": 0,
+        "ScriptDuration": 0,
+        "JSHeapUsedSize": 11203436,
+        "JSHeapTotalSize": 32563200
+      }
+    },
+    {
+      "sample": 2,
+      "steps": [
+        {
+          "name": "initial_A",
+          "ms_including_networkidle": 724.3732,
+          "requests": [
+            {
+              "path": "/api/projects",
+              "query": "",
+              "bytes": 291
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&smooth_window_s=0.2&max_points=5000&decimation=minmax_envelope&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 35316
+            }
+          ],
+          "response_bytes": 35700
+        },
+        {
+          "name": "PSD",
+          "ms_including_networkidle": 182.4980000000014,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/psd/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&max_points=5000&exclude_artifact_windows=false&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17499
+            }
+          ],
+          "response_bytes": 17499
+        },
+        {
+          "name": "spectrogram",
+          "ms_including_networkidle": 165.8806999999997,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/spectrogram/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&normalize=none&max_time_bins=600&max_frequency_bins=256&per_channel_color_domain=false&min_time_bins=120&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3&max_freq_hz=25",
+              "bytes": 268117
+            }
+          ],
+          "response_bytes": 268117
+        },
+        {
+          "name": "topography",
+          "ms_including_networkidle": 200.22200000000157,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17835
+        },
+        {
+          "name": "B_topography",
+          "ms_including_networkidle": 166.47680000000037,
+          "requests": [
+            {
+              "path": "/api/projects/g00-B/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "return_A_topography",
+          "ms_including_networkidle": 166.6203000000005,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "first_GSR",
+          "ms_including_networkidle": 484.6859000000004,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/statistics/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 139
+            }
+          ],
+          "response_bytes": 1176
+        },
+        {
+          "name": "first_comparison",
+          "ms_including_networkidle": 481.915500000001,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/comparison/charts",
+              "query": "?participant_code=SYN-01&scenario=all&max_points=5000&visualizations=gsr",
+              "bytes": 13
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            }
+          ],
+          "response_bytes": 1050
+        }
+      ],
+      "initialResources": [
+        {
+          "name": "/_next/static/css/c9319f1e6c48ef48.css",
+          "transfer_bytes": 23232,
+          "encoded_bytes": 22932,
+          "decoded_bytes": 141156
+        },
+        {
+          "name": "/_next/static/chunks/webpack-6e8997e1a4da58c6.js",
+          "transfer_bytes": 2379,
+          "encoded_bytes": 2079,
+          "decoded_bytes": 3870
+        },
+        {
+          "name": "/_next/static/chunks/main-app-206a7ec62be75e21.js",
+          "transfer_bytes": 828,
+          "encoded_bytes": 528,
+          "decoded_bytes": 528
+        },
+        {
+          "name": "/_next/static/chunks/4872-78ebac03b5284a8b.js",
+          "transfer_bytes": 51516,
+          "encoded_bytes": 51216,
+          "decoded_bytes": 188550
+        },
+        {
+          "name": "/_next/static/chunks/3304-6bb01ca805a0bfb5.js",
+          "transfer_bytes": 10168,
+          "encoded_bytes": 9868,
+          "decoded_bytes": 30332
+        },
+        {
+          "name": "/_next/static/chunks/204-20c67ac92c0a7e1f.js",
+          "transfer_bytes": 9423,
+          "encoded_bytes": 9123,
+          "decoded_bytes": 25629
+        },
+        {
+          "name": "/_next/static/chunks/9962-2c573c2f28b53120.js",
+          "transfer_bytes": 9586,
+          "encoded_bytes": 9286,
+          "decoded_bytes": 33591
+        },
+        {
+          "name": "/_next/static/chunks/8efd6a95-f6ac0bd82b26b44c.js",
+          "transfer_bytes": 62755,
+          "encoded_bytes": 62455,
+          "decoded_bytes": 198491
+        },
+        {
+          "name": "/_next/static/chunks/8827-c84cbaf76186fc0d.js",
+          "transfer_bytes": 13519,
+          "encoded_bytes": 13219,
+          "decoded_bytes": 34358
+        },
+        {
+          "name": "/_next/static/chunks/9749-854f46f1eb385456.js",
+          "transfer_bytes": 3848,
+          "encoded_bytes": 3548,
+          "decoded_bytes": 8744
+        },
+        {
+          "name": "/_next/static/chunks/4405-5468ff1e032ad193.js",
+          "transfer_bytes": 5729,
+          "encoded_bytes": 5429,
+          "decoded_bytes": 14348
+        },
+        {
+          "name": "/_next/static/chunks/5434-1ba2605b9fe9b997.js",
+          "transfer_bytes": 5501,
+          "encoded_bytes": 5201,
+          "decoded_bytes": 17426
+        },
+        {
+          "name": "/_next/static/chunks/app/layout-d4d547e63c12f717.js",
+          "transfer_bytes": 6671,
+          "encoded_bytes": 6371,
+          "decoded_bytes": 17535
+        },
+        {
+          "name": "/_next/static/chunks/3530-9dbec94de0c0712c.js",
+          "transfer_bytes": 8550,
+          "encoded_bytes": 8250,
+          "decoded_bytes": 23873
+        },
+        {
+          "name": "/_next/static/chunks/1914-3f0fe66a2c751432.js",
+          "transfer_bytes": 7400,
+          "encoded_bytes": 7100,
+          "decoded_bytes": 22572
+        },
+        {
+          "name": "/_next/static/chunks/5297-e43bb0357df39b01.js",
+          "transfer_bytes": 4532,
+          "encoded_bytes": 4232,
+          "decoded_bytes": 11597
+        },
+        {
+          "name": "/_next/static/chunks/4112-e968c0eb1781c849.js",
+          "transfer_bytes": 6193,
+          "encoded_bytes": 5893,
+          "decoded_bytes": 21212
+        },
+        {
+          "name": "/_next/static/chunks/app/dashboard/page-0fe61fb3d3aa5d20.js",
+          "transfer_bytes": 39491,
+          "encoded_bytes": 39191,
+          "decoded_bytes": 142636
+        },
+        {
+          "name": "/_next/static/chunks/5197-3356c70144916f85.js",
+          "transfer_bytes": 123339,
+          "encoded_bytes": 123039,
+          "decoded_bytes": 408639
+        },
+        {
+          "name": "/_next/image",
+          "transfer_bytes": 956,
+          "encoded_bytes": 656,
+          "decoded_bytes": 656
+        },
+        {
+          "name": "/_next/static/chunks/6440-5a851bf4fd17afc3.js",
+          "transfer_bytes": 3166,
+          "encoded_bytes": 2866,
+          "decoded_bytes": 8267
+        },
+        {
+          "name": "/_next/static/chunks/app/configuracion/page-0e1794c2a8017f5b.js",
+          "transfer_bytes": 3954,
+          "encoded_bytes": 3654,
+          "decoded_bytes": 10531
+        },
+        {
+          "name": "/_next/static/chunks/app/reportes/page-f0af8e34154e5b90.js",
+          "transfer_bytes": 9376,
+          "encoded_bytes": 9076,
+          "decoded_bytes": 27444
+        },
+        {
+          "name": "/_next/static/chunks/7055-e02d65882ba842c9.js",
+          "transfer_bytes": 5604,
+          "encoded_bytes": 5304,
+          "decoded_bytes": 14705
+        },
+        {
+          "name": "/_next/static/chunks/app/proyectos/page-d290917f69c522ee.js",
+          "transfer_bytes": 39466,
+          "encoded_bytes": 39166,
+          "decoded_bytes": 148439
+        },
+        {
+          "name": "/_next/static/chunks/6361-359b968080558a29.js",
+          "transfer_bytes": 15131,
+          "encoded_bytes": 14831,
+          "decoded_bytes": 49204
+        },
+        {
+          "name": "/_next/static/chunks/app/page-20b52cd45eb76248.js",
+          "transfer_bytes": 5909,
+          "encoded_bytes": 5609,
+          "decoded_bytes": 17197
+        }
+      ],
+      "longtasks": [],
+      "browserMetrics": {
+        "Nodes": 677,
+        "LayoutDuration": 0,
+        "ScriptDuration": 0,
+        "JSHeapUsedSize": 11227628,
+        "JSHeapTotalSize": 32825344
+      }
+    },
+    {
+      "sample": 3,
+      "steps": [
+        {
+          "name": "initial_A",
+          "ms_including_networkidle": 706.6633999999995,
+          "requests": [
+            {
+              "path": "/api/projects",
+              "query": "",
+              "bytes": 291
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&smooth_window_s=0.2&max_points=5000&decimation=minmax_envelope&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 35316
+            }
+          ],
+          "response_bytes": 35700
+        },
+        {
+          "name": "PSD",
+          "ms_including_networkidle": 182.84479999999894,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/psd/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&max_points=5000&exclude_artifact_windows=false&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17499
+            }
+          ],
+          "response_bytes": 17499
+        },
+        {
+          "name": "spectrogram",
+          "ms_including_networkidle": 149.41119999999864,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/spectrogram/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&normalize=none&max_time_bins=600&max_frequency_bins=256&per_channel_color_domain=false&min_time_bins=120&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3&max_freq_hz=25",
+              "bytes": 268117
+            }
+          ],
+          "response_bytes": 268117
+        },
+        {
+          "name": "topography",
+          "ms_including_networkidle": 166.66389999999956,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17835
+        },
+        {
+          "name": "B_topography",
+          "ms_including_networkidle": 167.90390000000116,
+          "requests": [
+            {
+              "path": "/api/projects/g00-B/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "return_A_topography",
+          "ms_including_networkidle": 148.50019999999859,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "first_GSR",
+          "ms_including_networkidle": 483.8108000000011,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/statistics/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 139
+            }
+          ],
+          "response_bytes": 1176
+        },
+        {
+          "name": "first_comparison",
+          "ms_including_networkidle": 483.2404999999999,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/comparison/charts",
+              "query": "?participant_code=SYN-01&scenario=all&max_points=5000&visualizations=gsr",
+              "bytes": 13
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            }
+          ],
+          "response_bytes": 1050
+        }
+      ],
+      "initialResources": [
+        {
+          "name": "/_next/static/css/c9319f1e6c48ef48.css",
+          "transfer_bytes": 23232,
+          "encoded_bytes": 22932,
+          "decoded_bytes": 141156
+        },
+        {
+          "name": "/_next/static/chunks/webpack-6e8997e1a4da58c6.js",
+          "transfer_bytes": 2379,
+          "encoded_bytes": 2079,
+          "decoded_bytes": 3870
+        },
+        {
+          "name": "/_next/static/chunks/8efd6a95-f6ac0bd82b26b44c.js",
+          "transfer_bytes": 62755,
+          "encoded_bytes": 62455,
+          "decoded_bytes": 198491
+        },
+        {
+          "name": "/_next/static/chunks/main-app-206a7ec62be75e21.js",
+          "transfer_bytes": 828,
+          "encoded_bytes": 528,
+          "decoded_bytes": 528
+        },
+        {
+          "name": "/_next/static/chunks/3304-6bb01ca805a0bfb5.js",
+          "transfer_bytes": 10168,
+          "encoded_bytes": 9868,
+          "decoded_bytes": 30332
+        },
+        {
+          "name": "/_next/static/chunks/204-20c67ac92c0a7e1f.js",
+          "transfer_bytes": 9423,
+          "encoded_bytes": 9123,
+          "decoded_bytes": 25629
+        },
+        {
+          "name": "/_next/static/chunks/9962-2c573c2f28b53120.js",
+          "transfer_bytes": 9586,
+          "encoded_bytes": 9286,
+          "decoded_bytes": 33591
+        },
+        {
+          "name": "/_next/static/chunks/8827-c84cbaf76186fc0d.js",
+          "transfer_bytes": 13519,
+          "encoded_bytes": 13219,
+          "decoded_bytes": 34358
+        },
+        {
+          "name": "/_next/static/chunks/4872-78ebac03b5284a8b.js",
+          "transfer_bytes": 51516,
+          "encoded_bytes": 51216,
+          "decoded_bytes": 188550
+        },
+        {
+          "name": "/_next/static/chunks/9749-854f46f1eb385456.js",
+          "transfer_bytes": 3848,
+          "encoded_bytes": 3548,
+          "decoded_bytes": 8744
+        },
+        {
+          "name": "/_next/static/chunks/4405-5468ff1e032ad193.js",
+          "transfer_bytes": 5729,
+          "encoded_bytes": 5429,
+          "decoded_bytes": 14348
+        },
+        {
+          "name": "/_next/static/chunks/app/layout-d4d547e63c12f717.js",
+          "transfer_bytes": 6671,
+          "encoded_bytes": 6371,
+          "decoded_bytes": 17535
+        },
+        {
+          "name": "/_next/static/chunks/5434-1ba2605b9fe9b997.js",
+          "transfer_bytes": 5501,
+          "encoded_bytes": 5201,
+          "decoded_bytes": 17426
+        },
+        {
+          "name": "/_next/static/chunks/3530-9dbec94de0c0712c.js",
+          "transfer_bytes": 8550,
+          "encoded_bytes": 8250,
+          "decoded_bytes": 23873
+        },
+        {
+          "name": "/_next/static/chunks/1914-3f0fe66a2c751432.js",
+          "transfer_bytes": 7400,
+          "encoded_bytes": 7100,
+          "decoded_bytes": 22572
+        },
+        {
+          "name": "/_next/static/chunks/5297-e43bb0357df39b01.js",
+          "transfer_bytes": 4532,
+          "encoded_bytes": 4232,
+          "decoded_bytes": 11597
+        },
+        {
+          "name": "/_next/static/chunks/4112-e968c0eb1781c849.js",
+          "transfer_bytes": 6193,
+          "encoded_bytes": 5893,
+          "decoded_bytes": 21212
+        },
+        {
+          "name": "/_next/static/chunks/app/dashboard/page-0fe61fb3d3aa5d20.js",
+          "transfer_bytes": 39491,
+          "encoded_bytes": 39191,
+          "decoded_bytes": 142636
+        },
+        {
+          "name": "/_next/static/chunks/5197-3356c70144916f85.js",
+          "transfer_bytes": 123339,
+          "encoded_bytes": 123039,
+          "decoded_bytes": 408639
+        },
+        {
+          "name": "/_next/image",
+          "transfer_bytes": 956,
+          "encoded_bytes": 656,
+          "decoded_bytes": 656
+        },
+        {
+          "name": "/_next/static/chunks/6440-5a851bf4fd17afc3.js",
+          "transfer_bytes": 3166,
+          "encoded_bytes": 2866,
+          "decoded_bytes": 8267
+        },
+        {
+          "name": "/_next/static/chunks/app/configuracion/page-0e1794c2a8017f5b.js",
+          "transfer_bytes": 3954,
+          "encoded_bytes": 3654,
+          "decoded_bytes": 10531
+        },
+        {
+          "name": "/_next/static/chunks/app/reportes/page-f0af8e34154e5b90.js",
+          "transfer_bytes": 9376,
+          "encoded_bytes": 9076,
+          "decoded_bytes": 27444
+        },
+        {
+          "name": "/_next/static/chunks/7055-e02d65882ba842c9.js",
+          "transfer_bytes": 5604,
+          "encoded_bytes": 5304,
+          "decoded_bytes": 14705
+        },
+        {
+          "name": "/_next/static/chunks/app/proyectos/page-d290917f69c522ee.js",
+          "transfer_bytes": 39466,
+          "encoded_bytes": 39166,
+          "decoded_bytes": 148439
+        },
+        {
+          "name": "/_next/static/chunks/6361-359b968080558a29.js",
+          "transfer_bytes": 15131,
+          "encoded_bytes": 14831,
+          "decoded_bytes": 49204
+        },
+        {
+          "name": "/_next/static/chunks/app/page-20b52cd45eb76248.js",
+          "transfer_bytes": 5909,
+          "encoded_bytes": 5609,
+          "decoded_bytes": 17197
+        }
+      ],
+      "longtasks": [],
+      "browserMetrics": {
+        "Nodes": 677,
+        "LayoutDuration": 0,
+        "ScriptDuration": 0,
+        "JSHeapUsedSize": 10468296,
+        "JSHeapTotalSize": 33087488
+      }
+    },
+    {
+      "sample": 4,
+      "steps": [
+        {
+          "name": "initial_A",
+          "ms_including_networkidle": 725.9874,
+          "requests": [
+            {
+              "path": "/api/projects",
+              "query": "",
+              "bytes": 291
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&smooth_window_s=0.2&max_points=5000&decimation=minmax_envelope&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 35316
+            }
+          ],
+          "response_bytes": 35700
+        },
+        {
+          "name": "PSD",
+          "ms_including_networkidle": 181.96539999999914,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/psd/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&max_points=5000&exclude_artifact_windows=false&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17499
+            }
+          ],
+          "response_bytes": 17499
+        },
+        {
+          "name": "spectrogram",
+          "ms_including_networkidle": 166.99299999999857,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/spectrogram/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&use_db=true&normalize=none&max_time_bins=600&max_frequency_bins=256&per_channel_color_domain=false&min_time_bins=120&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3&max_freq_hz=25",
+              "bytes": 268117
+            }
+          ],
+          "response_bytes": 268117
+        },
+        {
+          "name": "topography",
+          "ms_including_networkidle": 149.90480000000025,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17835
+        },
+        {
+          "name": "B_topography",
+          "ms_including_networkidle": 166.94900000000052,
+          "requests": [
+            {
+              "path": "/api/projects/g00-B/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-B/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "return_A_topography",
+          "ms_including_networkidle": 166.62690000000111,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/participants",
+              "query": "",
+              "bytes": 91
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/scenarios",
+              "query": "",
+              "bytes": 2
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/topography/eeg",
+              "query": "?participant_code=SYN-01&scenario=all&window_s=2&overlap_ratio=0.5&remove_dc=true&max_frames=600&channels=le%2Cf4%2Cc4%2Cp4%2Cp3%2Cc3%2Cf3",
+              "bytes": 17684
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/gaze-at",
+              "query": "?participant_code=SYN-01&t_s=0",
+              "bytes": 151
+            }
+          ],
+          "response_bytes": 17928
+        },
+        {
+          "name": "first_GSR",
+          "ms_including_networkidle": 499.5632000000005,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/statistics/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 139
+            }
+          ],
+          "response_bytes": 1176
+        },
+        {
+          "name": "first_comparison",
+          "ms_including_networkidle": 482.8812000000016,
+          "requests": [
+            {
+              "path": "/api/projects/g00-A/analytics/comparison/charts",
+              "query": "?participant_code=SYN-01&scenario=all&max_points=5000&visualizations=gsr",
+              "bytes": 13
+            },
+            {
+              "path": "/api/projects/g00-A/analytics/timeseries/gsr",
+              "query": "?participant_code=SYN-01&scenario=all",
+              "bytes": 1037
+            }
+          ],
+          "response_bytes": 1050
+        }
+      ],
+      "initialResources": [
+        {
+          "name": "/_next/static/css/c9319f1e6c48ef48.css",
+          "transfer_bytes": 23232,
+          "encoded_bytes": 22932,
+          "decoded_bytes": 141156
+        },
+        {
+          "name": "/_next/static/chunks/webpack-6e8997e1a4da58c6.js",
+          "transfer_bytes": 2379,
+          "encoded_bytes": 2079,
+          "decoded_bytes": 3870
+        },
+        {
+          "name": "/_next/static/chunks/main-app-206a7ec62be75e21.js",
+          "transfer_bytes": 828,
+          "encoded_bytes": 528,
+          "decoded_bytes": 528
+        },
+        {
+          "name": "/_next/static/chunks/3304-6bb01ca805a0bfb5.js",
+          "transfer_bytes": 10168,
+          "encoded_bytes": 9868,
+          "decoded_bytes": 30332
+        },
+        {
+          "name": "/_next/static/chunks/4872-78ebac03b5284a8b.js",
+          "transfer_bytes": 51516,
+          "encoded_bytes": 51216,
+          "decoded_bytes": 188550
+        },
+        {
+          "name": "/_next/static/chunks/8efd6a95-f6ac0bd82b26b44c.js",
+          "transfer_bytes": 62755,
+          "encoded_bytes": 62455,
+          "decoded_bytes": 198491
+        },
+        {
+          "name": "/_next/static/chunks/204-20c67ac92c0a7e1f.js",
+          "transfer_bytes": 9423,
+          "encoded_bytes": 9123,
+          "decoded_bytes": 25629
+        },
+        {
+          "name": "/_next/static/chunks/9962-2c573c2f28b53120.js",
+          "transfer_bytes": 9586,
+          "encoded_bytes": 9286,
+          "decoded_bytes": 33591
+        },
+        {
+          "name": "/_next/static/chunks/8827-c84cbaf76186fc0d.js",
+          "transfer_bytes": 13519,
+          "encoded_bytes": 13219,
+          "decoded_bytes": 34358
+        },
+        {
+          "name": "/_next/static/chunks/9749-854f46f1eb385456.js",
+          "transfer_bytes": 3848,
+          "encoded_bytes": 3548,
+          "decoded_bytes": 8744
+        },
+        {
+          "name": "/_next/static/chunks/4405-5468ff1e032ad193.js",
+          "transfer_bytes": 5729,
+          "encoded_bytes": 5429,
+          "decoded_bytes": 14348
+        },
+        {
+          "name": "/_next/static/chunks/5434-1ba2605b9fe9b997.js",
+          "transfer_bytes": 5501,
+          "encoded_bytes": 5201,
+          "decoded_bytes": 17426
+        },
+        {
+          "name": "/_next/static/chunks/app/layout-d4d547e63c12f717.js",
+          "transfer_bytes": 6671,
+          "encoded_bytes": 6371,
+          "decoded_bytes": 17535
+        },
+        {
+          "name": "/_next/static/chunks/1914-3f0fe66a2c751432.js",
+          "transfer_bytes": 7400,
+          "encoded_bytes": 7100,
+          "decoded_bytes": 22572
+        },
+        {
+          "name": "/_next/static/chunks/3530-9dbec94de0c0712c.js",
+          "transfer_bytes": 8550,
+          "encoded_bytes": 8250,
+          "decoded_bytes": 23873
+        },
+        {
+          "name": "/_next/static/chunks/5197-3356c70144916f85.js",
+          "transfer_bytes": 123339,
+          "encoded_bytes": 123039,
+          "decoded_bytes": 408639
+        },
+        {
+          "name": "/_next/static/chunks/5297-e43bb0357df39b01.js",
+          "transfer_bytes": 4532,
+          "encoded_bytes": 4232,
+          "decoded_bytes": 11597
+        },
+        {
+          "name": "/_next/static/chunks/4112-e968c0eb1781c849.js",
+          "transfer_bytes": 6193,
+          "encoded_bytes": 5893,
+          "decoded_bytes": 21212
+        },
+        {
+          "name": "/_next/static/chunks/app/dashboard/page-0fe61fb3d3aa5d20.js",
+          "transfer_bytes": 39491,
+          "encoded_bytes": 39191,
+          "decoded_bytes": 142636
+        },
+        {
+          "name": "/_next/image",
+          "transfer_bytes": 956,
+          "encoded_bytes": 656,
+          "decoded_bytes": 656
+        },
+        {
+          "name": "/_next/static/chunks/6440-5a851bf4fd17afc3.js",
+          "transfer_bytes": 3166,
+          "encoded_bytes": 2866,
+          "decoded_bytes": 8267
+        },
+        {
+          "name": "/_next/static/chunks/app/configuracion/page-0e1794c2a8017f5b.js",
+          "transfer_bytes": 3954,
+          "encoded_bytes": 3654,
+          "decoded_bytes": 10531
+        },
+        {
+          "name": "/_next/static/chunks/app/reportes/page-f0af8e34154e5b90.js",
+          "transfer_bytes": 9376,
+          "encoded_bytes": 9076,
+          "decoded_bytes": 27444
+        },
+        {
+          "name": "/_next/static/chunks/7055-e02d65882ba842c9.js",
+          "transfer_bytes": 5604,
+          "encoded_bytes": 5304,
+          "decoded_bytes": 14705
+        },
+        {
+          "name": "/_next/static/chunks/app/proyectos/page-d290917f69c522ee.js",
+          "transfer_bytes": 39466,
+          "encoded_bytes": 39166,
+          "decoded_bytes": 148439
+        },
+        {
+          "name": "/_next/static/chunks/app/page-20b52cd45eb76248.js",
+          "transfer_bytes": 5909,
+          "encoded_bytes": 5609,
+          "decoded_bytes": 17197
+        },
+        {
+          "name": "/_next/static/chunks/6361-359b968080558a29.js",
+          "transfer_bytes": 15131,
+          "encoded_bytes": 14831,
+          "decoded_bytes": 49204
+        }
+      ],
+      "longtasks": [],
+      "browserMetrics": {
+        "Nodes": 677,
+        "LayoutDuration": 0,
+        "ScriptDuration": 0,
+        "JSHeapUsedSize": 11384664,
+        "JSHeapTotalSize": 33873920
+      }
+    }
+  ],
+  "summary": [
+    {
+      "step": "initial_A",
+      "n": 5,
+      "median_ms": 724.2775000000001,
+      "min_ms": 706.6633999999995,
+      "max_ms": 725.9874,
+      "request_counts": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "bytes": [
+        35700,
+        35700,
+        35700,
+        35700,
+        35700
+      ]
+    },
+    {
+      "step": "PSD",
+      "n": 5,
+      "median_ms": 181.96539999999914,
+      "min_ms": 181.44999999999982,
+      "max_ms": 182.84479999999894,
+      "request_counts": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bytes": [
+        17499,
+        17499,
+        17499,
+        17499,
+        17499
+      ]
+    },
+    {
+      "step": "spectrogram",
+      "n": 5,
+      "median_ms": 166.99299999999857,
+      "min_ms": 149.41119999999864,
+      "max_ms": 167.43470000000025,
+      "request_counts": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bytes": [
+        268117,
+        268117,
+        268117,
+        268117,
+        268117
+      ]
+    },
+    {
+      "step": "topography",
+      "n": 5,
+      "median_ms": 166.46270000000004,
+      "min_ms": 149.36030000000028,
+      "max_ms": 200.22200000000157,
+      "request_counts": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "bytes": [
+        17835,
+        17835,
+        17835,
+        17835,
+        17835
+      ]
+    },
+    {
+      "step": "B_topography",
+      "n": 5,
+      "median_ms": 166.47680000000037,
+      "min_ms": 166.0644999999995,
+      "max_ms": 167.90390000000116,
+      "request_counts": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "bytes": [
+        17928,
+        17928,
+        17928,
+        17928,
+        17928
+      ]
+    },
+    {
+      "step": "return_A_topography",
+      "n": 5,
+      "median_ms": 166.62690000000111,
+      "min_ms": 148.50019999999859,
+      "max_ms": 168.01959999999963,
+      "request_counts": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "bytes": [
+        17928,
+        17928,
+        17928,
+        17928,
+        17928
+      ]
+    },
+    {
+      "step": "first_GSR",
+      "n": 5,
+      "median_ms": 483.8108000000011,
+      "min_ms": 482.66219999999976,
+      "max_ms": 499.5632000000005,
+      "request_counts": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "bytes": [
+        1176,
+        1176,
+        1176,
+        1176,
+        1176
+      ]
+    },
+    {
+      "step": "first_comparison",
+      "n": 5,
+      "median_ms": 483.2404999999999,
+      "min_ms": 481.915500000001,
+      "max_ms": 499.84310000000005,
+      "request_counts": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "bytes": [
+        1050,
+        1050,
+        1050,
+        1050,
+        1050
+      ]
+    }
+  ],
+  "production_chunks": {
+    "count": 57,
+    "total_bytes": 2348407,
+    "total_gzip_bytes": 725168,
+    "files": [
+      {
+        "file": "6kpNNd7ucTjwAEdacId9o\\_buildManifest.js",
+        "bytes": 1046,
+        "gzip_bytes": 380
+      },
+      {
+        "file": "6kpNNd7ucTjwAEdacId9o\\_ssgManifest.js",
+        "bytes": 80,
+        "gzip_bytes": 64
+      },
+      {
+        "file": "chunks\\1155.e73d21c44da808e5.js",
+        "bytes": 8837,
+        "gzip_bytes": 2852
+      },
+      {
+        "file": "chunks\\1195.2e64ce6dca132d7c.js",
+        "bytes": 6606,
+        "gzip_bytes": 2490
+      },
+      {
+        "file": "chunks\\1914-3f0fe66a2c751432.js",
+        "bytes": 22572,
+        "gzip_bytes": 7100
+      },
+      {
+        "file": "chunks\\204-20c67ac92c0a7e1f.js",
+        "bytes": 25629,
+        "gzip_bytes": 9123
+      },
+      {
+        "file": "chunks\\2252.72b36dbf4af0fa1a.js",
+        "bytes": 45529,
+        "gzip_bytes": 14813
+      },
+      {
+        "file": "chunks\\2282.e1e86ebc67d70dc3.js",
+        "bytes": 46023,
+        "gzip_bytes": 13199
+      },
+      {
+        "file": "chunks\\301.715c15fecfffa970.js",
+        "bytes": 24203,
+        "gzip_bytes": 7578
+      },
+      {
+        "file": "chunks\\3304-6bb01ca805a0bfb5.js",
+        "bytes": 30332,
+        "gzip_bytes": 9868
+      },
+      {
+        "file": "chunks\\3530-9dbec94de0c0712c.js",
+        "bytes": 23873,
+        "gzip_bytes": 8250
+      },
+      {
+        "file": "chunks\\4061.146b6d9dd293341f.js",
+        "bytes": 13569,
+        "gzip_bytes": 4969
+      },
+      {
+        "file": "chunks\\4112-e968c0eb1781c849.js",
+        "bytes": 21212,
+        "gzip_bytes": 5893
+      },
+      {
+        "file": "chunks\\413.e2fde65e9b38e2c9.js",
+        "bytes": 10500,
+        "gzip_bytes": 3875
+      },
+      {
+        "file": "chunks\\4405-5468ff1e032ad193.js",
+        "bytes": 14348,
+        "gzip_bytes": 5429
+      },
+      {
+        "file": "chunks\\4872-78ebac03b5284a8b.js",
+        "bytes": 188550,
+        "gzip_bytes": 51216
+      },
+      {
+        "file": "chunks\\5189.da42b69eebcac3fa.js",
+        "bytes": 42663,
+        "gzip_bytes": 13062
+      },
+      {
+        "file": "chunks\\5197-3356c70144916f85.js",
+        "bytes": 408639,
+        "gzip_bytes": 123039
+      },
+      {
+        "file": "chunks\\5246.99d9114a7e1baa45.js",
+        "bytes": 20694,
+        "gzip_bytes": 6411
+      },
+      {
+        "file": "chunks\\5286.bc44c020150b0215.js",
+        "bytes": 95893,
+        "gzip_bytes": 27917
+      },
+      {
+        "file": "chunks\\5297-e43bb0357df39b01.js",
+        "bytes": 11597,
+        "gzip_bytes": 4232
+      },
+      {
+        "file": "chunks\\5434-1ba2605b9fe9b997.js",
+        "bytes": 17426,
+        "gzip_bytes": 5201
+      },
+      {
+        "file": "chunks\\6361-359b968080558a29.js",
+        "bytes": 49204,
+        "gzip_bytes": 14831
+      },
+      {
+        "file": "chunks\\6440-5a851bf4fd17afc3.js",
+        "bytes": 8267,
+        "gzip_bytes": 2866
+      },
+      {
+        "file": "chunks\\7038.b7ba755c42dec348.js",
+        "bytes": 759,
+        "gzip_bytes": 425
+      },
+      {
+        "file": "chunks\\7055-e02d65882ba842c9.js",
+        "bytes": 14705,
+        "gzip_bytes": 5304
+      },
+      {
+        "file": "chunks\\7415.0178871992fbe254.js",
+        "bytes": 12464,
+        "gzip_bytes": 4626
+      },
+      {
+        "file": "chunks\\7641.9d9f55117a71bca5.js",
+        "bytes": 9733,
+        "gzip_bytes": 4000
+      },
+      {
+        "file": "chunks\\875.30e44a49c3255f17.js",
+        "bytes": 4776,
+        "gzip_bytes": 2017
+      },
+      {
+        "file": "chunks\\8827-c84cbaf76186fc0d.js",
+        "bytes": 34358,
+        "gzip_bytes": 13219
+      },
+      {
+        "file": "chunks\\8efd6a95-f6ac0bd82b26b44c.js",
+        "bytes": 198491,
+        "gzip_bytes": 62455
+      },
+      {
+        "file": "chunks\\9159.4ac73bb528ab67ba.js",
+        "bytes": 7631,
+        "gzip_bytes": 3047
+      },
+      {
+        "file": "chunks\\9280.a41756a203a547f3.js",
+        "bytes": 29468,
+        "gzip_bytes": 10076
+      },
+      {
+        "file": "chunks\\9565.b2515e5112b94001.js",
+        "bytes": 10408,
+        "gzip_bytes": 2880
+      },
+      {
+        "file": "chunks\\9749-854f46f1eb385456.js",
+        "bytes": 8744,
+        "gzip_bytes": 3548
+      },
+      {
+        "file": "chunks\\989.bafe6200e8041495.js",
+        "bytes": 17881,
+        "gzip_bytes": 6163
+      },
+      {
+        "file": "chunks\\9962-2c573c2f28b53120.js",
+        "bytes": 33591,
+        "gzip_bytes": 9286
+      },
+      {
+        "file": "chunks\\framework-325bdc9a35aebe9b.js",
+        "bytes": 189706,
+        "gzip_bytes": 59868
+      },
+      {
+        "file": "chunks\\main-0d5e358e2d155600.js",
+        "bytes": 137365,
+        "gzip_bytes": 40418
+      },
+      {
+        "file": "chunks\\main-app-206a7ec62be75e21.js",
+        "bytes": 528,
+        "gzip_bytes": 231
+      },
+      {
+        "file": "chunks\\polyfills-42372ed130431b0a.js",
+        "bytes": 112594,
+        "gzip_bytes": 39627
+      },
+      {
+        "file": "chunks\\webpack-6e8997e1a4da58c6.js",
+        "bytes": 3870,
+        "gzip_bytes": 2079
+      },
+      {
+        "file": "chunks\\app\\layout-d4d547e63c12f717.js",
+        "bytes": 17535,
+        "gzip_bytes": 6371
+      },
+      {
+        "file": "chunks\\app\\page-20b52cd45eb76248.js",
+        "bytes": 17197,
+        "gzip_bytes": 5609
+      },
+      {
+        "file": "chunks\\app\\authorize\\page-f310a336b77ec451.js",
+        "bytes": 3631,
+        "gzip_bytes": 1623
+      },
+      {
+        "file": "chunks\\app\\configuracion\\page-0e1794c2a8017f5b.js",
+        "bytes": 10531,
+        "gzip_bytes": 3654
+      },
+      {
+        "file": "chunks\\app\\dashboard\\page-0fe61fb3d3aa5d20.js",
+        "bytes": 142636,
+        "gzip_bytes": 39191
+      },
+      {
+        "file": "chunks\\app\\login\\page-dfb75161b7ef0cee.js",
+        "bytes": 12985,
+        "gzip_bytes": 4680
+      },
+      {
+        "file": "chunks\\app\\proyectos\\page-d290917f69c522ee.js",
+        "bytes": 148439,
+        "gzip_bytes": 39166
+      },
+      {
+        "file": "chunks\\app\\reportes\\page-f0af8e34154e5b90.js",
+        "bytes": 27444,
+        "gzip_bytes": 9076
+      },
+      {
+        "file": "chunks\\app\\_global-error\\page-7bb84c3e66b34ada.js",
+        "bytes": 156,
+        "gzip_bytes": 142
+      },
+      {
+        "file": "chunks\\app\\_not-found\\page-aae01bb69abc1105.js",
+        "bytes": 2680,
+        "gzip_bytes": 997
+      },
+      {
+        "file": "chunks\\next\\dist\\client\\components\\builtin\\app-error-7bb84c3e66b34ada.js",
+        "bytes": 156,
+        "gzip_bytes": 142
+      },
+      {
+        "file": "chunks\\next\\dist\\client\\components\\builtin\\forbidden-7bb84c3e66b34ada.js",
+        "bytes": 156,
+        "gzip_bytes": 142
+      },
+      {
+        "file": "chunks\\next\\dist\\client\\components\\builtin\\global-error-6300db57d75a488e.js",
+        "bytes": 185,
+        "gzip_bytes": 164
+      },
+      {
+        "file": "chunks\\next\\dist\\client\\components\\builtin\\not-found-7bb84c3e66b34ada.js",
+        "bytes": 156,
+        "gzip_bytes": 142
+      },
+      {
+        "file": "chunks\\next\\dist\\client\\components\\builtin\\unauthorized-7bb84c3e66b34ada.js",
+        "bytes": 156,
+        "gzip_bytes": 142
+      }
+    ]
+  },
+  "limits": [
+    "mocked API, not full system latency",
+    "initial navigation includes networkidle (500 ms); clicks await mocked response completion, visible content and two animation frames",
+    "fresh browser contexts; server and OS warm",
+    "no cloud or frozen local package",
+    "synthetic UI fixture does not test numeric equivalence",
+    "CDP memory is snapshot, not peak RSS"
+  ]
+}

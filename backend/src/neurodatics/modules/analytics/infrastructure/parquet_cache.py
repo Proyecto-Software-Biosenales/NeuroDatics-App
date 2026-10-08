@@ -1,4 +1,5 @@
 import hashlib
+import json
 import logging
 import os
 import re
@@ -9,6 +10,9 @@ from typing import List, Optional, Tuple
 from uuid import UUID, uuid4
 
 import pandas as pd
+import pyarrow.parquet as pq
+
+from ..domain.parquet_projection import ParquetProjection
 
 from ....config.settings import settings
 from neurodatics.shared.cache_generation import (
@@ -21,6 +25,36 @@ from neurodatics.shared.cache_generation import (
 logger = logging.getLogger(__name__)
 
 _UNSAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9_-]")
+
+
+def read_parquet_frame(
+    path: Path, projection: Optional[ParquetProjection] = None,
+) -> pd.DataFrame:
+    """One decoder for cold and disk-hit paths; schema errors propagate.
+
+    Inspect only the footer for optional columns. Pandas/PyArrow retains the
+    index and attrs stored in metadata. A full read remains the default.
+    """
+    if projection is None:
+        return pd.read_parquet(path)
+    schema = pq.read_schema(path)
+    columns = projection.resolve(schema.names)
+    frame = pd.read_parquet(path, columns=columns, engine="pyarrow")
+    if not columns and len(frame) == 0:
+        # Arrow-to-pandas loses cardinality for a zero-column table without a
+        # physical index. Recover only the row/index metadata, without decoding
+        # an unrelated signal or fabricating a sensor column.
+        pandas_metadata = json.loads((schema.metadata or {}).get(b"pandas", b"{}"))
+        indexes = pandas_metadata.get("index_columns", [])
+        range_index = next((item for item in indexes if isinstance(item, dict) and item.get("kind") == "range"), None)
+        if range_index is not None:
+            frame.index = pd.RangeIndex(
+                range_index["start"], range_index["stop"], range_index["step"],
+                name=range_index.get("name"),
+            )
+        else:
+            frame.index = pd.RangeIndex(pq.read_metadata(path).num_rows)
+    return frame
 
 
 def _is_redirected(path: Path) -> bool:
@@ -107,13 +141,14 @@ class ParquetCacheService:
         return path
 
     def read_dataframe(
-        self, project_id: UUID, participant_code: str, generation: object = 0
+        self, project_id: UUID, participant_code: str, generation: object = 0,
+        *, projection: Optional[ParquetProjection] = None,
     ) -> Optional[pd.DataFrame]:
         path = self.get(project_id, participant_code, generation)
         if path is None:
             return None
         try:
-            return pd.read_parquet(path)
+            return read_parquet_frame(path, projection)
         except OSError:
             # A sweep may have reclaimed this generation between the existence
             # check and the read. Report a miss so the caller re-downloads from

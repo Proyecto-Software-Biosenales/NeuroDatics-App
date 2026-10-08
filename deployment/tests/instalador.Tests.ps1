@@ -36,6 +36,9 @@ Assert ((Initialize-Configuracion $temporal -NoInteractivo) -eq 3000) 'Primera i
 $ruta = Join-Path $temporal '.env'
 $config = Read-Configuracion $ruta
 Assert ($config['AUTH_JWT_SECRET'].Length -eq 64 -and $config['POSTGRES_PASSWORD'].Length -eq 64) 'Genera ambos secretos locales'
+Assert ($config['BACKEND_MEM_LIMIT'] -eq (Get-LimiteMemoriaBackend (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory)) 'Ajusta la memoria del backend al equipo'
+Assert ((@(4, 8, 12, 16, 32, 64) | ForEach-Object { Get-LimiteMemoriaBackend ($_ * 1GB) }) -join ',' -eq '2g,2g,3g,4g,8g,8g') 'Memoria del backend entre 2 y 8 GB según la RAM'
+Assert ((Get-LimiteMemoriaBackend (15.9 * 1GB)) -eq '4g') 'Redondea la RAM que Windows informa por debajo'
 $antes = (Get-FileHash -LiteralPath $ruta).Hash
 $null = Initialize-Configuracion $temporal -NoInteractivo
 Assert ((Get-FileHash -LiteralPath $ruta).Hash -eq $antes) 'Repetir no cambia credenciales ni configuración'

@@ -59,10 +59,22 @@ function Test-Marcador([string]$Valor) {
     return ([string]::IsNullOrWhiteSpace($Valor) -or $Valor -match '^(replace-|change-|neurodatics-local-development-secret|CAMBIAR|REEMPLAZAR)')
 }
 
+function Get-LimiteMemoriaBackend([double]$BytesEquipo) {
+    # Docker Desktop da a su máquina virtual la mitad de la RAM; el backend toma la
+    # mitad de esa parte, entre 2 y 8 GB. Con más memoria procesa cada CSV en paralelo.
+    $gb = [math]::Floor([math]::Round($BytesEquipo / 1GB) / 4)
+    return ('{0}g' -f [int][math]::Max(2, [math]::Min(8, $gb)))
+}
+
 function Initialize-Configuracion([string]$Directorio, [switch]$NoInteractivo) {
     $ruta = Join-Path $Directorio '.env'
     $nuevo = -not (Test-Path -LiteralPath $ruta)
-    if ($nuevo) { Copy-Item -LiteralPath (Join-Path $Directorio '.env.example') -Destination $ruta }
+    if ($nuevo) {
+        Copy-Item -LiteralPath (Join-Path $Directorio '.env.example') -Destination $ruta
+        # Solo en la primera instalación: un .env existente o entregado conserva su límite.
+        try { $ram = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory } catch { $ram = 0 }
+        if ($ram -gt 0) { Set-Configuracion $ruta 'BACKEND_MEM_LIMIT' (Get-LimiteMemoriaBackend $ram) }
+    }
     $valores = Read-Configuracion $ruta
     foreach ($clave in @('POSTGRES_PASSWORD', 'AUTH_JWT_SECRET')) {
         if (Test-Marcador $valores[$clave]) {

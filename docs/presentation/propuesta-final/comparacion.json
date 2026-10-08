@@ -1,0 +1,3845 @@
+{
+  "schema": "presentation-baseline-v1",
+  "git_head": "f310003bd734203a41268f40a4627bd99d5a3233",
+  "script_sha256": "14173556ed01e6dbc4e904cbdb44c452557b2ac785b47ef874791151587d6c39",
+  "method": {
+    "baseline": "independent basic I-DT on export grid",
+    "min_ms": 200,
+    "dispersion_normalized": 0.03,
+    "app": "current ingestion + canonical event service",
+    "geometry": "not supplied; screen space only",
+    "identity": "anonymous recording block",
+    "interpretation": "descriptive agreement; no ground truth or accuracy claim"
+  },
+  "files": [
+    {
+      "id": "csv-01",
+      "sha256": "58a3cf6aeb1063b784ea7f71e0904b8ae3f708e1e160b75cef50fcd2c674c481",
+      "status": "compared",
+      "blocks": [
+        {
+          "id": "B01",
+          "rows": 3597,
+          "scenarios": 8,
+          "valid_gaze_rows": 3530,
+          "invalid_gaze_rows": 67,
+          "export_grid_hz": 60.00000000887951,
+          "gaze_declared_hz": 60.1162676926776,
+          "effective_detection_hz": 60.00000000887951,
+          "resampled": false,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 10,
+          "adjacent_valid_pair_denominator": 3514,
+          "baseline": {
+            "events": 81,
+            "total_s": 24.5499999963668,
+            "mean_ms": 303.0864197082321,
+            "median_ms": 249.99999996300204
+          },
+          "app": {
+            "events": 92,
+            "total_s": 26.600006,
+            "mean_ms": 289.13050000000004,
+            "median_ms": 225.0
+          },
+          "vendor": {
+            "in_range_rows": 3091,
+            "in_range_while_raw_gaze_invalid": 0
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 3,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 173,
+          "app_only_fixation_rows": 148,
+          "baseline_only_fixation_rows": 25,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 227,
+              "total_duration_ms": 41583.34,
+              "mean_duration_ms": 183.19,
+              "median_duration_ms": 133.33,
+              "max_duration_ms": 883.33,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 143,
+              "total_duration_ms": 33850.01,
+              "mean_duration_ms": 236.71,
+              "median_duration_ms": 166.67,
+              "max_duration_ms": 866.67,
+              "retained_dwell_percent": 81.4
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 92,
+              "total_duration_ms": 26600.01,
+              "mean_duration_ms": 289.13,
+              "median_duration_ms": 225.0,
+              "max_duration_ms": 883.33,
+              "retained_dwell_percent": 63.97
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 66,
+              "total_duration_ms": 21766.67,
+              "mean_duration_ms": 329.8,
+              "median_duration_ms": 283.33,
+              "max_duration_ms": 916.67,
+              "retained_dwell_percent": 52.34
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 46,
+              "total_duration_ms": 17300.0,
+              "mean_duration_ms": 376.09,
+              "median_duration_ms": 316.67,
+              "max_duration_ms": 900.0,
+              "retained_dwell_percent": 41.6
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 10,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 300,
+              "baseline": {
+                "events": 1,
+                "total_s": 0.24999999996300204,
+                "mean_ms": 249.99999996300204,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 3,
+                "total_s": 0.6000000000000001,
+                "mean_ms": 200.00000000000003,
+                "median_ms": 200.0
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 300,
+              "baseline": {
+                "events": 9,
+                "total_s": 2.4166666663090197,
+                "mean_ms": 268.5185184787799,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 10,
+                "total_s": 2.6500000000000004,
+                "mean_ms": 265.0,
+                "median_ms": 225.0
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 301,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.599999999763213,
+                "mean_ms": 319.9999999526426,
+                "median_ms": 233.3333332988019
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.7833340000000002,
+                "mean_ms": 297.2223333333334,
+                "median_ms": 225.0
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 301,
+              "baseline": {
+                "events": 9,
+                "total_s": 2.43333333297322,
+                "mean_ms": 270.3703703303578,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 9,
+                "total_s": 2.350001,
+                "mean_ms": 261.11122222222224,
+                "median_ms": 233.33300000000003
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 300,
+              "baseline": {
+                "events": 7,
+                "total_s": 2.349999999652219,
+                "mean_ms": 335.71428566460276,
+                "median_ms": 299.99999995560245
+              },
+              "app": {
+                "events": 9,
+                "total_s": 2.7000010000000003,
+                "mean_ms": 300.00011111111115,
+                "median_ms": 216.667
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1784,
+              "baseline": {
+                "events": 47,
+                "total_s": 14.79999999780972,
+                "mean_ms": 314.8936169746749,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 50,
+                "total_s": 15.416669999999998,
+                "mean_ms": 308.3334,
+                "median_ms": 233.33300000000003
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 301,
+              "baseline": {
+                "events": 3,
+                "total_s": 0.6999999998964057,
+                "mean_ms": 233.3333332988019,
+                "median_ms": 233.3333332988019
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.1,
+                "mean_ms": 220.00000000000003,
+                "median_ms": 216.667
+              }
+            }
+          ]
+        },
+        {
+          "id": "B02",
+          "rows": 3609,
+          "scenarios": 8,
+          "valid_gaze_rows": 3550,
+          "invalid_gaze_rows": 59,
+          "export_grid_hz": 60.00000000887951,
+          "gaze_declared_hz": 60.1167178937527,
+          "effective_detection_hz": 60.00000000887951,
+          "resampled": false,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 7,
+          "adjacent_valid_pair_denominator": 3538,
+          "baseline": {
+            "events": 80,
+            "total_s": 26.499999996078216,
+            "mean_ms": 331.2499999509777,
+            "median_ms": 274.9999999593023
+          },
+          "app": {
+            "events": 87,
+            "total_s": 27.683334000000006,
+            "mean_ms": 318.19924137931037,
+            "median_ms": 266.667
+          },
+          "vendor": {
+            "in_range_rows": 3035,
+            "in_range_while_raw_gaze_invalid": 2
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 3,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 135,
+          "app_only_fixation_rows": 103,
+          "baseline_only_fixation_rows": 32,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 197,
+              "total_duration_ms": 39600.01,
+              "mean_duration_ms": 201.02,
+              "median_duration_ms": 133.33,
+              "max_duration_ms": 816.67,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 128,
+              "total_duration_ms": 32900.0,
+              "mean_duration_ms": 257.03,
+              "median_duration_ms": 183.33,
+              "max_duration_ms": 1050.0,
+              "retained_dwell_percent": 83.08
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 87,
+              "total_duration_ms": 27683.33,
+              "mean_duration_ms": 318.2,
+              "median_duration_ms": 266.67,
+              "max_duration_ms": 883.33,
+              "retained_dwell_percent": 69.91
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 66,
+              "total_duration_ms": 23733.34,
+              "mean_duration_ms": 359.6,
+              "median_duration_ms": 300.0,
+              "max_duration_ms": 883.33,
+              "retained_dwell_percent": 59.93
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 48,
+              "total_duration_ms": 19200.0,
+              "mean_duration_ms": 400.0,
+              "median_duration_ms": 350.0,
+              "max_duration_ms": 883.33,
+              "retained_dwell_percent": 48.48
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 16,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 300,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 301,
+              "baseline": {
+                "events": 8,
+                "total_s": 2.44999999963742,
+                "mean_ms": 306.2499999546775,
+                "median_ms": 258.3333332951021
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.466666,
+                "mean_ms": 308.33325,
+                "median_ms": 258.333
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 301,
+              "baseline": {
+                "events": 7,
+                "total_s": 1.7333333330768141,
+                "mean_ms": 247.61904758240203,
+                "median_ms": 233.3333332988019
+              },
+              "app": {
+                "events": 8,
+                "total_s": 1.900001,
+                "mean_ms": 237.500125,
+                "median_ms": 225.0
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 301,
+              "baseline": {
+                "events": 9,
+                "total_s": 3.3666666661684275,
+                "mean_ms": 374.07407401871416,
+                "median_ms": 383.3333332766031
+              },
+              "app": {
+                "events": 10,
+                "total_s": 3.5333330000000003,
+                "mean_ms": 353.3333,
+                "median_ms": 333.3335
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 300,
+              "baseline": {
+                "events": 9,
+                "total_s": 2.6166666662794213,
+                "mean_ms": 290.7407406977135,
+                "median_ms": 266.6666666272022
+              },
+              "app": {
+                "events": 9,
+                "total_s": 2.583335,
+                "mean_ms": 287.0372222222222,
+                "median_ms": 266.667
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1790,
+              "baseline": {
+                "events": 45,
+                "total_s": 15.749999997669129,
+                "mean_ms": 349.99999994820286,
+                "median_ms": 283.3333332914023
+              },
+              "app": {
+                "events": 48,
+                "total_s": 16.216666,
+                "mean_ms": 337.8472083333333,
+                "median_ms": 266.667
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 300,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.5833333332470048,
+                "mean_ms": 291.66666662350235,
+                "median_ms": 291.66666662350235
+              },
+              "app": {
+                "events": 4,
+                "total_s": 0.983333,
+                "mean_ms": 245.83325,
+                "median_ms": 216.6665
+              }
+            }
+          ]
+        },
+        {
+          "id": "B03",
+          "rows": 3614,
+          "scenarios": 8,
+          "valid_gaze_rows": 3520,
+          "invalid_gaze_rows": 94,
+          "export_grid_hz": 60.00000000887951,
+          "gaze_declared_hz": 60.1043300984763,
+          "effective_detection_hz": 60.00000000887951,
+          "resampled": false,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 10,
+          "adjacent_valid_pair_denominator": 3506,
+          "baseline": {
+            "events": 99,
+            "total_s": 32.19999999523466,
+            "mean_ms": 325.2525252043905,
+            "median_ms": 249.99999996300204
+          },
+          "app": {
+            "events": 110,
+            "total_s": 33.55,
+            "mean_ms": 305.0,
+            "median_ms": 233.33300000000003
+          },
+          "vendor": {
+            "in_range_rows": 3184,
+            "in_range_while_raw_gaze_invalid": 0
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 3,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 213,
+          "app_only_fixation_rows": 147,
+          "baseline_only_fixation_rows": 66,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 216,
+              "total_duration_ms": 45400.01,
+              "mean_duration_ms": 210.19,
+              "median_duration_ms": 150.0,
+              "max_duration_ms": 1150.0,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 148,
+              "total_duration_ms": 38716.67,
+              "mean_duration_ms": 261.6,
+              "median_duration_ms": 200.0,
+              "max_duration_ms": 1116.67,
+              "retained_dwell_percent": 85.28
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 110,
+              "total_duration_ms": 33550.0,
+              "mean_duration_ms": 305.0,
+              "median_duration_ms": 233.33,
+              "max_duration_ms": 883.33,
+              "retained_dwell_percent": 73.9
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 80,
+              "total_duration_ms": 28550.0,
+              "mean_duration_ms": 356.88,
+              "median_duration_ms": 283.33,
+              "max_duration_ms": 1083.33,
+              "retained_dwell_percent": 62.89
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 58,
+              "total_duration_ms": 23883.34,
+              "mean_duration_ms": 411.78,
+              "median_duration_ms": 350.0,
+              "max_duration_ms": 966.67,
+              "retained_dwell_percent": 52.61
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 19,
+              "baseline": {
+                "events": 1,
+                "total_s": 0.2333333332988019,
+                "mean_ms": 233.3333332988019,
+                "median_ms": 233.3333332988019
+              },
+              "app": {
+                "events": 1,
+                "total_s": 0.233333,
+                "mean_ms": 233.33300000000003,
+                "median_ms": 233.33300000000003
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 301,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.116666666501409,
+                "mean_ms": 279.16666662535226,
+                "median_ms": 283.3333332914023
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.4833340000000002,
+                "mean_ms": 247.22233333333335,
+                "median_ms": 200.0
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 301,
+              "baseline": {
+                "events": 10,
+                "total_s": 3.566666666138829,
+                "mean_ms": 356.6666666138829,
+                "median_ms": 274.9999999593023
+              },
+              "app": {
+                "events": 10,
+                "total_s": 3.583333,
+                "mean_ms": 358.3333,
+                "median_ms": 241.6665
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 301,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.6166666664274132,
+                "mean_ms": 269.44444440456886,
+                "median_ms": 258.3333332951021
+              },
+              "app": {
+                "events": 7,
+                "total_s": 1.666667,
+                "mean_ms": 238.0952857142857,
+                "median_ms": 250.0
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 301,
+              "baseline": {
+                "events": 8,
+                "total_s": 3.066666666212825,
+                "mean_ms": 383.3333332766031,
+                "median_ms": 341.6666666161028
+              },
+              "app": {
+                "events": 8,
+                "total_s": 3.0833319999999995,
+                "mean_ms": 385.4164999999999,
+                "median_ms": 341.6665
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 301,
+              "baseline": {
+                "events": 7,
+                "total_s": 3.166666666198026,
+                "mean_ms": 452.3809523140037,
+                "median_ms": 283.3333332914023
+              },
+              "app": {
+                "events": 10,
+                "total_s": 3.6,
+                "mean_ms": 360.0,
+                "median_ms": 283.3335
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1789,
+              "baseline": {
+                "events": 55,
+                "total_s": 16.816666664177937,
+                "mean_ms": 305.7575757123262,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 60,
+                "total_s": 17.283333999999996,
+                "mean_ms": 288.0555666666666,
+                "median_ms": 233.33300000000003
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 301,
+              "baseline": {
+                "events": 8,
+                "total_s": 2.6166666662794213,
+                "mean_ms": 327.0833332849277,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.616667,
+                "mean_ms": 327.083375,
+                "median_ms": 250.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "B04",
+          "rows": 3601,
+          "scenarios": 8,
+          "valid_gaze_rows": 3591,
+          "invalid_gaze_rows": 10,
+          "export_grid_hz": 60.00000000887951,
+          "gaze_declared_hz": 60.1162196775292,
+          "effective_detection_hz": 60.00000000887951,
+          "resampled": false,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 39,
+          "adjacent_valid_pair_denominator": 3589,
+          "baseline": {
+            "events": 92,
+            "total_s": 37.366666661136705,
+            "mean_ms": 406.1594202297468,
+            "median_ms": 283.3333332914023
+          },
+          "app": {
+            "events": 100,
+            "total_s": 38.416672000000005,
+            "mean_ms": 384.16672000000005,
+            "median_ms": 266.667
+          },
+          "vendor": {
+            "in_range_rows": 3396,
+            "in_range_while_raw_gaze_invalid": 0
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 3,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 123,
+          "app_only_fixation_rows": 93,
+          "baseline_only_fixation_rows": 30,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 191,
+              "total_duration_ms": 48933.33,
+              "mean_duration_ms": 256.2,
+              "median_duration_ms": 183.33,
+              "max_duration_ms": 1400.0,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 134,
+              "total_duration_ms": 43050.01,
+              "mean_duration_ms": 321.27,
+              "median_duration_ms": 216.67,
+              "max_duration_ms": 1416.67,
+              "retained_dwell_percent": 87.98
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 100,
+              "total_duration_ms": 38416.67,
+              "mean_duration_ms": 384.17,
+              "median_duration_ms": 266.67,
+              "max_duration_ms": 1433.33,
+              "retained_dwell_percent": 78.51
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 76,
+              "total_duration_ms": 34350.0,
+              "mean_duration_ms": 451.97,
+              "median_duration_ms": 350.0,
+              "max_duration_ms": 1416.67,
+              "retained_dwell_percent": 70.2
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 66,
+              "total_duration_ms": 32016.67,
+              "mean_duration_ms": 485.1,
+              "median_duration_ms": 391.67,
+              "max_duration_ms": 1333.33,
+              "retained_dwell_percent": 65.43
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 12,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 300,
+              "baseline": {
+                "events": 3,
+                "total_s": 0.7666666665532063,
+                "mean_ms": 255.5555555177354,
+                "median_ms": 266.6666666272022
+              },
+              "app": {
+                "events": 3,
+                "total_s": 0.766667,
+                "mean_ms": 255.55566666666667,
+                "median_ms": 266.667
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 301,
+              "baseline": {
+                "events": 7,
+                "total_s": 2.599999999615221,
+                "mean_ms": 371.428571373603,
+                "median_ms": 399.99999994080326
+              },
+              "app": {
+                "events": 9,
+                "total_s": 2.800001,
+                "mean_ms": 311.1112222222222,
+                "median_ms": 266.667
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 301,
+              "baseline": {
+                "events": 7,
+                "total_s": 2.7499999995930224,
+                "mean_ms": 392.8571427990032,
+                "median_ms": 233.3333332988019
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.9,
+                "mean_ms": 362.5,
+                "median_ms": 225.0
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 300,
+              "baseline": {
+                "events": 8,
+                "total_s": 1.9166666663830156,
+                "mean_ms": 239.58333329787695,
+                "median_ms": 216.66666663460177
+              },
+              "app": {
+                "events": 8,
+                "total_s": 1.883334,
+                "mean_ms": 235.41675,
+                "median_ms": 208.33350000000002
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 301,
+              "baseline": {
+                "events": 6,
+                "total_s": 2.199999999674418,
+                "mean_ms": 366.666666612403,
+                "median_ms": 241.66666663090197
+              },
+              "app": {
+                "events": 6,
+                "total_s": 2.166666,
+                "mean_ms": 361.111,
+                "median_ms": 241.6665
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1785,
+              "baseline": {
+                "events": 50,
+                "total_s": 22.666666663312185,
+                "mean_ms": 453.3333332662437,
+                "median_ms": 349.99999994820286
+              },
+              "app": {
+                "events": 55,
+                "total_s": 23.416669000000002,
+                "mean_ms": 425.75761818181826,
+                "median_ms": 316.667
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 301,
+              "baseline": {
+                "events": 11,
+                "total_s": 4.466666666005636,
+                "mean_ms": 406.0606060005124,
+                "median_ms": 416.6666666050034
+              },
+              "app": {
+                "events": 11,
+                "total_s": 4.483335,
+                "mean_ms": 407.57590909090914,
+                "median_ms": 416.66700000000003
+              }
+            }
+          ]
+        },
+        {
+          "id": "B05",
+          "rows": 3601,
+          "scenarios": 8,
+          "valid_gaze_rows": 3561,
+          "invalid_gaze_rows": 40,
+          "export_grid_hz": 60.00000000887951,
+          "gaze_declared_hz": 60.1150552588556,
+          "effective_detection_hz": 60.00000000887951,
+          "resampled": false,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 7,
+          "adjacent_valid_pair_denominator": 3549,
+          "baseline": {
+            "events": 66,
+            "total_s": 18.866666663874554,
+            "mean_ms": 285.8585858162811,
+            "median_ms": 266.6666666272022
+          },
+          "app": {
+            "events": 88,
+            "total_s": 22.200006000000002,
+            "mean_ms": 252.27279545454545,
+            "median_ms": 216.667
+          },
+          "vendor": {
+            "in_range_rows": 2956,
+            "in_range_while_raw_gaze_invalid": 0
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 3,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 310,
+          "app_only_fixation_rows": 255,
+          "baseline_only_fixation_rows": 55,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 234,
+              "total_duration_ms": 38166.67,
+              "mean_duration_ms": 163.11,
+              "median_duration_ms": 116.67,
+              "max_duration_ms": 566.67,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 133,
+              "total_duration_ms": 28016.67,
+              "mean_duration_ms": 210.65,
+              "median_duration_ms": 183.33,
+              "max_duration_ms": 550.0,
+              "retained_dwell_percent": 73.41
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 88,
+              "total_duration_ms": 22200.01,
+              "mean_duration_ms": 252.27,
+              "median_duration_ms": 216.67,
+              "max_duration_ms": 550.0,
+              "retained_dwell_percent": 58.17
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 54,
+              "total_duration_ms": 16616.67,
+              "mean_duration_ms": 307.72,
+              "median_duration_ms": 283.33,
+              "max_duration_ms": 550.0,
+              "retained_dwell_percent": 43.54
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 34,
+              "total_duration_ms": 12066.67,
+              "mean_duration_ms": 354.9,
+              "median_duration_ms": 333.33,
+              "max_duration_ms": 516.67,
+              "retained_dwell_percent": 31.62
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 12,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 300,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.5666666665828046,
+                "mean_ms": 283.3333332914023,
+                "median_ms": 283.3333332914023
+              },
+              "app": {
+                "events": 2,
+                "total_s": 0.45,
+                "mean_ms": 225.0,
+                "median_ms": 225.0
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 301,
+              "baseline": {
+                "events": 7,
+                "total_s": 2.1666666663460177,
+                "mean_ms": 309.52380947800253,
+                "median_ms": 283.3333332914023
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.200001,
+                "mean_ms": 275.00012499999997,
+                "median_ms": 216.667
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 300,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.3833333331286113,
+                "mean_ms": 276.66666662572226,
+                "median_ms": 266.6666666272022
+              },
+              "app": {
+                "events": 9,
+                "total_s": 2.133334,
+                "mean_ms": 237.0371111111111,
+                "median_ms": 200.0
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 300,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.5666666665828046,
+                "mean_ms": 283.3333332914023,
+                "median_ms": 283.3333332914023
+              },
+              "app": {
+                "events": 4,
+                "total_s": 0.9666669999999999,
+                "mean_ms": 241.66674999999998,
+                "median_ms": 233.3335
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 301,
+              "baseline": {
+                "events": 7,
+                "total_s": 1.949999999711416,
+                "mean_ms": 278.5714285302023,
+                "median_ms": 283.3333332914023
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.083332,
+                "mean_ms": 260.4165,
+                "median_ms": 233.33300000000003
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1786,
+              "baseline": {
+                "events": 37,
+                "total_s": 10.833333331730088,
+                "mean_ms": 292.79279274946185,
+                "median_ms": 266.6666666272022
+              },
+              "app": {
+                "events": 50,
+                "total_s": 12.783337999999999,
+                "mean_ms": 255.66675999999998,
+                "median_ms": 216.667
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 301,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.3999999997928114,
+                "mean_ms": 233.3333332988019,
+                "median_ms": 224.99999996670184
+              },
+              "app": {
+                "events": 7,
+                "total_s": 1.583334,
+                "mean_ms": 226.19057142857145,
+                "median_ms": 216.667
+              }
+            }
+          ]
+        },
+        {
+          "id": "B06",
+          "rows": 3603,
+          "scenarios": 8,
+          "valid_gaze_rows": 3508,
+          "invalid_gaze_rows": 95,
+          "export_grid_hz": 60.00000000887951,
+          "gaze_declared_hz": 60.1145942765715,
+          "effective_detection_hz": 60.00000000887951,
+          "resampled": false,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 7,
+          "adjacent_valid_pair_denominator": 3494,
+          "baseline": {
+            "events": 74,
+            "total_s": 22.566666663326984,
+            "mean_ms": 304.9549549098241,
+            "median_ms": 249.99999996300204
+          },
+          "app": {
+            "events": 83,
+            "total_s": 24.150003,
+            "mean_ms": 290.9638915662651,
+            "median_ms": 233.33300000000003
+          },
+          "vendor": {
+            "in_range_rows": 3110,
+            "in_range_while_raw_gaze_invalid": 0
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 3,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 149,
+          "app_only_fixation_rows": 122,
+          "baseline_only_fixation_rows": 27,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 243,
+              "total_duration_ms": 41966.67,
+              "mean_duration_ms": 172.7,
+              "median_duration_ms": 116.67,
+              "max_duration_ms": 816.67,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 140,
+              "total_duration_ms": 32233.33,
+              "mean_duration_ms": 230.24,
+              "median_duration_ms": 183.33,
+              "max_duration_ms": 1050.0,
+              "retained_dwell_percent": 76.81
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 83,
+              "total_duration_ms": 24150.0,
+              "mean_duration_ms": 290.96,
+              "median_duration_ms": 233.33,
+              "max_duration_ms": 1033.33,
+              "retained_dwell_percent": 57.55
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 55,
+              "total_duration_ms": 18733.33,
+              "mean_duration_ms": 340.61,
+              "median_duration_ms": 266.67,
+              "max_duration_ms": 950.0,
+              "retained_dwell_percent": 44.64
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 39,
+              "total_duration_ms": 15566.67,
+              "mean_duration_ms": 399.15,
+              "median_duration_ms": 333.33,
+              "max_duration_ms": 866.67,
+              "retained_dwell_percent": 37.09
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 13,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 301,
+              "baseline": {
+                "events": 1,
+                "total_s": 0.2333333332988019,
+                "mean_ms": 233.3333332988019,
+                "median_ms": 233.3333332988019
+              },
+              "app": {
+                "events": 1,
+                "total_s": 0.233333,
+                "mean_ms": 233.33300000000003,
+                "median_ms": 233.33300000000003
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 301,
+              "baseline": {
+                "events": 6,
+                "total_s": 2.4999999996300204,
+                "mean_ms": 416.6666666050034,
+                "median_ms": 258.3333332951021
+              },
+              "app": {
+                "events": 6,
+                "total_s": 2.4833339999999997,
+                "mean_ms": 413.88899999999995,
+                "median_ms": 258.3335
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 300,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.0833333331730088,
+                "mean_ms": 270.8333332932522,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 7,
+                "total_s": 1.6833339999999999,
+                "mean_ms": 240.4762857142857,
+                "median_ms": 216.667
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 301,
+              "baseline": {
+                "events": 10,
+                "total_s": 2.8499999995782233,
+                "mean_ms": 284.9999999578223,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 11,
+                "total_s": 3.000001,
+                "mean_ms": 272.72736363636363,
+                "median_ms": 233.33300000000003
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 301,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.5499999999186045,
+                "mean_ms": 274.9999999593023,
+                "median_ms": 274.9999999593023
+              },
+              "app": {
+                "events": 2,
+                "total_s": 0.416667,
+                "mean_ms": 208.33350000000002,
+                "median_ms": 208.33350000000002
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1785,
+              "baseline": {
+                "events": 47,
+                "total_s": 14.233333331226916,
+                "mean_ms": 302.83687938780673,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 50,
+                "total_s": 14.816667999999998,
+                "mean_ms": 296.33335999999997,
+                "median_ms": 250.0
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 301,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.116666666501409,
+                "mean_ms": 279.16666662535226,
+                "median_ms": 274.9999999593023
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.516666,
+                "mean_ms": 252.77766666666668,
+                "median_ms": 233.33300000000003
+              }
+            }
+          ]
+        },
+        {
+          "id": "B07",
+          "rows": 3660,
+          "scenarios": 8,
+          "valid_gaze_rows": 3546,
+          "invalid_gaze_rows": 114,
+          "export_grid_hz": 60.00000000887951,
+          "gaze_declared_hz": 60.1128324243912,
+          "effective_detection_hz": 60.00000000887951,
+          "resampled": false,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 10,
+          "adjacent_valid_pair_denominator": 3536,
+          "baseline": {
+            "events": 65,
+            "total_s": 21.833333330102178,
+            "mean_ms": 335.8974358477258,
+            "median_ms": 266.6666666272022
+          },
+          "app": {
+            "events": 76,
+            "total_s": 23.916666999999997,
+            "mean_ms": 314.6929868421052,
+            "median_ms": 233.33300000000003
+          },
+          "vendor": {
+            "in_range_rows": 3164,
+            "in_range_while_raw_gaze_invalid": 65
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 3,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 185,
+          "app_only_fixation_rows": 155,
+          "baseline_only_fixation_rows": 30,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 228,
+              "total_duration_ms": 41450.01,
+              "mean_duration_ms": 181.8,
+              "median_duration_ms": 116.67,
+              "max_duration_ms": 900.0,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 132,
+              "total_duration_ms": 31933.34,
+              "mean_duration_ms": 241.92,
+              "median_duration_ms": 166.67,
+              "max_duration_ms": 866.67,
+              "retained_dwell_percent": 77.04
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 76,
+              "total_duration_ms": 23916.67,
+              "mean_duration_ms": 314.69,
+              "median_duration_ms": 233.33,
+              "max_duration_ms": 816.67,
+              "retained_dwell_percent": 57.7
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 54,
+              "total_duration_ms": 20033.34,
+              "mean_duration_ms": 370.99,
+              "median_duration_ms": 300.0,
+              "max_duration_ms": 816.67,
+              "retained_dwell_percent": 48.33
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 44,
+              "total_duration_ms": 18166.67,
+              "mean_duration_ms": 412.88,
+              "median_duration_ms": 350.0,
+              "max_duration_ms": 816.67,
+              "retained_dwell_percent": 43.83
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 63,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 301,
+              "baseline": {
+                "events": 1,
+                "total_s": 0.43333333326920354,
+                "mean_ms": 433.33333326920354,
+                "median_ms": 433.33333326920354
+              },
+              "app": {
+                "events": 2,
+                "total_s": 0.633333,
+                "mean_ms": 316.66650000000004,
+                "median_ms": 316.66650000000004
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 301,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.2499999998150102,
+                "mean_ms": 312.49999995375254,
+                "median_ms": 274.9999999593023
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.2,
+                "mean_ms": 300.0,
+                "median_ms": 275.0
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 301,
+              "baseline": {
+                "events": 10,
+                "total_s": 2.9833333328918243,
+                "mean_ms": 298.3333332891824,
+                "median_ms": 224.99999996670184
+              },
+              "app": {
+                "events": 10,
+                "total_s": 2.9833330000000005,
+                "mean_ms": 298.3333,
+                "median_ms": 225.0
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 301,
+              "baseline": {
+                "events": 6,
+                "total_s": 2.44999999963742,
+                "mean_ms": 408.33333327290336,
+                "median_ms": 366.666666612403
+              },
+              "app": {
+                "events": 7,
+                "total_s": 2.6500000000000004,
+                "mean_ms": 378.5714285714286,
+                "median_ms": 300.0
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 301,
+              "baseline": {
+                "events": 3,
+                "total_s": 1.966666666375616,
+                "mean_ms": 655.5555554585387,
+                "median_ms": 816.6666665458067
+              },
+              "app": {
+                "events": 4,
+                "total_s": 2.1666670000000003,
+                "mean_ms": 541.6667500000001,
+                "median_ms": 575.0
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1791,
+              "baseline": {
+                "events": 37,
+                "total_s": 11.833333331582097,
+                "mean_ms": 319.8198197724891,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 45,
+                "total_s": 13.416666999999999,
+                "mean_ms": 298.1481555555555,
+                "median_ms": 233.33300000000003
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 301,
+              "baseline": {
+                "events": 4,
+                "total_s": 0.9166666665310075,
+                "mean_ms": 229.16666663275186,
+                "median_ms": 224.99999996670184
+              },
+              "app": {
+                "events": 4,
+                "total_s": 0.8666670000000001,
+                "mean_ms": 216.66675,
+                "median_ms": 208.33350000000002
+              }
+            }
+          ]
+        },
+        {
+          "id": "B08",
+          "rows": 3714,
+          "scenarios": 8,
+          "valid_gaze_rows": 3399,
+          "invalid_gaze_rows": 315,
+          "export_grid_hz": 60.00000000887951,
+          "gaze_declared_hz": 60.1128361424378,
+          "effective_detection_hz": 60.00000000887951,
+          "resampled": false,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 39,
+          "adjacent_valid_pair_denominator": 3361,
+          "baseline": {
+            "events": 75,
+            "total_s": 29.41666666231324,
+            "mean_ms": 392.2222221641765,
+            "median_ms": 299.99999995560245
+          },
+          "app": {
+            "events": 79,
+            "total_s": 30.183334999999996,
+            "mean_ms": 382.06753164556955,
+            "median_ms": 283.333
+          },
+          "vendor": {
+            "in_range_rows": 2977,
+            "in_range_while_raw_gaze_invalid": 6
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 3,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 84,
+          "app_only_fixation_rows": 65,
+          "baseline_only_fixation_rows": 19,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 174,
+              "total_duration_ms": 41300.01,
+              "mean_duration_ms": 237.36,
+              "median_duration_ms": 150.0,
+              "max_duration_ms": 1566.67,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 112,
+              "total_duration_ms": 34650.0,
+              "mean_duration_ms": 309.38,
+              "median_duration_ms": 216.67,
+              "max_duration_ms": 1566.67,
+              "retained_dwell_percent": 83.9
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 79,
+              "total_duration_ms": 30183.33,
+              "mean_duration_ms": 382.07,
+              "median_duration_ms": 283.33,
+              "max_duration_ms": 1800.0,
+              "retained_dwell_percent": 73.08
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 60,
+              "total_duration_ms": 26950.0,
+              "mean_duration_ms": 449.17,
+              "median_duration_ms": 333.33,
+              "max_duration_ms": 1566.67,
+              "retained_dwell_percent": 65.25
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 49,
+              "total_duration_ms": 24250.0,
+              "mean_duration_ms": 494.9,
+              "median_duration_ms": 366.67,
+              "max_duration_ms": 1566.67,
+              "retained_dwell_percent": 58.72
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 129,
+              "baseline": {
+                "events": 1,
+                "total_s": 0.29999999995560245,
+                "mean_ms": 299.99999995560245,
+                "median_ms": 299.99999995560245
+              },
+              "app": {
+                "events": 1,
+                "total_s": 0.3,
+                "mean_ms": 300.0,
+                "median_ms": 300.0
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 301,
+              "baseline": {
+                "events": 1,
+                "total_s": 0.21666666663460177,
+                "mean_ms": 216.66666663460177,
+                "median_ms": 216.66666663460177
+              },
+              "app": {
+                "events": 1,
+                "total_s": 0.216667,
+                "mean_ms": 216.667,
+                "median_ms": 216.667
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 300,
+              "baseline": {
+                "events": 10,
+                "total_s": 2.816666666249823,
+                "mean_ms": 281.6666666249823,
+                "median_ms": 258.3333332951021
+              },
+              "app": {
+                "events": 11,
+                "total_s": 3.033333,
+                "mean_ms": 275.75754545454544,
+                "median_ms": 250.0
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 300,
+              "baseline": {
+                "events": 7,
+                "total_s": 1.949999999711416,
+                "mean_ms": 278.5714285302023,
+                "median_ms": 249.99999996300204
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.116667,
+                "mean_ms": 264.583375,
+                "median_ms": 233.3335
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 300,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.8833333330546154,
+                "mean_ms": 313.8888888424359,
+                "median_ms": 283.3333332914023
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.883332,
+                "mean_ms": 313.88866666666667,
+                "median_ms": 283.333
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 300,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.2833333331434105,
+                "mean_ms": 320.83333328585263,
+                "median_ms": 308.33333328770254
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.2833329999999998,
+                "mean_ms": 320.83324999999996,
+                "median_ms": 308.33299999999997
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1784,
+              "baseline": {
+                "events": 42,
+                "total_s": 19.966666663711763,
+                "mean_ms": 475.39682532647055,
+                "median_ms": 333.3333332840027
+              },
+              "app": {
+                "events": 44,
+                "total_s": 20.383336,
+                "mean_ms": 463.2576363636364,
+                "median_ms": 333.33299999999997
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 300,
+              "baseline": {
+                "events": 4,
+                "total_s": 0.9999999998520082,
+                "mean_ms": 249.99999996300204,
+                "median_ms": 241.66666663090197
+              },
+              "app": {
+                "events": 4,
+                "total_s": 0.9666669999999999,
+                "mean_ms": 241.66674999999998,
+                "median_ms": 233.3335
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "csv-02",
+      "sha256": "a5f8aabfd78d8653414fcf777ea30e662f24ca9166860ea53af2f0f76bf28243",
+      "status": "not_compared",
+      "reason": "malformed_row"
+    },
+    {
+      "id": "csv-03",
+      "sha256": "7388f4bf36291bda6fe60aabf9db595597f27cd5140b38ac53c171195d9a4308",
+      "status": "not_compared",
+      "reason": "malformed_row"
+    },
+    {
+      "id": "csv-04",
+      "sha256": "c88dc641bbe755c359cc5ecc9b52d18162846caa2b836f4d751d8a760d91a5c8",
+      "status": "not_compared",
+      "reason": "malformed_row"
+    },
+    {
+      "id": "csv-05",
+      "sha256": "f69e2eefc75f9ac6f996039a8564a13ac9ab21157dba5b093d7680fb4d926a06",
+      "status": "compared",
+      "blocks": [
+        {
+          "id": "B01",
+          "rows": 27425,
+          "scenarios": 8,
+          "valid_gaze_rows": 26786,
+          "invalid_gaze_rows": 639,
+          "export_grid_hz": 300.3138028056699,
+          "gaze_declared_hz": 60.1194970842482,
+          "effective_detection_hz": 60.1194970842482,
+          "resampled": true,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 1038,
+          "adjacent_valid_pair_denominator": 26766,
+          "baseline": {
+            "events": 127,
+            "total_s": 37.89702602302476,
+            "mean_ms": 298.40177970885634,
+            "median_ms": 229.7596692372119
+          },
+          "app": {
+            "events": 123,
+            "total_s": 39.604462999999996,
+            "mean_ms": 321.98750406504064,
+            "median_ms": 282.77000000000004
+          },
+          "vendor": {
+            "in_range_rows": 24145,
+            "in_range_while_raw_gaze_invalid": 0
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 4,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "gaze_resampled_to_eye_rate",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 860,
+          "app_only_fixation_rows": 683,
+          "baseline_only_fixation_rows": 177,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 276,
+              "total_duration_ms": 58500.16,
+              "mean_duration_ms": 211.96,
+              "median_duration_ms": 149.7,
+              "max_duration_ms": 1247.51,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 183,
+              "total_duration_ms": 48436.85,
+              "mean_duration_ms": 264.68,
+              "median_duration_ms": 199.6,
+              "max_duration_ms": 1247.51,
+              "retained_dwell_percent": 82.8
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 123,
+              "total_duration_ms": 39604.46,
+              "mean_duration_ms": 321.99,
+              "median_duration_ms": 282.77,
+              "max_duration_ms": 881.58,
+              "retained_dwell_percent": 67.7
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 92,
+              "total_duration_ms": 33167.28,
+              "mean_duration_ms": 360.51,
+              "median_duration_ms": 316.04,
+              "max_duration_ms": 881.58,
+              "retained_dwell_percent": 56.7
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 64,
+              "total_duration_ms": 26846.53,
+              "mean_duration_ms": 419.48,
+              "median_duration_ms": 365.94,
+              "max_duration_ms": 881.58,
+              "retained_dwell_percent": 45.89
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 324,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.46950888931082435,
+                "mean_ms": 234.7544446554122,
+                "median_ms": 234.7544446554122
+              },
+              "app": {
+                "events": 2,
+                "total_s": 0.482373,
+                "mean_ms": 241.1865,
+                "median_ms": 241.1865
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 1503,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 1503,
+              "baseline": {
+                "events": 10,
+                "total_s": 2.5306862118881313,
+                "mean_ms": 253.06862118881313,
+                "median_ms": 221.4350435402115
+              },
+              "app": {
+                "events": 9,
+                "total_s": 2.378597,
+                "mean_ms": 264.2885555555556,
+                "median_ms": 249.50300000000001
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 1506,
+              "baseline": {
+                "events": 8,
+                "total_s": 2.270957890141718,
+                "mean_ms": 283.8697362677147,
+                "median_ms": 223.09996867961158
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.461764,
+                "mean_ms": 307.7205,
+                "median_ms": 274.4535
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 1502,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.4218460690476737,
+                "mean_ms": 355.46151726191846,
+                "median_ms": 371.27830608621923
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.480385,
+                "mean_ms": 370.09625,
+                "median_ms": 374.25450000000006
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 18081,
+              "baseline": {
+                "events": 93,
+                "total_s": 27.214866328633818,
+                "mean_ms": 292.6329712756324,
+                "median_ms": 226.42981895841174
+              },
+              "app": {
+                "events": 90,
+                "total_s": 28.759393,
+                "mean_ms": 319.5488111111111,
+                "median_ms": 282.77000000000004
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1503,
+              "baseline": {
+                "events": 3,
+                "total_s": 0.7192476602208373,
+                "mean_ms": 239.74922007361243,
+                "median_ms": 216.44026812201122
+              },
+              "app": {
+                "events": 3,
+                "total_s": 0.731876,
+                "mean_ms": 243.95866666666666,
+                "median_ms": 216.23600000000002
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 1503,
+              "baseline": {
+                "events": 7,
+                "total_s": 3.2699129737817696,
+                "mean_ms": 467.13042482596705,
+                "median_ms": 289.69697425561503
+              },
+              "app": {
+                "events": 7,
+                "total_s": 3.310075,
+                "mean_ms": 472.86785714285713,
+                "median_ms": 316.03700000000003
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "csv-06",
+      "sha256": "b3ca70eda706a98b1da24c6caf079c0a5cdb7c62f5c1020d9a0b98b15f39fd59",
+      "status": "compared",
+      "blocks": [
+        {
+          "id": "B01",
+          "rows": 5491,
+          "scenarios": 8,
+          "valid_gaze_rows": 5372,
+          "invalid_gaze_rows": 119,
+          "export_grid_hz": 60.119497097594525,
+          "gaze_declared_hz": 60.1194970842482,
+          "effective_detection_hz": 60.1194970842482,
+          "resampled": false,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 16,
+          "adjacent_valid_pair_denominator": 5352,
+          "baseline": {
+            "events": 122,
+            "total_s": 38.68961172819037,
+            "mean_ms": 317.127964985167,
+            "median_ms": 266.1366240976122
+          },
+          "app": {
+            "events": 122,
+            "total_s": 38.739520999999996,
+            "mean_ms": 317.5370573770491,
+            "median_ms": 266.137
+          },
+          "vendor": {
+            "in_range_rows": 4881,
+            "in_range_while_raw_gaze_invalid": 0
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 3,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 3,
+          "app_only_fixation_rows": 3,
+          "baseline_only_fixation_rows": 0,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 283,
+              "total_duration_ms": 58533.43,
+              "mean_duration_ms": 206.83,
+              "median_duration_ms": 149.7,
+              "max_duration_ms": 1247.51,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 186,
+              "total_duration_ms": 48669.72,
+              "mean_duration_ms": 261.67,
+              "median_duration_ms": 199.6,
+              "max_duration_ms": 1247.51,
+              "retained_dwell_percent": 83.15
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 122,
+              "total_duration_ms": 38739.52,
+              "mean_duration_ms": 317.54,
+              "median_duration_ms": 266.14,
+              "max_duration_ms": 1081.18,
+              "retained_dwell_percent": 66.18
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 89,
+              "total_duration_ms": 32202.54,
+              "mean_duration_ms": 361.83,
+              "median_duration_ms": 299.4,
+              "max_duration_ms": 1081.18,
+              "retained_dwell_percent": 55.02
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 65,
+              "total_duration_ms": 26530.49,
+              "mean_duration_ms": 408.16,
+              "median_duration_ms": 365.94,
+              "max_duration_ms": 881.58,
+              "retained_dwell_percent": 45.33
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 67,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.4657390921708213,
+                "mean_ms": 232.86954608541066,
+                "median_ms": 232.86954608541066
+              },
+              "app": {
+                "events": 2,
+                "total_s": 0.46574,
+                "mean_ms": 232.87,
+                "median_ms": 232.87
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 300,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 301,
+              "baseline": {
+                "events": 9,
+                "total_s": 2.4617637729029127,
+                "mean_ms": 273.5293081003236,
+                "median_ms": 249.50308509151142
+              },
+              "app": {
+                "events": 9,
+                "total_s": 2.4617660000000003,
+                "mean_ms": 273.5295555555556,
+                "median_ms": 249.50300000000001
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 301,
+              "baseline": {
+                "events": 8,
+                "total_s": 2.4118631558846104,
+                "mean_ms": 301.4828944855763,
+                "median_ms": 282.77016310371295
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.411864,
+                "mean_ms": 301.483,
+                "median_ms": 282.7705
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 301,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.4304843545246655,
+                "mean_ms": 357.62108863116634,
+                "median_ms": 365.93785813421675
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.430485,
+                "mean_ms": 357.62125,
+                "median_ms": 365.938
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 3620,
+              "baseline": {
+                "events": 91,
+                "total_s": 28.260382771365194,
+                "mean_ms": 310.55365682818893,
+                "median_ms": 266.1366240976122
+              },
+              "app": {
+                "events": 91,
+                "total_s": 28.310287999999996,
+                "mean_ms": 311.10206593406593,
+                "median_ms": 266.137
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 300,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.5322732481952244,
+                "mean_ms": 266.1366240976122,
+                "median_ms": 266.1366240976122
+              },
+              "app": {
+                "events": 2,
+                "total_s": 0.532273,
+                "mean_ms": 266.1365,
+                "median_ms": 266.1365
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 301,
+              "baseline": {
+                "events": 6,
+                "total_s": 3.127105333146943,
+                "mean_ms": 521.1842221911572,
+                "median_ms": 349.304319128116
+              },
+              "app": {
+                "events": 6,
+                "total_s": 3.1271050000000002,
+                "mean_ms": 521.1841666666667,
+                "median_ms": 349.30400000000003
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "csv-07",
+      "sha256": "72e4ab193d0ba57ae202ea8ff16309a5161765ae0ecb851247cb113e590ccf91",
+      "status": "not_compared",
+      "reason": "multiple_clocks"
+    },
+    {
+      "id": "csv-08",
+      "sha256": "92d9847d6fcd3fe13b50afc5a37b5e6a2df1298ba8dad03a28dfba6e77d24f0a",
+      "status": "compared",
+      "blocks": [
+        {
+          "id": "B01",
+          "rows": 38843,
+          "scenarios": 10,
+          "valid_gaze_rows": 33186,
+          "invalid_gaze_rows": 5657,
+          "export_grid_hz": 300.33206767622016,
+          "gaze_declared_hz": 60.1128604388544,
+          "effective_detection_hz": 60.1128604388544,
+          "resampled": true,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 775,
+          "adjacent_valid_pair_denominator": 33098,
+          "baseline": {
+            "events": 107,
+            "total_s": 26.410766127549437,
+            "mean_ms": 246.82958997709753,
+            "median_ms": 216.42710518037234
+          },
+          "app": {
+            "events": 96,
+            "total_s": 26.367067000000006,
+            "mean_ms": 274.65694791666675,
+            "median_ms": 232.89499999999998
+          },
+          "vendor": {
+            "in_range_rows": 28224,
+            "in_range_while_raw_gaze_invalid": 302
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 4,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "gaze_resampled_to_eye_rate",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 900,
+          "app_only_fixation_rows": 442,
+          "baseline_only_fixation_rows": 458,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 327,
+              "total_duration_ms": 55246.12,
+              "mean_duration_ms": 168.95,
+              "median_duration_ms": 133.08,
+              "max_duration_ms": 682.05,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 177,
+              "total_duration_ms": 38910.16,
+              "mean_duration_ms": 219.83,
+              "median_duration_ms": 182.99,
+              "max_duration_ms": 682.05,
+              "retained_dwell_percent": 70.43
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 96,
+              "total_duration_ms": 26367.07,
+              "mean_duration_ms": 274.66,
+              "median_duration_ms": 232.89,
+              "max_duration_ms": 682.05,
+              "retained_dwell_percent": 47.73
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 59,
+              "total_duration_ms": 18897.78,
+              "mean_duration_ms": 320.3,
+              "median_duration_ms": 282.8,
+              "max_duration_ms": 682.05,
+              "retained_dwell_percent": 34.21
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 31,
+              "total_duration_ms": 12077.28,
+              "mean_duration_ms": 389.59,
+              "median_duration_ms": 365.98,
+              "max_duration_ms": 715.32,
+              "retained_dwell_percent": 21.86
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 1841,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 906,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 1505,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.335188756574297,
+                "mean_ms": 333.79718914357426,
+                "median_ms": 281.35523673448404
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.3474650000000001,
+                "mean_ms": 336.86625000000004,
+                "median_ms": 316.072
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 1506,
+              "baseline": {
+                "events": 8,
+                "total_s": 2.4306428735641816,
+                "mean_ms": 303.8303591955227,
+                "median_ms": 296.3386517085098
+              },
+              "app": {
+                "events": 6,
+                "total_s": 2.129328,
+                "mean_ms": 354.88800000000003,
+                "median_ms": 299.437
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 1505,
+              "baseline": {
+                "events": 8,
+                "total_s": 1.7447354325310016,
+                "mean_ms": 218.0919290663752,
+                "median_ms": 209.76780963636088
+              },
+              "app": {
+                "events": 8,
+                "total_s": 1.829891,
+                "mean_ms": 228.73637499999998,
+                "median_ms": 216.26000000000002
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 1507,
+              "baseline": {
+                "events": 4,
+                "total_s": 0.8523898296334664,
+                "mean_ms": 213.0974574083666,
+                "median_ms": 208.10298575035802
+              },
+              "app": {
+                "events": 4,
+                "total_s": 0.981487,
+                "mean_ms": 245.37175,
+                "median_ms": 241.21300000000002
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1507,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.0488390481818044,
+                "mean_ms": 209.76780963636088,
+                "median_ms": 203.10851409234942
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.1977470000000001,
+                "mean_ms": 239.54940000000002,
+                "median_ms": 216.26000000000002
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 1504,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.43951350590475613,
+                "mean_ms": 219.75675295237806,
+                "median_ms": 219.75675295237806
+              },
+              "app": {
+                "events": 1,
+                "total_s": 0.399249,
+                "mean_ms": 399.249,
+                "median_ms": 399.249
+              }
+            },
+            {
+              "id": "S09",
+              "rows": 1506,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.4850229063145548,
+                "mean_ms": 247.50381771909247,
+                "median_ms": 218.0919290663752
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.3308300000000002,
+                "mean_ms": 332.70750000000004,
+                "median_ms": 291.119
+              }
+            },
+            {
+              "id": "S10",
+              "rows": 25556,
+              "baseline": {
+                "events": 70,
+                "total_s": 17.074433774845375,
+                "mean_ms": 243.92048249779106,
+                "median_ms": 216.42710518037234
+              },
+              "app": {
+                "events": 64,
+                "total_s": 17.15107,
+                "mean_ms": 267.98546875,
+                "median_ms": 232.89499999999998
+              }
+            }
+          ]
+        },
+        {
+          "id": "B02",
+          "rows": 38698,
+          "scenarios": 10,
+          "valid_gaze_rows": 35935,
+          "invalid_gaze_rows": 2763,
+          "export_grid_hz": 300.33206767622016,
+          "gaze_declared_hz": 60.1169054817693,
+          "effective_detection_hz": 60.1169054817693,
+          "resampled": true,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 519,
+          "adjacent_valid_pair_denominator": 35895,
+          "baseline": {
+            "events": 128,
+            "total_s": 31.734872914986596,
+            "mean_ms": 247.9286946483328,
+            "median_ms": 216.42710518037234
+          },
+          "app": {
+            "events": 116,
+            "total_s": 32.204094000000005,
+            "mean_ms": 277.6215,
+            "median_ms": 249.514
+          },
+          "vendor": {
+            "in_range_rows": 32008,
+            "in_range_while_raw_gaze_invalid": 84
+          },
+          "app_events_under_200ms": 1,
+          "app_short_event_durations_ms": [
+            199.77900000000002
+          ],
+          "event_warning_count": 5,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "gaze_resampled_to_eye_rate",
+            "fixation 17:stimulus-span-149:45: stored detector metadata does not fit its timestamps; duration was measured from the exported rows",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 1421,
+          "app_only_fixation_rows": 777,
+          "baseline_only_fixation_rows": 644,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 385,
+              "total_duration_ms": 66088.1,
+              "mean_duration_ms": 171.66,
+              "median_duration_ms": 133.07,
+              "max_duration_ms": 565.56,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 216,
+              "total_duration_ms": 47607.45,
+              "mean_duration_ms": 220.4,
+              "median_duration_ms": 182.98,
+              "max_duration_ms": 565.56,
+              "retained_dwell_percent": 72.04
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 116,
+              "total_duration_ms": 32204.09,
+              "mean_duration_ms": 277.62,
+              "median_duration_ms": 249.51,
+              "max_duration_ms": 615.47,
+              "retained_dwell_percent": 48.73
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 76,
+              "total_duration_ms": 23687.18,
+              "mean_duration_ms": 311.67,
+              "median_duration_ms": 299.42,
+              "max_duration_ms": 615.47,
+              "retained_dwell_percent": 35.84
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 51,
+              "total_duration_ms": 17965.0,
+              "mean_duration_ms": 352.25,
+              "median_duration_ms": 332.69,
+              "max_duration_ms": 615.47,
+              "retained_dwell_percent": 27.18
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 1701,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.4261949148167332,
+                "mean_ms": 213.0974574083666,
+                "median_ms": 213.0974574083666
+              },
+              "app": {
+                "events": 3,
+                "total_s": 0.632269,
+                "mean_ms": 210.75633333333332,
+                "median_ms": 216.245
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 906,
+              "baseline": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              },
+              "app": {
+                "events": 0,
+                "total_s": 0.0,
+                "mean_ms": null,
+                "median_ms": null
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 1503,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.211991789010085,
+                "mean_ms": 242.39835780201702,
+                "median_ms": 206.43816186435515
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.347375,
+                "mean_ms": 269.475,
+                "median_ms": 249.514
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 1505,
+              "baseline": {
+                "events": 7,
+                "total_s": 2.061051970871546,
+                "mean_ms": 294.4359958387923,
+                "median_ms": 279.6904128484812
+              },
+              "app": {
+                "events": 7,
+                "total_s": 2.14582,
+                "mean_ms": 306.5457142857143,
+                "median_ms": 299.417
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 1503,
+              "baseline": {
+                "events": 11,
+                "total_s": 2.5571694889003993,
+                "mean_ms": 232.46995353639994,
+                "median_ms": 213.0974574083666
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.2788929999999996,
+                "mean_ms": 284.86162499999995,
+                "median_ms": 282.782
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 1504,
+              "baseline": {
+                "events": 9,
+                "total_s": 2.487246885688279,
+                "mean_ms": 276.36076507647545,
+                "median_ms": 246.3939351284239
+              },
+              "app": {
+                "events": 9,
+                "total_s": 2.5616769999999995,
+                "mean_ms": 284.6307777777777,
+                "median_ms": 249.514
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1507,
+              "baseline": {
+                "events": 7,
+                "total_s": 1.5216490318066178,
+                "mean_ms": 217.3784331152311,
+                "median_ms": 213.0974574083666
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.364008,
+                "mean_ms": 227.3346666666667,
+                "median_ms": 216.245
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 1503,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.065487287041833,
+                "mean_ms": 266.37182176045826,
+                "median_ms": 214.76228129436947
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.197666,
+                "mean_ms": 299.4165,
+                "median_ms": 282.78249999999997
+              }
+            },
+            {
+              "id": "S09",
+              "rows": 1507,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.861273104551202,
+                "mean_ms": 310.212184091867,
+                "median_ms": 214.76228129436947
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.829769,
+                "mean_ms": 365.9538,
+                "median_ms": 249.514
+              }
+            },
+            {
+              "id": "S10",
+              "rows": 25559,
+              "baseline": {
+                "events": 77,
+                "total_s": 18.5428084422999,
+                "mean_ms": 240.81569405584287,
+                "median_ms": 219.75675295237806
+              },
+              "app": {
+                "events": 69,
+                "total_s": 18.846617000000002,
+                "mean_ms": 273.1393768115942,
+                "median_ms": 249.514
+              }
+            }
+          ]
+        },
+        {
+          "id": "B03",
+          "rows": 38859,
+          "scenarios": 10,
+          "valid_gaze_rows": 37144,
+          "invalid_gaze_rows": 1715,
+          "export_grid_hz": 300.33206767622016,
+          "gaze_declared_hz": 60.1160034042225,
+          "effective_detection_hz": 60.1160034042225,
+          "resampled": true,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 1624,
+          "adjacent_valid_pair_denominator": 37131,
+          "baseline": {
+            "events": 192,
+            "total_s": 53.584021594888185,
+            "mean_ms": 279.0834458067093,
+            "median_ms": 218.0919290663752
+          },
+          "app": {
+            "events": 177,
+            "total_s": 54.937445000000004,
+            "mean_ms": 310.38104519774015,
+            "median_ms": 249.518
+          },
+          "vendor": {
+            "in_range_rows": 33890,
+            "in_range_while_raw_gaze_invalid": 437
+          },
+          "app_events_under_200ms": 1,
+          "app_short_event_durations_ms": [
+            156.493
+          ],
+          "event_warning_count": 6,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "gaze_resampled_to_eye_rate",
+            "fixation 18:stimulus-span-399:145: stored detector metadata does not fit its timestamps; duration was measured from the exported rows",
+            "fixation 18:stimulus-span-401:145: stored detector metadata does not fit its timestamps; duration was measured from the exported rows",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 1981,
+          "app_only_fixation_rows": 1190,
+          "baseline_only_fixation_rows": 791,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 451,
+              "total_duration_ms": 88422.86,
+              "mean_duration_ms": 196.06,
+              "median_duration_ms": 149.71,
+              "max_duration_ms": 1164.41,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 285,
+              "total_duration_ms": 70906.57,
+              "mean_duration_ms": 248.79,
+              "median_duration_ms": 199.61,
+              "max_duration_ms": 1097.88,
+              "retained_dwell_percent": 80.19
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 177,
+              "total_duration_ms": 54937.44,
+              "mean_duration_ms": 310.38,
+              "median_duration_ms": 249.52,
+              "max_duration_ms": 1064.61,
+              "retained_dwell_percent": 62.13
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 124,
+              "total_duration_ms": 44640.74,
+              "mean_duration_ms": 360.01,
+              "median_duration_ms": 299.42,
+              "max_duration_ms": 1064.61,
+              "retained_dwell_percent": 50.49
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 89,
+              "total_duration_ms": 36439.92,
+              "mean_duration_ms": 409.44,
+              "median_duration_ms": 349.32,
+              "max_duration_ms": 964.8,
+              "retained_dwell_percent": 41.21
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 1847,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.1687063679740106,
+                "mean_ms": 233.74127359480212,
+                "median_ms": 219.75675295237806
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.2309539999999999,
+                "mean_ms": 246.1908,
+                "median_ms": 232.883
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 906,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.6892370888051857,
+                "mean_ms": 344.6185444025929,
+                "median_ms": 344.6185444025929
+              },
+              "app": {
+                "events": 1,
+                "total_s": 0.499035,
+                "mean_ms": 499.035,
+                "median_ms": 499.035
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 1507,
+              "baseline": {
+                "events": 7,
+                "total_s": 1.6248681127387954,
+                "mean_ms": 232.1240161055422,
+                "median_ms": 206.43816186435515
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.2143199999999998,
+                "mean_ms": 303.58,
+                "median_ms": 241.20049999999998
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 1505,
+              "baseline": {
+                "events": 8,
+                "total_s": 2.3740388614400842,
+                "mean_ms": 296.75485768001056,
+                "median_ms": 223.0864007243838
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.428641,
+                "mean_ms": 303.58012499999995,
+                "median_ms": 249.518
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 1506,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.5382972706666465,
+                "mean_ms": 307.6594541333293,
+                "median_ms": 229.74569626839525
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.746623,
+                "mean_ms": 349.3246,
+                "median_ms": 299.421
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 1506,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.5882419872467324,
+                "mean_ms": 264.7069978744554,
+                "median_ms": 264.7069978744554
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.8630660000000003,
+                "mean_ms": 310.511,
+                "median_ms": 291.10400000000004
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1506,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.3818038253823772,
+                "mean_ms": 230.30063756372954,
+                "median_ms": 204.7733379783523
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.2642229999999999,
+                "mean_ms": 252.84459999999999,
+                "median_ms": 232.883
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 1504,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.3451776998903142,
+                "mean_ms": 269.03553997806284,
+                "median_ms": 253.05323067243535
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.4472019999999999,
+                "mean_ms": 361.80049999999994,
+                "median_ms": 349.32450000000006
+              }
+            },
+            {
+              "id": "S09",
+              "rows": 1505,
+              "baseline": {
+                "events": 10,
+                "total_s": 3.196461861125499,
+                "mean_ms": 319.6461861125499,
+                "median_ms": 243.06428735641816
+              },
+              "app": {
+                "events": 10,
+                "total_s": 3.3435380000000006,
+                "mean_ms": 334.35380000000004,
+                "median_ms": 266.15250000000003
+              }
+            },
+            {
+              "id": "S10",
+              "rows": 25567,
+              "baseline": {
+                "events": 138,
+                "total_s": 38.67718851961854,
+                "mean_ms": 280.26948202622134,
+                "median_ms": 218.0919290663752
+              },
+              "app": {
+                "events": 129,
+                "total_s": 39.899843000000004,
+                "mean_ms": 309.3011085271318,
+                "median_ms": 249.518
+              }
+            }
+          ]
+        },
+        {
+          "id": "B04",
+          "rows": 38707,
+          "scenarios": 10,
+          "valid_gaze_rows": 36557,
+          "invalid_gaze_rows": 2150,
+          "export_grid_hz": 300.33206767622016,
+          "gaze_declared_hz": 60.1135353293756,
+          "effective_detection_hz": 60.1135353293756,
+          "resampled": true,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 701,
+          "adjacent_valid_pair_denominator": 36501,
+          "baseline": {
+            "events": 125,
+            "total_s": 31.991255793431037,
+            "mean_ms": 255.93004634744833,
+            "median_ms": 213.0974574083666
+          },
+          "app": {
+            "events": 117,
+            "total_s": 32.588322999999995,
+            "mean_ms": 278.5326752136752,
+            "median_ms": 232.893
+          },
+          "vendor": {
+            "in_range_rows": 32320,
+            "in_range_while_raw_gaze_invalid": 0
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 4,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "gaze_resampled_to_eye_rate",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 1176,
+          "app_only_fixation_rows": 675,
+          "baseline_only_fixation_rows": 501,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 429,
+              "total_duration_ms": 71764.2,
+              "mean_duration_ms": 167.28,
+              "median_duration_ms": 133.08,
+              "max_duration_ms": 682.04,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 218,
+              "total_duration_ms": 48574.75,
+              "mean_duration_ms": 222.82,
+              "median_duration_ms": 199.62,
+              "max_duration_ms": 632.14,
+              "retained_dwell_percent": 67.69
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 117,
+              "total_duration_ms": 32588.32,
+              "mean_duration_ms": 278.53,
+              "median_duration_ms": 232.89,
+              "max_duration_ms": 632.14,
+              "retained_dwell_percent": 45.41
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 73,
+              "total_duration_ms": 24387.18,
+              "mean_duration_ms": 334.07,
+              "median_duration_ms": 299.43,
+              "max_duration_ms": 632.14,
+              "retained_dwell_percent": 33.98
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 46,
+              "total_duration_ms": 17267.33,
+              "mean_duration_ms": 375.38,
+              "median_duration_ms": 349.34,
+              "max_duration_ms": 632.14,
+              "retained_dwell_percent": 24.06
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 1717,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.4095466759567046,
+                "mean_ms": 204.7733379783523,
+                "median_ms": 204.7733379783523
+              },
+              "app": {
+                "events": 2,
+                "total_s": 0.515691,
+                "mean_ms": 257.8455,
+                "median_ms": 257.8455
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 904,
+              "baseline": {
+                "events": 3,
+                "total_s": 0.7125446232092258,
+                "mean_ms": 237.51487440307528,
+                "median_ms": 203.10851409234942
+              },
+              "app": {
+                "events": 3,
+                "total_s": 0.7485839999999999,
+                "mean_ms": 249.52799999999996,
+                "median_ms": 232.893
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 1503,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.3018922788542397,
+                "mean_ms": 260.37845577084795,
+                "median_ms": 229.74569626839525
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.447262,
+                "mean_ms": 289.4524,
+                "median_ms": 232.893
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 1506,
+              "baseline": {
+                "events": 6,
+                "total_s": 2.0643816186435515,
+                "mean_ms": 344.0636031072586,
+                "median_ms": 256.3828784444411
+              },
+              "app": {
+                "events": 6,
+                "total_s": 2.096033,
+                "mean_ms": 349.3388333333333,
+                "median_ms": 274.4805
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 1502,
+              "baseline": {
+                "events": 3,
+                "total_s": 1.00555362714573,
+                "mean_ms": 335.18454238191,
+                "median_ms": 352.9426638326072
+              },
+              "app": {
+                "events": 3,
+                "total_s": 1.0147460000000001,
+                "mean_ms": 338.2486666666667,
+                "median_ms": 349.339
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 1506,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.4683746674545262,
+                "mean_ms": 244.72911124242103,
+                "median_ms": 213.0974574083666
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.5138009999999997,
+                "mean_ms": 252.3001666666666,
+                "median_ms": 224.575
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1503,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.4961175180288535,
+                "mean_ms": 248.05875901442676,
+                "median_ms": 248.05875901442676
+              },
+              "app": {
+                "events": 2,
+                "total_s": 0.51569,
+                "mean_ms": 257.84499999999997,
+                "median_ms": 257.84499999999997
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 1505,
+              "baseline": {
+                "events": 3,
+                "total_s": 0.6193144855930655,
+                "mean_ms": 206.43816186435515,
+                "median_ms": 206.43816186435515
+              },
+              "app": {
+                "events": 3,
+                "total_s": 0.682042,
+                "mean_ms": 227.34733333333335,
+                "median_ms": 216.257
+              }
+            },
+            {
+              "id": "S09",
+              "rows": 1503,
+              "baseline": {
+                "events": 7,
+                "total_s": 1.7180982503549558,
+                "mean_ms": 245.44260719356512,
+                "median_ms": 209.76780963636088
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.596977,
+                "mean_ms": 266.16283333333337,
+                "median_ms": 224.575
+              }
+            },
+            {
+              "id": "S10",
+              "rows": 25558,
+              "baseline": {
+                "events": 88,
+                "total_s": 22.195432048190185,
+                "mean_ms": 252.22081872943392,
+                "median_ms": 213.0974574083666
+              },
+              "app": {
+                "events": 81,
+                "total_s": 22.457497000000004,
+                "mean_ms": 277.2530493827161,
+                "median_ms": 249.528
+              }
+            }
+          ]
+        },
+        {
+          "id": "B05",
+          "rows": 38542,
+          "scenarios": 10,
+          "valid_gaze_rows": 35633,
+          "invalid_gaze_rows": 2909,
+          "export_grid_hz": 300.33206767622016,
+          "gaze_declared_hz": 60.1228256608304,
+          "effective_detection_hz": 60.1228256608304,
+          "resampled": true,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 1368,
+          "adjacent_valid_pair_denominator": 35579,
+          "baseline": {
+            "events": 144,
+            "total_s": 42.7227105626055,
+            "mean_ms": 296.68549001809373,
+            "median_ms": 223.0864007243838
+          },
+          "app": {
+            "events": 134,
+            "total_s": 43.411142,
+            "mean_ms": 323.9637462686567,
+            "median_ms": 249.48899999999998
+          },
+          "vendor": {
+            "in_range_rows": 31256,
+            "in_range_while_raw_gaze_invalid": 364
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 5,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "gaze_resampled_to_eye_rate",
+            "invalid_sample_distance_using_geometry_fallback",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 1174,
+          "app_only_fixation_rows": 688,
+          "baseline_only_fixation_rows": 486,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 377,
+              "total_duration_ms": 73782.4,
+              "mean_duration_ms": 195.71,
+              "median_duration_ms": 149.69,
+              "max_duration_ms": 1530.2,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 225,
+              "total_duration_ms": 57382.52,
+              "mean_duration_ms": 255.03,
+              "median_duration_ms": 199.59,
+              "max_duration_ms": 1530.2,
+              "retained_dwell_percent": 77.77
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 134,
+              "total_duration_ms": 43411.14,
+              "mean_duration_ms": 323.96,
+              "median_duration_ms": 249.49,
+              "max_duration_ms": 1530.2,
+              "retained_dwell_percent": 58.84
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 84,
+              "total_duration_ms": 33065.65,
+              "mean_duration_ms": 393.64,
+              "median_duration_ms": 316.02,
+              "max_duration_ms": 1530.2,
+              "retained_dwell_percent": 44.82
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 56,
+              "total_duration_ms": 26129.84,
+              "mean_duration_ms": 466.6,
+              "median_duration_ms": 399.18,
+              "max_duration_ms": 1447.04,
+              "retained_dwell_percent": 35.41
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 1563,
+              "baseline": {
+                "events": 1,
+                "total_s": 0.30299794725252127,
+                "mean_ms": 302.99794725252127,
+                "median_ms": 302.99794725252127
+              },
+              "app": {
+                "events": 1,
+                "total_s": 0.31602,
+                "mean_ms": 316.02000000000004,
+                "median_ms": 316.02000000000004
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 902,
+              "baseline": {
+                "events": 1,
+                "total_s": 0.20310851409234942,
+                "mean_ms": 203.10851409234942,
+                "median_ms": 203.10851409234942
+              },
+              "app": {
+                "events": 1,
+                "total_s": 0.216224,
+                "mean_ms": 216.224,
+                "median_ms": 216.224
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 1505,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.5050007929465892,
+                "mean_ms": 250.8334654910982,
+                "median_ms": 219.75675295237806
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.546834,
+                "mean_ms": 257.80566666666664,
+                "median_ms": 224.5405
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 1504,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.4384078375064746,
+                "mean_ms": 287.6815675012949,
+                "median_ms": 249.72358290042962
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.280712,
+                "mean_ms": 320.178,
+                "median_ms": 307.7035
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 1507,
+              "baseline": {
+                "events": 5,
+                "total_s": 1.0954541169898846,
+                "mean_ms": 219.09082339797692,
+                "median_ms": 209.76780963636088
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.164283,
+                "mean_ms": 232.8566,
+                "median_ms": 232.857
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 1506,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.285244039994211,
+                "mean_ms": 214.20733999903518,
+                "median_ms": 206.43816186435515
+              },
+              "app": {
+                "events": 5,
+                "total_s": 1.180917,
+                "mean_ms": 236.18339999999998,
+                "median_ms": 232.857
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1505,
+              "baseline": {
+                "events": 9,
+                "total_s": 2.1509524607157005,
+                "mean_ms": 238.99471785730006,
+                "median_ms": 206.43816186435515
+              },
+              "app": {
+                "events": 8,
+                "total_s": 1.9959149999999999,
+                "mean_ms": 249.489375,
+                "median_ms": 216.224
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 1504,
+              "baseline": {
+                "events": 4,
+                "total_s": 0.8257526474574206,
+                "mean_ms": 206.43816186435515,
+                "median_ms": 204.7733379783523
+              },
+              "app": {
+                "events": 3,
+                "total_s": 0.681938,
+                "mean_ms": 227.3126666666667,
+                "median_ms": 232.857
+              }
+            },
+            {
+              "id": "S09",
+              "rows": 1506,
+              "baseline": {
+                "events": 4,
+                "total_s": 1.0188722182337528,
+                "mean_ms": 254.7180545584382,
+                "median_ms": 264.7069978744554
+              },
+              "app": {
+                "events": 4,
+                "total_s": 1.214181,
+                "mean_ms": 303.54525,
+                "median_ms": 266.122
+              }
+            },
+            {
+              "id": "S10",
+              "rows": 25540,
+              "baseline": {
+                "events": 103,
+                "total_s": 32.896919987416595,
+                "mean_ms": 319.387572693365,
+                "median_ms": 226.41604849638952
+              },
+              "app": {
+                "events": 97,
+                "total_s": 33.81411799999999,
+                "mean_ms": 348.5991546391752,
+                "median_ms": 282.755
+              }
+            }
+          ]
+        },
+        {
+          "id": "B06",
+          "rows": 38546,
+          "scenarios": 10,
+          "valid_gaze_rows": 37148,
+          "invalid_gaze_rows": 1398,
+          "export_grid_hz": 300.33206767622016,
+          "gaze_declared_hz": 60.1152707276887,
+          "effective_detection_hz": 60.1152707276887,
+          "resampled": true,
+          "method": "i-dt-normalized",
+          "exact_repeated_valid_gaze_pairs": 1476,
+          "adjacent_valid_pair_denominator": 37136,
+          "baseline": {
+            "events": 166,
+            "total_s": 47.17111998600515,
+            "mean_ms": 284.1633734096696,
+            "median_ms": 233.07534404040098
+          },
+          "app": {
+            "events": 153,
+            "total_s": 48.074305,
+            "mean_ms": 314.2111437908497,
+            "median_ms": 249.521
+          },
+          "vendor": {
+            "in_range_rows": 34172,
+            "in_range_while_raw_gaze_invalid": 51
+          },
+          "app_events_under_200ms": 0,
+          "app_short_event_durations_ms": [],
+          "event_warning_count": 4,
+          "event_warning_examples": [
+            "time_unit_inferred:seconds",
+            "stimulus_placement_missing",
+            "gaze_resampled_to_eye_rate",
+            "stimulus_placement_missing; legacy screen-normalized coordinates used"
+          ],
+          "row_label_disagreements": 1158,
+          "app_only_fixation_rows": 708,
+          "baseline_only_fixation_rows": 450,
+          "sensitivity": [
+            {
+              "min_fixation_duration_ms": 100,
+              "n_fixations": 403,
+              "total_duration_ms": 77966.9,
+              "mean_duration_ms": 193.47,
+              "median_duration_ms": 133.08,
+              "max_duration_ms": 998.08,
+              "retained_dwell_percent": 100.0
+            },
+            {
+              "min_fixation_duration_ms": 150,
+              "n_fixations": 238,
+              "total_duration_ms": 59385.92,
+              "mean_duration_ms": 249.52,
+              "median_duration_ms": 199.62,
+              "max_duration_ms": 931.54,
+              "retained_dwell_percent": 76.17
+            },
+            {
+              "min_fixation_duration_ms": 200,
+              "n_fixations": 153,
+              "total_duration_ms": 48074.31,
+              "mean_duration_ms": 314.21,
+              "median_duration_ms": 249.52,
+              "max_duration_ms": 1064.62,
+              "retained_dwell_percent": 61.66
+            },
+            {
+              "min_fixation_duration_ms": 250,
+              "n_fixations": 104,
+              "total_duration_ms": 38592.52,
+              "mean_duration_ms": 371.08,
+              "median_duration_ms": 332.69,
+              "max_duration_ms": 1064.62,
+              "retained_dwell_percent": 49.5
+            },
+            {
+              "min_fixation_duration_ms": 300,
+              "n_fixations": 76,
+              "total_duration_ms": 31589.3,
+              "mean_duration_ms": 415.65,
+              "median_duration_ms": 382.6,
+              "max_duration_ms": 1064.62,
+              "retained_dwell_percent": 40.52
+            }
+          ],
+          "provenance": {
+            "source": "raw_gaze",
+            "version": "fixation-v2"
+          },
+          "scenario_results": [
+            {
+              "id": "S01",
+              "rows": 1574,
+              "baseline": {
+                "events": 1,
+                "total_s": 0.23973463958441243,
+                "mean_ms": 239.73463958441243,
+                "median_ms": 239.73463958441243
+              },
+              "app": {
+                "events": 1,
+                "total_s": 0.249521,
+                "mean_ms": 249.521,
+                "median_ms": 249.521
+              }
+            },
+            {
+              "id": "S02",
+              "rows": 905,
+              "baseline": {
+                "events": 2,
+                "total_s": 0.5127657568888822,
+                "mean_ms": 256.3828784444411,
+                "median_ms": 256.3828784444411
+              },
+              "app": {
+                "events": 2,
+                "total_s": 0.598849,
+                "mean_ms": 299.42449999999997,
+                "median_ms": 299.42449999999997
+              }
+            },
+            {
+              "id": "S03",
+              "rows": 1504,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.5116600884906006,
+                "mean_ms": 251.94334808176677,
+                "median_ms": 208.10298575035802
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.580297,
+                "mean_ms": 263.38283333333334,
+                "median_ms": 216.251
+              }
+            },
+            {
+              "id": "S04",
+              "rows": 1503,
+              "baseline": {
+                "events": 8,
+                "total_s": 2.2341936550158437,
+                "mean_ms": 279.27420687698043,
+                "median_ms": 239.73463958441243
+              },
+              "app": {
+                "events": 8,
+                "total_s": 2.3122249999999998,
+                "mean_ms": 289.028125,
+                "median_ms": 257.838
+              }
+            },
+            {
+              "id": "S05",
+              "rows": 1504,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.8546138090071906,
+                "mean_ms": 309.10230150119844,
+                "median_ms": 249.72358290042962
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.879722,
+                "mean_ms": 313.287,
+                "median_ms": 282.78999999999996
+              }
+            },
+            {
+              "id": "S06",
+              "rows": 1503,
+              "baseline": {
+                "events": 7,
+                "total_s": 1.8313062746031505,
+                "mean_ms": 261.61518208616434,
+                "median_ms": 209.76780963636088
+              },
+              "app": {
+                "events": 7,
+                "total_s": 1.996164,
+                "mean_ms": 285.1662857142857,
+                "median_ms": 299.425
+              }
+            },
+            {
+              "id": "S07",
+              "rows": 1503,
+              "baseline": {
+                "events": 6,
+                "total_s": 1.7414057847589959,
+                "mean_ms": 290.23429745983265,
+                "median_ms": 274.6959411904726
+              },
+              "app": {
+                "events": 6,
+                "total_s": 1.7965479999999998,
+                "mean_ms": 299.4246666666666,
+                "median_ms": 282.78999999999996
+              }
+            },
+            {
+              "id": "S08",
+              "rows": 1503,
+              "baseline": {
+                "events": 7,
+                "total_s": 1.6515052949148412,
+                "mean_ms": 235.9293278449773,
+                "median_ms": 216.42710518037234
+              },
+              "app": {
+                "events": 7,
+                "total_s": 1.7466439999999999,
+                "mean_ms": 249.5205714285714,
+                "median_ms": 216.251
+              }
+            },
+            {
+              "id": "S09",
+              "rows": 1505,
+              "baseline": {
+                "events": 6,
+                "total_s": 2.1243152785396546,
+                "mean_ms": 354.05254642327577,
+                "median_ms": 241.3994634704153
+              },
+              "app": {
+                "events": 6,
+                "total_s": 2.1957809999999998,
+                "mean_ms": 365.96349999999995,
+                "median_ms": 307.74199999999996
+              }
+            },
+            {
+              "id": "S10",
+              "rows": 25542,
+              "baseline": {
+                "events": 117,
+                "total_s": 33.46961940420158,
+                "mean_ms": 286.065123112834,
+                "median_ms": 233.07534404040098
+              },
+              "app": {
+                "events": 104,
+                "total_s": 33.718554000000005,
+                "mean_ms": 324.2168653846154,
+                "median_ms": 257.838
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "aggregate": {
+    "recording_blocks_including_export_variants": 16,
+    "rows": 294110,
+    "valid_gaze_rows": 275966,
+    "invalid_gaze_rows": 18144,
+    "baseline": {
+      "events": 1743,
+      "total_s": 523.5013846991144,
+      "mean_ms": 300.34502851354813,
+      "median_ms": 233.3333332988019
+    },
+    "app": {
+      "events": 1753,
+      "total_s": 542.626383,
+      "mean_ms": 309.5415761551626,
+      "median_ms": 249.521
+    }
+  }
+}

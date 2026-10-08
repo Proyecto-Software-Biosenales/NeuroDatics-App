@@ -1,0 +1,216 @@
+...........................FF........................................... [ 85%]
+............                                                             [100%]
+================================== FAILURES ===================================
+_ test_read_downloads_the_parquet_belonging_to_the_requested_participant[None] _
+
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-359/test_read_downloads_the_parque0')
+projection = None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("projection", [None, ParquetProjection("identity", required=("who",), optional=("time",))])
+    async def test_read_downloads_the_parquet_belonging_to_the_requested_participant(tmp_path, projection):
+        project_id = uuid4()
+        session = _v2_project(project_id)
+    
+        content_by_external_id = {}
+        for index, code in enumerate(CSV_BLOCK_ORDER, start=1):
+            buffer = io.BytesIO()
+            pd.DataFrame({"time": [0.0, 1.0], "who": [code, code]}).to_parquet(buffer, index=False)
+            content_by_external_id[f"drive-user{index}"] = buffer.getvalue()
+    
+        client = _FakeDriveClient(content_by_external_id)
+        reader = ParquetReaderService(session)
+        reader._cache = _FakeCache(tmp_path)
+        reader._build_drive_client = AsyncMock(return_value=client)
+    
+>       frame = await reader.read(project_id, "P01", projection=projection)
+
+tests\unit\test_parquet_participant_identity.py:306: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\neurodatics\modules\analytics\application\services\parquet_reader_service.py:185: in read
+    path = await parquet_flights.run(key, obtain)
+src\neurodatics\modules\analytics\infrastructure\singleflight.py:142: in run
+    return await asyncio.shield(entry.task)
+src\neurodatics\modules\analytics\infrastructure\singleflight.py:113: in execute
+    return await asyncio.wait_for(operation(), self.timeout)
+C:\Program Files\Python314\Lib\asyncio\tasks.py:488: in wait_for
+    return await fut
+src\neurodatics\modules\analytics\infrastructure\singleflight.py:105: in operation
+    return await factory()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def obtain():
+        # Another endpoint/projection may have published the complete file.
+>       path = cache.get(project_id, participant_code, generation)
+E       AttributeError: '_FakeCache' object has no attribute 'get'
+
+src\neurodatics\modules\analytics\application\services\parquet_reader_service.py:172: AttributeError
+---------------------------- Captured stdout setup ----------------------------
+2026-10-02 06:10:55,317 - asyncio - DEBUG - Using proactor: IocpProactor
+----------------------------- Captured log setup ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+-------------------------- Captured stdout teardown ---------------------------
+2026-10-02 06:10:55,574 - asyncio - DEBUG - Using proactor: IocpProactor
+---------------------------- Captured log teardown ----------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+_ test_read_downloads_the_parquet_belonging_to_the_requested_participant[projection1] _
+
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-359/test_read_downloads_the_parque1')
+projection = ParquetProjection(name='identity', required=('who',), optional=('time',))
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("projection", [None, ParquetProjection("identity", required=("who",), optional=("time",))])
+    async def test_read_downloads_the_parquet_belonging_to_the_requested_participant(tmp_path, projection):
+        project_id = uuid4()
+        session = _v2_project(project_id)
+    
+        content_by_external_id = {}
+        for index, code in enumerate(CSV_BLOCK_ORDER, start=1):
+            buffer = io.BytesIO()
+            pd.DataFrame({"time": [0.0, 1.0], "who": [code, code]}).to_parquet(buffer, index=False)
+            content_by_external_id[f"drive-user{index}"] = buffer.getvalue()
+    
+        client = _FakeDriveClient(content_by_external_id)
+        reader = ParquetReaderService(session)
+        reader._cache = _FakeCache(tmp_path)
+        reader._build_drive_client = AsyncMock(return_value=client)
+    
+>       frame = await reader.read(project_id, "P01", projection=projection)
+
+tests\unit\test_parquet_participant_identity.py:306: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\neurodatics\modules\analytics\application\services\parquet_reader_service.py:185: in read
+    path = await parquet_flights.run(key, obtain)
+src\neurodatics\modules\analytics\infrastructure\singleflight.py:142: in run
+    return await asyncio.shield(entry.task)
+src\neurodatics\modules\analytics\infrastructure\singleflight.py:113: in execute
+    return await asyncio.wait_for(operation(), self.timeout)
+C:\Program Files\Python314\Lib\asyncio\tasks.py:488: in wait_for
+    return await fut
+src\neurodatics\modules\analytics\infrastructure\singleflight.py:105: in operation
+    return await factory()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def obtain():
+        # Another endpoint/projection may have published the complete file.
+>       path = cache.get(project_id, participant_code, generation)
+E       AttributeError: '_FakeCache' object has no attribute 'get'
+
+src\neurodatics\modules\analytics\application\services\parquet_reader_service.py:172: AttributeError
+---------------------------- Captured stdout setup ----------------------------
+2026-10-02 06:10:55,575 - asyncio - DEBUG - Using proactor: IocpProactor
+----------------------------- Captured log setup ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+-------------------------- Captured stdout teardown ---------------------------
+2026-10-02 06:10:55,600 - asyncio - DEBUG - Using proactor: IocpProactor
+---------------------------- Captured log teardown ----------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+============================== warnings summary ===============================
+src\neurodatics\infra\db\base.py:4
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\infra\db\base.py:4: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+src\neurodatics\modules\scenaries\api\schemas.py:105
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:105: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AOIResponse(BaseModel):
+
+src\neurodatics\modules\scenaries\api\schemas.py:117
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:117: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class scenariesResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:50: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectFileResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:182
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:182: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectSensorResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:190
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:190: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:200
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:200: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:219
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:219: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectDetailResponse(BaseModel):
+
+..\.venv\Lib\site-packages\fastapi\routing.py:211: 94 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\routing.py:211: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+
+..\.venv\Lib\site-packages\starlette\_utils.py:17: 98 warnings
+tests/characterization/test_cached_frame_endpoints.py: 27 warnings
+tests/characterization/test_transform_cache_short_circuit.py: 14 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:17: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj) or (
+
+src\neurodatics\modules\participants\api\schemas.py:22
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\api\schemas.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+src\neurodatics\main.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\main.py:50: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+..\.venv\Lib\site-packages\fastapi\applications.py:4547
+..\.venv\Lib\site-packages\fastapi\applications.py:4547
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\applications.py:4547: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+src\neurodatics\main.py:55
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\main.py:55: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+..\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: 1525 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj)
+
+tests/unit/test_parquet_projection.py: 1 warning
+tests/unit/test_parquet_participant_identity.py: 25 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:564: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+
+tests/unit/test_parquet_projection.py: 1 warning
+tests/unit/test_parquet_participant_identity.py: 25 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:395: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_parquet_projection.py: 1 warning
+tests/unit/test_parquet_participant_identity.py: 25 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:441: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_parquet_projection.py: 1 warning
+tests/unit/test_parquet_participant_identity.py: 25 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:462: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/characterization/test_cached_frame_endpoints.py: 20 warnings
+tests/characterization/test_transform_cache_short_circuit.py: 14 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:18: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    callable(obj) and asyncio.iscoroutinefunction(obj.__call__)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/unit/test_parquet_participant_identity.py::test_read_downloads_the_parquet_belonging_to_the_requested_participant[None]
+FAILED tests/unit/test_parquet_participant_identity.py::test_read_downloads_the_parquet_belonging_to_the_requested_participant[projection1]
+2 failed, 82 passed, 1909 warnings in 2.29s

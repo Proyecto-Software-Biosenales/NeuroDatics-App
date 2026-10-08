@@ -1,0 +1,51 @@
+{
+  "runtime_final": {
+    "tests": 146,
+    "snapshots": 1,
+    "log": "tests-runtime-final.log",
+    "exit_code": 0
+  },
+  "runtime_http": {
+    "tests": 47,
+    "snapshots": 24,
+    "log": "tests-http-runtime.log",
+    "exit_code": 0
+  },
+  "supported": {
+    "tests": 193,
+    "snapshots": 25,
+    "log": "tests-supported.log",
+    "exit_code": 0
+  },
+  "ruff": {
+    "exit_code": 0,
+    "scope": "7production+4tests+probe; probe rechecked after output-only compacting"
+  },
+  "import_boundaries": {
+    "kept": 3,
+    "broken": 0,
+    "log": "import-boundaries.log",
+    "exit_code": 0
+  },
+  "benchmark": {
+    "before_exit_code": 0,
+    "after_exit_code": 0,
+    "equivalent_recordings_render_inputs_assets": true,
+    "n": 5,
+    "warmups_per_case": 1
+  },
+  "diagnostic_failures": {
+    "tests-runtime.log": "2fixtures HTTP ownership omitted owner_id required since G04; repaired fakes only",
+    "before probe": "as_json dict corrected before complete baseline; initial log overwritten before valid complete n5"
+  },
+  "limits": [
+    "No global gate/frontend",
+    "No real DB/Redis/Drive/user data",
+    "No dependency/environment changes",
+    "No G06"
+  ],
+  "own_patch_reverse_check": {
+    "exit_code": 0,
+    "base": "received snapshots, never HEAD"
+  }
+}

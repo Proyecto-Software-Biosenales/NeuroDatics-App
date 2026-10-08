@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-10-02T21:16:49.6662321Z",
+  "checked": 972,
+  "missing": [],
+  "drift": [],
+  "excluded_changed": "ESTADO G08 checkpoint; root/logs excluded by initial inventory",
+  "g08_scope_snapshot_equal": "8/8",
+  "g08_runner_exit": 1,
+  "reason": "CLI quota interruption, no own runner still active",
+  "native_block_agents_active": 0
+}

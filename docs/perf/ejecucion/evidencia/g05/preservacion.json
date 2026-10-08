@@ -1,0 +1,62 @@
+{
+  "checked": 872,
+  "unchanged": 872,
+  "drift": [],
+  "frontend_checked": 236,
+  "frontend_unchanged": 236,
+  "own_existing": [
+    "backend/src/neurodatics/modules/analytics/application/services/analytics_service.py",
+    "backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py",
+    "backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py",
+    "backend/src/neurodatics/modules/analytics/application/services/fixation_summaries.py",
+    "backend/src/neurodatics/modules/analytics/application/services/heatmap_analytics_service.py",
+    "backend/src/neurodatics/modules/analytics/application/services/scanpath_analytics_service.py",
+    "backend/src/neurodatics/modules/reports/application/sensor_reports/eye_tracking.py",
+    "backend/tests/unit/test_scanpath_radius_scale.py",
+    "backend/tests/unit/test_stimulus_coordinate_analytics.py",
+    "docs/perf/ejecucion/ESTADO.md"
+  ],
+  "orquestacion_unchanged": true,
+  "base_snapshot": [
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/analytics_service.py",
+      "received_matches_snapshot": true
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py",
+      "received_matches_snapshot": true
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py",
+      "received_matches_snapshot": true
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/fixation_summaries.py",
+      "received_matches_snapshot": true
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/heatmap_analytics_service.py",
+      "received_matches_snapshot": true
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/scanpath_analytics_service.py",
+      "received_matches_snapshot": true
+    },
+    {
+      "path": "backend/src/neurodatics/modules/reports/application/sensor_reports/eye_tracking.py",
+      "received_matches_snapshot": true
+    },
+    {
+      "path": "backend/tests/unit/test_scanpath_radius_scale.py",
+      "received_matches_snapshot": true
+    },
+    {
+      "path": "backend/tests/unit/test_stimulus_coordinate_analytics.py",
+      "received_matches_snapshot": true
+    },
+    {
+      "path": "docs/perf/ejecucion/ESTADO.md",
+      "received_matches_snapshot": true
+    }
+  ]
+}

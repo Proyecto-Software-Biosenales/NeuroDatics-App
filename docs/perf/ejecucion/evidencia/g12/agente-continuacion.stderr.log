@@ -1,0 +1,5 @@
+2026-10-03T20:20:58.668098Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-03T20:20:58.668129Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-03T20:20:58.679830Z  WARN codex_core::shell_snapshot: Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell
+2026-10-03T23:24:41.828345Z  WARN codex_core::responses_retry: stream disconnected - retrying sampling request (1/5 in 215ms)... turn_id=01a1036d-531c-7d51-83a8-d6db764fac4d retries=1 max_retries=5 sampling_error=stream disconnected before completion: idle timeout waiting for websocket
+2026-10-03T23:38:54.782888Z ERROR codex_core::tools::router: error=apply_patch verification failed: invalid patch: multiple operations target C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\docs\perf\ejecucion\G12.md

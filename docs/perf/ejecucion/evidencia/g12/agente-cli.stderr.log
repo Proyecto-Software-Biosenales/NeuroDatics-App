@@ -1,0 +1,6 @@
+2026-10-03T15:26:36.343140Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-03T15:26:36.343172Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-03T15:26:36.355446Z  WARN codex_core::shell_snapshot: Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell
+2026-10-03T15:26:36.707486Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-03T15:26:36.707513Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-03T15:39:57.239077Z  WARN codex_core::responses_retry: stream disconnected - retrying sampling request (1/5 in 180ms)... turn_id=01a1025f-d1c4-7c11-9f20-608526b14e28 retries=1 max_retries=5 sampling_error=stream disconnected before completion: IO error: An existing connection was forcibly closed by the remote host. (os error 10054)

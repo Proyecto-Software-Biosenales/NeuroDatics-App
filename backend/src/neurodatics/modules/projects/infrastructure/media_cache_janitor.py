@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from ....config.settings import settings
+from .video_preview_metadata import clear_video_preview_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -192,4 +193,8 @@ def prune_media_caches() -> list[MediaCachePruneResult]:
             )
         results.append(result)
 
+    # A sweep may have removed or raced a source/frame file whose opaque hash
+    # cannot be mapped back to one metadata key. Clearing the small bounded
+    # process-local layer is conservative and prevents stale duration reuse.
+    clear_video_preview_metadata()
     return results

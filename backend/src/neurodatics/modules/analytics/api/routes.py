@@ -5,11 +5,11 @@ from collections.abc import Awaitable, Callable
 from typing import List, Optional, TypeVar
 from uuid import UUID
 
-import anyio
+import copy
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -35,9 +35,15 @@ from ..application.services.analytics_service import (
 from ..application.services.comparison_chart_config import ChartConfigBuilder
 from ..application.services.correlation_service import CorrelationAnalyticsService
 from ..application.services.parquet_reader_service import ParquetReaderService
+from ..application.services.scenario_timing_service import ScenarioTimingService
+from ..domain.parquet_projection import (
+    ParquetProjection, GSR_PROJECTION, PUPIL_PROJECTION, DISTANCE_PROJECTION,
+    TIMING_PROJECTION, EEG_PROJECTION,
+)
 from neurodatics.shared.cache_generation import project_cache_generation
 from ..domain.coordinate_transform import transform_cache_token
 from neurodatics.shared.scenario_identity import is_all_scenarios, resolve_scenario
+from ..infrastructure.singleflight import response_flights, settled_thread, SingleFlightBusy, SingleFlightTimeout
 from ..infrastructure.redis_cache import AnalyticsRedisCache
 from ..infrastructure.transform_token_store import persist_transform_token, stored_transform_token
 from .schemas import (
@@ -63,11 +69,13 @@ from .schemas import (
     PupilTimeseriesResponse,
     ScanpathResponse,
     ScenarioItem,
+    ScenarioTimingResponse,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects/{project_id}/analytics", tags=["analytics"])
 _redis = AnalyticsRedisCache()
+_live_json = TypeAdapter(dict, config=ConfigDict(ser_json_inf_nan="constants"))
 _CORRELATIONS_CACHE_ENDPOINT = "correlations:v3"
 _CORRELATIONS_CACHE_TTL_SECONDS = 900
 
@@ -170,9 +178,20 @@ def _eeg_processing(
 
 
 def _time_window_key(start_time_s: Optional[float], end_time_s: Optional[float]) -> str:
-    start_key = "start:auto" if start_time_s is None else f"start:{float(start_time_s):g}"
-    end_key = "end:auto" if end_time_s is None else f"end:{float(end_time_s):g}"
+    # ``repr`` keeps every digit: ``:g`` rounded to six significant figures, so
+    # 1234.567 and 1234.571 shared a key and one window answered for the other.
+    start_key = "start:auto" if start_time_s is None else f"start:{float(start_time_s)!r}"
+    end_key = "end:auto" if end_time_s is None else f"end:{float(end_time_s)!r}"
     return f"{start_key}:{end_key}"
+
+
+DISPLAY_DECIMATION_PATTERN = "^(linspace|minmax_envelope)$"
+
+
+def _decimation_key(decimation: str) -> str:
+    """Cache-key suffix; the historical selection keeps its existing keys."""
+
+    return "" if decimation == "linspace" else f":{decimation}"
 
 
 def _cache_generation(project: Project) -> int:
@@ -202,16 +221,20 @@ class AnalyticsFrameReader:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def read(self, project_id, participant_code, generation, *, cache_only=False):
+    async def read(
+        self, project_id, participant_code, generation, *, cache_only=False,
+        projection: Optional[ParquetProjection] = None,
+    ):
         reader = ParquetReaderService(self.db)
+        selection = {"projection": projection} if projection is not None else {}
         try:
             if cache_only:
                 df = await reader.read_from_cache_only(
-                    project_id, participant_code, generation=generation,
+                    project_id, participant_code, generation=generation, **selection,
                 )
                 if df is not None:
                     return df
-            return await reader.read(project_id, participant_code, generation=generation)
+            return await reader.read(project_id, participant_code, generation=generation, **selection)
         except (ValueError, FileNotFoundError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except RuntimeError as exc:
@@ -233,7 +256,7 @@ async def _resolve_transform_token(
         return token, None
     reader = reader or AnalyticsFrameReader(db)
     df = await reader.read(project.id, participant_code, generation, cache_only=cache_only)
-    token = await anyio.to_thread.run_sync(lambda: transform_cache_token(df))
+    token = await settled_thread(lambda: transform_cache_token(df))
     await persist_transform_token(db, project, participant_code, generation, token)
     return token, df
 
@@ -254,6 +277,7 @@ async def cached_frame_endpoint(
     computation_error_status: Optional[int] = None,
     enrich: Optional[Callable[[dict], Awaitable[dict]]] = None,
     cached_fields: Optional[dict] = None,
+    projection: Optional[ParquetProjection] = None,
 ) -> ResponseModel:
     """Resolve provenance, check Redis, then read/compute only on a miss.
 
@@ -271,21 +295,54 @@ async def cached_frame_endpoint(
     cache_key = _redis.build_key(
         project.id, participant_code, endpoint, scenario, generation=generation,
     )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    cached = await settled_thread(lambda: _redis.get_json(cache_key))
     if cached:
         return response_model(**{**cached, **(cached_fields or {})})
-    if df is None:
-        df = await reader.read(project.id, participant_code, generation)
+    async def calculate():
+        # Redis may have been filled since initial lookup/admission.
+        existing = await settled_thread(lambda: _redis.get_json(cache_key))
+        if existing:
+            return {**existing, **(cached_fields or {})}
+        frame = df
+        if frame is None:
+            frame = await reader.read(project.id, participant_code, generation, projection=projection)
+        try:
+            response_data = await settled_thread(lambda: compute(frame))
+        except ValueError as exc:
+            if computation_error_status is None:
+                raise
+            raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
+        if enrich is not None:
+            response_data = await enrich(response_data)
+        await settled_thread(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
+        return response_data
+
+    # Authorized project comes from each caller's ownership query. Include
+    # owner and projection even when HTTP output/Redis identity is equivalent.
+    key = (str(project.owner_id), cache_key, projection, response_model)
+    return await _shared_model_response(key, calculate, response_model)
+
+
+async def _shared_response(key, calculate):
     try:
-        response_data = await anyio.to_thread.run_sync(lambda: compute(df))
-    except ValueError as exc:
-        if computation_error_status is None:
-            raise
-        raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
-    if enrich is not None:
-        response_data = await enrich(response_data)
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
-    return response_model(**response_data)
+        return await response_flights.run(key, calculate)
+    except (SingleFlightBusy, SingleFlightTimeout) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+async def _shared_model_response(key, calculate, response_model):
+    async def serialized():
+        data = await calculate()
+        # Immutable live JSON avoids deep-copying large nested arrays once per
+        # consumer. Validation/serialization happens once; each caller parses
+        # its own model, including nested Any metadata, without mutable aliases.
+        # Preserve non-finite values in nested metadata too. The default
+        # model serializer turns these into null; the live adapter does not.
+        return await settled_thread(lambda: _live_json.dump_json(response_model(**data).model_dump()))
+
+    payload = await _shared_response(key, serialized)
+    return response_model.model_validate_json(payload)
+
 
 
 def _aoi_cache_token(scenary, aois) -> str:
@@ -385,6 +442,30 @@ async def list_scenarios(
     ]
 
 
+@router.get("/scenario-timing", response_model=ScenarioTimingResponse)
+async def scenario_timing(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    scenario: str = Query(default="all"),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
+):
+    """Where a scenario starts in one recording, to align participants on it."""
+
+    project = await _verify_ownership(db, project_id, current_user)
+    return await cached_frame_endpoint(
+        reader=reader,
+        projection=TIMING_PROJECTION,
+        project=project,
+        participant_code=participant_code,
+        scenario=scenario,
+        endpoint="scenario_timing:v1",
+        compute=lambda df: ScenarioTimingService.compute(df, scenario),
+        response_model=ScenarioTimingResponse,
+    )
+
+
 @router.get("/correlations", response_model=CorrelationsResponse)
 async def correlations(
     project_id: UUID,
@@ -454,16 +535,14 @@ async def comparison_charts(
         participant_code=participant_code,
         scenario=scenario,
         endpoint=lambda transform_token: (
-            f"comparison_charts:v2:stimulus-v1:{transform_token}:{max_points}:{views_token}"
+            f"comparison_charts:v3:statistics-v1:stimulus-v1:{transform_token}:{max_points}:{views_token}"
         ),
-        compute=lambda df: {
-            "charts": ChartConfigBuilder.build_many(
-                df,
-                scenario,
-                requested_visualizations,
-                max_points=max_points,
-            )
-        },
+        compute=lambda df: ChartConfigBuilder.build_comparison_payload(
+            df,
+            scenario,
+            requested_visualizations,
+            max_points=max_points,
+        ),
         response_model=ComparisonChartsResponse,
     )
 
@@ -476,6 +555,7 @@ async def pupil_timeseries(
     max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
+    decimation: str = Query(default="linspace", pattern=DISPLAY_DECIMATION_PATTERN),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
     reader: AnalyticsFrameReader = Depends(get_frame_reader),
@@ -485,16 +565,18 @@ async def pupil_timeseries(
 
     return await cached_frame_endpoint(
         reader=reader,
+        projection=PUPIL_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
-        endpoint=f"timeseries_pupil:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
+        endpoint=f"timeseries_pupil:{max_points}:{_time_window_key(start_time_s, end_time_s)}{_decimation_key(decimation)}",
         compute=lambda df: PupilAnalyticsService.compute_timeseries(
             df,
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
             max_points=max_points,
+            decimation=decimation,
         ),
         response_model=PupilTimeseriesResponse,
     )
@@ -516,6 +598,7 @@ async def pupil_statistics(
 
     return await cached_frame_endpoint(
         reader=reader,
+        projection=PUPIL_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
@@ -580,76 +663,86 @@ async def gaze_at(
             canonical_scenario,
             generation=generation,
         )
-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
+    cached = await settled_thread(lambda: _redis.get_json(cache_key))
     if cached:
         return GazeAtResponse(**cached)
 
-    if df is None:
-        reader = ParquetReaderService(db)
-        df = await reader.read_from_cache_only(
-            project_id,
-            participant_code,
-            generation=generation,
-        )
-
-        if df is None:
-            try:
-                df = await reader.read(project_id, participant_code, generation=generation)
-            except (ValueError, FileNotFoundError) as exc:
-                raise HTTPException(status_code=404, detail=str(exc)) from exc
-            except RuntimeError as exc:
-                raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    gaze_data = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.find_gaze_at(
-            df,
-            t_s,
-            scenario=canonical_scenario,
-        )
-    )
-
-    if requested_scenary is not None and gaze_data.get("scenario") is not None:
-        gaze_data["scenario"] = canonical_scenario
-
-    scenario_name = gaze_data.get("scenario")
-    scenario_file_id = None
-    scenario_type = None
-    scenary = requested_scenary
-    if scenario_name:
-        # An unscoped lookup reports whichever scenario the nearest sample
-        # belongs to, spelled the way the Parquet spells it; the stimulus it
-        # refers to still has to be found among the project's scenarios.
-        if scenary is None:
-            scenary = await _resolve_scenary_for_analytics(db, project_id, scenario_name)
-
-        if scenary:
-            scenario_type = scenary.type
-            if scenary.file_id:
-                scenario_file_id = str(scenary.file_id)
-        else:
-            logger.warning(
-                "No scenario found for name=%r in project_id=%s",
-                scenario_name,
+    async def calculate():
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return cached
+        frame = df
+        scenary_request = requested_scenary
+        if frame is None:
+            reader = ParquetReaderService(db)
+            frame = await reader.read_from_cache_only(
                 project_id,
+                participant_code,
+                generation=generation,
             )
 
-    scenario_time_s = await anyio.to_thread.run_sync(
-        lambda: PupilAnalyticsService.compute_scenario_relative_time(
-            df,
-            scenario_name,
-            gaze_data.get("nearest_time_s"),
+            if frame is None:
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        gaze_data = await settled_thread(
+            lambda: PupilAnalyticsService.find_gaze_at(
+                frame,
+                t_s,
+                scenario=canonical_scenario,
+            )
         )
+
+        if requested_scenary is not None and gaze_data.get("scenario") is not None:
+            gaze_data["scenario"] = canonical_scenario
+
+        scenario_name = gaze_data.get("scenario")
+        scenario_file_id = None
+        scenario_type = None
+        scenary = scenary_request
+        if scenario_name:
+            # An unscoped lookup reports whichever scenario the nearest sample
+            # belongs to, spelled the way the Parquet spells it; the stimulus it
+            # refers to still has to be found among the project's scenarios.
+            if scenary is None:
+                scenary = await _resolve_scenary_for_analytics(db, project_id, scenario_name)
+
+            if scenary:
+                scenario_type = scenary.type
+                if scenary.file_id:
+                    scenario_file_id = str(scenary.file_id)
+            else:
+                logger.warning(
+                    "No scenario found for name=%r in project_id=%s",
+                    scenario_name,
+                    project_id,
+                )
+
+        scenario_time_s = await settled_thread(
+            lambda: PupilAnalyticsService.compute_scenario_relative_time(
+                frame,
+                scenario_name,
+                gaze_data.get("nearest_time_s"),
+            )
+        )
+
+        response_data = {
+            **gaze_data,
+            "scenario_file_id": scenario_file_id,
+            "scenario_type": scenario_type,
+            "scenario_time_s": scenario_time_s,
+        }
+
+        await settled_thread(lambda: _redis.set_json(cache_key, response_data))
+        return response_data
+    return await _shared_model_response(
+        (str(project.owner_id), cache_key, None, GazeAtResponse), calculate, GazeAtResponse,
     )
 
-    response_data = {
-        **gaze_data,
-        "scenario_file_id": scenario_file_id,
-        "scenario_type": scenario_type,
-        "scenario_time_s": scenario_time_s,
-    }
-
-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data))
-    return GazeAtResponse(**response_data)
 
 
 @router.get("/timeseries/gaze", response_model=GazeTimeseriesResponse)
@@ -660,6 +753,7 @@ async def gaze_timeseries(
     max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
+    decimation: str = Query(default="linspace", pattern=DISPLAY_DECIMATION_PATTERN),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
     reader: AnalyticsFrameReader = Depends(get_frame_reader),
@@ -674,7 +768,7 @@ async def gaze_timeseries(
         scenario=scenario,
         endpoint=lambda transform_token: (
             f"timeseries_gaze:v2:stimulus-v1:{transform_token}:{max_points}:"
-            f"{_time_window_key(start_time_s, end_time_s)}"
+            f"{_time_window_key(start_time_s, end_time_s)}{_decimation_key(decimation)}"
         ),
         compute=lambda df: PupilAnalyticsService.compute_gaze_timeseries(
             df,
@@ -682,6 +776,7 @@ async def gaze_timeseries(
             start_time_s=start_time_s,
             end_time_s=end_time_s,
             max_points=max_points,
+            decimation=decimation,
         ),
         response_model=GazeTimeseriesResponse,
     )
@@ -727,6 +822,7 @@ async def distance_timeseries(
     max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
+    decimation: str = Query(default="linspace", pattern=DISPLAY_DECIMATION_PATTERN),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
     reader: AnalyticsFrameReader = Depends(get_frame_reader),
@@ -736,16 +832,18 @@ async def distance_timeseries(
 
     return await cached_frame_endpoint(
         reader=reader,
+        projection=DISTANCE_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
-        endpoint=f"timeseries_distance:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
+        endpoint=f"timeseries_distance:{max_points}:{_time_window_key(start_time_s, end_time_s)}{_decimation_key(decimation)}",
         compute=lambda df: PupilAnalyticsService.compute_distance_timeseries(
             df,
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
             max_points=max_points,
+            decimation=decimation,
         ),
         response_model=DistanceTimeseriesResponse,
     )
@@ -767,6 +865,7 @@ async def distance_statistics(
 
     return await cached_frame_endpoint(
         reader=reader,
+        projection=DISTANCE_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
@@ -789,6 +888,7 @@ async def gsr_timeseries(
     max_points: int = Query(default=5000, ge=1, le=100000),
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
+    decimation: str = Query(default="linspace", pattern=DISPLAY_DECIMATION_PATTERN),
     db: AsyncSession = Depends(get_db),
     current_user: str = Depends(get_current_user),
     reader: AnalyticsFrameReader = Depends(get_frame_reader),
@@ -798,16 +898,18 @@ async def gsr_timeseries(
 
     return await cached_frame_endpoint(
         reader=reader,
+        projection=GSR_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
-        endpoint=f"timeseries_gsr:{max_points}:{_time_window_key(start_time_s, end_time_s)}",
+        endpoint=f"timeseries_gsr:{max_points}:{_time_window_key(start_time_s, end_time_s)}{_decimation_key(decimation)}",
         compute=lambda df: GsrAnalyticsService.compute_timeseries(
             df,
             scenario,
             start_time_s=start_time_s,
             end_time_s=end_time_s,
             max_points=max_points,
+            decimation=decimation,
         ),
         response_model=GsrTimeseriesResponse,
     )
@@ -829,6 +931,7 @@ async def gsr_statistics(
 
     return await cached_frame_endpoint(
         reader=reader,
+        projection=GSR_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
@@ -881,6 +984,7 @@ async def eeg_timeseries(
     )
     return await cached_frame_endpoint(
         reader=reader,
+        projection=EEG_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
@@ -942,6 +1046,7 @@ async def eeg_psd(
     )
     return await cached_frame_endpoint(
         reader=reader,
+        projection=EEG_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
@@ -984,6 +1089,7 @@ async def eeg_spectrogram(
     start_time_s: Optional[float] = Query(default=None, ge=0.0),
     end_time_s: Optional[float] = Query(default=None, ge=0.0),
     per_channel_color_domain: bool = Query(default=False),
+    min_time_bins: Optional[int] = Query(default=None, ge=1, le=600),
     reference: str = Query(default="as_exported", pattern="^(as_exported|common_average)$"),
     bandpass_low_hz: Optional[float] = Query(default=None, gt=0.0),
     bandpass_high_hz: Optional[float] = Query(default=None, gt=0.0),
@@ -1014,9 +1120,11 @@ async def eeg_spectrogram(
         f"{clip_low_percentile}:{clip_high_percentile}:"
         f"{max_time_bins}:{max_frequency_bins}:"
         f"{_time_window_key(start_time_s, end_time_s)}:{color_key}:{processing_key}"
+        f":{min_time_bins}"
     )
     return await cached_frame_endpoint(
         reader=reader,
+        projection=EEG_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
@@ -1038,6 +1146,7 @@ async def eeg_spectrogram(
             start_time_s=start_time_s,
             end_time_s=end_time_s,
             per_channel_color_domain=per_channel_color_domain,
+            min_time_bins=min_time_bins,
             **processing,
         ),
         response_model=EegSpectrogramResponse,
@@ -1084,6 +1193,7 @@ async def eeg_topography(
     )
     return await cached_frame_endpoint(
         reader=reader,
+        projection=EEG_PROJECTION,
         project=project,
         participant_code=participant_code,
         scenario=scenario,
@@ -1251,8 +1361,8 @@ async def heatmap_overlay(
         return Response(status_code=304, headers=response_headers)
 
     metadata_cache_key = f"{cache_key}:metadata"
-    cached_bytes = await anyio.to_thread.run_sync(lambda: _redis.get_bytes(cache_key))
-    cached_metadata = await anyio.to_thread.run_sync(
+    cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+    cached_metadata = await settled_thread(
         lambda: _redis.get_json(metadata_cache_key)
     )
     if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
@@ -1266,34 +1376,44 @@ async def heatmap_overlay(
             },
         )
 
-    if df is None:
-        reader = ParquetReaderService(db)
+    async def calculate():
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return cached_bytes, cached_metadata
+        frame = df
+        if frame is None:
+            reader = ParquetReaderService(db)
+            try:
+                frame = await reader.read(project_id, participant_code, generation=cache_generation)
+            except (ValueError, FileNotFoundError) as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except RuntimeError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+
         try:
-            df = await reader.read(project_id, participant_code, generation=cache_generation)
-        except (ValueError, FileNotFoundError) as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    try:
-        png_bytes, fixation_metadata = await anyio.to_thread.run_sync(
-            lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
-                df,
-                scenario,
-                width=stimulus_width,
-                height=stimulus_height,
-                min_fixation_duration_ms=min_fixation_duration_ms,
+            png_bytes, fixation_metadata = await settled_thread(
+                lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                    frame,
+                    scenario,
+                    width=stimulus_width,
+                    height=stimulus_height,
+                    min_fixation_duration_ms=min_fixation_duration_ms,
+                )
             )
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    if not png_bytes:
-        raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        if not png_bytes:
+            raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
 
-    await anyio.to_thread.run_sync(lambda: _redis.set_bytes(cache_key, png_bytes))
-    await anyio.to_thread.run_sync(
-        lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
-    )
+        await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+        await settled_thread(
+            lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+        )
+        return png_bytes, fixation_metadata
+
+    png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+    fixation_metadata = copy.deepcopy(metadata)
     return StreamingResponse(
         iter([png_bytes]),
         media_type="image/png",

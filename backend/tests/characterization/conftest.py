@@ -101,10 +101,11 @@ def http_client(corpus, aois, monkeypatch):
         def __init__(self, db):
             pass
 
-        async def read(self, project_id, participant_code, generation=None):
+        async def read(self, project_id, participant_code, generation=None, *, projection=None):
             if participant_code not in corpus.frames:
                 raise FileNotFoundError("Participant data not found")
-            return corpus.frames[participant_code].copy(deep=True)
+            frame = corpus.frames[participant_code].copy(deep=True)
+            return frame if projection is None else frame[projection.resolve(frame.columns)]
 
         async def read_from_cache_only(self, *args, **kwargs):
             return None

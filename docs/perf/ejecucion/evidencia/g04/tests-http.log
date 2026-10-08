@@ -1,0 +1,109 @@
+..........                                                               [100%]
+============================== warnings summary ===============================
+src\neurodatics\infra\db\base.py:4
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\infra\db\base.py:4: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+src\neurodatics\modules\scenaries\api\schemas.py:105
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:105: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AOIResponse(BaseModel):
+
+src\neurodatics\modules\scenaries\api\schemas.py:117
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:117: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class scenariesResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:50: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectFileResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:182
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:182: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectSensorResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:190
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:190: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:200
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:200: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:219
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:219: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectDetailResponse(BaseModel):
+
+..\.venv\Lib\site-packages\fastapi\routing.py:211: 94 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\routing.py:211: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+
+..\.venv\Lib\site-packages\starlette\_utils.py:17: 98 warnings
+tests/characterization/test_backend_singleflight.py: 11 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:17: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj) or (
+
+src\neurodatics\modules\participants\api\schemas.py:22
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\api\schemas.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+src\neurodatics\main.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\main.py:50: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+..\.venv\Lib\site-packages\fastapi\applications.py:4547
+..\.venv\Lib\site-packages\fastapi\applications.py:4547
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\applications.py:4547: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+src\neurodatics\main.py:55
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\main.py:55: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+..\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: 205 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj)
+
+tests/characterization/test_backend_singleflight.py: 10 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:564: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+
+tests/characterization/test_backend_singleflight.py: 10 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:395: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/characterization/test_backend_singleflight.py::test_ten_http_requests_one_response_one_file_no_redis[/timeseries/pupil-PupilAnalyticsService-compute_timeseries]
+tests/characterization/test_backend_singleflight.py::test_ten_http_requests_one_response_one_file_no_redis[/gaze-at-PupilAnalyticsService-find_gaze_at]
+tests/characterization/test_backend_singleflight.py::test_ten_http_requests_one_response_one_file_no_redis[/heatmap-HeatmapAnalyticsService-compute_heatmap_overlay_with_metadata]
+tests/characterization/test_backend_singleflight.py::test_distinct_responses_share_only_complete_file_projection_and_mutability
+tests/characterization/test_backend_singleflight.py::test_every_request_authorized_before_join_and_generation_filters_participants_isolated
+tests/characterization/test_backend_singleflight.py::test_asgi_dependency_lives_until_worker_and_enrichment_settle[leader]
+tests/characterization/test_backend_singleflight.py::test_asgi_dependency_lives_until_worker_and_enrichment_settle[follower]
+tests/characterization/test_backend_singleflight.py::test_asgi_dependency_lives_until_worker_and_enrichment_settle[last]
+tests/characterization/test_backend_singleflight.py::test_asgi_dependency_lives_until_worker_and_enrichment_settle[timeout]
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:18: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    callable(obj) and asyncio.iscoroutinefunction(obj.__call__)
+
+tests/characterization/test_backend_singleflight.py: 10 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:441: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/characterization/test_backend_singleflight.py: 10 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:462: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+10 passed, 470 warnings in 1.56s

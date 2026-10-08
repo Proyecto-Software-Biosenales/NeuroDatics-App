@@ -1,0 +1,2600 @@
+{
+  "generated_at": "2026-10-03T15:07:58.414Z",
+  "variant": "base",
+  "environment": {
+    "node": "v24.13.1",
+    "browser": "bundled Playwright Chromium, headless",
+    "logical_sizes_css_px": [
+      320,
+      640,
+      960
+    ],
+    "dprs": [
+      1,
+      2,
+      3
+    ],
+    "scenarios": [
+      "complete",
+      "missing",
+      "nan",
+      "values_change",
+      "mask_change"
+    ],
+    "warmup_frames_per_case": 1,
+    "measured_frames_per_case": 5
+  },
+  "interpretation": {
+    "frame_sync_ms": "synchronous createImageData + shade + putImageData; excludes React, scheduling and outlines/electrode labels",
+    "chromium_task_cpu_ms_batch": "renderer TaskDuration delta for total and both decomposition batches plus harness overhead; not per-frame CPU",
+    "heap": "performance.memory snapshot after forced GC; not browser RSS or raster/GPU memory",
+    "canvas_backing_lower_bound": "RGBA byte lower bound, not an observed browser allocation"
+  },
+  "results": [
+    {
+      "logical_size_css_px": 320,
+      "dpr": 1,
+      "scenario": "complete",
+      "backing_width_px": 320,
+      "backing_height_px": 320,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 0.8999999985098839,
+        "median": 1,
+        "max": 2.100000001490116,
+        "samples": [
+          2.100000001490116,
+          1.1000000014901161,
+          0.8999999985098839,
+          0.8999999985098839,
+          1
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 0.7999999970197678,
+        "median": 0.9000000059604645,
+        "max": 1.3999999985098839,
+        "samples": [
+          1.3999999985098839,
+          1,
+          0.7999999970197678,
+          0.9000000059604645,
+          0.7999999970197678
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.10000000149011612,
+        "median": 0.20000000298023224,
+        "max": 0.5,
+        "samples": [
+          0.5,
+          0.20000000298023224,
+          0.29999999701976776,
+          0.20000000298023224,
+          0.10000000149011612
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 66.486,
+      "heap_js_before_bytes": 530018,
+      "heap_js_after_gc_bytes": 8074158,
+      "pixels": 102400,
+      "image_data_rgba": 409600,
+      "canvas_backing_lower_bound": 409600,
+      "decomposition_values_float64": 819200
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 1,
+      "scenario": "missing",
+      "backing_width_px": 320,
+      "backing_height_px": 320,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 0.7999999970197678,
+        "median": 0.8999999985098839,
+        "max": 0.9000000059604645,
+        "samples": [
+          0.9000000059604645,
+          0.8999999985098839,
+          0.7999999970197678,
+          0.8999999985098839,
+          0.8000000044703484
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 0.6000000014901161,
+        "median": 0.6999999955296516,
+        "max": 0.8000000044703484,
+        "samples": [
+          0.8000000044703484,
+          0.6000000014901161,
+          0.7999999970197678,
+          0.6000000014901161,
+          0.6999999955296516
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.19999999552965164,
+        "median": 0.20000000298023224,
+        "max": 0.20000000298023224,
+        "samples": [
+          0.20000000298023224,
+          0.19999999552965164,
+          0.20000000298023224,
+          0.20000000298023224,
+          0.19999999552965164
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 16.879000000000005,
+      "heap_js_before_bytes": 700446,
+      "heap_js_after_gc_bytes": 7260526,
+      "pixels": 102400,
+      "image_data_rgba": 409600,
+      "canvas_backing_lower_bound": 409600,
+      "decomposition_values_float64": 819200
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 1,
+      "scenario": "nan",
+      "backing_width_px": 320,
+      "backing_height_px": 320,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 0.7999999970197678,
+        "median": 0.8999999985098839,
+        "max": 1,
+        "samples": [
+          1,
+          0.9000000059604645,
+          0.7999999970197678,
+          0.8999999985098839,
+          0.8999999985098839
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 0.6999999955296516,
+        "median": 0.7000000029802322,
+        "max": 0.8999999985098839,
+        "samples": [
+          0.8999999985098839,
+          0.7000000029802322,
+          0.8999999985098839,
+          0.7000000029802322,
+          0.6999999955296516
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.10000000149011612,
+        "median": 0.19999999552965164,
+        "max": 0.30000000447034836,
+        "samples": [
+          0.19999999552965164,
+          0.30000000447034836,
+          0.10000000149011612,
+          0.29999999701976776,
+          0.10000000149011612
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 17.598000000000003,
+      "heap_js_before_bytes": 705854,
+      "heap_js_after_gc_bytes": 7261390,
+      "pixels": 102400,
+      "image_data_rgba": 409600,
+      "canvas_backing_lower_bound": 409600,
+      "decomposition_values_float64": 819200
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 1,
+      "scenario": "values_change",
+      "backing_width_px": 320,
+      "backing_height_px": 320,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 0.8999999985098839,
+        "median": 1,
+        "max": 1,
+        "samples": [
+          1,
+          0.8999999985098839,
+          1,
+          0.9000000059604645,
+          1
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 0.7999999970197678,
+        "median": 0.8999999985098839,
+        "max": 0.8999999985098839,
+        "samples": [
+          0.8999999985098839,
+          0.8999999985098839,
+          0.8000000044703484,
+          0.8999999985098839,
+          0.7999999970197678
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.19999999552965164,
+        "median": 0.20000000298023224,
+        "max": 0.20000000298023224,
+        "samples": [
+          0.19999999552965164,
+          0.20000000298023224,
+          0.20000000298023224,
+          0.19999999552965164,
+          0.20000000298023224
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 17.813999999999997,
+      "heap_js_before_bytes": 706766,
+      "heap_js_after_gc_bytes": 7262374,
+      "pixels": 102400,
+      "image_data_rgba": 409600,
+      "canvas_backing_lower_bound": 409600,
+      "decomposition_values_float64": 819200
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 1,
+      "scenario": "mask_change",
+      "backing_width_px": 320,
+      "backing_height_px": 320,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 0.8999999985098839,
+        "median": 1,
+        "max": 1,
+        "samples": [
+          1,
+          0.8999999985098839,
+          1,
+          1,
+          0.8999999985098839
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 0.8000000044703484,
+        "median": 0.8999999985098839,
+        "max": 1.3999999985098839,
+        "samples": [
+          1.3999999985098839,
+          0.8999999985098839,
+          0.8999999985098839,
+          0.8000000044703484,
+          0.8999999985098839
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.19999999552965164,
+        "median": 0.20000000298023224,
+        "max": 0.29999999701976776,
+        "samples": [
+          0.29999999701976776,
+          0.20000000298023224,
+          0.19999999552965164,
+          0.20000000298023224,
+          0.19999999552965164
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 17.567,
+      "heap_js_before_bytes": 707718,
+      "heap_js_after_gc_bytes": 8082258,
+      "pixels": 102400,
+      "image_data_rgba": 409600,
+      "canvas_backing_lower_bound": 409600,
+      "decomposition_values_float64": 819200
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 2,
+      "scenario": "complete",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3.5999999940395355,
+        "median": 3.600000001490116,
+        "max": 3.7999999970197678,
+        "samples": [
+          3.600000001490116,
+          3.7999999970197678,
+          3.600000001490116,
+          3.600000001490116,
+          3.5999999940395355
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 3.7000000029802322,
+        "median": 4.299999997019768,
+        "max": 4.300000004470348,
+        "samples": [
+          4.299999997019768,
+          3.7000000029802322,
+          3.7999999970197678,
+          4.299999997019768,
+          4.300000004470348
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.8999999985098839,
+        "median": 0.9000000059604645,
+        "max": 1,
+        "samples": [
+          0.9000000059604645,
+          0.8999999985098839,
+          1,
+          0.8999999985098839,
+          1
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 66.15099999999998,
+      "heap_js_before_bytes": 708402,
+      "heap_js_after_gc_bytes": 2347494,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 2,
+      "scenario": "missing",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3,
+        "median": 3.100000001490116,
+        "max": 3.7999999970197678,
+        "samples": [
+          3.100000001490116,
+          3,
+          3.100000001490116,
+          3.7999999970197678,
+          3.3000000044703484
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 2.600000001490116,
+        "median": 2.7999999970197678,
+        "max": 3.100000001490116,
+        "samples": [
+          2.6999999955296516,
+          3.100000001490116,
+          2.600000001490116,
+          2.7999999970197678,
+          2.8000000044703484
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.6999999955296516,
+        "median": 0.7999999970197678,
+        "max": 0.8000000044703484,
+        "samples": [
+          0.6999999955296516,
+          0.8000000044703484,
+          0.6999999955296516,
+          0.8000000044703484,
+          0.7999999970197678
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 54.32500000000001,
+      "heap_js_before_bytes": 709086,
+      "heap_js_after_gc_bytes": 2348146,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 2,
+      "scenario": "nan",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3.5999999940395355,
+        "median": 3.6999999955296516,
+        "max": 4.300000004470348,
+        "samples": [
+          3.5999999940395355,
+          3.9000000059604645,
+          3.6999999955296516,
+          4.300000004470348,
+          3.5999999940395355
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 3.2999999970197678,
+        "median": 3.600000001490116,
+        "max": 4.5,
+        "samples": [
+          3.600000001490116,
+          3.5,
+          4.5,
+          3.600000001490116,
+          3.2999999970197678
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.7999999970197678,
+        "median": 0.8999999985098839,
+        "max": 1.2000000029802322,
+        "samples": [
+          0.8999999985098839,
+          0.9000000059604645,
+          0.8999999985098839,
+          0.7999999970197678,
+          1.2000000029802322
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 62.410999999999994,
+      "heap_js_before_bytes": 709746,
+      "heap_js_after_gc_bytes": 2348874,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 2,
+      "scenario": "values_change",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3.899999998509884,
+        "median": 3.9000000059604645,
+        "max": 4.299999997019768,
+        "samples": [
+          3.9000000059604645,
+          4.299999997019768,
+          4.100000001490116,
+          3.899999998509884,
+          3.899999998509884
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 3.399999998509884,
+        "median": 3.5,
+        "max": 4,
+        "samples": [
+          3.8000000044703484,
+          4,
+          3.5,
+          3.399999998509884,
+          3.5
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.6000000014901161,
+        "median": 0.7999999970197678,
+        "max": 0.9000000059604645,
+        "samples": [
+          0.9000000059604645,
+          0.7999999970197678,
+          0.7999999970197678,
+          0.6000000014901161,
+          0.8999999985098839
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 62.12799999999996,
+      "heap_js_before_bytes": 710466,
+      "heap_js_after_gc_bytes": 2350814,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 2,
+      "scenario": "mask_change",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3.8000000044703484,
+        "median": 4.299999997019768,
+        "max": 4.699999995529652,
+        "samples": [
+          4.5,
+          3.8000000044703484,
+          4.299999997019768,
+          3.8000000044703484,
+          4.699999995529652
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 3.600000001490116,
+        "median": 3.899999998509884,
+        "max": 4.5999999940395355,
+        "samples": [
+          3.899999998509884,
+          3.899999998509884,
+          3.9000000059604645,
+          4.5999999940395355,
+          3.600000001490116
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.7999999970197678,
+        "median": 0.9000000059604645,
+        "max": 1.2000000029802322,
+        "samples": [
+          0.8999999985098839,
+          0.9000000059604645,
+          1,
+          0.7999999970197678,
+          1.2000000029802322
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 66.64200000000004,
+      "heap_js_before_bytes": 712414,
+      "heap_js_after_gc_bytes": 2351486,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 3,
+      "scenario": "complete",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 8.699999995529652,
+        "median": 8.799999997019768,
+        "max": 8.800000004470348,
+        "samples": [
+          8.799999997019768,
+          8.800000004470348,
+          8.799999997019768,
+          8.700000002980232,
+          8.699999995529652
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 8.799999997019768,
+        "median": 10.300000004470348,
+        "max": 10.399999998509884,
+        "samples": [
+          8.799999997019768,
+          10.399999998509884,
+          10.300000004470348,
+          10.199999995529652,
+          10.300000004470348
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.6000000014901161,
+        "median": 1.6999999955296516,
+        "max": 1.8000000044703484,
+        "samples": [
+          1.6999999955296516,
+          1.8000000044703484,
+          1.6000000014901161,
+          1.6999999955296516,
+          1.8000000044703484
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 144.21800000000002,
+      "heap_js_before_bytes": 713078,
+      "heap_js_after_gc_bytes": 59697430,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 3,
+      "scenario": "missing",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 7.399999998509884,
+        "median": 7.5,
+        "max": 7.700000002980232,
+        "samples": [
+          7.700000002980232,
+          7.700000002980232,
+          7.399999998509884,
+          7.5,
+          7.399999998509884
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 7.600000001490116,
+        "median": 7.799999997019768,
+        "max": 8.5,
+        "samples": [
+          8.5,
+          7.799999997019768,
+          7.600000001490116,
+          8,
+          7.600000001490116
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.6000000014901161,
+        "median": 1.7000000029802322,
+        "max": 2.7999999970197678,
+        "samples": [
+          2.7999999970197678,
+          1.6000000014901161,
+          1.7000000029802322,
+          1.6999999955296516,
+          1.7000000029802322
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 122.81900000000002,
+      "heap_js_before_bytes": 714006,
+      "heap_js_after_gc_bytes": 59698422,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 3,
+      "scenario": "nan",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 8.200000002980232,
+        "median": 8.299999997019768,
+        "max": 8.300000004470348,
+        "samples": [
+          8.299999997019768,
+          8.299999997019768,
+          8.300000004470348,
+          8.299999997019768,
+          8.200000002980232
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 8.099999994039536,
+        "median": 8.300000004470348,
+        "max": 8.799999997019768,
+        "samples": [
+          8.799999997019768,
+          8.299999997019768,
+          8.400000005960464,
+          8.099999994039536,
+          8.300000004470348
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.8999999985098839,
+        "median": 1.8999999985098839,
+        "max": 3.100000001490116,
+        "samples": [
+          3.100000001490116,
+          1.8999999985098839,
+          1.8999999985098839,
+          1.8999999985098839,
+          2
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 132.085,
+      "heap_js_before_bytes": 714950,
+      "heap_js_after_gc_bytes": 59699086,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 3,
+      "scenario": "values_change",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 8.5,
+        "median": 8.700000002980232,
+        "max": 8.799999997019768,
+        "samples": [
+          8.700000002980232,
+          8.700000002980232,
+          8.799999997019768,
+          8.5,
+          8.600000001490116
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 8.699999995529652,
+        "median": 8.799999997019768,
+        "max": 8.900000005960464,
+        "samples": [
+          8.900000005960464,
+          8.899999998509884,
+          8.799999997019768,
+          8.700000002980232,
+          8.699999995529652
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.6000000014901161,
+        "median": 1.7000000029802322,
+        "max": 2.600000001490116,
+        "samples": [
+          2.600000001490116,
+          1.7000000029802322,
+          1.6999999955296516,
+          1.7000000029802322,
+          1.6000000014901161
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 193.31699999999995,
+      "heap_js_before_bytes": 715630,
+      "heap_js_after_gc_bytes": 59699802,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 320,
+      "dpr": 3,
+      "scenario": "mask_change",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 8.200000002980232,
+        "median": 8.5,
+        "max": 13.399999998509884,
+        "samples": [
+          8.5,
+          8.200000002980232,
+          8.5,
+          12.399999998509884,
+          13.399999998509884
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 8.799999997019768,
+        "median": 8.899999998509884,
+        "max": 9.400000005960464,
+        "samples": [
+          8.899999998509884,
+          9.400000005960464,
+          8.899999998509884,
+          8.799999997019768,
+          8.899999998509884
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.6999999955296516,
+        "median": 1.7000000029802322,
+        "max": 1.7000000029802322,
+        "samples": [
+          1.7000000029802322,
+          1.7000000029802322,
+          1.6999999955296516,
+          1.7000000029802322,
+          1.6999999955296516
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 143.4709999999999,
+      "heap_js_before_bytes": 716330,
+      "heap_js_after_gc_bytes": 11776222,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 1,
+      "scenario": "complete",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3.8000000044703484,
+        "median": 3.899999998509884,
+        "max": 4,
+        "samples": [
+          4,
+          3.899999998509884,
+          4,
+          3.8000000044703484,
+          3.899999998509884
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 3.5999999940395355,
+        "median": 3.600000001490116,
+        "max": 4.5,
+        "samples": [
+          3.7000000029802322,
+          3.600000001490116,
+          3.600000001490116,
+          4.5,
+          3.5999999940395355
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.8999999985098839,
+        "median": 0.8999999985098839,
+        "max": 0.9000000059604645,
+        "samples": [
+          0.8999999985098839,
+          0.8999999985098839,
+          0.9000000059604645,
+          0.8999999985098839,
+          0.8999999985098839
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 65.47300000000011,
+      "heap_js_before_bytes": 717022,
+      "heap_js_after_gc_bytes": 2356090,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 1,
+      "scenario": "missing",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3,
+        "median": 3.100000001490116,
+        "max": 3.1999999955296516,
+        "samples": [
+          3.100000001490116,
+          3.100000001490116,
+          3,
+          3,
+          3.1999999955296516
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 2.899999998509884,
+        "median": 2.899999998509884,
+        "max": 3.100000001490116,
+        "samples": [
+          2.899999998509884,
+          3.100000001490116,
+          2.899999998509884,
+          2.899999998509884,
+          3
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.7999999970197678,
+        "median": 0.8999999985098839,
+        "max": 0.9000000059604645,
+        "samples": [
+          0.7999999970197678,
+          0.9000000059604645,
+          0.7999999970197678,
+          0.8999999985098839,
+          0.8999999985098839
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 54.517999999999844,
+      "heap_js_before_bytes": 717738,
+      "heap_js_after_gc_bytes": 2358854,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 1,
+      "scenario": "nan",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3.2999999970197678,
+        "median": 3.3000000044703484,
+        "max": 3.5,
+        "samples": [
+          3.5,
+          3.399999998509884,
+          3.3000000044703484,
+          3.2999999970197678,
+          3.2999999970197678
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 3,
+        "median": 3.1999999955296516,
+        "max": 3.2000000029802322,
+        "samples": [
+          3.2000000029802322,
+          3,
+          3.100000001490116,
+          3.1999999955296516,
+          3.2000000029802322
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.6000000014901161,
+        "median": 0.7999999970197678,
+        "max": 0.8000000044703484,
+        "samples": [
+          0.8000000044703484,
+          0.6999999955296516,
+          0.8000000044703484,
+          0.6000000014901161,
+          0.7999999970197678
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 55.590999999999944,
+      "heap_js_before_bytes": 720454,
+      "heap_js_after_gc_bytes": 2359518,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 1,
+      "scenario": "values_change",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3.5,
+        "median": 3.5999999940395355,
+        "max": 3.600000001490116,
+        "samples": [
+          3.600000001490116,
+          3.5999999940395355,
+          3.5,
+          3.600000001490116,
+          3.5
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 3.3000000044703484,
+        "median": 3.399999998509884,
+        "max": 3.5,
+        "samples": [
+          3.399999998509884,
+          3.399999998509884,
+          3.399999998509884,
+          3.3000000044703484,
+          3.5
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.6999999955296516,
+        "median": 0.7999999970197678,
+        "max": 0.8000000044703484,
+        "samples": [
+          0.6999999955296516,
+          0.8000000044703484,
+          0.6999999955296516,
+          0.8000000044703484,
+          0.7999999970197678
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 58.64599999999997,
+      "heap_js_before_bytes": 721110,
+      "heap_js_after_gc_bytes": 2360174,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 1,
+      "scenario": "mask_change",
+      "backing_width_px": 640,
+      "backing_height_px": 640,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 3.399999998509884,
+        "median": 3.6999999955296516,
+        "max": 3.7000000029802322,
+        "samples": [
+          3.7000000029802322,
+          3.5,
+          3.7000000029802322,
+          3.399999998509884,
+          3.6999999955296516
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 3.399999998509884,
+        "median": 3.399999998509884,
+        "max": 3.4000000059604645,
+        "samples": [
+          3.399999998509884,
+          3.399999998509884,
+          3.399999998509884,
+          3.4000000059604645,
+          3.399999998509884
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 0.7999999970197678,
+        "median": 0.8999999985098839,
+        "max": 1,
+        "samples": [
+          0.8999999985098839,
+          0.8999999985098839,
+          0.8000000044703484,
+          0.7999999970197678,
+          1
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 62.14799999999987,
+      "heap_js_before_bytes": 721774,
+      "heap_js_after_gc_bytes": 2360846,
+      "pixels": 409600,
+      "image_data_rgba": 1638400,
+      "canvas_backing_lower_bound": 1638400,
+      "decomposition_values_float64": 3276800
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 2,
+      "scenario": "complete",
+      "backing_width_px": 1280,
+      "backing_height_px": 1280,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 14.200000002980232,
+        "median": 14.299999997019768,
+        "max": 14.400000005960464,
+        "samples": [
+          14.400000005960464,
+          14.299999997019768,
+          14.299999997019768,
+          14.200000002980232,
+          14.299999997019768
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 19.700000002980232,
+        "median": 19.899999998509884,
+        "max": 24.5,
+        "samples": [
+          23.099999994039536,
+          19.700000002980232,
+          19.899999998509884,
+          19.80000000447035,
+          24.5
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 2.9000000059604645,
+        "median": 3,
+        "max": 3.1999999955296516,
+        "samples": [
+          3,
+          2.9000000059604645,
+          3,
+          3.1999999955296516,
+          3
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 260.82700000000017,
+      "heap_js_before_bytes": 722438,
+      "heap_js_after_gc_bytes": 13830306,
+      "pixels": 1638400,
+      "image_data_rgba": 6553600,
+      "canvas_backing_lower_bound": 6553600,
+      "decomposition_values_float64": 13107200
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 2,
+      "scenario": "missing",
+      "backing_width_px": 1280,
+      "backing_height_px": 1280,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 11.099999994039536,
+        "median": 11.100000001490116,
+        "max": 11.300000004470348,
+        "samples": [
+          11.300000004470348,
+          11.099999994039536,
+          11.100000001490116,
+          11.100000001490116,
+          11.200000002980232
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 10.399999998509884,
+        "median": 10.5,
+        "max": 13.399999998509884,
+        "samples": [
+          10.400000005960464,
+          10.399999998509884,
+          10.5,
+          13.399999998509884,
+          10.5
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 3,
+        "median": 3.100000001490116,
+        "max": 3.1999999955296516,
+        "samples": [
+          3.100000001490116,
+          3.1999999955296516,
+          3,
+          3.100000001490116,
+          3
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 171.14200000000014,
+      "heap_js_before_bytes": 723098,
+      "heap_js_after_gc_bytes": 26938166,
+      "pixels": 1638400,
+      "image_data_rgba": 6553600,
+      "canvas_backing_lower_bound": 6553600,
+      "decomposition_values_float64": 13107200
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 2,
+      "scenario": "nan",
+      "backing_width_px": 1280,
+      "backing_height_px": 1280,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 13.100000001490116,
+        "median": 13.299999997019768,
+        "max": 13.5,
+        "samples": [
+          13.100000001490116,
+          13.5,
+          13.299999997019768,
+          13.299999997019768,
+          13.200000002980232
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 12,
+        "median": 12.799999997019768,
+        "max": 16.200000002980232,
+        "samples": [
+          12.799999997019768,
+          12.799999997019768,
+          12,
+          16.200000002980232,
+          13
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 3.399999998509884,
+        "median": 3.4000000059604645,
+        "max": 4,
+        "samples": [
+          4,
+          3.6999999955296516,
+          3.399999998509884,
+          3.4000000059604645,
+          3.399999998509884
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 203.79099999999983,
+      "heap_js_before_bytes": 723758,
+      "heap_js_after_gc_bytes": 26938822,
+      "pixels": 1638400,
+      "image_data_rgba": 6553600,
+      "canvas_backing_lower_bound": 6553600,
+      "decomposition_values_float64": 13107200
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 2,
+      "scenario": "values_change",
+      "backing_width_px": 1280,
+      "backing_height_px": 1280,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 13.799999997019768,
+        "median": 14,
+        "max": 14.100000001490116,
+        "samples": [
+          14,
+          14.100000001490116,
+          13.899999998509884,
+          14,
+          13.799999997019768
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 13.199999995529652,
+        "median": 13.300000004470348,
+        "max": 15.800000004470348,
+        "samples": [
+          13.399999998509884,
+          13.300000004470348,
+          13.199999995529652,
+          15.800000004470348,
+          13.299999997019768
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 2.899999998509884,
+        "median": 3,
+        "max": 3.2000000029802322,
+        "samples": [
+          3,
+          3.2000000029802322,
+          3,
+          3,
+          2.899999998509884
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 207.58999999999972,
+      "heap_js_before_bytes": 724414,
+      "heap_js_after_gc_bytes": 26939486,
+      "pixels": 1638400,
+      "image_data_rgba": 6553600,
+      "canvas_backing_lower_bound": 6553600,
+      "decomposition_values_float64": 13107200
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 2,
+      "scenario": "mask_change",
+      "backing_width_px": 1280,
+      "backing_height_px": 1280,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 13.699999995529652,
+        "median": 14.300000004470348,
+        "max": 15.600000001490116,
+        "samples": [
+          14.300000004470348,
+          13.699999995529652,
+          15.600000001490116,
+          13.700000002980232,
+          14.5
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 13.399999998509884,
+        "median": 14.399999998509884,
+        "max": 16,
+        "samples": [
+          14.399999998509884,
+          16,
+          13.799999997019768,
+          15.800000004470348,
+          13.399999998509884
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 2.7999999970197678,
+        "median": 3,
+        "max": 3.100000001490116,
+        "samples": [
+          3.100000001490116,
+          3,
+          3.100000001490116,
+          3,
+          2.7999999970197678
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 216.83299999999983,
+      "heap_js_before_bytes": 725078,
+      "heap_js_after_gc_bytes": 26966358,
+      "pixels": 1638400,
+      "image_data_rgba": 6553600,
+      "canvas_backing_lower_bound": 6553600,
+      "decomposition_values_float64": 13107200
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 3,
+      "scenario": "complete",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 34.69999999552965,
+        "median": 35.100000001490116,
+        "max": 36.600000001490116,
+        "samples": [
+          34.69999999552965,
+          35.100000001490116,
+          36.600000001490116,
+          34.69999999552965,
+          35.20000000298023
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 36.20000000298023,
+        "median": 38.20000000298023,
+        "max": 39.5,
+        "samples": [
+          39.5,
+          36.79999999701977,
+          39.29999999701977,
+          36.20000000298023,
+          38.20000000298023
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7,
+        "median": 7.200000002980232,
+        "max": 7.399999998509884,
+        "samples": [
+          7.199999995529652,
+          7.200000002980232,
+          7.399999998509884,
+          7.299999997019768,
+          7
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 530.3599999999999,
+      "heap_js_before_bytes": 751950,
+      "heap_js_after_gc_bytes": 44989438,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 3,
+      "scenario": "missing",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 29.600000001490116,
+        "median": 30.399999998509884,
+        "max": 30.80000000447035,
+        "samples": [
+          29.600000001490116,
+          30.399999998509884,
+          30.80000000447035,
+          30.399999998509884,
+          30.5
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 30.100000001490116,
+        "median": 32.69999999552965,
+        "max": 34.20000000298023,
+        "samples": [
+          33.79999999701977,
+          30.100000001490116,
+          32.69999999552965,
+          31.700000002980232,
+          34.20000000298023
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7,
+        "median": 7.199999995529652,
+        "max": 7.399999998509884,
+        "samples": [
+          7.199999995529652,
+          7.100000001490116,
+          7.200000002980232,
+          7,
+          7.399999998509884
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 463.371,
+      "heap_js_before_bytes": 752630,
+      "heap_js_after_gc_bytes": 118719138,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 3,
+      "scenario": "nan",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 32.30000000447035,
+        "median": 32.80000000447035,
+        "max": 33.69999999552965,
+        "samples": [
+          32.69999999552965,
+          32.80000000447035,
+          33.69999999552965,
+          32.30000000447035,
+          33
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 32.70000000298023,
+        "median": 35.100000001490116,
+        "max": 36.399999998509884,
+        "samples": [
+          36.399999998509884,
+          32.79999999701977,
+          35.400000005960464,
+          32.70000000298023,
+          35.100000001490116
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7,
+        "median": 7.100000001490116,
+        "max": 7.600000001490116,
+        "samples": [
+          7.100000001490116,
+          7.200000002980232,
+          7.600000001490116,
+          7.100000001490116,
+          7
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 496.0229999999997,
+      "heap_js_before_bytes": 753314,
+      "heap_js_after_gc_bytes": 44990770,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 3,
+      "scenario": "values_change",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 35.70000000298023,
+        "median": 36.5,
+        "max": 44.29999999701977,
+        "samples": [
+          35.70000000298023,
+          36.5,
+          44.29999999701977,
+          38.80000000447035,
+          36.5
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 36.100000001490116,
+        "median": 37.70000000298023,
+        "max": 39.400000005960464,
+        "samples": [
+          39.400000005960464,
+          36.29999999701977,
+          38.79999999701977,
+          36.100000001490116,
+          37.70000000298023
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7,
+        "median": 7.200000002980232,
+        "max": 7.399999998509884,
+        "samples": [
+          7.199999995529652,
+          7,
+          7.399999998509884,
+          7.200000002980232,
+          7.399999998509884
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 548.9899999999999,
+      "heap_js_before_bytes": 753970,
+      "heap_js_after_gc_bytes": 44991478,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 640,
+      "dpr": 3,
+      "scenario": "mask_change",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 33.69999999552965,
+        "median": 35.70000000298023,
+        "max": 37.399999998509884,
+        "samples": [
+          35.70000000298023,
+          34.100000001490116,
+          37.399999998509884,
+          33.69999999552965,
+          36.600000001490116
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 36.5,
+        "median": 38.80000000447035,
+        "max": 39.399999998509884,
+        "samples": [
+          39.399999998509884,
+          36.5,
+          39.100000001490116,
+          36.69999999552965,
+          38.80000000447035
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7.100000001490116,
+        "median": 7.299999997019768,
+        "max": 7.800000004470348,
+        "samples": [
+          7.800000004470348,
+          7.299999997019768,
+          7.300000004470348,
+          7.299999997019768,
+          7.100000001490116
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 537.452,
+      "heap_js_before_bytes": 754670,
+      "heap_js_after_gc_bytes": 44992142,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 1,
+      "scenario": "complete",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 8.899999998509884,
+        "median": 9.100000001490116,
+        "max": 9.300000004470348,
+        "samples": [
+          9.300000004470348,
+          8.899999998509884,
+          9.200000002980232,
+          9.099999994039536,
+          9.100000001490116
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 7.799999997019768,
+        "median": 8,
+        "max": 9.200000002980232,
+        "samples": [
+          8.200000002980232,
+          9.200000002980232,
+          7.800000004470348,
+          7.799999997019768,
+          8
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.7000000029802322,
+        "median": 1.7999999970197678,
+        "max": 2,
+        "samples": [
+          1.7000000029802322,
+          2,
+          1.8999999985098839,
+          1.7999999970197678,
+          1.7000000029802322
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 138.27199999999974,
+      "heap_js_before_bytes": 755334,
+      "heap_js_after_gc_bytes": 11815194,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 1,
+      "scenario": "missing",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 7.5,
+        "median": 7.5,
+        "max": 7.700000002980232,
+        "samples": [
+          7.5,
+          7.5,
+          7.600000001490116,
+          7.5,
+          7.700000002980232
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 7.5999999940395355,
+        "median": 7.600000001490116,
+        "max": 8.400000005960464,
+        "samples": [
+          7.5999999940395355,
+          8.400000005960464,
+          7.699999995529652,
+          7.600000001490116,
+          7.600000001490116
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.6000000014901161,
+        "median": 1.7999999970197678,
+        "max": 2,
+        "samples": [
+          1.8000000044703484,
+          1.6000000014901161,
+          2,
+          1.7999999970197678,
+          1.6000000014901161
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 124.79499999999976,
+      "heap_js_before_bytes": 755994,
+      "heap_js_after_gc_bytes": 11815862,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 1,
+      "scenario": "nan",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 8,
+        "median": 8.099999994039536,
+        "max": 9.100000001490116,
+        "samples": [
+          8,
+          9.100000001490116,
+          8,
+          8.099999994039536,
+          8.300000004470348
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 8.200000002980232,
+        "median": 8.399999998509884,
+        "max": 9.100000001490116,
+        "samples": [
+          8.399999998509884,
+          9.100000001490116,
+          8.5,
+          8.399999998509884,
+          8.200000002980232
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.6999999955296516,
+        "median": 1.7000000029802322,
+        "max": 2,
+        "samples": [
+          1.7000000029802322,
+          1.6999999955296516,
+          2,
+          1.8000000044703484,
+          1.6999999955296516
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 136.56100000000038,
+      "heap_js_before_bytes": 756654,
+      "heap_js_after_gc_bytes": 11816510,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 1,
+      "scenario": "values_change",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 8.700000002980232,
+        "median": 8.799999997019768,
+        "max": 9.600000001490116,
+        "samples": [
+          8.800000004470348,
+          8.799999997019768,
+          8.700000002980232,
+          8.799999997019768,
+          9.600000001490116
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 9,
+        "median": 9.099999994039536,
+        "max": 10.200000002980232,
+        "samples": [
+          9,
+          10.200000002980232,
+          9,
+          9.100000001490116,
+          9.099999994039536
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.7000000029802322,
+        "median": 1.7999999970197678,
+        "max": 1.8999999985098839,
+        "samples": [
+          1.7999999970197678,
+          1.8000000044703484,
+          1.8999999985098839,
+          1.7000000029802322,
+          1.7999999970197678
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 145.13700000000006,
+      "heap_js_before_bytes": 757310,
+      "heap_js_after_gc_bytes": 11817174,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 1,
+      "scenario": "mask_change",
+      "backing_width_px": 960,
+      "backing_height_px": 960,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 8.5,
+        "median": 9,
+        "max": 9,
+        "samples": [
+          9,
+          8.800000004470348,
+          9,
+          8.5,
+          9
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 7.799999997019768,
+        "median": 8.799999997019768,
+        "max": 9,
+        "samples": [
+          8.799999997019768,
+          9,
+          8.800000004470348,
+          7.799999997019768,
+          7.799999997019768
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 1.6000000014901161,
+        "median": 1.7000000029802322,
+        "max": 2,
+        "samples": [
+          1.7999999970197678,
+          1.6000000014901161,
+          2,
+          1.7000000029802322,
+          1.6999999955296516
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 136.2519999999998,
+      "heap_js_before_bytes": 757974,
+      "heap_js_after_gc_bytes": 11817846,
+      "pixels": 921600,
+      "image_data_rgba": 3686400,
+      "canvas_backing_lower_bound": 3686400,
+      "decomposition_values_float64": 7372800
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 2,
+      "scenario": "complete",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 36,
+        "median": 36.599999994039536,
+        "max": 37.400000005960464,
+        "samples": [
+          36,
+          37.19999999552965,
+          37.400000005960464,
+          36,
+          36.599999994039536
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 36.600000001490116,
+        "median": 38.899999998509884,
+        "max": 40.70000000298023,
+        "samples": [
+          40.70000000298023,
+          36.70000000298023,
+          39.599999994039536,
+          36.600000001490116,
+          38.899999998509884
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7.100000001490116,
+        "median": 7.300000004470348,
+        "max": 7.699999995529652,
+        "samples": [
+          7.200000002980232,
+          7.100000001490116,
+          7.699999995529652,
+          7.300000004470348,
+          7.699999995529652
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 547.517,
+      "heap_js_before_bytes": 758638,
+      "heap_js_after_gc_bytes": 44996106,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 2,
+      "scenario": "missing",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 30,
+        "median": 30.700000002980232,
+        "max": 32.399999998509884,
+        "samples": [
+          30,
+          30.700000002980232,
+          32.399999998509884,
+          30.5,
+          30.700000002980232
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 30,
+        "median": 31.599999994039536,
+        "max": 33.400000005960464,
+        "samples": [
+          33.400000005960464,
+          30.099999994039536,
+          32.900000005960464,
+          30,
+          31.599999994039536
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7.200000002980232,
+        "median": 7.5,
+        "max": 16.100000001490116,
+        "samples": [
+          7.5,
+          7.399999998509884,
+          7.200000002980232,
+          16.100000001490116,
+          8
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 476.88100000000054,
+      "heap_js_before_bytes": 759298,
+      "heap_js_after_gc_bytes": 103980250,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 2,
+      "scenario": "nan",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 33.29999999701977,
+        "median": 33.600000001490116,
+        "max": 34.5,
+        "samples": [
+          33.29999999701977,
+          33.600000001490116,
+          34.5,
+          33.899999998509884,
+          33.5
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 34.29999999701977,
+        "median": 34.899999998509884,
+        "max": 34.900000005960464,
+        "samples": [
+          34.900000005960464,
+          34.69999999552965,
+          34.899999998509884,
+          34.900000005960464,
+          34.29999999701977
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7.199999995529652,
+        "median": 7.399999998509884,
+        "max": 9.100000001490116,
+        "samples": [
+          7.300000004470348,
+          7.399999998509884,
+          7.199999995529652,
+          9.100000001490116,
+          8.5
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 506.66800000000035,
+      "heap_js_before_bytes": 759978,
+      "heap_js_after_gc_bytes": 103980930,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 2,
+      "scenario": "values_change",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 36,
+        "median": 36.5,
+        "max": 37.19999999552965,
+        "samples": [
+          36,
+          36.70000000298023,
+          37.19999999552965,
+          36.5,
+          36.5
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 37.600000001490116,
+        "median": 37.79999999701977,
+        "max": 39.20000000298023,
+        "samples": [
+          37.79999999701977,
+          37.600000001490116,
+          39.20000000298023,
+          37.69999999552965,
+          37.899999998509884
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7.300000004470348,
+        "median": 7.399999998509884,
+        "max": 9.100000001490116,
+        "samples": [
+          7.399999998509884,
+          7.300000004470348,
+          7.399999998509884,
+          9.100000001490116,
+          8.100000001490116
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 546.1580000000001,
+      "heap_js_before_bytes": 760658,
+      "heap_js_after_gc_bytes": 103981630,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 2,
+      "scenario": "mask_change",
+      "backing_width_px": 1920,
+      "backing_height_px": 1920,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 35.20000000298023,
+        "median": 37,
+        "max": 37.79999999701977,
+        "samples": [
+          37.5,
+          35.20000000298023,
+          37.79999999701977,
+          35.20000000298023,
+          37
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 37.399999998509884,
+        "median": 37.5,
+        "max": 38.20000000298023,
+        "samples": [
+          38.20000000298023,
+          37.399999998509884,
+          37.5,
+          37.5,
+          37.399999998509884
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 7.100000001490116,
+        "median": 7.4000000059604645,
+        "max": 9,
+        "samples": [
+          7.4000000059604645,
+          7.199999995529652,
+          7.100000001490116,
+          9,
+          8.299999997019768
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 542.8099999999994,
+      "heap_js_before_bytes": 761358,
+      "heap_js_after_gc_bytes": 103982294,
+      "pixels": 3686400,
+      "image_data_rgba": 14745600,
+      "canvas_backing_lower_bound": 14745600,
+      "decomposition_values_float64": 29491200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 3,
+      "scenario": "complete",
+      "backing_width_px": 2880,
+      "backing_height_px": 2880,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 82.19999999552965,
+        "median": 83.20000000298023,
+        "max": 84.89999999850988,
+        "samples": [
+          82.19999999552965,
+          84.89999999850988,
+          83.5,
+          83.10000000149012,
+          83.20000000298023
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 83.80000000447035,
+        "median": 86.30000000447035,
+        "max": 90,
+        "samples": [
+          86.30000000447035,
+          84.29999999701977,
+          86.39999999850988,
+          90,
+          83.80000000447035
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 16.900000005960464,
+        "median": 17.5,
+        "max": 19.799999997019768,
+        "samples": [
+          17.5,
+          16.900000005960464,
+          17,
+          19.799999997019768,
+          18.600000001490116
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 1221.876,
+      "heap_js_before_bytes": 762022,
+      "heap_js_after_gc_bytes": 233006954,
+      "pixels": 8294400,
+      "image_data_rgba": 33177600,
+      "canvas_backing_lower_bound": 33177600,
+      "decomposition_values_float64": 66355200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 3,
+      "scenario": "missing",
+      "backing_width_px": 2880,
+      "backing_height_px": 2880,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 68.10000000149012,
+        "median": 69.5,
+        "max": 69.89999999850988,
+        "samples": [
+          68.10000000149012,
+          69.29999999701977,
+          69.70000000298023,
+          69.5,
+          69.89999999850988
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 69.30000000447035,
+        "median": 70.30000000447035,
+        "max": 71.5,
+        "samples": [
+          71.5,
+          69.79999999701977,
+          70.30000000447035,
+          70.69999999552965,
+          69.30000000447035
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 16.80000000447035,
+        "median": 17.19999999552965,
+        "max": 19.200000002980232,
+        "samples": [
+          16.80000000447035,
+          17.19999999552965,
+          17,
+          19.200000002980232,
+          18.69999999552965
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 1028.226,
+      "heap_js_before_bytes": 762682,
+      "heap_js_after_gc_bytes": 233007614,
+      "pixels": 8294400,
+      "image_data_rgba": 33177600,
+      "canvas_backing_lower_bound": 33177600,
+      "decomposition_values_float64": 66355200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 3,
+      "scenario": "nan",
+      "backing_width_px": 2880,
+      "backing_height_px": 2880,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 74.20000000298023,
+        "median": 76.09999999403954,
+        "max": 77.5,
+        "samples": [
+          74.20000000298023,
+          75.60000000149012,
+          77.5,
+          76.09999999403954,
+          76.30000000447035
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 76.29999999701977,
+        "median": 77,
+        "max": 78.89999999850988,
+        "samples": [
+          78,
+          77,
+          76.29999999701977,
+          76.60000000149012,
+          78.89999999850988
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 16.899999998509884,
+        "median": 17.400000005960464,
+        "max": 19.099999994039536,
+        "samples": [
+          17.400000005960464,
+          16.899999998509884,
+          17.100000001490116,
+          19,
+          19.099999994039536
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 1126.7189999999996,
+      "heap_js_before_bytes": 763342,
+      "heap_js_after_gc_bytes": 33942622,
+      "pixels": 8294400,
+      "image_data_rgba": 33177600,
+      "canvas_backing_lower_bound": 33177600,
+      "decomposition_values_float64": 66355200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 3,
+      "scenario": "values_change",
+      "backing_width_px": 2880,
+      "backing_height_px": 2880,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 80.90000000596046,
+        "median": 83.09999999403954,
+        "max": 84.20000000298023,
+        "samples": [
+          80.90000000596046,
+          82.5,
+          83.09999999403954,
+          84.20000000298023,
+          84
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 82.60000000149012,
+        "median": 83.29999999701977,
+        "max": 85.20000000298023,
+        "samples": [
+          85.20000000298023,
+          83,
+          83.29999999701977,
+          83.89999999850988,
+          82.60000000149012
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 16.799999997019768,
+        "median": 17.5,
+        "max": 19.100000001490116,
+        "samples": [
+          17.5,
+          17.100000001490116,
+          16.799999997019768,
+          19.100000001490116,
+          19.100000001490116
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 1220.7429999999988,
+      "heap_js_before_bytes": 763998,
+      "heap_js_after_gc_bytes": 33943302,
+      "pixels": 8294400,
+      "image_data_rgba": 33177600,
+      "canvas_backing_lower_bound": 33177600,
+      "decomposition_values_float64": 66355200
+    },
+    {
+      "logical_size_css_px": 960,
+      "dpr": 3,
+      "scenario": "mask_change",
+      "backing_width_px": 2880,
+      "backing_height_px": 2880,
+      "frame_sync_ms": {
+        "n": 5,
+        "min": 80.79999999701977,
+        "median": 82.20000000298023,
+        "max": 83.10000000149012,
+        "samples": [
+          82.20000000298023,
+          80.89999999850988,
+          82.80000000447035,
+          80.79999999701977,
+          83.10000000149012
+        ]
+      },
+      "phase_geometry_interpolation_ms": {
+        "n": 5,
+        "min": 83.60000000149012,
+        "median": 84,
+        "max": 86.10000000149012,
+        "samples": [
+          86.10000000149012,
+          83.60000000149012,
+          83.69999999552965,
+          84,
+          84.70000000298023
+        ]
+      },
+      "phase_color_put_image_data_ms": {
+        "n": 5,
+        "min": 16.799999997019768,
+        "median": 17.200000002980232,
+        "max": 19.100000001490116,
+        "samples": [
+          17.200000002980232,
+          16.799999997019768,
+          16.899999998509884,
+          19.100000001490116,
+          18.700000002980232
+        ]
+      },
+      "phase_candidate_build_ms": null,
+      "phase_candidate_shade_color_put_ms": null,
+      "cache_rebuilds_measured": 0,
+      "retained_geometry_bytes": 0,
+      "chromium_task_cpu_ms_batch": 1203.2889999999998,
+      "heap_js_before_bytes": 764662,
+      "heap_js_after_gc_bytes": 233009598,
+      "pixels": 8294400,
+      "image_data_rgba": 33177600,
+      "canvas_backing_lower_bound": 33177600,
+      "decomposition_values_float64": 66355200
+    }
+  ]
+}

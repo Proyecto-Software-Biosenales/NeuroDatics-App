@@ -271,6 +271,7 @@ async def test_use_case_forwards_geometry_and_persists_json_safe_block_metadata(
         screen_geometry=None,
         *,
         stimulus_placements_by_scenario=None,
+        max_workers=1,
     ):
         captured_process.update(
             csv_path=csv_path,

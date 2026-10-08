@@ -1,0 +1,2223 @@
+diff --git a/backend/src/neurodatics/config/settings.py b/backend/src/neurodatics/config/settings.py
+index b2afb03..f36182d 100644
+--- a/backend/src/neurodatics/config/settings.py
++++ b/backend/src/neurodatics/config/settings.py
+@@ -4,7 +4,7 @@ import os
+ from typing import Any, Literal, Optional
+ from urllib.parse import parse_qs, urlsplit
+ 
+-from pydantic import field_validator, model_validator
++from pydantic import Field, field_validator, model_validator
+ from pydantic_settings import BaseSettings, SettingsConfigDict
+ 
+ from neurodatics.shared import machine_resources
+@@ -115,6 +115,11 @@ class Settings(BaseSettings):
+     parquet_cache_dir: str = "/data/parquet_cache"
+     parquet_cache_ttl_hours: int = 4
+     analytics_redis_ttl_seconds: int = 900
++    # Executive reports retain every participant frame until rendering.  Keep
++    # independent reads small: two full large frames are about 322 MiB transient,
++    # below the 512 MiB G00 candidate budget (retained frames are additional).
++    report_io_max_concurrency: int = Field(default=2, ge=1, le=2)
++    report_io_max_waiting: int = Field(default=16, ge=0, le=16)
+     image_cache_dir: str = "/data/image_cache"
+     video_cache_dir: str = "/data/video_cache"
+     video_frame_cache_dir: str = "/data/video_frame_cache"
+diff --git a/backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py b/backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py
+index 49efabf..82c99b2 100644
+--- a/backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py
+@@ -1,5 +1,6 @@
+ import logging
+ from dataclasses import dataclass
++from pathlib import Path
+ from typing import Any, Dict, List, Optional, Tuple
+ from uuid import UUID
+ 
+@@ -64,6 +65,25 @@ class ParquetResolution:
+         return self.strategy == RESOLUTION_LEGACY_POSITIONAL
+ 
+ 
++@dataclass(frozen=True)
++class PreparedParquetRead:
++    """Scalar-only input safe to consume after request DB work has finished."""
++
++    project_id: UUID
++    participant_code: str
++    generation: int
++    cached_path: Optional[Path] = None
++    file_id: str = ""
++    external_id: str = ""
++
++
++@dataclass(frozen=True)
++class PreparedParquetBatch:
++    reads: Dict[str, PreparedParquetRead]
++    errors: Dict[str, ParquetIdentityError]
++    storage_client: Any
++
++
+ @dataclass(frozen=True)
+ class _UserParquetCandidate:
+     project_file: ProjectFile
+@@ -156,36 +176,119 @@ class ParquetReaderService:
+         parquet_file = resolution.project_file
+ 
+         client = await self._build_drive_client()
+-        if client is None:
++        prepared = PreparedParquetRead(
++            project_id=project_id,
++            participant_code=participant_code,
++            generation=normalize_generation(generation),
++            file_id=str(getattr(parquet_file, "id", parquet_file.external_id)),
++            external_id=str(parquet_file.external_id),
++        )
++        return await self.read_prepared(prepared, client, projection=projection)
++
++    async def read_prepared(
++        self,
++        prepared: PreparedParquetRead,
++        storage_client: Any,
++        *,
++        projection: Optional[ParquetProjection] = None,
++    ) -> pd.DataFrame:
++        """Read a pre-authorized scalar descriptor without DB/ORM access."""
++
++        if prepared.cached_path is not None:
++            try:
++                return await settled_thread(
++                    lambda: read_parquet_frame(prepared.cached_path, projection)
++                )
++            except OSError:
++                # A cache janitor can unlink between prepare/get and decode. The
++                # descriptor already carries the exact file identity/generation,
++                # so recovery remains DB-free and cannot switch ingestions.
++                logger.info(
++                    "Prepared Parquet cache path disappeared for project=%s participant=%s generation=%s; retrying exact storage identity",
++                    prepared.project_id,
++                    prepared.participant_code,
++                    prepared.generation,
++                )
++        if storage_client is None:
+             raise RuntimeError(f"{STORAGE_NAME} integration not configured")
+ 
+-        # All ORM values and OAuth configuration resolve serially on this
+-        # request's DB before joining the file operation. Its factory has no DB.
+-        external_id = str(parquet_file.external_id)
+-        file_id = str(getattr(parquet_file, "id", external_id))
+         cache = self._cache
+-        key = (str(project_id), str(participant_code), file_id, external_id,
+-               normalize_generation(generation))
++        key = (
++            str(prepared.project_id),
++            prepared.participant_code,
++            prepared.file_id,
++            prepared.external_id,
++            prepared.generation,
++        )
+ 
+         async def obtain():
+             # Another endpoint/projection may have published the complete file.
+-            path = cache.get(project_id, participant_code, generation)
++            path = cache.get(
++                prepared.project_id,
++                prepared.participant_code,
++                prepared.generation,
++            )
+             if path is not None:
+                 return path
+             try:
+-                content = await settled_thread(lambda: client.download_file_content(external_id))
++                content = await settled_thread(
++                    lambda: storage_client.download_file_content(prepared.external_id)
++                )
+             except Exception as exc:
+                 if _is_invalid_google_grant_error(exc):
+                     logger.warning("Google Drive OAuth token expired or revoked while reading parquet")
+                     raise RuntimeError(GOOGLE_DRIVE_RECONNECT_MESSAGE) from exc
+                 raise RuntimeError(f"No se pudo descargar el parquet desde {STORAGE_NAME}") from exc
+             # Publish atomically as before; never decode partial temp bytes.
+-            return await settled_thread(lambda: cache.put(project_id, participant_code, content, generation))
++            return await settled_thread(
++                lambda: cache.put(
++                    prepared.project_id,
++                    prepared.participant_code,
++                    content,
++                    prepared.generation,
++                )
++            )
+ 
+         path = await parquet_flights.run(key, obtain)
+         # Only the immutable file location is shared, never a mutable frame.
+         return await settled_thread(lambda: read_parquet_frame(path, projection))
+ 
++    async def prepare_batch(
++        self,
++        project_id: UUID,
++        participant_codes: List[str],
++        generation: object,
++    ) -> PreparedParquetBatch:
++        """Resolve cache/identity/OAuth once before concurrent report reads."""
++
++        if generation is None:
++            generation = await self.resolve_cache_generation(project_id)
++        resolved_generation = normalize_generation(generation)
++        ordered_codes = list(dict.fromkeys(str(code) for code in participant_codes))
++        cached_paths = await settled_thread(
++            lambda: {
++                code: self._cache.get(project_id, code, resolved_generation)
++                for code in ordered_codes
++            }
++        )
++        # Resolve every identity before workers, even for a warm path. Besides
++        # pinning exact/legacy semantics, these scalars allow DB-free recovery if
++        # the media janitor removes a path between prepare and decode.
++        resolutions, errors = await self.resolve_user_parquets(project_id, ordered_codes)
++        reads = {}
++        for code, resolution in resolutions.items():
++            project_file = resolution.project_file
++            reads[code] = PreparedParquetRead(
++                project_id=project_id,
++                participant_code=code,
++                generation=resolved_generation,
++                cached_path=cached_paths.get(code),
++                file_id=str(getattr(project_file, "id", project_file.external_id)),
++                external_id=str(project_file.external_id),
++            )
++        client = await self._build_drive_client() if resolutions else None
++        return PreparedParquetBatch(reads=reads, errors=errors, storage_client=client)
++
+     async def read_from_cache_only(
+         self,
+         project_id: UUID,
+@@ -217,21 +320,65 @@ class ParquetReaderService:
+         that mapping is unambiguous.
+         """
+ 
+-        requested = _normalize_participant_code(participant_code)
+-        if not requested:
+-            raise ParquetIdentityError("participant_code is required to select a Parquet file")
++        resolved, errors = await self.resolve_user_parquets(project_id, [participant_code])
++        if participant_code in errors:
++            raise errors[participant_code]
++        return resolved[participant_code]
++
++    async def resolve_user_parquets(
++        self,
++        project_id: UUID,
++        participant_codes: List[str],
++    ) -> Tuple[Dict[str, ParquetResolution], Dict[str, ParquetIdentityError]]:
++        """Resolve a participant batch with one candidate query (plus legacy rows)."""
++
++        requested_items = list(
++            dict.fromkeys(
++                (str(code), _normalize_participant_code(code))
++                for code in participant_codes
++            )
++        )
++        resolved: Dict[str, ParquetResolution] = {}
++        errors: Dict[str, ParquetIdentityError] = {}
++        valid_items = []
++        for original, requested in requested_items:
++            if requested:
++                valid_items.append((original, requested))
++            else:
++                errors[original] = ParquetIdentityError(
++                    "participant_code is required to select a Parquet file"
++                )
++        if not valid_items:
++            return resolved, errors
+ 
+         candidates = await self._load_user_parquet_candidates(project_id)
+         if not candidates:
+-            raise ParticipantParquetNotFoundError(
+-                f"No processed Parquet file for participant='{requested}'"
+-            )
++            for original, requested in valid_items:
++                errors[original] = ParticipantParquetNotFoundError(
++                    f"No processed Parquet file for participant='{requested}'"
++                )
++            return resolved, errors
+ 
+         identified = [candidate for candidate in candidates if candidate.participant_code]
+-        if identified:
+-            return self._resolve_by_identity(requested, identified, candidates)
++        participants = None
++        if not identified:
++            participants = await self._load_participants(project_id)
+ 
+-        return await self._resolve_by_legacy_position(project_id, requested, candidates)
++        for original, requested in valid_items:
++            try:
++                if identified:
++                    resolution = self._resolve_by_identity(requested, identified, candidates)
++                else:
++                    resolution = self._resolve_by_legacy_position(
++                        project_id,
++                        requested,
++                        candidates,
++                        participants or [],
++                    )
++                resolved[original] = resolution
++            except ParquetIdentityError as exc:
++                errors[original] = exc
++        return resolved, errors
+ 
+     def _resolve_by_identity(
+         self,
+@@ -275,11 +422,12 @@ class ParquetReaderService:
+             f"Known participants: {known}"
+         )
+ 
+-    async def _resolve_by_legacy_position(
++    def _resolve_by_legacy_position(
+         self,
+         project_id: UUID,
+         requested: str,
+         candidates: List[_UserParquetCandidate],
++        participants: List[Participant],
+     ) -> ParquetResolution:
+         """Historical mapping for Parquets stored before identity was recorded.
+ 
+@@ -288,7 +436,6 @@ class ParquetReaderService:
+         uniquely determined rather than returning a plausible wrong file.
+         """
+ 
+-        participants = await self._load_participants(project_id)
+         codes = [
+             _normalize_participant_code(participant.participant_code)
+             for participant in participants
+diff --git a/backend/src/neurodatics/modules/reports/application/services/executive_report_service.py b/backend/src/neurodatics/modules/reports/application/services/executive_report_service.py
+index 3fbed59..81761b0 100644
+--- a/backend/src/neurodatics/modules/reports/application/services/executive_report_service.py
++++ b/backend/src/neurodatics/modules/reports/application/services/executive_report_service.py
+@@ -1,5 +1,6 @@
+ from __future__ import annotations
+ 
++import asyncio
+ import io
+ import logging
+ import re
+@@ -7,10 +8,10 @@ import unicodedata
+ import zipfile
+ from dataclasses import dataclass
+ from datetime import datetime, timezone
++from collections.abc import Awaitable, Callable
+ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+ from uuid import UUID
+ 
+-import anyio
+ import numpy as np
+ import pandas as pd
+ from fastapi import HTTPException, status
+@@ -19,12 +20,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
+ from sqlalchemy.orm import selectinload
+ 
+ from ....analytics.application.services.parquet_reader_service import ParquetReaderService
++from ....analytics.infrastructure.singleflight import settled_thread
++from .....config.settings import settings
+ from neurodatics.shared.cache_generation import project_cache_generation
+ from ....integrations.storage_provider import build_isolated_drive_client
+-from ....projects.domain.entities import Project, ProjectFile
++from ....projects.domain.entities import Project
++from ....projects.infrastructure.image_cache import (
++    ProjectImageRef,
++    get_cached_project_image,
++    load_project_image,
++    project_image_ref,
++)
+ from ....scenaries.domain.entities import Scenaries
+ from ...api.schemas import ExecutiveReportRequest
+ from ...infrastructure.pdf_adapter import PDFAdapter
++from ...infrastructure.io_budget import ReportIOBudget
+ from ..sensor_reports import common, eeg, eye_tracking, gsr
+ 
+ logger = logging.getLogger(__name__)
+@@ -33,6 +43,10 @@ REPORT_SENSOR_ORDER = ("EyeTracker", "GSR", "EEG")
+ REPORT_BUILDERS = {"EyeTracker": eye_tracking.build, "GSR": gsr.build, "EEG": eeg.build}
+ PDF_MEDIA_TYPE = "application/pdf"
+ ZIP_MEDIA_TYPE = "application/zip"
++report_io_budget = ReportIOBudget(
++    max_running=settings.report_io_max_concurrency,
++    max_waiting=settings.report_io_max_waiting,
++)
+ 
+ 
+ @dataclass(frozen=True)
+@@ -42,6 +56,33 @@ class GeneratedReport:
+     media_type: str
+ 
+ 
++async def _run_ordered_io(
++    operations: Sequence[Callable[[], Awaitable[Any]]],
++) -> List[Any]:
++    """Run with a fixed worker count; results/exceptions retain input order."""
++
++    if not operations:
++        return []
++    results: List[Any] = [None] * len(operations)
++    next_index = 0
++
++    async def worker() -> None:
++        nonlocal next_index
++        while next_index < len(operations):
++            index = next_index
++            next_index += 1
++            try:
++                results[index] = await report_io_budget.run(operations[index])
++            except Exception as exc:
++                results[index] = exc
++
++    worker_count = min(settings.report_io_max_concurrency, len(operations))
++    async with asyncio.TaskGroup() as task_group:
++        for _ in range(worker_count):
++            task_group.create_task(worker(), name="executive-report-io")
++    return results
++
++
+ def normalize_sensor_name(sensor: str) -> Optional[str]:
+     compact = str(sensor).lower().replace(" ", "").replace("_", "").replace("-", "")
+     if compact in {"eyetracker", "eye"}:
+@@ -270,7 +311,7 @@ class ExecutiveReportService:
+             )
+             for sensor in selected_sensors
+         ]
+-        return await anyio.to_thread.run_sync(
++        return await settled_thread(
+             lambda: build_generated_report(str(project.name), contexts)
+         )
+ 
+@@ -309,48 +350,109 @@ class ExecutiveReportService:
+     ) -> Tuple[Dict[str, pd.DataFrame], List[str]]:
+         reader = ParquetReaderService(self._db)
+         frames: Dict[str, pd.DataFrame] = {}
+-        warnings = []
++        warnings: List[str] = []
++        try:
++            batch = await reader.prepare_batch(
++                project_id,
++                list(participant_codes),
++                generation,
++            )
++        except Exception as exc:
++            logger.warning("Could not prepare executive report data batch: %s", exc)
++            return {}, [
++                f"No se pudieron cargar los datos del participante {code}."
++                for code in participant_codes
++            ]
++
++        ordered_reads = [
++            (code, batch.reads[code])
++            for code in participant_codes
++            if code in batch.reads
++        ]
++        operations = [
++            (
++                lambda prepared=prepared: reader.read_prepared(
++                    prepared,
++                    batch.storage_client,
++                )
++            )
++            for _, prepared in ordered_reads
++        ]
++        outcomes = await _run_ordered_io(operations)
++        outcome_by_code = {
++            code: outcome
++            for (code, _), outcome in zip(ordered_reads, outcomes)
++        }
+         for code in participant_codes:
+-            try:
+-                frames[code] = await reader.read(project_id, code, generation)
+-            except Exception as exc:
+-                logger.warning("Could not load participant %s for executive report: %s", code, exc)
+-                warnings.append(f"No se pudieron cargar los datos del participante {code}.")
++            outcome = outcome_by_code.get(code, batch.errors.get(code))
++            if isinstance(outcome, pd.DataFrame):
++                frames[code] = outcome
++                continue
++            if outcome is None:
++                outcome = RuntimeError("participant was not resolved")
++            logger.warning(
++                "Could not load participant %s for executive report: %s",
++                code,
++                outcome,
++            )
++            warnings.append(f"No se pudieron cargar los datos del participante {code}.")
+         return frames, warnings
+ 
+     async def _load_scenario_images(self, project: Project) -> Dict[str, Optional[bytes]]:
+         images: Dict[str, Optional[bytes]] = {}
+-        drive_client = None
++        refs_by_key: Dict[str, ProjectImageRef] = {}
++        scenario_keys: Dict[str, str] = {}
+         for scenary in select_report_scenarios(project.scenaries or []):
+-            images[str(scenary.name)] = None
+-            if not scenary.file_id:
+-                continue
+-            project_file = await self._load_project_file(project.id, scenary.file_id)
+-            if not project_file or not (project_file.mime_type or "").startswith("image/"):
+-                continue
+-            if not project_file.external_id:
++            name = str(scenary.name)
++            images[name] = None
++            project_file = getattr(scenary, "file", None)
++            if not project_file or not getattr(scenary, "file_id", None):
+                 continue
+-            if drive_client is None:
+-                drive_client = await self._build_drive_client()
+-            if drive_client is None:
++            if (
++                getattr(project_file, "id", None) != scenary.file_id
++                or getattr(project_file, "project_id", None) != project.id
++                or getattr(project_file, "deleted_at", None) is not None
++            ):
+                 continue
+             try:
+-                images[str(scenary.name)] = await anyio.to_thread.run_sync(
+-                    lambda external_id=project_file.external_id: drive_client.download_file_content(external_id)
++                ref = project_image_ref(project_file)
++            except (ValueError, FileNotFoundError):
++                continue
++            refs_by_key.setdefault(ref.cache_key, ref)
++            scenario_keys[name] = ref.cache_key
++
++        misses: List[Tuple[str, ProjectImageRef]] = []
++        loaded_by_key = {}
++        # Cache probing is serial and task-free.  Only if a remote miss exists do
++        # we resolve OAuth on this request's DB, still before concurrent workers.
++        for cache_key, ref in refs_by_key.items():
++            cached = await get_cached_project_image(ref)
++            if cached is None:
++                misses.append((cache_key, ref))
++            else:
++                loaded_by_key[cache_key] = cached.content
++
++        storage_client = await self._build_drive_client() if misses else None
++        operations = [
++            (
++                lambda ref=ref: load_project_image(ref, storage_client)
++            )
++            for _, ref in misses
++        ]
++        outcomes = await _run_ordered_io(operations)
++        for (cache_key, ref), outcome in zip(misses, outcomes):
++            if not isinstance(outcome, Exception):
++                loaded_by_key[cache_key] = outcome.content
++            else:
++                logger.info(
++                    "Could not load scenario image file %s for report: %s",
++                    ref.file_id,
++                    outcome,
+                 )
+-            except Exception as exc:
+-                logger.info("Could not load scenario image %s for report: %s", scenary.name, exc)
+-        return images
+ 
+-    async def _load_project_file(self, project_id: UUID, file_id: UUID) -> Optional[ProjectFile]:
+-        result = await self._db.execute(
+-            select(ProjectFile).where(
+-                ProjectFile.project_id == project_id,
+-                ProjectFile.id == file_id,
+-                ProjectFile.deleted_at.is_(None),
+-            )
+-        )
+-        return result.scalar_one_or_none()
++        for name, cache_key in scenario_keys.items():
++            images[name] = loaded_by_key.get(cache_key)
++        return images
+ 
+     async def _build_drive_client(self):
+         return await build_isolated_drive_client(self._db)
+diff --git a/backend/src/neurodatics/modules/projects/api/routes.py b/backend/src/neurodatics/modules/projects/api/routes.py
+index 065e8e6..4b64104 100644
+--- a/backend/src/neurodatics/modules/projects/api/routes.py
++++ b/backend/src/neurodatics/modules/projects/api/routes.py
+@@ -2,10 +2,9 @@ from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile,
+ from fastapi.responses import Response
+ from sqlalchemy.ext.asyncio import AsyncSession
+ from sqlalchemy import select
+-from typing import List, Optional, Tuple
++from typing import List, Optional
+ from uuid import UUID, uuid4
+ from datetime import datetime, timezone
+-from collections import OrderedDict
+ from pathlib import Path, PurePosixPath
+ import asyncio
+ import hashlib
+@@ -14,7 +13,6 @@ import logging
+ import os
+ import subprocess
+ import tempfile
+-import time
+ 
+ import anyio
+ 
+@@ -47,6 +45,13 @@ from ..application.services.fixation_detection_service import ScreenGeometry
+ from ..application.use_cases.ingestion_lifecycle import finish_upload_on_disconnect, progress_key
+ from ..infrastructure.upload_attempt_store import UploadAttemptStore, UploadAttemptConflict
+ from ..infrastructure.drive_cleanup import enqueue_drive_cleanup, drain_drive_cleanup
++from ..infrastructure.image_cache import (
++    build_image_etag as _build_image_etag,
++    get_cached_project_image,
++    load_project_image,
++    project_file_cache_key as _project_file_cache_key,
++    project_image_ref,
++)
+ from ..application.services.zip_extraction_service import ZipExtractionService
+ from ..application.services.zip_validation_service import UploadSelection, ZipValidationService
+ from ..domain.entities import Project, ProjectFile, ProjectStatus
+@@ -62,21 +67,13 @@ logger = logging.getLogger(__name__)
+ router = APIRouter(prefix="/projects", tags=["projects"], route_class=ProjectUploadRoute)
+ 
+ 
+-_IMAGE_CACHE_TTL_SECONDS = 300
+-_IMAGE_CACHE_MAX_ITEMS = 256
+-_IMAGE_CACHE_MAX_BYTES = 64 * 1024 * 1024
+-_image_cache_lock = asyncio.Lock()
+-_image_cache_total_bytes = 0
+-_image_cache_store: "OrderedDict[str, Tuple[float, bytes, str, str]]" = OrderedDict()
+-_image_cache_download_locks: dict[str, asyncio.Lock] = {}
+-
+ # Persistent disk cache for images - survives in-memory eviction, cleared on container restart
+-_IMAGE_DISK_CACHE_DIR = os.environ.get("IMAGE_CACHE_DIR", "/data/image_cache")
+ _VIDEO_DISK_CACHE_DIR = os.environ.get("VIDEO_CACHE_DIR", "/data/video_cache")
+ _VIDEO_FRAME_CACHE_DIR = os.environ.get("VIDEO_FRAME_CACHE_DIR", "/data/video_frame_cache")
+ _VIDEO_FRAME_MIME_TYPE = "image/jpeg"
+ _VIDEO_FRAME_TIME_DECIMALS = 1
+ _FFMPEG_TIMEOUT_SECONDS = 45
++_video_preview_lock_guard = asyncio.Lock()
+ _video_preview_locks: dict[str, asyncio.Lock] = {}
+ 
+ _UPLOAD_SPOOL_CHUNK_SIZE = 1024 * 1024
+@@ -232,44 +229,6 @@ def _hashed_cache_id(cache_key: str) -> str:
+     return hashlib.sha1(cache_key.encode("utf-8")).hexdigest()
+ 
+ 
+-def _disk_cache_path(file_id: UUID) -> "Path":
+-    """Return the path for the disk-cached image file."""
+-    base = Path(_IMAGE_DISK_CACHE_DIR)
+-    base.mkdir(parents=True, exist_ok=True)
+-    return base / str(file_id)
+-
+-
+-def _disk_cache_mime_path(file_id: UUID) -> "Path":
+-    """Return the path for the disk-cached mime type file."""
+-    base = Path(_IMAGE_DISK_CACHE_DIR)
+-    return base / f"{file_id}.mime"
+-
+-
+-def _read_disk_cache(file_id: UUID) -> "Optional[Tuple[bytes, str]]":
+-    """Read image bytes + mime type from disk. Returns None on miss."""
+-    try:
+-        img_path = _disk_cache_path(file_id)
+-        mime_path = _disk_cache_mime_path(file_id)
+-        if img_path.exists() and mime_path.exists():
+-            content = img_path.read_bytes()
+-            mime_type = mime_path.read_text(encoding="utf-8").strip()
+-            return content, mime_type
+-    except OSError:
+-        pass
+-    return None
+-
+-
+-def _write_disk_cache(file_id: UUID, content: bytes, mime_type: str) -> None:
+-    """Write image bytes + mime type to disk cache. Silently ignores errors."""
+-    try:
+-        img_path = _disk_cache_path(file_id)
+-        mime_path = _disk_cache_mime_path(file_id)
+-        img_path.write_bytes(content)
+-        mime_path.write_text(mime_type, encoding="utf-8")
+-    except OSError as exc:
+-        logger.warning("Failed to write image disk cache for %s: %s", file_id, exc)
+-
+-
+ def _video_source_cache_path(project_file: ProjectFile, cache_key: str) -> Path:
+     suffix = Path(project_file.filename or "").suffix.lower() or ".video"
+     base = Path(_VIDEO_DISK_CACHE_DIR)
+@@ -293,71 +252,8 @@ def _read_video_frame_cache(frame_path: Path) -> Optional[bytes]:
+     return None
+ 
+ 
+-def _build_image_etag(cache_key: str) -> str:
+-    return f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+-
+-
+-async def _get_cached_image(cache_key: str) -> Optional[Tuple[bytes, str, str]]:
+-    global _image_cache_total_bytes
+-
+-    now = time.time()
+-    async with _image_cache_lock:
+-        cached = _image_cache_store.get(cache_key)
+-        if not cached:
+-            return None
+-
+-        expires_at, content, mime_type, etag = cached
+-        if expires_at <= now:
+-            _image_cache_total_bytes -= len(content)
+-            _image_cache_store.pop(cache_key, None)
+-            return None
+-
+-        _image_cache_store.move_to_end(cache_key)
+-        return content, mime_type, etag
+-
+-
+-async def _set_cached_image(cache_key: str, content: bytes, mime_type: str, etag: str) -> None:
+-    global _image_cache_total_bytes
+-
+-    if len(content) > (_IMAGE_CACHE_MAX_BYTES // 2):
+-        return
+-
+-    expires_at = time.time() + _IMAGE_CACHE_TTL_SECONDS
+-
+-    async with _image_cache_lock:
+-        previous = _image_cache_store.pop(cache_key, None)
+-        if previous:
+-            _image_cache_total_bytes -= len(previous[1])
+-
+-        _image_cache_store[cache_key] = (expires_at, content, mime_type, etag)
+-        _image_cache_total_bytes += len(content)
+-
+-        while _image_cache_store and (
+-            len(_image_cache_store) > _IMAGE_CACHE_MAX_ITEMS
+-            or _image_cache_total_bytes > _IMAGE_CACHE_MAX_BYTES
+-        ):
+-            _, evicted = _image_cache_store.popitem(last=False)
+-            _image_cache_total_bytes -= len(evicted[1])
+-
+-
+-async def _get_image_download_lock(cache_key: str) -> asyncio.Lock:
+-    async with _image_cache_lock:
+-        lock = _image_cache_download_locks.get(cache_key)
+-        if lock is None:
+-            lock = asyncio.Lock()
+-            _image_cache_download_locks[cache_key] = lock
+-        return lock
+-
+-
+-async def _cleanup_image_download_lock(cache_key: str, lock: asyncio.Lock) -> None:
+-    async with _image_cache_lock:
+-        existing = _image_cache_download_locks.get(cache_key)
+-        if existing is lock and not lock.locked():
+-            _image_cache_download_locks.pop(cache_key, None)
+-
+-
+ async def _get_video_preview_lock(cache_key: str) -> asyncio.Lock:
+-    async with _image_cache_lock:
++    async with _video_preview_lock_guard:
+         lock = _video_preview_locks.get(cache_key)
+         if lock is None:
+             lock = asyncio.Lock()
+@@ -366,7 +262,7 @@ async def _get_video_preview_lock(cache_key: str) -> asyncio.Lock:
+ 
+ 
+ async def _cleanup_video_preview_lock(cache_key: str, lock: asyncio.Lock) -> None:
+-    async with _image_cache_lock:
++    async with _video_preview_lock_guard:
+         existing = _video_preview_locks.get(cache_key)
+         if existing is lock and not lock.locked():
+             _video_preview_locks.pop(cache_key, None)
+@@ -398,11 +294,6 @@ async def _load_project_file(
+     return project_file
+ 
+ 
+-def _project_file_cache_key(project_file: ProjectFile) -> str:
+-    updated_at_part = int(project_file.updated_at.timestamp()) if project_file.updated_at else 0
+-    return f"{project_file.id}:{project_file.external_id}:{updated_at_part}"
+-
+-
+ def _is_image_file(project_file: ProjectFile) -> bool:
+     return bool(project_file.mime_type and project_file.mime_type.startswith("image/"))
+ 
+@@ -421,19 +312,20 @@ async def _serve_project_file_image(
+ ) -> Response:
+     """Serve an image ProjectFile through the existing authenticated cache path."""
+ 
+-    if not project_file.mime_type or not project_file.mime_type.startswith("image/"):
++    try:
++        image_ref = project_image_ref(project_file)
++    except ValueError:
+         raise HTTPException(
+             status_code=status.HTTP_400_BAD_REQUEST,
+             detail="Requested file is not an image"
+         )
+-
+-    if not project_file.external_id:
++    except FileNotFoundError:
+         raise HTTPException(
+             status_code=status.HTTP_404_NOT_FOUND,
+             detail="File storage reference not found"
+         )
+ 
+-    cache_key = _project_file_cache_key(project_file)
++    cache_key = image_ref.cache_key
+     etag = _build_image_etag(cache_key)
+ 
+     response_headers = {
+@@ -446,70 +338,32 @@ async def _serve_project_file_image(
+     if request.headers.get("if-none-match") == etag:
+         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+ 
+-    # Tier 0: disk cache (session-persistent, no TTL)
+-    disk_cached = await anyio.to_thread.run_sync(
+-        lambda: _read_disk_cache(project_file.id)
+-    )
+-    if disk_cached:
+-        disk_content, disk_mime = disk_cached
+-        # Also populate in-memory cache for hot path
+-        await _set_cached_image(cache_key, disk_content, disk_mime, etag)
++    cached = await get_cached_project_image(image_ref)
++    if cached is not None:
+         return Response(
+-            content=disk_content,
+-            media_type=disk_mime,
+-            headers={**response_headers, "X-Image-Cache": "DISK"},
++            content=cached.content,
++            media_type=cached.mime_type,
++            headers={**response_headers, "X-Image-Cache": cached.cache_status},
+         )
+ 
+-    cached_image = await _get_cached_image(cache_key)
+-    if cached_image:
+-        cached_content, cached_mime_type, _ = cached_image
+-        return Response(
+-            content=cached_content,
+-            media_type=cached_mime_type,
+-            headers={**response_headers, "X-Image-Cache": "HIT"},
++    drive_client = await build_isolated_drive_client(db)
++    if not drive_client:
++        raise HTTPException(
++            status_code=status.HTTP_502_BAD_GATEWAY,
++            detail="No se pudo configurar Google Drive para servir la imagen"
+         )
+-
+-    download_lock = await _get_image_download_lock(cache_key)
+     try:
+-        async with download_lock:
+-            cached_after_lock = await _get_cached_image(cache_key)
+-            if cached_after_lock:
+-                cached_content, cached_mime_type, _ = cached_after_lock
+-                return Response(
+-                    content=cached_content,
+-                    media_type=cached_mime_type,
+-                    headers={**response_headers, "X-Image-Cache": "HIT"},
+-                )
+-
+-            drive_client = await build_isolated_drive_client(db)
+-            if not drive_client:
+-                raise HTTPException(
+-                    status_code=status.HTTP_502_BAD_GATEWAY,
+-                    detail="No se pudo configurar Google Drive para servir la imagen"
+-                )
+-
+-            try:
+-                # Drive client is synchronous; offload to worker thread to avoid blocking event loop.
+-                content = await anyio.to_thread.run_sync(drive_client.download_file_content, project_file.external_id)
+-            except Exception as exc:
+-                raise HTTPException(
+-                    status_code=status.HTTP_502_BAD_GATEWAY,
+-                    detail="No se pudo descargar la imagen desde Google Drive"
+-                ) from exc
+-
+-            # Persist to disk for session-level caching
+-            await anyio.to_thread.run_sync(
+-                lambda: _write_disk_cache(project_file.id, content, project_file.mime_type)
+-            )
+-
+-            await _set_cached_image(cache_key, content, project_file.mime_type, etag)
+-    finally:
+-        await _cleanup_image_download_lock(cache_key, download_lock)
++        loaded = await load_project_image(image_ref, drive_client)
++    except Exception as exc:
++        raise HTTPException(
++            status_code=status.HTTP_502_BAD_GATEWAY,
++            detail="No se pudo descargar la imagen desde Google Drive"
++        ) from exc
+ 
+     return Response(
+-        content=content,
+-        media_type=project_file.mime_type,
+-        headers={**response_headers, "X-Image-Cache": "MISS"},
++        content=loaded.content,
++        media_type=loaded.mime_type,
++        headers={**response_headers, "X-Image-Cache": loaded.cache_status},
+     )
+ 
+ 
+diff --git a/backend/tests/unit/test_parquet_participant_identity.py b/backend/tests/unit/test_parquet_participant_identity.py
+index 80a2f10..851556e 100644
+--- a/backend/tests/unit/test_parquet_participant_identity.py
++++ b/backend/tests/unit/test_parquet_participant_identity.py
+@@ -446,6 +446,123 @@ async def test_mixed_top_level_and_nested_metadata_both_resolve():
+     assert second.project_file.filename == "user2.parquet"
+ 
+ 
++@pytest.mark.asyncio
++async def test_batch_identity_resolution_loads_candidates_once_and_keeps_partial_errors():
++    project_id = uuid4()
++    session = _v2_project(project_id)
++    reader = ParquetReaderService(session)
++
++    resolved, errors = await reader.resolve_user_parquets(
++        project_id,
++        ["P03", "P01", "P09"],
++    )
++
++    assert list(resolved) == ["P03", "P01"]
++    assert resolved["P03"].project_file.filename == "user3.parquet"
++    assert resolved["P01"].project_file.filename == "user1.parquet"
++    assert isinstance(errors["P09"], ParticipantParquetNotFoundError)
++    assert session.queried_entities.count(ProjectFile) == 1
++    assert session.queried_entities.count(Participant) == 0
++
++
++@pytest.mark.asyncio
++async def test_prepare_batch_resolves_generation_identity_and_storage_before_workers(
++    tmp_path,
++):
++    project_id = uuid4()
++    session = _v2_project(project_id)
++    reader = ParquetReaderService(session)
++    reader._cache = _FakeCache(tmp_path)
++    storage = object()
++    reader._build_drive_client = AsyncMock(return_value=storage)
++
++    batch = await reader.prepare_batch(project_id, CSV_BLOCK_ORDER, generation=19)
++
++    assert not batch.errors
++    assert list(batch.reads) == CSV_BLOCK_ORDER
++    assert {prepared.generation for prepared in batch.reads.values()} == {19}
++    assert {prepared.external_id for prepared in batch.reads.values()} == {
++        "drive-user1",
++        "drive-user2",
++        "drive-user3",
++    }
++    assert batch.storage_client is storage
++    assert session.queried_entities.count(ProjectFile) == 1
++    reader._build_drive_client.assert_awaited_once_with()
++
++
++@pytest.mark.asyncio
++async def test_prepare_batch_warm_paths_pin_identity_and_recovery_client(tmp_path):
++    project_id = uuid4()
++    session = _v2_project(project_id)
++    reader = ParquetReaderService(session)
++    reader._cache = _FakeCache(tmp_path)
++    for code in CSV_BLOCK_ORDER:
++        reader._cache.put(project_id, code, b"cached", generation=23)
++    storage = object()
++    reader._build_drive_client = AsyncMock(return_value=storage)
++
++    batch = await reader.prepare_batch(project_id, CSV_BLOCK_ORDER, generation=23)
++
++    assert not batch.errors
++    assert all(prepared.cached_path is not None for prepared in batch.reads.values())
++    assert all(prepared.external_id for prepared in batch.reads.values())
++    assert batch.storage_client is storage
++    assert session.queried_entities.count(ProjectFile) == 1
++    reader._build_drive_client.assert_awaited_once_with()
++
++
++@pytest.mark.asyncio
++async def test_prepare_batch_none_generation_resolves_once_before_workers(tmp_path):
++    project_id = uuid4()
++    session = _FakeSession(
++        project_id,
++        project_files=[_user_parquet(project_id, 1, participant_code="P01")],
++        participants=_participants_in_db_order(project_id, ["P01"]),
++        ingestion_generation=31,
++    )
++    reader = ParquetReaderService(session)
++    reader._cache = _FakeCache(tmp_path)
++    reader._build_drive_client = AsyncMock(return_value=object())
++
++    batch = await reader.prepare_batch(project_id, ["P01"], generation=None)
++
++    assert batch.reads["P01"].generation == 31
++    assert session.queried_entities.count(Project) == 1
++    assert session.queried_entities.count(ProjectFile) == 1
++
++
++@pytest.mark.asyncio
++async def test_prepared_read_recovers_if_cached_path_is_swept_without_db(tmp_path):
++    project_id = uuid4()
++    session = _FakeSession(
++        project_id,
++        project_files=[_user_parquet(project_id, 1, participant_code="P01")],
++        participants=_participants_in_db_order(project_id, ["P01"]),
++    )
++    source = pd.DataFrame({"time": [1.0, 2.0], "gsr": [0.2, 0.3]})
++    payload_path = tmp_path / "payload.parquet"
++    source.to_parquet(payload_path, index=False)
++    payload = payload_path.read_bytes()
++    cache = _FakeCache(tmp_path / "cache")
++    cache._dir.mkdir()
++    cache.put(project_id, "P01", payload, generation=29)
++    storage = _FakeDriveClient({"drive-user1": payload})
++    reader = ParquetReaderService(session)
++    reader._cache = cache
++    reader._build_drive_client = AsyncMock(return_value=storage)
++    batch = await reader.prepare_batch(project_id, ["P01"], generation=29)
++    prepared = batch.reads["P01"]
++    prepared.cached_path.unlink()
++
++    recovered = await reader.read_prepared(prepared, batch.storage_client)
++
++    pd.testing.assert_frame_equal(recovered, source)
++    assert storage.downloaded == ["drive-user1"]
++    # All queries happened during preparation; the worker recovery is scalar-only.
++    assert session.queried_entities == [ProjectFile]
++
++
+ # --------------------------------------------------------------------------
+ # Visible failures instead of a silently wrong participant
+ # --------------------------------------------------------------------------
+@@ -572,6 +689,32 @@ async def test_legacy_parquets_are_matched_by_participant_row_position(caplog):
+     )
+ 
+ 
++@pytest.mark.asyncio
++async def test_batch_legacy_resolution_loads_candidates_and_participants_once(caplog):
++    project_id = uuid4()
++    session = _FakeSession(
++        project_id,
++        project_files=[_user_parquet(project_id, index) for index in (1, 2, 3)],
++        participants=_participants_in_db_order(project_id, DB_ROW_ORDER),
++    )
++    reader = ParquetReaderService(session)
++
++    with caplog.at_level(logging.WARNING, logger=READER_LOGGER):
++        resolved, errors = await reader.resolve_user_parquets(
++            project_id,
++            ["P03", "P01", "P02"],
++        )
++
++    assert not errors
++    assert [resolved[code].project_file.filename for code in ("P03", "P01", "P02")] == [
++        "user1.parquet",
++        "user2.parquet",
++        "user3.parquet",
++    ]
++    assert session.queried_entities.count(ProjectFile) == 1
++    assert session.queried_entities.count(Participant) == 1
++
++
+ @pytest.mark.asyncio
+ async def test_legacy_resolution_fails_when_counts_do_not_line_up():
+     project_id = uuid4()
+diff --git a/backend/tests/unit/test_image_conditional_get.py b/backend/tests/unit/test_image_conditional_get.py
+index f19aec8..7559f52 100644
+--- a/backend/tests/unit/test_image_conditional_get.py
++++ b/backend/tests/unit/test_image_conditional_get.py
+@@ -12,6 +12,7 @@ import pytest
+ from starlette.datastructures import Headers
+ 
+ from neurodatics.modules.projects.api import routes
++from neurodatics.modules.projects.infrastructure import image_cache
+ 
+ 
+ def _project_file():
+@@ -33,10 +34,10 @@ async def test_matching_etag_is_answered_without_touching_the_disk_cache(monkeyp
+     project_file = _project_file()
+     etag = routes._build_image_etag(routes._project_file_cache_key(project_file))
+ 
+-    def fail_disk_read(_file_id):
++    def fail_disk_read(_ref):
+         raise AssertionError("the disk cache was read for a conditional GET")
+ 
+-    monkeypatch.setattr(routes, "_read_disk_cache", fail_disk_read)
++    monkeypatch.setattr(image_cache, "_read_disk_cache", fail_disk_read)
+ 
+     response = await routes._serve_project_file_image(project_file, _request(etag), db=None)
+ 
+@@ -50,11 +51,11 @@ async def test_stale_etag_still_serves_the_disk_cached_bytes(monkeypatch):
+     project_file = _project_file()
+     reads = []
+ 
+-    def disk_read(file_id):
+-        reads.append(file_id)
++    def disk_read(ref):
++        reads.append(ref.file_id)
+         return b"png-bytes", "image/png"
+ 
+-    monkeypatch.setattr(routes, "_read_disk_cache", disk_read)
++    monkeypatch.setattr(image_cache, "_read_disk_cache", disk_read)
+ 
+     response = await routes._serve_project_file_image(
+         project_file, _request('"stale"'), db=None
+diff --git a/docs/perf/ejecucion/ESTADO.md b/docs/perf/ejecucion/ESTADO.md
+index 9430ea0..fbbde51 100644
+--- a/docs/perf/ejecucion/ESTADO.md
++++ b/docs/perf/ejecucion/ESTADO.md
+@@ -1,6 +1,6 @@
+ # Estado de ejecución
+ 
+-G00–G05 cerrados; G06 implementación completa, pendiente de revisión del coordinador, 2026-10-02. Coordinador y un ejecutor secuencial; sin otros agentes de bloque ni cambios de producto por G00.
++G00–G06 cerrados según coordinación; G07 completo con REVISION-G07 incorporada, pendiente de revisión final, 2026-10-02. Coordinador y un ejecutor secuencial; sin otros agentes de bloque ni cambios de producto por G00.
+ 
+ | Bloque | Estado | Entrega |
+ |---|---|---|
+@@ -10,8 +10,9 @@ G00–G05 cerrados; G06 implementación completa, pendiente de revisión del coo
+ | G03 | completa; revisión coordinador aprobada | [G03.md](G03.md), [evidencia](evidencia/g03/) |
+ | G04 | completa; revisión coordinador aprobada | [G04.md](G04.md), [evidencia](evidencia/g04/) |
+ | G05 | completa; revisión coordinador aprobada según ORQUESTACION | [G05.md](G05.md), [evidencia](evidencia/g05/) |
+-| G06 | completa; pendiente de revisión coordinador | [G06.md](G06.md), [evidencia](evidencia/g06/) |
+-| G07–G12 | pendiente | no iniciados |
++| G06 | completa; aprobada según asignación G07/ORQUESTACION | [G06.md](G06.md), [evidencia](evidencia/g06/) |
++| G07 | completa; REVISION-G07 incorporada, pendiente de revisión final | [G07.md](G07.md), [evidencia](evidencia/g07/) |
++| G08–G12 | pendiente | no iniciados |
+ 
+ Base: HEAD `f310003bd734203a41268f40a4627bd99d5a3233` más cambios locales iniciales, registrados con SHA-256 en `evidencia/g00/inventario-inicial.json`. No se copian secretos ni datos privados. El inventario incluye archivos nuevos previos y los documentos del plan/coordinación. Las huellas no reemplazan una copia de recuperación: los cambios permanecen en este checkout.
+ 
+@@ -30,3 +31,5 @@ G04 implementación/checks/medidas completos:22 respuestas coordinadas (20 helpe
+ G05 implementación/checks/medidas cerrados: resultado FixationEventResult con snapshots independientes de eventos/metadatos y geometría scoped; source/attrs estables por operación, AOIs valida source/scenario. Derivados y wrappers preservados; collect1construcción/participante/escenario, builds16→4small/32→8large; sin caché global, optimización AOIs/cadencia, nuevos I/O/concurrencia ni cambios G03/G04.193 pruebas/25snapshots por runtime (recibido146+47, aislado3.12/PyArrow16.1=193), Ruff/3import contracts aprobados. Dos fakes ownership incompatibles con keyG04 corregidos y Redis test aislado; sin cambiar producción ni goldens. n5same-corpus/runtime collect361,89→211,39ms/24.371,75→12.198,25ms; recordings normalizados/renderJSON/17assets iguales, CPU/RSS/dispersion en G05.md. Sin inferir speedup global/PDF/deploy, ni gate frontend/global (G12). Patch contra snapshot recibido y preservación/manifiesto en evidencia/g05. Aguarda revisión; G06 no iniciado.
+ 
+ G06 completo: rectángulos/elipses vectorizados float64 con semántica de bordes/degenerados intacta; polígono conserva ray-cast con bounds prefiltrados. Una máscara temporal por AOI/dominio, sin matriz muestras×AOIs; prioridad/solapamientos y key events reutilizan asignación. Cadencia agrupa una vez, no ordena relojes y conserva fast path de un segmento/fallback.207pruebas/25snapshots por runtime (3.14/PyArrow25 y3.12/PyArrow16.1), Ruff/import3 y equivalencia completa máscaras/métricas/informe/HTTP aprobados. n5 large AOI786,09→558,63ms; informe14.228,23→12.155,41; HTTP908,93→691,95; small informe/HTTP dentro de ruido. Sin DB/Redis/Drive real ni gate frontend/global. Patch contra snapshot recibido, preservación/manifiesto en evidencia/g06; G07 no iniciado. G05 se trata como aprobado por instrucción explícita del coordinador aunque su entrega conserve el texto anterior.
++
++G07 completo con revisión: identidades Parquet por lote, generation None una vez y descriptor exacto capaz de recuperar sweep sin DB; imágenes comparten caché fuera del controlador y disco verifica identidad completa/MIME/tamaño/SHA. 2 workers/informe,2running/16waiting por proceso/loop con handoff reservado/max_waiting0, DB/OAuth previo, orden/fallos/cancelación física; render serial.350pruebas/25snapshots prerevisión +170 afectados finales por runtime y47 storage, Ruff/import3. n5 large frío318,08→264,51ms, queries4→1; warm231,92→212,94 con1 batch seguro; RSS máximo +8,7%/+1,7%, medido no bound. Preservación final934 protegidos (933 hashes + ORQUESTACION coordinador), frontend236/236; REVISION root excluida. Patch contra snapshot, sin DB/Drive/Redis real ni gate global. G08 no iniciado.
+diff --git a/backend/src/neurodatics/modules/projects/infrastructure/image_cache.py b/backend/src/neurodatics/modules/projects/infrastructure/image_cache.py
+new file mode 100644
+index 0000000..1564900
+--- /dev/null
++++ b/backend/src/neurodatics/modules/projects/infrastructure/image_cache.py
+@@ -0,0 +1,229 @@
++"""Shared cached access to authenticated project images.
++
++HTTP routes and reports both resolve/authorize ``ProjectFile`` rows before
++calling this module.  The cache accepts only immutable scalar file identity and
++never imports a controller or touches the database.
++"""
++
++from __future__ import annotations
++
++import asyncio
++import hashlib
++import json
++import logging
++import time
++from collections import OrderedDict
++from dataclasses import dataclass
++from pathlib import Path
++from typing import Any, Optional, Tuple
++from uuid import UUID, uuid4
++
++from ....config.settings import settings
++from ...analytics.infrastructure.singleflight import SingleFlight, settled_thread
++
++logger = logging.getLogger(__name__)
++
++IMAGE_CACHE_TTL_SECONDS = 300
++IMAGE_CACHE_MAX_ITEMS = 256
++IMAGE_CACHE_MAX_BYTES = 64 * 1024 * 1024
++
++
++@dataclass(frozen=True)
++class ProjectImageRef:
++    file_id: UUID
++    external_id: str
++    mime_type: str
++    cache_key: str
++
++
++@dataclass(frozen=True)
++class CachedProjectImage:
++    content: bytes
++    mime_type: str
++    etag: str
++    cache_status: str
++
++
++_cache_lock = asyncio.Lock()
++_cache_total_bytes = 0
++_cache_store: "OrderedDict[str, Tuple[float, bytes, str, str]]" = OrderedDict()
++image_flights = SingleFlight(max_running=2, max_queued=16, max_consumers=128, timeout=120.0)
++
++
++def project_file_cache_key(project_file: Any) -> str:
++    updated_at = getattr(project_file, "updated_at", None)
++    updated_at_part = updated_at.isoformat() if updated_at else "0"
++    return f"{project_file.id}:{project_file.external_id}:{updated_at_part}"
++
++
++def build_image_etag(cache_key: str) -> str:
++    return f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
++
++
++def project_image_ref(project_file: Any) -> ProjectImageRef:
++    mime_type = str(getattr(project_file, "mime_type", "") or "")
++    if not mime_type.startswith("image/"):
++        raise ValueError("Requested file is not an image")
++    external_id = str(getattr(project_file, "external_id", "") or "")
++    if not external_id:
++        raise FileNotFoundError("File storage reference not found")
++    return ProjectImageRef(
++        file_id=project_file.id,
++        external_id=external_id,
++        mime_type=mime_type,
++        cache_key=project_file_cache_key(project_file),
++    )
++
++
++def _disk_cache_paths(cache_key: str) -> Tuple[Path, Path]:
++    base = Path(settings.image_cache_dir)
++    base.mkdir(parents=True, exist_ok=True)
++    digest = hashlib.sha256(cache_key.encode("utf-8")).hexdigest()
++    return base / f"{digest}.image", base / f"{digest}.json"
++
++
++def _read_disk_cache(ref: ProjectImageRef) -> Optional[Tuple[bytes, str]]:
++    try:
++        image_path, metadata_path = _disk_cache_paths(ref.cache_key)
++        if not image_path.exists() or not metadata_path.exists():
++            return None
++        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
++        if (
++            metadata.get("version") != 1
++            or metadata.get("cache_key") != ref.cache_key
++            or metadata.get("mime_type") != ref.mime_type
++        ):
++            return None
++        content = image_path.read_bytes()
++        if (
++            metadata.get("size") != len(content)
++            or metadata.get("sha256") != hashlib.sha256(content).hexdigest()
++        ):
++            return None
++        return content, ref.mime_type
++    except (OSError, ValueError, TypeError, AttributeError):
++        pass
++    return None
++
++
++def _write_disk_cache(ref: ProjectImageRef, content: bytes) -> None:
++    image_temp = None
++    metadata_temp = None
++    try:
++        image_path, metadata_path = _disk_cache_paths(ref.cache_key)
++        token = uuid4().hex
++        image_temp = image_path.with_name(f"{image_path.name}.{token}.part")
++        metadata_temp = metadata_path.with_name(f"{metadata_path.name}.{token}.part")
++        image_temp.write_bytes(content)
++        metadata_temp.write_text(
++            json.dumps(
++                {
++                    "version": 1,
++                    "cache_key": ref.cache_key,
++                    "mime_type": ref.mime_type,
++                    "size": len(content),
++                    "sha256": hashlib.sha256(content).hexdigest(),
++                },
++                sort_keys=True,
++            ),
++            encoding="utf-8",
++        )
++        image_temp.replace(image_path)
++        metadata_temp.replace(metadata_path)
++    except OSError as exc:
++        logger.warning("Failed to write image disk cache for %s: %s", ref.file_id, exc)
++    finally:
++        for temporary in (image_temp, metadata_temp):
++            if temporary is not None:
++                try:
++                    temporary.unlink(missing_ok=True)
++                except OSError:
++                    pass
++
++
++async def _get_memory_cached(cache_key: str) -> Optional[Tuple[bytes, str, str]]:
++    global _cache_total_bytes
++
++    now = time.time()
++    async with _cache_lock:
++        cached = _cache_store.get(cache_key)
++        if not cached:
++            return None
++        expires_at, content, mime_type, etag = cached
++        if expires_at <= now:
++            _cache_total_bytes -= len(content)
++            _cache_store.pop(cache_key, None)
++            return None
++        _cache_store.move_to_end(cache_key)
++        return content, mime_type, etag
++
++
++async def _set_memory_cached(
++    cache_key: str,
++    content: bytes,
++    mime_type: str,
++    etag: str,
++) -> None:
++    global _cache_total_bytes
++
++    if len(content) > IMAGE_CACHE_MAX_BYTES // 2:
++        return
++    expires_at = time.time() + IMAGE_CACHE_TTL_SECONDS
++    async with _cache_lock:
++        previous = _cache_store.pop(cache_key, None)
++        if previous:
++            _cache_total_bytes -= len(previous[1])
++        _cache_store[cache_key] = (expires_at, content, mime_type, etag)
++        _cache_total_bytes += len(content)
++        while _cache_store and (
++            len(_cache_store) > IMAGE_CACHE_MAX_ITEMS
++            or _cache_total_bytes > IMAGE_CACHE_MAX_BYTES
++        ):
++            _, evicted = _cache_store.popitem(last=False)
++            _cache_total_bytes -= len(evicted[1])
++
++
++async def get_cached_project_image(ref: ProjectImageRef) -> Optional[CachedProjectImage]:
++    """Read the shared disk/memory tiers without accessing remote storage."""
++
++    etag = build_image_etag(ref.cache_key)
++    disk_cached = await settled_thread(lambda: _read_disk_cache(ref))
++    if disk_cached:
++        content, mime_type = disk_cached
++        await _set_memory_cached(ref.cache_key, content, mime_type, etag)
++        return CachedProjectImage(content, mime_type, etag, "DISK")
++
++    memory_cached = await _get_memory_cached(ref.cache_key)
++    if memory_cached:
++        content, mime_type, cached_etag = memory_cached
++        return CachedProjectImage(content, mime_type, cached_etag, "HIT")
++    return None
++
++
++async def load_project_image(
++    ref: ProjectImageRef,
++    storage_client: Any,
++) -> CachedProjectImage:
++    """Return cached bytes or download once per identity in this process."""
++
++    cached = await get_cached_project_image(ref)
++    if cached is not None:
++        return cached
++    if storage_client is None:
++        raise RuntimeError("Storage integration not configured")
++
++    async def download() -> CachedProjectImage:
++        cached_after_admission = await get_cached_project_image(ref)
++        if cached_after_admission is not None:
++            return cached_after_admission
++        content = await settled_thread(
++            lambda: storage_client.download_file_content(ref.external_id)
++        )
++        await settled_thread(
++            lambda: _write_disk_cache(ref, content)
++        )
++        etag = build_image_etag(ref.cache_key)
++        await _set_memory_cached(ref.cache_key, content, ref.mime_type, etag)
++        return CachedProjectImage(content, ref.mime_type, etag, "MISS")
++
++    return await image_flights.run(ref.cache_key, download)
+diff --git a/backend/src/neurodatics/modules/reports/infrastructure/io_budget.py b/backend/src/neurodatics/modules/reports/infrastructure/io_budget.py
+new file mode 100644
+index 0000000..0e24c1c
+--- /dev/null
++++ b/backend/src/neurodatics/modules/reports/infrastructure/io_budget.py
+@@ -0,0 +1,98 @@
++"""Small process-local I/O budget for executive reports.
++
++The budget does not create tasks.  Report callers create at most their configured
++worker count and admission bounds how many of those workers may wait across the
++event loop.  A slot is released only after the supplied coroutine has settled;
++synchronous work inside it must therefore use ``settled_thread``.
++"""
++
++from __future__ import annotations
++
++import asyncio
++from collections import deque
++from collections.abc import Awaitable, Callable
++from dataclasses import dataclass, field
++from typing import Deque, Generic, TypeVar
++from weakref import WeakKeyDictionary
++
++T = TypeVar("T")
++
++
++class ReportIOBusy(RuntimeError):
++    """The process-local report I/O waiting budget is full."""
++
++
++@dataclass
++class _State:
++    running: int = 0
++    waiters: Deque[asyncio.Future] = field(default_factory=deque)
++
++
++class ReportIOBudget(Generic[T]):
++    def __init__(self, *, max_running: int, max_waiting: int):
++        if max_running < 1 or max_waiting < 0:
++            raise ValueError("Invalid report I/O budget")
++        self.max_running = max_running
++        self.max_waiting = max_waiting
++        self._states: WeakKeyDictionary = WeakKeyDictionary()
++
++    def _state(self) -> _State:
++        loop = asyncio.get_running_loop()
++        state = self._states.get(loop)
++        if state is None:
++            state = _State()
++            self._states[loop] = state
++        return state
++
++    def stats(self) -> dict[str, int]:
++        state = self._states.get(asyncio.get_running_loop())
++        return {
++            "running": state.running if state else 0,
++            "waiting": len(state.waiters) if state else 0,
++        }
++
++    def _release(self, state: _State) -> None:
++        while state.waiters:
++            waiter = state.waiters.popleft()
++            if not waiter.done():
++                # Transfer the occupied slot before the waiter is scheduled.
++                # running intentionally stays unchanged during the handoff.
++                waiter.set_result(None)
++                return
++        state.running -= 1
++
++    def _cleanup(self, state: _State) -> None:
++        if state.running == 0 and not state.waiters:
++            self._states.pop(asyncio.get_running_loop(), None)
++
++    async def run(self, operation: Callable[[], Awaitable[T]]) -> T:
++        state = self._state()
++        active = state.running < self.max_running
++        waiter = None
++        if active:
++            state.running += 1
++        else:
++            if len(state.waiters) >= self.max_waiting:
++                raise ReportIOBusy("Report I/O queue full; retry later")
++            waiter = asyncio.get_running_loop().create_future()
++            state.waiters.append(waiter)
++            try:
++                await waiter
++            except BaseException:
++                if waiter.done() and not waiter.cancelled():
++                    # The slot was already transferred but this task was cancelled
++                    # before it could start the operation. Hand it on again.
++                    self._release(state)
++                else:
++                    try:
++                        state.waiters.remove(waiter)
++                    except ValueError:
++                        pass
++                self._cleanup(state)
++                raise
++
++        try:
++            return await operation()
++        finally:
++            self._release(state)
++            self._cleanup(state)
+diff --git a/backend/tests/unit/test_g07_report_loading.py b/backend/tests/unit/test_g07_report_loading.py
+new file mode 100644
+index 0000000..a598410
+--- /dev/null
++++ b/backend/tests/unit/test_g07_report_loading.py
+@@ -0,0 +1,408 @@
++import asyncio
++import threading
++import time
++from collections import OrderedDict
++from types import SimpleNamespace
++from uuid import uuid4
++
++import pandas as pd
++import pytest
++
++from neurodatics.modules.analytics.application.services.parquet_reader_service import (
++    ParquetIdentityError,
++    ParquetReaderService,
++    PreparedParquetBatch,
++)
++from neurodatics.modules.analytics.infrastructure.singleflight import settled_thread
++from neurodatics.modules.projects.infrastructure import image_cache
++from neurodatics.modules.projects.infrastructure.image_cache import (
++    CachedProjectImage,
++    ProjectImageRef,
++)
++from neurodatics.modules.reports.application.services import executive_report_service
++from neurodatics.modules.reports.application.services.executive_report_service import (
++    ExecutiveReportService,
++)
++from neurodatics.modules.reports.infrastructure.io_budget import (
++    ReportIOBudget,
++    ReportIOBusy,
++)
++
++
++@pytest.mark.asyncio
++async def test_group_frames_use_two_workers_keep_order_and_partial_warnings(monkeypatch):
++    project_id = uuid4()
++    codes = ["P01", "P02", "P03", "P04"]
++    active = 0
++    maximum = 0
++    generations = []
++
++    async def prepare(self, received_project_id, received_codes, generation):
++        generations.append(generation)
++        assert received_project_id == project_id
++        assert received_codes == codes
++        return PreparedParquetBatch(
++            reads={code: SimpleNamespace(participant_code=code) for code in codes},
++            errors={},
++            storage_client=object(),
++        )
++
++    async def read_prepared(self, prepared, storage_client, *, projection=None):
++        nonlocal active, maximum
++        assert storage_client is not None
++        assert projection is None
++        active += 1
++        maximum = max(maximum, active)
++        try:
++            await asyncio.sleep(0.02)
++            if prepared.participant_code == "P02":
++                raise OSError("synthetic partial failure")
++            return pd.DataFrame({"participant": [prepared.participant_code]})
++        finally:
++            active -= 1
++
++    monkeypatch.setattr(ParquetReaderService, "prepare_batch", prepare)
++    monkeypatch.setattr(ParquetReaderService, "read_prepared", read_prepared)
++
++    frames, warnings = await ExecutiveReportService(SimpleNamespace())._read_participant_frames(
++        project_id,
++        codes,
++        generation=7,
++    )
++
++    assert generations == [7]
++    assert maximum == 2
++    assert list(frames) == ["P01", "P03", "P04"]
++    assert warnings == ["No se pudieron cargar los datos del participante P02."]
++    assert executive_report_service.report_io_budget.stats() == {"running": 0, "waiting": 0}
++
++
++@pytest.mark.asyncio
++async def test_batch_identity_error_keeps_warning_position_without_starting_io(monkeypatch):
++    calls = []
++
++    async def prepare(self, project_id, codes, generation):
++        return PreparedParquetBatch(
++            reads={"P01": SimpleNamespace(participant_code="P01")},
++            errors={"P02": ParquetIdentityError("ambiguous legacy identity")},
++            storage_client=object(),
++        )
++
++    async def read_prepared(self, prepared, storage_client, *, projection=None):
++        calls.append(prepared.participant_code)
++        return pd.DataFrame({"participant": [prepared.participant_code]})
++
++    monkeypatch.setattr(ParquetReaderService, "prepare_batch", prepare)
++    monkeypatch.setattr(ParquetReaderService, "read_prepared", read_prepared)
++
++    frames, warnings = await ExecutiveReportService(SimpleNamespace())._read_participant_frames(
++        uuid4(),
++        ["P01", "P02"],
++        generation=11,
++    )
++
++    assert calls == ["P01"]
++    assert list(frames) == ["P01"]
++    assert warnings == ["No se pudieron cargar los datos del participante P02."]
++
++
++@pytest.mark.asyncio
++async def test_report_cancellation_keeps_slot_until_worker_physically_settles(monkeypatch):
++    started = threading.Event()
++    release = threading.Event()
++
++    async def prepare(self, project_id, codes, generation):
++        return PreparedParquetBatch(
++            reads={"P01": SimpleNamespace(participant_code="P01")},
++            errors={},
++            storage_client=object(),
++        )
++
++    async def read_prepared(self, prepared, storage_client, *, projection=None):
++        def blocking_read():
++            started.set()
++            release.wait(timeout=5)
++            return pd.DataFrame({"participant": [prepared.participant_code]})
++
++        return await settled_thread(blocking_read)
++
++    monkeypatch.setattr(ParquetReaderService, "prepare_batch", prepare)
++    monkeypatch.setattr(ParquetReaderService, "read_prepared", read_prepared)
++    service = ExecutiveReportService(SimpleNamespace())
++    task = asyncio.create_task(
++        service._read_participant_frames(uuid4(), ["P01"], generation=3)
++    )
++    try:
++        for _ in range(100):
++            if started.is_set():
++                break
++            await asyncio.sleep(0.005)
++        assert started.is_set()
++        task.cancel()
++        await asyncio.sleep(0.02)
++        assert not task.done()
++        assert executive_report_service.report_io_budget.stats()["running"] == 1
++    finally:
++        release.set()
++
++    with pytest.raises(asyncio.CancelledError):
++        await task
++    assert executive_report_service.report_io_budget.stats() == {"running": 0, "waiting": 0}
++
++
++@pytest.mark.asyncio
++async def test_process_io_budget_bounds_running_and_waiting():
++    budget = ReportIOBudget(max_running=1, max_waiting=1)
++    started = asyncio.Event()
++    release = asyncio.Event()
++
++    async def slow():
++        started.set()
++        await release.wait()
++        return "ok"
++
++    first = asyncio.create_task(budget.run(slow))
++    await started.wait()
++    second = asyncio.create_task(budget.run(slow))
++    await asyncio.sleep(0)
++    assert budget.stats() == {"running": 1, "waiting": 1}
++    with pytest.raises(ReportIOBusy):
++        await budget.run(slow)
++    release.set()
++    assert await asyncio.gather(first, second) == ["ok", "ok"]
++    assert budget.stats() == {"running": 0, "waiting": 0}
++
++
++@pytest.mark.asyncio
++async def test_process_io_budget_handoff_reserves_slot_before_waiter_resumes():
++    budget = ReportIOBudget(max_running=1, max_waiting=1)
++    state = budget._state()
++    state.running = 1
++    reserved = asyncio.get_running_loop().create_future()
++    state.waiters.append(reserved)
++
++    budget._release(state)
++
++    assert reserved.done()
++    assert budget.stats() == {"running": 1, "waiting": 0}
++    newcomer_started = asyncio.Event()
++    newcomer_release = asyncio.Event()
++
++    async def newcomer_operation():
++        newcomer_started.set()
++        await newcomer_release.wait()
++
++    newcomer = asyncio.create_task(budget.run(newcomer_operation))
++    await asyncio.sleep(0)
++    assert budget.stats() == {"running": 1, "waiting": 1}
++    with pytest.raises(ReportIOBusy):
++        await budget.run(newcomer_operation)
++
++    # Model the reserved waiter settling: its active slot transfers atomically
++    # to the newcomer already in the bounded queue.
++    budget._release(state)
++    await newcomer_started.wait()
++    assert budget.stats() == {"running": 1, "waiting": 0}
++    newcomer_release.set()
++    await newcomer
++    assert budget.stats() == {"running": 0, "waiting": 0}
++
++
++@pytest.mark.asyncio
++async def test_process_io_budget_zero_waiting_rejects_while_slot_is_active():
++    budget = ReportIOBudget(max_running=1, max_waiting=0)
++    started = asyncio.Event()
++    release = asyncio.Event()
++
++    async def slow():
++        started.set()
++        await release.wait()
++
++    active = asyncio.create_task(budget.run(slow))
++    await started.wait()
++    with pytest.raises(ReportIOBusy):
++        await budget.run(slow)
++    assert budget.stats() == {"running": 1, "waiting": 0}
++    release.set()
++    await active
++    assert budget.stats() == {"running": 0, "waiting": 0}
++
++
++@pytest.mark.asyncio
++async def test_http_and_report_image_layer_share_one_download(monkeypatch):
++    monkeypatch.setattr(image_cache, "_cache_store", OrderedDict())
++    monkeypatch.setattr(image_cache, "_cache_total_bytes", 0)
++    monkeypatch.setattr(image_cache, "_read_disk_cache", lambda _file_id: None)
++    monkeypatch.setattr(image_cache, "_write_disk_cache", lambda *_args: None)
++    downloads = 0
++    active = 0
++    maximum = 0
++    lock = threading.Lock()
++
++    class Storage:
++        def download_file_content(self, external_id):
++            nonlocal downloads, active, maximum
++            with lock:
++                downloads += 1
++                active += 1
++                maximum = max(maximum, active)
++            time.sleep(0.02)
++            with lock:
++                active -= 1
++            return b"shared-image"
++
++    ref = ProjectImageRef(uuid4(), "external-image", "image/png", "image-key")
++    results = await asyncio.gather(
++        *(image_cache.load_project_image(ref, Storage()) for _ in range(5))
++    )
++
++    assert downloads == 1
++    assert maximum == 1
++    assert [result.content for result in results] == [b"shared-image"] * 5
++    assert (await image_cache.load_project_image(ref, Storage())).content == b"shared-image"
++    assert downloads == 1
++    assert image_cache.image_flights.stats() == {
++        "entries": 0,
++        "running": 0,
++        "consumers": 0,
++    }
++
++
++@pytest.mark.asyncio
++async def test_image_disk_cache_keys_body_and_metadata_by_complete_identity(
++    tmp_path,
++    monkeypatch,
++):
++    monkeypatch.setattr(image_cache.settings, "image_cache_dir", str(tmp_path))
++    monkeypatch.setattr(image_cache, "_cache_store", OrderedDict())
++    monkeypatch.setattr(image_cache, "_cache_total_bytes", 0)
++    file_id = uuid4()
++    old_ref = ProjectImageRef(file_id, "external-old", "image/png", "old-key")
++    new_ref = ProjectImageRef(file_id, "external-new", "image/png", "new-key")
++    image_cache._write_disk_cache(old_ref, b"old-image")
++
++    assert await image_cache.get_cached_project_image(new_ref) is None
++
++    class Storage:
++        def __init__(self):
++            self.downloads = []
++
++        def download_file_content(self, external_id):
++            self.downloads.append(external_id)
++            return b"new-image"
++
++    storage = Storage()
++    loaded = await image_cache.load_project_image(new_ref, storage)
++
++    assert loaded.content == b"new-image"
++    assert storage.downloads == ["external-new"]
++    assert image_cache._read_disk_cache(old_ref) == (b"old-image", "image/png")
++    assert image_cache._read_disk_cache(new_ref) == (b"new-image", "image/png")
++
++
++@pytest.mark.asyncio
++async def test_image_disk_cache_rejects_incoherent_publication(tmp_path, monkeypatch):
++    monkeypatch.setattr(image_cache.settings, "image_cache_dir", str(tmp_path))
++    monkeypatch.setattr(image_cache, "_cache_store", OrderedDict())
++    monkeypatch.setattr(image_cache, "_cache_total_bytes", 0)
++    ref = ProjectImageRef(uuid4(), "external", "image/png", "identity-key")
++    image_cache._write_disk_cache(ref, b"complete")
++    image_path, _ = image_cache._disk_cache_paths(ref.cache_key)
++    image_path.write_bytes(b"partial-or-other-writer")
++
++    assert await image_cache.get_cached_project_image(ref) is None
++
++
++@pytest.mark.asyncio
++async def test_same_file_uuid_with_distinct_image_identities_never_crosses_bytes(
++    tmp_path,
++    monkeypatch,
++):
++    monkeypatch.setattr(image_cache.settings, "image_cache_dir", str(tmp_path))
++    monkeypatch.setattr(image_cache, "_cache_store", OrderedDict())
++    monkeypatch.setattr(image_cache, "_cache_total_bytes", 0)
++    file_id = uuid4()
++    refs = [
++        ProjectImageRef(file_id, "external-a", "image/png", "identity-a"),
++        ProjectImageRef(file_id, "external-b", "image/jpeg", "identity-b"),
++    ]
++
++    class Storage:
++        def download_file_content(self, external_id):
++            time.sleep(0.02)
++            return external_id.encode("ascii")
++
++    loaded = await asyncio.gather(
++        *(image_cache.load_project_image(ref, Storage()) for ref in refs)
++    )
++
++    assert [item.content for item in loaded] == [b"external-a", b"external-b"]
++    assert [item.mime_type for item in loaded] == ["image/png", "image/jpeg"]
++
++
++@pytest.mark.asyncio
++async def test_scenario_image_map_uses_preloaded_relation_and_filters_identity(monkeypatch):
++    project_id = uuid4()
++    valid_id = uuid4()
++    valid_file = SimpleNamespace(
++        id=valid_id,
++        project_id=project_id,
++        external_id="valid",
++        mime_type="image/png",
++        updated_at=None,
++        deleted_at=None,
++    )
++    deleted_file = SimpleNamespace(
++        id=uuid4(), project_id=project_id, external_id="deleted",
++        mime_type="image/png", updated_at=None, deleted_at=object(),
++    )
++    foreign_file = SimpleNamespace(
++        id=uuid4(), project_id=uuid4(), external_id="foreign",
++        mime_type="image/png", updated_at=None, deleted_at=None,
++    )
++    text_file = SimpleNamespace(
++        id=uuid4(), project_id=project_id, external_id="text",
++        mime_type="text/plain", updated_at=None, deleted_at=None,
++    )
++
++    def scenario(name, project_file):
++        return SimpleNamespace(
++            name=name,
++            type="image",
++            source_entry_path=f"{name}.png",
++            file=project_file,
++            file_id=project_file.id,
++        )
++
++    project = SimpleNamespace(
++        id=project_id,
++        scenaries=[
++            scenario("valid-a", valid_file),
++            scenario("valid-b", valid_file),
++            scenario("deleted", deleted_file),
++            scenario("foreign", foreign_file),
++            scenario("wrong-mime", text_file),
++        ],
++    )
++    cache_reads = []
++
++    async def cached(ref):
++        cache_reads.append(ref.cache_key)
++        return CachedProjectImage(b"image", "image/png", '"etag"', "HIT")
++
++    async def forbidden_client(self):
++        raise AssertionError("warm image batch should not resolve storage OAuth")
++
++    monkeypatch.setattr(executive_report_service, "get_cached_project_image", cached)
++    monkeypatch.setattr(ExecutiveReportService, "_build_drive_client", forbidden_client)
++
++    images = await ExecutiveReportService(SimpleNamespace())._load_scenario_images(project)
++
++    assert images == {
++        "valid-a": b"image",
++        "valid-b": b"image",
++        "deleted": None,
++        "foreign": None,
++        "wrong-mime": None,
++    }
++    assert len(cache_reads) == 1
+diff --git a/docs/perf/bench/g07_reports.py b/docs/perf/bench/g07_reports.py
+new file mode 100644
+index 0000000..c51a360
+--- /dev/null
++++ b/docs/perf/bench/g07_reports.py
+@@ -0,0 +1,281 @@
++"""G07 group-load probe using the exact G00 large synthetic corpus.
++
++Run each phase/state in a separate process.  "cold" adds 20 ms of synthetic
++remote I/O per full Parquet; the OS page cache is not flushed.  Collect,
++figures and PDF rendering are intentionally excluded.
++"""
++
++import argparse
++import asyncio
++import gc
++import importlib.util
++import json
++import platform
++import statistics
++import sys
++import tempfile
++import threading
++import time
++from collections import Counter
++from pathlib import Path
++from types import SimpleNamespace
++from uuid import uuid4
++
++import g00_backend as baseline
++import numpy as np
++import pandas as pd
++import pyarrow
++
++ROOT = baseline.ROOT
++EVIDENCE = ROOT / "docs/perf/ejecucion/evidencia/g07"
++RUNTIME = ROOT / "output/perf-g07/runtime"
++COUNTS = Counter()
++COUNT_LOCK = threading.Lock()
++
++
++def count(key, amount=1):
++    with COUNT_LOCK:
++        COUNTS[key] += amount
++
++
++def received_service_module():
++    name = "neurodatics.modules.reports.application.services.g07_received_executive_report_service"
++    path = (
++        ROOT
++        / "output/perf-g07/base/backend/src/neurodatics/modules/reports/application/services/executive_report_service.py"
++    )
++    spec = importlib.util.spec_from_file_location(name, path)
++    module = importlib.util.module_from_spec(spec)
++    sys.modules[name] = module
++    spec.loader.exec_module(module)
++    return module
++
++
++def build_large_parquet():
++    RUNTIME.mkdir(parents=True, exist_ok=True)
++    fixture = baseline.load_fixture_module()
++    with tempfile.TemporaryDirectory(prefix="g07-fixture-", dir=RUNTIME) as temporary:
++        class Factory:
++            def mktemp(self, name):
++                target = Path(temporary) / name
++                target.mkdir()
++                return target
++
++        corpus = fixture.corpus.__wrapped__(Factory())
++        base = corpus.frames["SYN-01"]
++        pieces = []
++        for block in range(64):
++            part = base.copy(deep=True)
++            part["time"] += block * 16
++            for column in ("segment_id", "fixation_segment_id"):
++                if column in part:
++                    part[column] = part[column].astype(str) + f"-block-{block}"
++            for column in part.columns:
++                if column == "fixation_id" or column.startswith("fixation_id__"):
++                    part[column] += block * 10000
++            pieces.append(part)
++        large = pd.concat(pieces, ignore_index=True)
++        large.attrs = dict(base.attrs)
++        for index in range(16):
++            large[f"g00_unused_{index:02d}"] = np.sin(
++                np.arange(len(large), dtype=float) / (index + 5)
++            )
++        path = RUNTIME / "large.parquet"
++        large.to_parquet(path, index=False)
++        deep_bytes = int(large.memory_usage(index=True, deep=True).sum())
++        fingerprint = {
++            "rows": len(large),
++            "columns": list(large.columns),
++            "deep_bytes": deep_bytes,
++            "time_sum": float(large["time"].sum()),
++            "gsr_sum": float(large["gsr"].sum()),
++        }
++        del pieces, large, corpus
++        gc.collect()
++        return path, fingerprint
++
++
++class PeakSampler:
++    def __init__(self):
++        self.stop = threading.Event()
++        self.peak = 0
++        self.thread = threading.Thread(target=self._sample, daemon=True)
++
++    def _sample(self):
++        while not self.stop.is_set():
++            current = baseline.rss()["rss_bytes"] or 0
++            self.peak = max(self.peak, current)
++            self.stop.wait(0.001)
++
++    def __enter__(self):
++        self.peak = baseline.rss()["rss_bytes"] or 0
++        self.thread.start()
++        return self
++
++    def __exit__(self, *_args):
++        self.stop.set()
++        self.thread.join()
++        self.peak = max(self.peak, baseline.rss()["rss_bytes"] or 0)
++
++
++async def run_case(phase, state, path, expected):
++    if phase == "before":
++        module = received_service_module()
++    else:
++        from neurodatics.modules.analytics.application.services.parquet_reader_service import (
++            PreparedParquetBatch,
++        )
++        from neurodatics.modules.reports.application.services import (
++            executive_report_service as module,
++        )
++
++    codes = [f"SYN-L{index:02d}" for index in range(4)]
++    generation = 17
++
++    def decode():
++        if state == "cold":
++            count("downloads")
++            count("download_bytes", path.stat().st_size)
++            time.sleep(0.020)
++        count("parquet_reads")
++        return pd.read_parquet(path)
++
++    if phase == "before":
++        class Reader:
++            def __init__(self, db):
++                self.db = db
++
++            async def read(self, project_id, code, received_generation):
++                assert received_generation == generation
++                if state == "cold":
++                    count("candidate_queries")
++                    count("oauth_queries")
++                return await module.anyio.to_thread.run_sync(decode)
++    else:
++        class Reader:
++            def __init__(self, db):
++                self.db = db
++
++            async def prepare_batch(self, project_id, received_codes, received_generation):
++                assert received_codes == codes
++                assert received_generation == generation
++                count("candidate_queries")
++                count("oauth_queries")
++                return PreparedParquetBatch(
++                    reads={code: SimpleNamespace(participant_code=code) for code in codes},
++                    errors={},
++                    storage_client=object() if state == "cold" else None,
++                )
++
++            async def read_prepared(self, prepared, storage_client, *, projection=None):
++                assert projection is None
++                return await module.settled_thread(decode)
++
++    original_reader = module.ParquetReaderService
++    module.ParquetReaderService = Reader
++    service = module.ExecutiveReportService(SimpleNamespace())
++    try:
++        async def operation():
++            before_rss = baseline.rss()["rss_bytes"] or 0
++            before_counts = COUNTS.copy()
++            cpu_started = time.process_time()
++            started = time.perf_counter()
++            with PeakSampler() as sampler:
++                frames, warnings = await service._read_participant_frames(
++                    uuid4(), codes, generation
++                )
++            elapsed = (time.perf_counter() - started) * 1000
++            cpu_ms = (time.process_time() - cpu_started) * 1000
++            assert not warnings
++            assert list(frames) == codes
++            for frame in frames.values():
++                assert len(frame) == expected["rows"]
++                assert list(frame.columns) == expected["columns"]
++                assert float(frame["time"].sum()) == expected["time_sum"]
++                assert float(frame["gsr"].sum()) == expected["gsr_sum"]
++            counts = dict(COUNTS - before_counts)
++            peak_rss = sampler.peak
++            del frames
++            gc.collect()
++            return {
++                "ms": elapsed,
++                "cpu_ms": cpu_ms,
++                "counts": counts,
++                "rss_before_bytes": before_rss,
++                "rss_peak_bytes": peak_rss,
++                "rss_peak_delta_bytes": max(0, peak_rss - before_rss),
++                "rss_after_gc_bytes": baseline.rss()["rss_bytes"],
++            }
++
++        await operation()  # warmup, excluded
++        samples = [await operation() for _ in range(5)]
++    finally:
++        module.ParquetReaderService = original_reader
++    return samples
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--phase", choices=("before", "after"), required=True)
++    parser.add_argument("--state", choices=("cold", "warm"), required=True)
++    args = parser.parse_args()
++    path, fingerprint = build_large_parquet()
++    COUNTS.clear()
++    case_start_memory = baseline.rss()
++    samples = asyncio.run(run_case(args.phase, args.state, path, fingerprint))
++    case_end_memory = baseline.rss()
++    times = [sample["ms"] for sample in samples]
++    deltas = [sample["rss_peak_delta_bytes"] for sample in samples]
++    result = {
++        "phase": args.phase,
++        "state": args.state,
++        "runtime": {
++            "python": platform.python_version(),
++            "pandas": pd.__version__,
++            "numpy": np.__version__,
++            "pyarrow": pyarrow.__version__,
++        },
++        "scope": "G00 large x4; group load only; synthetic 20ms remote I/O; no DB/Drive/Redis/collect/render",
++        "fixture": {
++            **fingerprint,
++            "parquet_bytes": path.stat().st_size,
++            "participants": 4,
++        },
++        "n": 5,
++        "warmup": 1,
++        "median_ms": statistics.median(times),
++        "min_ms": min(times),
++        "max_ms": max(times),
++        "median_peak_delta_bytes": statistics.median(deltas),
++        "min_peak_delta_bytes": min(deltas),
++        "max_peak_delta_bytes": max(deltas),
++        "case_rss_before_warmup_bytes": case_start_memory["rss_bytes"],
++        "case_peak_before_warmup_bytes": case_start_memory["process_lifetime_peak_bytes"],
++        "case_peak_after_samples_bytes": case_end_memory["process_lifetime_peak_bytes"],
++        "max_sampled_group_rss_bytes": max(sample["rss_peak_bytes"] for sample in samples),
++        "samples": samples,
++        "limits": [
++            "Each phase/state is a separate process; per-operation RSS is sampled at 1ms.",
++            "Cold means a synthetic 20ms remote delay; the OS page cache is not flushed.",
++            "RSS is measured, not a bound; allocator reuse can make later per-sample deltas zero, so absolute sampled group RSS is retained.",
++            "Fixture construction may set the lifetime peak before warmup; before/after lifetime peaks are reported separately.",
++            "Collect and rendering are excluded and remain serial.",
++        ],
++    }
++    if args.phase == "after":
++        before = json.loads((EVIDENCE / f"before-{args.state}.json").read_text(encoding="utf-8"))
++        assert result["runtime"] == before["runtime"]
++        assert result["fixture"] == before["fixture"]
++        result["equivalent_to_before"] = True
++    target = EVIDENCE / f"{args.phase}-{args.state}.json"
++    target.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
++    print(json.dumps({key: result[key] for key in (
++        "phase", "state", "n", "median_ms", "min_ms", "max_ms",
++        "median_peak_delta_bytes", "min_peak_delta_bytes", "max_peak_delta_bytes",
++        "case_rss_before_warmup_bytes", "case_peak_before_warmup_bytes",
++        "case_peak_after_samples_bytes", "max_sampled_group_rss_bytes",
++    )}, indent=2))
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/docs/perf/ejecucion/G07.md b/docs/perf/ejecucion/G07.md
+new file mode 100644
+index 0000000..5ca2eb7
+--- /dev/null
++++ b/docs/perf/ejecucion/G07.md
+@@ -0,0 +1,19 @@
++# G07 — Carga eficiente de informes
++
++**Estado: completa, correcciones de `REVISION-G07.md` incorporadas; pendiente de revisión final.** Sólo G07; sin agentes, G08, deploy, migraciones, dependencias ni cambios en ORQUESTACION/ASIGNACION/REVISION. Codex GPT-5.6 Sol/high; Claude Sonnet/alto recomendado para revisión de identidad/auth/cancelación/RAM. La revisión apareció durante el cierre y sus tres observaciones se corrigieron antes de cerrar.
++
++Base recibida: HEAD `f310003bd734203a41268f40a4627bd99d5a3233` + trabajo local G00–G06; G06 aprobado según asignación. [Inventario](evidencia/g07/inventario-inicial.json): cobertura inicial **942** tracked+untracked no ignored y 8 hashes desde snapshot pre-G07 `output/perf-g07/base`; excluye fuente/evidencia/logs propios G07. La huella histórica previa a revisión fue 935. [Preservación final](evidencia/g07/preservacion.json): **934 protegidos** =933 hashes iguales +1 cambio autorizado de ORQUESTACION por coordinador; frontend **236/236**. REVISION apareció tarde y queda excluido/hasheado como root vivo. Sin reset/stash/commit, dependencias/.venv, datos usuarios, distribución ni servicio real.
++
++Resultado: `resolve_user_parquets` carga una vez candidatos y, sólo para legacy puro, una vez participantes; retorna resolución/error por código y conserva identidad exacta, duplicados/ambigüedad visibles y filtros proyecto/kind/deleted/type. `prepare_batch` resuelve `generation=None` una vez y fija identidad+OAuth también para paths calientes, antes de workers. Los `PreparedParquetRead` scalar-only permiten que `read_prepared` recupere un path barrido por janitor sin DB ni cambio de generación; mantiene full G03, archivo SingleFlight/publicación G04 y DataFrame propio. No hay caché global de frames.
++
++Imágenes: nueva capa `projects.infrastructure.image_cache`, compartida por HTTP e informes sin importar routes. Conserva 304 temprano y comparte un miss por identidad. Disco se keyea por identidad completa y valida sidecar cache_key/MIME/tamaño/SHA-256 antes de hit; publicación incoherente es miss y el formato UUID legacy nunca certifica un ref nuevo. El informe usa `Scenaries.file` precargado y un mapa, exige proyecto/file/deleted/MIME/external_id; archivos repetidos descargan una vez. Owner/auth se valida en `_load_project` o ruta antes de entrar. Google Drive usa transporte thread-local por worker; local storage lecturas independientes/RLock de mutaciones, ver 47 contratos.
++
++Concurrencia: máximo **2 workers por informe** y presupuesto proceso/loop **2 running +16 waiting**, configuración validada 1–2/0–16. Cola FIFO transfiere la reserva activa antes de despertar al waiter, sin ventana de sobre-admisión y con contrato explícito para `max_waiting=0`. Hay sólo dos tasks worker, no una por participante. Resolución DB/OAuth termina antes de crearlas; resultados/warnings se reordenan según input. Fallos parciales preservan textos/None. Cancelar mantiene slot hasta settlement físico del thread/file flight; no cierra DB bajo tareas. Matplotlib/collect/render/PDF permanecen seriales; render también drena su thread al cancelar. [API, suma G04 y handoff G08/G10](evidencia/g07/API.md).
++
++Presupuesto: 2×frame large ≈322 MiB transitorio por informe, debajo del candidato 512 MiB, aparte de cuatro retenidos ≈644 MiB. Con G04 pueden coexistir estimativamente 6 full decodes ≈966 MiB transitorios; no es bound RSS. Fuente/tamaño desconocido conserva 2 o se configura 1, nunca autoescala. Caché imagen existente 256/64 MiB/300 s + disco bajo janitor; image flights 2/16/128. No se guarda frame desconocido globalmente.
++
++Medida final [detalle/crudos](evidencia/g07/medidas.md): G00 large 4×102.400, 161.056.772 B/frame, procesos separados, warmup1+n5, Python3.14/PyArrow25. Frío 20 ms: **318,08 [305,20–339,21]→264,51 [254,58–276,51] ms**, candidatos/OAuth **4/4→1/1**, conservando 4 descargas/4 decodes. Caliente **231,92 [220,15–264,02]→212,94 [197,46–243,57] ms** y paga 1 batch/OAuth para recovery seguro. Máximo RSS 900,89→979,62 MiB frío (+8,7%) y 941,98→958,12 MiB caliente (+1,7%); medido, no garantía deployment ni peak bound. Collect/render excluidos y permanecen equivalentes por caracterizaciones G05–G06.
++
++Verificación: selección amplia pre-revisión **350 pruebas/25 snapshots** en ambos runtimes; producto final de revisión **170 pruebas afectadas** en recibido y aislado Python3.12/PyArrow16.1. Incluye handoff/max_waiting0, disco same-UUID/dos identidades/coherencia, sweep recovery/generation None, HTTP/sensor reports, identidad/generación/cache, slow20ms máximo2, fallos, orden/warnings, cancelación real y cero estados activos. Storage thread-safety **47 pruebas**. Ruff propio/probe y 3 import boundaries aprobados; goldens intactos. [Comandos/logs](evidencia/g07/comandos.md). Sin PostgreSQL/Drive/Redis reales, nube, paquete congelado, frontend ni gate global (G12).
++
++Archivos propios: settings, reader, routes, executive service, nueva capa imagen/budget, 3 tests ajustados/nuevos, probe, G07/ESTADO y evidencia; [manifiesto](evidencia/g07/manifiesto-final.json) y [own.patch](evidencia/g07/own.patch) contra recibidos, nunca HEAD. Reversión: aplicar sólo ese patch en reversa preservando G00–G06. G08 no iniciado; aguarda revisión del coordinador.
+diff --git a/docs/perf/ejecucion/evidencia/g07/API.md b/docs/perf/ejecucion/evidencia/g07/API.md
+new file mode 100644
+index 0000000..81f1e12
+--- /dev/null
++++ b/docs/perf/ejecucion/evidencia/g07/API.md
+@@ -0,0 +1,29 @@
++# API G07 — lote, medios y presupuestos
++
++## Parquet por lote
++
++`ParquetReaderService.resolve_user_parquets(project_id, participant_codes)` carga candidatos una vez y devuelve dos mapas, `resolved` y `errors`, keyed por el código solicitado. Conserva comparación exacta salvo whitespace, prioridad `file_metadata.participant_code`/`block_metadata.participant_code`, filtros proyecto/kind/deleted/type y errores visibles por duplicado/desconocido. Sólo si **todos** los candidatos carecen de identidad carga participantes una vez y aplica el legacy posicional; una mezcla identificado/sin identificar continúa siendo ambigua para quien no tenga match.
++
++`prepare_batch(project_id, codes, generation)` fija una generación normalizada; si recibe `None`, consulta la generación vigente **una vez**. Detecta paths cacheados, pero resuelve todas las identidades y un cliente de almacenamiento antes de workers: así cada `PreparedParquetRead` lleva path + UUID/external_id/generación exactos y puede recuperarse sin DB si el janitor elimina el path antes de abrirlo. Devuelve `PreparedParquetBatch(reads, errors, storage_client)`. `read_prepared(...)` no usa DB/ORM, reintenta por la identidad preparada sólo ante `OSError` del path, y devuelve un DataFrame dueño del consumidor. Archivo frío/recovery conserva `parquet_flights` G04 y publicación atómica; nunca cambia a otra generación. Cada código necesario conserva su descarga/decodificación full G03. No hay caché global de frames.
++
++## Imágenes compartidas
++
++`projects.infrastructure.image_cache` es la capa común, sin imports de HTTP:
++
++- `project_image_ref(ProjectFile)` extrae identidad escalar y exige MIME `image/*` + `external_id`.
++- `get_cached_project_image(ref)` consulta disco/memoria existentes.
++- `load_project_image(ref, storage_client)` reconsulta tras admisión, comparte un miss por `id:external_id:updated_at` y devuelve bytes/MIME/ETag/status.
++
++La ruta HTTP conserva auth/owner/project/deleted antes de llamar la capa y conserva 304 antes de leer caché. El informe parte del `Project` autorizado y de `Scenaries.file` precargado; además exige `file.id == scenario.file_id`, mismo `project_id`, `deleted_at is None`, MIME y storage ref. Escenarios repetidos con el mismo archivo usan un mapa y una descarga. Disco usa SHA-256 de la identidad completa (`id:external_id:updated_at exacto`) y un sidecar versionado con cache_key/MIME/tamaño/SHA-256; sólo tras validar el cuerpo certifica hit. Publica body+metadata con temps/replace y una intercalación incoherente se vuelve miss, nunca cuerpo de otra identidad. Los antiguos archivos UUID/MIME sin identidad quedan ignorados y el janitor real los elimina por edad/presupuesto; no se certifican como hit nuevo. Caché en memoria existente: 256 entradas, 64 MiB de contenido, TTL 300 s; archivos siguen bajo el janitor de medios 2 GiB/72 h. `image_flights`: 2 running/16 queued/128 consumidores por proceso/loop, timeout 120 s.
++
++El cliente Google Drive es compartible entre los dos workers: mantiene `httplib2`/service en `threading.local` y protege cambios de credenciales; el cliente local hace lecturas independientes y protege mutaciones con `RLock`. Los 47 contratos de ambos clientes pasan. El cliente se construye serialmente con la sesión del request antes de workers y éstos reciben sólo el handle + scalars.
++
++## Concurrencia y cancelación
++
++Cada informe crea como máximo `REPORT_IO_MAX_CONCURRENCY` workers, no una task por participante. Configuración validada: `report_io_max_concurrency` ∈ {1,2}, default 2; `report_io_max_waiting` 0–16, default 16. `report_io_budget` es por proceso/event loop: máximo 2 operaciones activas y 16 workers en espera sumando informes. La cola FIFO transfiere el slot ocupado al waiter **antes** de despertarlo; durante el handoff `running` permanece reservado, por lo que un newcomer no excede espera, incluido `max_waiting=0`. Resultados/excepciones se guardan por índice: orden de participantes y warnings no depende del orden de finalización. DB/ORM/generación/OAuth se resuelven antes de los workers; render/Matplotlib/PDF siguen en un único thread posterior, nunca dentro del pool.
++
++Cancelar un worker conserva el slot hasta settlement físico de `settled_thread`; una descarga fría además conserva el slot G04 de `parquet_flights`. Render usa el mismo contrato de settlement. No se cierra DB bajo una tarea: no hay DB dentro de factory/worker y el request espera su cancelación. Errores parciales se transforman en el warning previo por participante; imágenes fallidas quedan `None` y conservan el aviso general.
++
++Composición por proceso: G04 mantiene 4 response flights + 4 file flights, 32 en cola/256 consumidores por nivel. G07 permite 2 decodes/I/O directos de informe; pueden coexistir con hasta 4 decodes HTTP, es decir, una estimación conservadora de 6×161 MiB ≈966 MiB de frames transitorios, **no un bound RSS**, además de hasta cuatro frames retenidos (~644 MiB) por informe. Un informe G07 por sí solo limita transitorio a ~322 MiB (2×161), bajo el candidato 512 MiB; fuente/tamaño desconocido conserva 2 o se configura 1, nunca autoescala. El probe experimental ≤5 GiB no garantiza contenedor/deployment ni cubre informes simultáneos ilimitados.
++
++G08 puede consumir la capa de medios sin importar routes, manteniendo identidad/generación propia de video. G10 puede usar `prepare_batch/read_prepared` sólo si conserva auth, una generación y el presupuesto; no debe retener frames ni crear otro pool.
+diff --git a/docs/perf/ejecucion/evidencia/g07/medidas.md b/docs/perf/ejecucion/evidencia/g07/medidas.md
+new file mode 100644
+index 0000000..309f8ad
+--- /dev/null
++++ b/docs/perf/ejecucion/evidencia/g07/medidas.md
+@@ -0,0 +1,14 @@
++# Medidas G07
++
++Probe `g07_reports.py`, runtime recibido Python 3.14.3/pandas 2.3.3/NumPy 2.4.4/PyArrow 25.0.0. Fixture G00 large exact: 4 participantes ×102.400 filas, 17.366.952 B Parquet y 161.056.772 B profundos/frame. Cada phase/state corrió en **proceso separado**, warmup1+n5; mismo archivo/runtime/generación. Frío añade 20 ms por descarga sintética sin vaciar page cache del SO. Sólo carga de grupo; collect y render están separados/excluidos. Los frames devueltos conservan orden, columnas, filas y sumas time/GSR; los JSON after validan misma fixture/runtime que before.
++
++| Estado | Antes mediana [rango] ms | Después mediana [rango] ms | CPU mediana ms | Consultas candidato/OAuth | Descargas/reads |
++|---|---:|---:|---:|---:|---:|
++| frío | 318,08 [305,20–339,21] | 264,51 [254,58–276,51] | 812,50→703,12 | 4/4→1/1 | 4/4→4/4 |
++| caliente | 231,92 [220,15–264,02] | 212,94 [197,46–243,57] | 687,50→687,50 | 0/0→1/1 | 0/4→0/4 |
++
++La mejora observada final es −16,8% fría y −8,2% caliente. Las cuatro descargas científicamente necesarias no se omiten; la reducción fría determinista es la lista de candidatos/OAuth por lote. Caliente añade 1 candidatos/OAuth para fijar identidad y permitir recovery DB-free si el path desaparece; es el coste explícito de corregir la carrera de sweep. Imágenes repetidas concurrentes: 5 consumidores→1 descarga y el acceso caliente siguiente→0, cubierto por test de la capa compartida.
++
++RAM medida (sampling 1 ms), no estimada como bound: máximo RSS absoluto del proceso 900,89→979,62 MiB frío (+8,7%) y 941,98→958,12 MiB caliente (+1,7%). Está por debajo del umbral de incremento experimental 20% y muy por debajo del probe 5 GiB, por eso se adopta 2. El allocator reutiliza memoria tras warmup y algunos deltas por muestra son cero; se reporta el máximo absoluto por proceso/caso, no se presenta `deep_bytes` ni peak acumulado como pico operativo certificado. Fixture construction puede fijar parte del peak lifetime antes de warmup. No se extrapola a nube/contenedor ni a varios informes simultáneos.
++
++Evidencia cruda: `before-cold.json`, `before-warm.json`, `after-cold.json`, `after-warm.json`. Sin PostgreSQL/Drive/Redis real ni datos usuarios.
+diff --git a/docs/perf/ejecucion/evidencia/g07/comandos.md b/docs/perf/ejecucion/evidencia/g07/comandos.md
+new file mode 100644
+index 0000000..ca4ab54
+--- /dev/null
++++ b/docs/perf/ejecucion/evidencia/g07/comandos.md
+@@ -0,0 +1,21 @@
++# Comandos G07
++
++Desde raíz, cuatro procesos separados, secuenciales:
++
++```powershell
++.venv/Scripts/python.exe docs/perf/bench/g07_reports.py --phase before --state cold
++.venv/Scripts/python.exe docs/perf/bench/g07_reports.py --phase before --state warm
++.venv/Scripts/python.exe docs/perf/bench/g07_reports.py --phase after --state cold
++.venv/Scripts/python.exe docs/perf/bench/g07_reports.py --phase after --state warm
++```
++
++Desde `backend`, misma selección con `../.venv/Scripts/python.exe` y `../output/perf-g03/supported-env/Scripts/python.exe`:
++
++```powershell
++python -m pytest tests/unit/test_g07_report_loading.py tests/unit/test_parquet_participant_identity.py tests/unit/test_parquet_projection.py tests/unit/test_analytics_singleflight.py tests/unit/test_cache_generation_identity.py tests/unit/test_analytics_cache_invalidation.py tests/unit/test_image_conditional_get.py tests/unit/test_g06_aoi_cadence_algorithms.py tests/unit/test_shared_fixation_result.py tests/unit/test_fixation_event_analytics.py tests/unit/test_fixation_duration_variants.py tests/unit/test_stimulus_coordinate_analytics.py tests/unit/test_scanpath_radius_scale.py tests/unit/test_heatmap_orientation.py tests/unit/test_executive_report_heatmap_geometry.py tests/unit/test_executive_report_service.py tests/characterization/test_cached_frame_endpoints.py tests/characterization/test_shared_fixation_report.py tests/characterization/test_numeric_characterization.py tests/characterization/test_sensor_reports.py tests/characterization/test_analytics_http_contracts.py -q
++python -m pytest tests/unit/test_gdrive_client.py tests/unit/test_local_storage_client.py -q
++```
++
++Desde raíz: Ruff de archivos propios/probe. Desde backend: `PYTHONPATH=src` + `lint-imports --no-cache`. Cierre: patch reverse-check read-only contra snapshot G07. No gate frontend/global, DB/Drive/Redis real, instalación, build, deploy ni distribución.
++
++Tras `REVISION-G07.md` se repitieron sólo los afectados en ambos runtimes (**170 passed**): G07/identidad/imagen, singleflight, cache-generation/proyección, executive/sensor reports y cached endpoints. Logs `tests-revision-runtime.log` y `tests-revision-supported.log`. Se regeneraron únicamente los dos casos `after` del probe; los `before` permanecen el snapshot recibido.

@@ -1,5 +1,6 @@
 
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar, Clock3, Folder, Users, MoreVertical, Edit, Trash2, Archive, Loader2 } from "lucide-react"
 import { useState } from "react"
@@ -71,8 +72,9 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
   const handleUnarchiveProject = async (projectId: string, project: Project) => {
     try {
       setArchivingId(projectId)
-      await ProjectsApi.update(projectId, { status: "active" })
-      onEdit({ ...project, status: "active" })
+      const status = project.isPreExperiment ? "draft" : "active"
+      await ProjectsApi.update(projectId, { status })
+      onEdit({ ...project, status })
       toast.success("Proyecto desarchivado correctamente")
     } catch (error) {
       console.error("[ProjectsGrid] Unarchive failed", { projectId, error })
@@ -86,7 +88,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
       {projects.map((project) => {
         const projectStatus = (project.status || "active") as ProjectStatus
-        const participants = project.participants ?? 0
+        const participants = project.isPreExperiment ? project.planningParticipantsCount ?? 0 : project.participants ?? 0
         const isDeleting = deletingId === project.id
         const isDraftProcessing =
           project.status === "draft" && project.ingestionStatus === "PROCESSING"
@@ -95,7 +97,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
         // No backend work is running for these — show a "Retomar" footer.
         const isDraftPending =
           project.status === "draft" &&
-          (!project.ingestionStatus || project.ingestionStatus === "PENDING")
+          (!project.ingestionStatus || project.ingestionStatus === "PENDING" || (project.isPreExperiment && project.ingestionStatus === "FAILED"))
 
         const canContinueDraft =
           project.status === "draft" &&
@@ -150,11 +152,11 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => setEditOpenId(project.id)}
+                  onClick={() => { if (project.isPreExperiment) window.location.href = `/configuracion?proyecto=${encodeURIComponent(project.id)}`; else setEditOpenId(project.id) }}
                   disabled={isDraftProcessing}
                 >
                   <Edit className="h-4 w-4" />
-                  <span>Editar</span>
+                  <span>{project.isPreExperiment ? "Configuración" : "Editar"}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setDeleteOpenId(project.id)}
@@ -205,7 +207,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                   className={`h-2.5 w-2.5 rounded-full ${statusColorClass[projectStatus]}`}
                   aria-hidden="true"
                 />
-                <span>{statusLabel[projectStatus]}</span>
+                <span>{project.isPreExperiment && projectStatus !== "archived" ? "Pre-experimento" : statusLabel[projectStatus]}</span>
               </div>
             </div>
           </div>
@@ -242,6 +244,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
               </div>
 
               <div className="flex items-center gap-1">
+                {project.isPreExperiment && <Button size="sm" variant="outline" asChild><Link href={`/configuracion?proyecto=${encodeURIComponent(project.id)}`}>Configuración</Link></Button>}
                 {!isDraftProcessing && !isDraftPending && !canContinueDraft && (
                   <Button size="sm" variant="outline"
                     type="button"
@@ -311,14 +314,14 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
               <div className="flex items-center justify-between bg-card px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  <p className="text-xs text-muted-foreground">Paso 1 incompleto</p>
+                  <p className="text-xs text-muted-foreground">{project.isPreExperiment ? "Sin carpeta todavía" : "Paso 1 incompleto"}</p>
                 </div>
                 <Button variant="link"
                   type="button"
                   className="text-xs"
                   onClick={(e) => { e.stopPropagation(); onContinueDraft?.(project) }}
                 >
-                  Retomar
+                  {project.isPreExperiment ? "Agregar carpeta" : "Retomar"}
                 </Button>
               </div>
             </div>

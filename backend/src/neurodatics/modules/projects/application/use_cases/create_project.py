@@ -16,6 +16,7 @@ class CreateProjectUseCase:
         name: str,
         description: Optional[str] = None,
         status: ProjectStatus = ProjectStatus.DRAFT,
+        pre_experiment: Optional[dict] = None,
     ) -> Project:
         """Create a new project"""
         project = Project(
@@ -23,6 +24,8 @@ class CreateProjectUseCase:
             name=name,
             description=description,
             status=status,
+            pre_experiment=pre_experiment,
+            pre_experiment_revision=1 if pre_experiment is not None else 0,
         )
 
         return await self.repository.create(project)

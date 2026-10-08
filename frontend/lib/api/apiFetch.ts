@@ -346,7 +346,7 @@ export async function apiFetchBlobWithHeaders(
   // the body, which never reached this key, so caching one would hand the next
   // caller someone else's document — the executive report is posted to a single
   // constant path for every project.
-  const isCacheable = method === "GET";
+  const isCacheable = method === "GET" && requestInit.cache !== "no-store";
   // Independently cancellable callers must not share a fetch owned by a sibling.
   const isShareable = isCacheable && !requestInit.signal;
   const cacheKey = `${token ?? "anon"}:${path}`;

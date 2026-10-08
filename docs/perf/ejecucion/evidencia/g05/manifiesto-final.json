@@ -1,0 +1,160 @@
+{
+  "base": "received local snapshot, not HEAD",
+  "files": [
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/analytics_service.py",
+      "sha256": "448ff0ca5d3e6bd3fed1b7e12c9877eec31d8ea07f75bdac857d0b55a57dc0c8",
+      "bytes": 3067
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py",
+      "sha256": "c4857b5a7fe36c3387c8e9c2eaca51c0e4b86aa0a07d36b49814d23ff121b32e",
+      "bytes": 21025
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py",
+      "sha256": "0f47ddf9765b461c6929ea75d2c8f2e4e9865d83e3c614ac8fd95fcf2032f0d5",
+      "bytes": 26417
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/fixation_summaries.py",
+      "sha256": "82e14ccc16e621431e730d95dea06b6099c155586e4051fe09a419c7daa98ad6",
+      "bytes": 4680
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/heatmap_analytics_service.py",
+      "sha256": "534a6504fcdb59270c3217c2fe81b7e7dd6ee01ce7d261863f529d02bdd4ee1d",
+      "bytes": 7215
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/scanpath_analytics_service.py",
+      "sha256": "d189e50a3434955a2f3080d0339aba66f83dd97db6dbf22e25b9132611effe38",
+      "bytes": 10410
+    },
+    {
+      "path": "backend/src/neurodatics/modules/reports/application/sensor_reports/eye_tracking.py",
+      "sha256": "2aeca76859379d05d265fd913ebcc49cfa57949cf6ffd27ee2902570f3a56f4b",
+      "bytes": 41821
+    },
+    {
+      "path": "backend/tests/characterization/test_shared_fixation_report.py",
+      "sha256": "f7e9068ddb77945fdf7cb913556af24131175e9dbf2a33bc5a782cbef364bf67",
+      "bytes": 3033
+    },
+    {
+      "path": "backend/tests/unit/test_scanpath_radius_scale.py",
+      "sha256": "dead9b5a9401bc5f15ce650658dbf73dd691cef8c670329d2a4d26a7fbcba534",
+      "bytes": 4947
+    },
+    {
+      "path": "backend/tests/unit/test_shared_fixation_result.py",
+      "sha256": "cfd5c1b71a9c43e2db74b25496377729d3d21cf407617731b323d9025b0aa058",
+      "bytes": 5665
+    },
+    {
+      "path": "backend/tests/unit/test_stimulus_coordinate_analytics.py",
+      "sha256": "8ffd8c215665980f90c2ce553275ce232839620074ebcf1f1c0de3306bf8f344",
+      "bytes": 11720
+    },
+    {
+      "path": "docs/perf/bench/g05_fixations.py",
+      "sha256": "987d4c6c2c941a30a3203ecd1c854c773125b18380427fb8ea74b143ceaaef7e",
+      "bytes": 6349
+    },
+    {
+      "path": "docs/perf/ejecucion/ESTADO.md",
+      "sha256": "00f07bc930ac94fc5fb278dd0284da0b4d95e33b96bea58f3239089c38dcd36e",
+      "bytes": 7205
+    },
+    {
+      "path": "docs/perf/ejecucion/G05.md",
+      "sha256": "6e435afbdaa96ad54f94e8c134ced582e8716c03e9bdf9e7219bb344d9fff505",
+      "bytes": 4628
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/API.md",
+      "sha256": "278eaf19363ca3fdd9ea57320c1b39da347360acf39ec74afb336537ccc69443",
+      "bytes": 3687
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/after.json",
+      "sha256": "ab27a35b17405fb3ffe026e457936deed832228fe830844fa3d217ef01010e88",
+      "bytes": 7421
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/after.log",
+      "sha256": "3d057bb52053cf8fb4463ec38e470ec0d3938190019836c6f3721021b4b1a878",
+      "bytes": 420785
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/before.json",
+      "sha256": "acc41589141337dbfff2376b00ab662d49bef18d153f35caa0b859e6010d4097",
+      "bytes": 7396
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/before.log",
+      "sha256": "f86a1d85fba88b071117aac14376da53038f915f0e61de1e31f9a5658b961b05",
+      "bytes": 420785
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/checkpoint.md",
+      "sha256": "58352acd740cd4e014c3b2c6c171e1b9a0804673801075b87961b449915c2ab1",
+      "bytes": 591
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/comandos.md",
+      "sha256": "ef7ff4e6381fd3f003287a39b7e3a2eb85b10a6dedca09926d85a82a0bf595fe",
+      "bytes": 4084
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/import-boundaries.log",
+      "sha256": "29cd066e80291c1b1703274b7fdb272b2d208faf9559000549e283bfcfd6f1ad",
+      "bytes": 630
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/inventario-inicial.json",
+      "sha256": "fa6c105b82b3492b6c68df8a629ec06f55cd1504de8146ef5b8af717fe20d9c1",
+      "bytes": 111806
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/medidas.md",
+      "sha256": "679507adb704c71678b9de546a595732550e6acabc5c61663a0f2a6f7ef44151",
+      "bytes": 2777
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/own.patch",
+      "sha256": "3fc913478aed8da98d4cf0ea7d5ffb76ddc9ff6f1f2bb7bfd05393aaddabc5b3",
+      "bytes": 52916
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/preservacion.json",
+      "sha256": "fe81abf15e0cedcabccc259471b7607d650de06d7324744755af84821f08b566",
+      "bytes": 2533
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/tests-http-runtime.log",
+      "sha256": "f3466b0cf6624dd7e6ab90d667d72515f4bfa539281d80ea81791d83d72a0660",
+      "bytes": 7427
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/tests-runtime-final.log",
+      "sha256": "5f3b33bf031e34bcccac82216d9cfd0712d464a4fd70b094d2869cefc03f9b61",
+      "bytes": 10144
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/tests-runtime.log",
+      "sha256": "a66bed19aa51f5bbd3e16514e89e27cd8f74766ce0a475ebcb405c316db209eb",
+      "bytes": 27892
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/tests-supported.log",
+      "sha256": "0a8b51a384b1f46cc96c24865a624d1e883de81152341bc183deac5860fba3e0",
+      "bytes": 6021
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g05/verificacion.json",
+      "sha256": "708663a50390d08812619dbf2abd83115b01bee84f8e7a8c49d8caba97cc6149",
+      "bytes": 1322
+    }
+  ]
+}

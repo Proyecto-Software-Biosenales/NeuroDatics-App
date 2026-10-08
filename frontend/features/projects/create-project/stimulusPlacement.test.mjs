@@ -73,3 +73,50 @@ test("discovers only media inside the selected Images and Videos folders", () =>
   )
 })
 
+test("explains why a placement is not publishable instead of failing silently", async () => {
+  const { describeStimulusPlacementIssue } = await import("./stimulusPlacement.ts")
+  const base = {
+    ...createEmptyStimulusPlacementDraft("Images/square.png"),
+    enabled: true,
+    screenWidthPx: "1920",
+    screenHeightPx: "1080",
+  }
+
+  assert.equal(describeStimulusPlacementIssue({ ...base, enabled: false }), null)
+  assert.match(
+    describeStimulusPlacementIssue({ ...base, screenWidthPx: "" }),
+    /tamaño de la pantalla/,
+  )
+  assert.match(describeStimulusPlacementIssue(base), /posición y el tamaño/)
+  assert.match(
+    describeStimulusPlacementIssue({
+      ...base,
+      displayMode: "fullscreen",
+      stimulusLeftPx: "10",
+      stimulusTopPx: "0",
+      stimulusWidthPx: "1920",
+      stimulusHeightPx: "1080",
+    }),
+    /origen 0,0 y tamaño 1920×1080/,
+  )
+  assert.match(
+    describeStimulusPlacementIssue({
+      ...base,
+      stimulusLeftPx: "-10",
+      stimulusTopPx: "0",
+      stimulusWidthPx: "1080",
+      stimulusHeightPx: "1080",
+    }),
+    /Contain exige/,
+  )
+  assert.equal(
+    describeStimulusPlacementIssue({
+      ...base,
+      stimulusLeftPx: "420",
+      stimulusTopPx: "0",
+      stimulusWidthPx: "1080",
+      stimulusHeightPx: "1080",
+    }),
+    null,
+  )
+})

@@ -1,0 +1,87 @@
+..........................                                               [100%]
+============================== warnings summary ===============================
+backend\src\neurodatics\infra\db\base.py:4
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\infra\db\base.py:4: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend\src\neurodatics\modules\participants\api\schemas.py:22
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\api\schemas.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+.venv\Lib\site-packages\fastapi\routing.py:211: 16 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\routing.py:211: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+
+.venv\Lib\site-packages\starlette\_utils.py:17: 16 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:17: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj) or (
+
+backend\src\neurodatics\modules\scenaries\api\schemas.py:105
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:105: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AOIResponse(BaseModel):
+
+backend\src\neurodatics\modules\scenaries\api\schemas.py:117
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:117: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class scenariesResponse(BaseModel):
+
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: 988 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj)
+
+backend\src\neurodatics\modules\projects\api\schemas.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:50: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectFileResponse(BaseModel):
+
+backend\src\neurodatics\modules\projects\api\schemas.py:182
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:182: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectSensorResponse(BaseModel):
+
+backend\src\neurodatics\modules\projects\api\schemas.py:190
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:190: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+backend\src\neurodatics\modules\projects\api\schemas.py:200
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:200: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectResponse(BaseModel):
+
+backend\src\neurodatics\modules\projects\api\schemas.py:219
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:219: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectDetailResponse(BaseModel):
+
+tests/unit/test_batch_repository_persistence.py: 11 warnings
+tests/unit/test_stimulus_placement_persistence.py: 5 warnings
+tests/unit/test_project_routes.py: 1 warning
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:564: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+
+tests/unit/test_batch_repository_persistence.py: 11 warnings
+tests/unit/test_stimulus_placement_persistence.py: 5 warnings
+tests/unit/test_project_routes.py: 1 warning
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:395: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_batch_repository_persistence.py: 11 warnings
+tests/unit/test_stimulus_placement_persistence.py: 5 warnings
+tests/unit/test_project_routes.py: 1 warning
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:441: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_batch_repository_persistence.py: 11 warnings
+tests/unit/test_stimulus_placement_persistence.py: 5 warnings
+tests/unit/test_project_routes.py: 1 warning
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:462: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_batch_repository_persistence.py::test_participant_route_keeps_response_contract_and_repository_order
+tests/unit/test_batch_repository_persistence.py::test_participant_route_keeps_response_contract_and_repository_order
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\api\routes.py:35: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    participants_data = [p.dict() for p in request.participants]
+
+tests/unit/test_batch_repository_persistence.py::test_aoi_route_keeps_response_contract_and_repository_order
+tests/unit/test_batch_repository_persistence.py::test_aoi_route_keeps_response_contract_and_repository_order
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\routes.py:101: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    aois_data = [a.dict() for a in request.aois]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+26 passed, 1101 warnings in 1.78s
+exit_code=0

@@ -1,0 +1,18 @@
+Corrección mecánica completada dentro del scope exclusivo.
+
+- 8 fakes ahora usan `owner_id=CURRENT_USER`.
+- `.env.example` contiene exactamente una entrada de cada setting requerido.
+- Directed: 33 passed en ambos runtimes.
+- Ruff: exit 0.
+- Reverse-check readonly: exit 0.
+- Global verify único: backend verde (`1183 passed`), pero falló TypeScript fuera de scope en `comparison-dashboard.spec.ts:627`. G12 queda pendiente; no se modificaron documentos históricos.
+
+Evidencia:
+
+- [correccion.md](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g12-correccion/correccion.md)
+- [own.patch](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g12-correccion/own.patch)
+- [preservacion.json](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g12-correccion/preservacion.json)
+- [manifiesto.json](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g12-correccion/manifiesto.json)
+- [verify-postfix.log](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g12-correccion/verify-postfix.log)
+- [checks.md](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g12-correccion/checks.md)
+- Snapshot: `output/perf-g12-correccion/base`

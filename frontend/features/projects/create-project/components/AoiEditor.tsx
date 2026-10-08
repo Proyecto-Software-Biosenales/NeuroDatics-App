@@ -183,6 +183,29 @@ const resizeAoiFromHandle = (initial: AOI, handle: ResizeHandle, current: { x: n
   })
 }
 
+// Desplaza una AOI completa manteniendo su forma y tamaño dentro de los límites de la imagen.
+const moveAoiByDelta = (initial: AOI, dx: number, dy: number): AOI => {
+  const points = normalizeAoiPoints(initial.points)
+  const isPolygon = initial.shapeType === "polygon" && points.length >= MIN_POLYGON_POINTS
+  const bounds = isPolygon ? getAoiBoundsFromPoints(points) : initial
+
+  const clampedDx = Math.max(-bounds.x, Math.min(100 - (bounds.x + bounds.width), dx))
+  const clampedDy = Math.max(-bounds.y, Math.min(100 - (bounds.y + bounds.height), dy))
+
+  if (isPolygon) {
+    return normalizeAoiRect({
+      ...initial,
+      points: points.map((point) => ({ x: point.x + clampedDx, y: point.y + clampedDy })),
+    })
+  }
+
+  return normalizeAoiRect({
+    ...initial,
+    x: initial.x + clampedDx,
+    y: initial.y + clampedDy,
+  })
+}
+
 const geometricBoundsFromDrag = (
   start: { x: number; y: number },
   current: { x: number; y: number },
@@ -246,6 +269,11 @@ export function AoiEditor({
   const [vertexDragState, setVertexDragState] = useState<{
     aoiId: string
     pointIndex: number
+  } | null>(null)
+  const [moveState, setMoveState] = useState<{
+    aoiId: string
+    start: { x: number; y: number }
+    initial: AOI
   } | null>(null)
 
   const normalizedAois = useMemo(() => aois.map(normalizeAoiRect), [aois])
@@ -455,6 +483,22 @@ export function AoiEditor({
       return
     }
 
+    if (moveState) {
+      const current = pointToPercent(event.clientX, event.clientY)
+      if (!current) return
+      const moved = moveAoiByDelta(
+        moveState.initial,
+        current.x - moveState.start.x,
+        current.y - moveState.start.y
+      )
+      updateAoi(moveState.aoiId, {
+        x: moved.x,
+        y: moved.y,
+        points: moved.points,
+      })
+      return
+    }
+
     if (!dragStart || !draftRect) return
     const current = pointToPercent(event.clientX, event.clientY)
     if (!current || !letterbox) return
@@ -489,6 +533,11 @@ export function AoiEditor({
 
     if (resizeState) {
       setResizeState(null)
+      return
+    }
+
+    if (moveState) {
+      setMoveState(null)
       return
     }
 
@@ -564,6 +613,24 @@ export function AoiEditor({
       handle,
       initial: normalizeAoiRect(aoi),
     })
+    setDraftRect(null)
+    setDragStart(null)
+  }
+
+  const startMove = (event: React.PointerEvent<SVGElement>, aoi: AOI) => {
+    event.stopPropagation()
+    setSelectedAoiId(aoi.id)
+    if (!letterbox || !imageUrl || isLoadingImage) return
+    const start = pointToPercent(event.clientX, event.clientY)
+    if (!start) return
+    interactionRef.current?.setPointerCapture(event.pointerId)
+    setMoveState({
+      aoiId: aoi.id,
+      start,
+      initial: normalizeAoiRect(aoi),
+    })
+    setResizeState(null)
+    setVertexDragState(null)
     setDraftRect(null)
     setDragStart(null)
   }
@@ -752,11 +819,8 @@ export function AoiEditor({
                               strokeWidth={isSelected ? 2.5 : 3}
                               vectorEffect="non-scaling-stroke"
                               pointerEvents="auto"
-                              className="cursor-pointer"
-                              onPointerDown={(event) => {
-                                event.stopPropagation()
-                                setSelectedAoiId(aoi.id)
-                              }}
+                              className={isSelected ? "cursor-move" : "cursor-pointer"}
+                              onPointerDown={(event) => startMove(event, aoi)}
                             />
                           )
                         ) : isCircle ? (
@@ -771,11 +835,10 @@ export function AoiEditor({
                             strokeDasharray={isDraft ? "6 5" : undefined}
                             vectorEffect="non-scaling-stroke"
                             pointerEvents={isDraft ? "none" : "auto"}
-                            className={isDraft ? undefined : "cursor-pointer"}
+                            className={isDraft ? undefined : isSelected ? "cursor-move" : "cursor-pointer"}
                             onPointerDown={(event) => {
                               if (isDraft) return
-                              event.stopPropagation()
-                              setSelectedAoiId(aoi.id)
+                              startMove(event, aoi)
                             }}
                           />
                         ) : (
@@ -787,11 +850,10 @@ export function AoiEditor({
                             strokeDasharray={isDraft ? "6 5" : undefined}
                             vectorEffect="non-scaling-stroke"
                             pointerEvents={isDraft ? "none" : "auto"}
-                            className={isDraft ? undefined : "cursor-pointer"}
+                            className={isDraft ? undefined : isSelected ? "cursor-move" : "cursor-pointer"}
                             onPointerDown={(event) => {
                               if (isDraft) return
-                              event.stopPropagation()
-                              setSelectedAoiId(aoi.id)
+                              startMove(event, aoi)
                             }}
                           />
                         )}

@@ -1,0 +1,42 @@
+{
+  "captured_utc": "2026-10-02T05:52:06.548660+00:00",
+  "received_all_files": {
+    "protected_count": 660,
+    "unchanged_count": 660,
+    "drift": []
+  },
+  "G00_preexisting_files": {
+    "protected_count": 108,
+    "unchanged_count": 108,
+    "drift": []
+  },
+  "own_modifications": [
+    {
+      "path": "frontend/features/analytics/components/EegTab.tsx",
+      "before_sha256": "D7E8B8B6A1438F5B7F503566AB9232AF6878DB8F451907294708D9EA96AAE71B",
+      "after_sha256": "457BA69776100C0DED73BAF0074696AD1796D1332BD34118AA10C4F837C30135"
+    },
+    {
+      "path": "frontend/tests/e2e/eeg-dashboard.spec.ts",
+      "before_sha256": "D6AAFBF97BFC68F74BAA8479819E4717BA15E80721D131B9FBAE599A7E5A5453",
+      "after_sha256": "9B180CFA817C3D2FA42DFD2EA075B4ABDFD9D4BDBCCC1536D44E2DE6B983036F"
+    },
+    {
+      "path": "frontend/tests/hooks/analytics-request.test.mjs",
+      "before_sha256": "0B454293287F4226F6893501E69B80958D21576E4573747DF2CE8A1F55455C31",
+      "after_sha256": "C09DBB43FBDD47EE5E367A62362E2A515A93E31971A44D421F2A1A338CC30B99"
+    }
+  ],
+  "dashboard_restored": true,
+  "exclusions": {
+    "own_modifications": [
+      "frontend/features/analytics/components/EegTab.tsx",
+      "frontend/tests/hooks/analytics-request.test.mjs",
+      "frontend/tests/e2e/eeg-dashboard.spec.ts"
+    ],
+    "coordination": [
+      "docs/perf/ejecucion/ESTADO.md",
+      "docs/perf/ejecucion/ORQUESTACION.md"
+    ]
+  }
+}

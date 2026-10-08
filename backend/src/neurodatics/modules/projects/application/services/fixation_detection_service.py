@@ -153,6 +153,85 @@ class _AnalysisBlock:
     stimulus_display_height_px: Optional[float]
 
 
+class _RunSupport:
+    """``_valid_support_seconds`` for windows inside one classifiable run.
+
+    The intervals are differenced and capped once per run.  A window reads
+    contiguous slices of them, so ``sum`` sees the same values in the same order
+    as the per-window computation and rounds identically (numpy sums pairwise, so
+    a running Python total would not).  The median comes from the sorted values;
+    for an even count it is ``(lower + upper) / 2``, exactly what ``np.median``
+    computes.
+    """
+
+    def __init__(
+        self,
+        time_s: np.ndarray,
+        original_valid: np.ndarray,
+        run_start: int,
+        run_end: int,
+        rate_hz: float,
+    ) -> None:
+        self._run_start = run_start
+        self._period = 1.0 / rate_hz if rate_hz > 0.0 else 0.0
+        diffs = np.diff(time_s[run_start:run_end])
+        kept = np.isfinite(diffs) & (diffs > 0.0)
+        self._kept = kept
+        self._supported = (
+            np.minimum(diffs, self._period) if self._period > 0.0 else diffs
+        )
+        self._dropped_before = [0, *np.cumsum(~kept, dtype=np.int64).tolist()]
+        valid = original_valid[run_start:run_end]
+        self.valid_positions: List[int] = (
+            np.flatnonzero(valid) + run_start
+        ).tolist()
+        self.valid_before: List[int] = [
+            0,
+            *np.cumsum(valid, dtype=np.int64).tolist(),
+        ]
+        invalid_offsets = np.flatnonzero(~valid)
+        # End (exclusive) of the stretch of consecutive valid samples holding
+        # each offset; only read at valid offsets.
+        self._stretch_end: List[int] = (
+            np.append(invalid_offsets, len(valid))[
+                np.searchsorted(invalid_offsets, np.arange(len(valid)))
+            ]
+            + run_start
+        ).tolist()
+
+    def seconds(self, start: int, end: int) -> float:
+        run_start = self._run_start
+        positions = self.valid_positions
+        total = 0.0
+        next_valid = self.valid_before[start - run_start]
+        while next_valid < len(positions) and positions[next_valid] < end:
+            first = positions[next_valid]
+            stop = min(self._stretch_end[first - run_start], end)
+            next_valid += stop - first
+            left = first - run_start
+            right = stop - 1 - run_start
+            terminal_support = self._period
+            if right > left:
+                if self._dropped_before[right] == self._dropped_before[left]:
+                    supported_diffs = self._supported[left:right]
+                else:
+                    supported_diffs = self._supported[left:right][
+                        self._kept[left:right]
+                    ]
+                if supported_diffs.size:
+                    total += float(supported_diffs.sum())
+                    ordered = supported_diffs.tolist()
+                    ordered.sort()
+                    middle = len(ordered) // 2
+                    terminal_support = (
+                        ordered[middle]
+                        if len(ordered) % 2
+                        else (ordered[middle - 1] + ordered[middle]) / 2.0
+                    )
+            total += max(0.0, terminal_support)
+        return total
+
+
 class FixationDetectionService:
     """Detect fixations with normalized I-DT or adaptive angular I-VT."""
 
@@ -2091,6 +2170,43 @@ class FixationDetectionService:
         return total
 
     @staticmethod
+    def _min_supporting_valid_samples(
+        rate_hz: float,
+        required_support_s: float,
+        support_tolerance_s: float,
+    ) -> int:
+        """Fewest valid samples whose window can pass the I-DT support test.
+
+        Support is not monotone in the window length (a short final interval can
+        lower the median term), but it is bounded: each valid sample adds at most
+        one period, as a capped interval or as its run's median terminal. Rounding
+        a sum of ``n`` non-negative terms inflates it by at most ``(1 + 2**-53)**n``,
+        far below the ``1e-6`` margin. A window with fewer valid samples than
+        returned here therefore fails ``support + tolerance < required`` exactly
+        as :meth:`_valid_support_seconds` would compute it, and can be skipped.
+        Returns 0 (skip nothing) when the period does not cap intervals.
+        """
+
+        period = 1.0 / rate_hz if rate_hz > 0.0 else 0.0
+        if not (
+            0.0 < period < math.inf and math.isfinite(required_support_s)
+        ):
+            return 0
+
+        def cannot_pass(count: int) -> bool:
+            return (
+                count * period * (1.0 + 1e-6) + support_tolerance_s
+                < required_support_s
+            )
+
+        count = max(0, int(required_support_s / period))
+        while count > 0 and not cannot_pass(count - 1):
+            count -= 1
+        while cannot_pass(count):
+            count += 1
+        return count
+
+    @staticmethod
     def _idt_run(
         x: np.ndarray,
         y: np.ndarray,
@@ -2106,21 +2222,31 @@ class FixationDetectionService:
             return []
         required_support_s = min_duration_ms / 1000.0
         support_tolerance_s = max(1e-9, abs(required_support_s) * 1e-9)
+        min_valid = FixationDetectionService._min_supporting_valid_samples(
+            rate_hz, required_support_s, support_tolerance_s
+        )
+        support = _RunSupport(time_s, original_valid, run_start, run_end, rate_hz)
+        valid_positions = support.valid_positions
+        valid_before = support.valid_before
         detected: List[np.ndarray] = []
         start = run_start
         while start < run_end:
             end = start
             support_s = 0.0
+            if min_valid > 0:
+                # Every shorter window holds fewer valid samples than can reach
+                # the required support, so it would fail the loop test below.
+                needed = valid_before[start - run_start] + min_valid - 1
+                end = (
+                    valid_positions[needed]
+                    if needed < len(valid_positions)
+                    else run_end
+                )
             while (
                 end < run_end and support_s + support_tolerance_s < required_support_s
             ):
                 end += 1
-                support_s = FixationDetectionService._valid_support_seconds(
-                    time_s,
-                    np.arange(start, end, dtype=np.int64),
-                    original_valid,
-                    rate_hz,
-                )
+                support_s = support.seconds(start, end)
             if support_s + support_tolerance_s < required_support_s:
                 break
 
@@ -2154,15 +2280,9 @@ class FixationDetectionService:
                 min_y, max_y = candidate_min_y, candidate_max_y
                 event_end += 1
 
-            event_indices = np.arange(start, event_end, dtype=np.int64)
-            event_support_s = FixationDetectionService._valid_support_seconds(
-                time_s,
-                event_indices,
-                original_valid,
-                rate_hz,
-            )
+            event_support_s = support.seconds(start, event_end)
             if event_support_s + support_tolerance_s >= required_support_s:
-                detected.append(event_indices)
+                detected.append(np.arange(start, event_end, dtype=np.int64))
             start = event_end
         return detected
 

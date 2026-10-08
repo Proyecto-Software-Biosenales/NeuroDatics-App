@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
 import {
   CartesianGrid,
   Line,
@@ -39,8 +40,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { apiFetchBlob } from "@/lib/api/apiFetch"
-import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
+import { useStimulusImage } from "../participantComparison/cardHooks"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
 import { StatisticsTable } from "@/features/analytics/components/StatisticsTable"
@@ -123,7 +123,6 @@ export function GazePointTab({
 }: GazePointTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("both")
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
-  const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
   const {
     data: gazeData,
@@ -287,6 +286,7 @@ export function GazePointTab({
   }, [gazeX, gazeY])
 
   // Recompute offset when gazeData changes (image may already be loaded)
+  const scenarioImageUrl = useStimulusImage(projectId, gazeData?.scenario_file_id ?? null).url
   useEffect(() => {
     computeGazeOffset()
   }, [computeGazeOffset])
@@ -312,31 +312,7 @@ export function GazePointTab({
     if (next !== null) fetchGaze(next)
   }
 
-  useEffect(() => {
-    if (!gazeData?.scenario_file_id) {
-      return
-    }
 
-    let cancelled = false
-    let currentUrl: string | null = null
-
-    apiFetchBlob(getStimulusImageUrl(projectId, gazeData.scenario_file_id))
-      .then((blob) => {
-        if (cancelled) return
-        currentUrl = URL.createObjectURL(blob)
-        setScenarioImageUrl(currentUrl)
-      })
-      .catch(() => {
-        if (!cancelled) setScenarioImageUrl(null)
-      })
-
-    return () => {
-      cancelled = true
-      if (currentUrl) {
-        URL.revokeObjectURL(currentUrl)
-      }
-    }
-  }, [gazeData?.scenario_file_id, projectId])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChartClick = (state: any) => {
@@ -388,6 +364,16 @@ export function GazePointTab({
               }
               onApply={windowState.apply}
               onReset={windowState.reset}
+            />
+            <CompareParticipantsButton
+              spec={() => ({
+                kind: "gaze",
+                title: "Gaze point",
+                scenario,
+                sourceParticipant: participantCode,
+                origin: "individual",
+                params: { axes: viewMode, window: timeWindow },
+              })}
             />
           </div>
         </CardHeader>

@@ -24,6 +24,220 @@ Add new entries at the top of *Unreleased*.
 
 ## Unreleased
 
+### 2026-10-03 — G12 gate cerrado documentalmente
+- Registrado el gate global completado por root: item 14 `COMPLETED`, exit 0, `ALLGREEN`, `VERIFY_EXIT=0` y ESLint con 0 errores/6 warnings. La captura parcial histórica de `verify-final.log` se conserva como limitación de Tee, no como fallo del gate.
+- Documentadas las correcciones aprobadas G04/G07 (cinco fuentes) y la corrección G10 limitada a anotaciones/importación de contrato del fixture E2E. G12 queda completo, pendiente únicamente de revisión/aprobación root; deploy, distribución y equivalencias externas siguen fuera de alcance.
+
+### 2026-10-03 — Performance campaign integrated; historical gate diagnosis superseded
+- Replayed the preserved G00 backend, browser, FFmpeg and Typst matrix on the current code with the same synthetic corpora/runtime and warmup plus five samples. The full field-level comparison lives in `docs/perf/ejecucion/RESULTADOS.md`; representative large-fixture changes include report collect −60.8%, AOI HTTP miss −42.9%, GSR HTTP miss −79.0%, and return-to-project EEG traffic from 6 requests/70,743 fixture bytes to 1/424.
+- An integrated synthetic concurrency probe overlapped current analytics response/Parquet helpers with real report I/O admission. It observed maxima of 4 response workers, 4 physical downloads, 2 report workers plus 4 waiting, 6 Parquet decodes and 4 response computations; cancellation retained active slots until physical settlement and authorization rejected before cache/Drive. These are one-process fake-adapter observations, not a global RAM or deployment bound.
+- The isolated production build, 11 selected dashboard/comparison/EEG E2E tests, local-mode export and browser smoke passed. G12 made no product change and did not build a frozen distribution.
+- Historical note: the initial complete run stopped in backend pytest with 1,163 passed, 20 failed and 25 snapshots passed; the approved sequential corrector later resolved those fixture/template issues. The current green gate and closure status are recorded above. PostgreSQL, Redis, Drive, cloud and frozen-package validation remain outside scope.
+
+### 2026-10-03 — Topography optimization evaluated and not adopted
+- Chromium profiling across 320/640/960 CSS px and DPR 1/2/3 found inverse-distance interpolation dominates large topography frames: the complete seven-channel fixture measured 1.00 ms at a 320² backing raster, 14.30 ms at 1280² and 83.20 ms at 2880² (warmup + five measured frames).
+- A bounded per-panel candidate cached separable Float64 distances and head spans. Across stable masks its median change was only −1.80%, with 12 regressions and a worst +19.29%; finite/NaN mask changes and cold frames were slower. The candidate was removed, leaving the canvas and presentation sources byte-identical to the received version.
+- The largest tested raster requires at least 63.28 MiB for live ImageData plus an RGBA canvas backing; browser/GPU overhead and RSS were not observable. These synthetic harness results are not a claim about other montages, devices or deployments.
+
+### 2026-10-03 — Comparativas carries statistics with its charts
+- The versioned comparison response now carries summaries from the exact display samples previously fetched through five separate temporal endpoints. Median, sample deviation, baseline, peak, finite-value handling, labels and units retain the former table contract; chart decimation remains independent and explicit.
+- Selecting all five temporal views now uses one comparison request instead of six. Each signal is transformed once, a failed signal is isolated, and the existing analytics loader/session/generation/AOI invalidation rules remain in force.
+- On the golden synthetic participant, direct compact-JSON estimates fell from 529,071 to 286,459 bytes (small) and 3,379,386 to 1,832,079 bytes (the 64-block G00 large corpus). The fixed service-call topology is 10 to 5; instrumented in-process HTTP contracts observed Parquet reads 6 to 1 and transform-token calls 2 to 1. Python 3.14/3.12 contracts, protected snapshots, frontend checks, an isolated production build, seven prior comparison E2E tests and the targeted partial/empty closure passed. These are fixture/harness results, not measured network bytes or a whole-application/PostgreSQL/Redis claim.
+
+### 2026-09-29 — Fixation detection 5.8× faster, output unchanged
+- **Why:** with the worker pool in place, fixation detection was still 30 s of the 41 s serial SAIO ingestion.
+  The I-DT window in `_idt_run` grew one sample at a time and recomputed the whole window's valid support at
+  each step. That came to 1.8 M `_valid_support_seconds` calls, each with a median and several diffs, repeated
+  for all five minimum durations.
+- **Hopeless windows are skipped** (`_min_supporting_valid_samples`). Support is not monotone in window length,
+  because a short final interval lowers the median term, so it cannot be bisected. It is bounded, though: each
+  valid sample adds at most one period. A window with fewer valid samples than the bound allows cannot reach
+  the minimum, even after rounding (1e-6 margin). The search jumps to the first window with enough valid
+  samples and then evaluates every window as before. The skip is off when the period does not cap intervals
+  (rate 0, ∞ or NaN).
+- **Support read from intervals prepared once per run** (`_RunSupport`). Windows read contiguous slices of those
+  intervals, so `sum` sees the same values in the same order and rounds as before. numpy sums pairwise; a
+  running Python total differs from 8 terms on. The median is the middle of the sorted values, or
+  `(lower + upper) / 2` for an even count, which is what `np.median` computes.
+- **Not changed:** `_valid_support_seconds`, which still gives each event its stored `duration_ms`; the
+  dispersion test and event growth; `FIXATION_DETECTOR_VERSION` (`fixation-v2`); no golden was touched. The
+  incremental support update was not needed and was not attempted.
+- **Checked (SAIO, serial, Ryzen 7 9700X):** original code 41.2–41.8 s for the CSV, of which 30.4–30.5 s
+  was the detector. New code 16.5 s, of which 5.3 s is the detector (two alternating runs each). All 60
+  Parquets were byte-identical to a baseline taken before the edit, and the `ProcessingResult` was equal, in all
+  three runs. The file's 1,700 real `_idt_run` calls were replayed against a copy of the original code. Events
+  were identical, time fell from 26.3 s to 0.97 s, and support evaluations from 1.8 M to 135 k.
+- **Checked (tests):** `test_fixation_idt_equivalence.py` has 20 tests (~11 s) and keeps the original search
+  verbatim as its reference. It uses random series at 60, 120 and 300 Hz with jitter, gaps, repeated, backward
+  and NaN stamps, invalid samples and estimated rates. It covers all five durations and degenerate rates. It
+  checks that `_RunSupport` is bit-identical to `_valid_support_seconds` on 36,000 random windows and that the
+  skip bound holds. Each of five deliberate bugs failed it: upper middle as even median, running sum, one
+  window skipped too many, bound without margin, dropped intervals read as kept. A wider scratch soak (1,200
+  cases, 6,553 events) found no mismatch.
+- **Checked (repo):** `verify.ps1` passed the backend suite (989 tests, 25 snapshots), Ruff, Vulture, deptry,
+  app boot, import contracts, tsc, 88 unit tests and the 44 Chromium hook tests. ESLint failed on the same single
+  error in the untracked `frontend/tests/hooks/participant-comparison-entry.test.mjs` from another work stream.
+- **Next:** the remaining detector time is outside the window search. It goes to `_write_event_to_samples` (one
+  pandas `.loc` write per event and duration), `_build_analysis_block` and `_placements_for_scenarios`. Not
+  rebuilt: the student package.
+
+### 2026-09-29 — Ingestion uses half the CPU cores in the student edition
+- **Why:** on weaker laptops a project took minutes to ingest while Task Manager showed one busy core. The CSV
+  step was the whole cost and ran in one thread: 51 s for the SAIO export on a Ryzen 7 9700X. Fixation
+  detection took 33 s, cell parsing 9.5 s and the header scan 6.4 s.
+- **Participant blocks run in worker processes:** `CsvProcessingService.process(max_workers=N)` sends each block
+  to a `spawn` process pool once a CSV reaches 10,000 lines. It merges results in file order, so the Parquets,
+  metadata and first error match a serial run. New setting `INGESTION_BLOCK_WORKERS`: the default 0 means half
+  the logical CPUs in local mode and 1 on the server, where uploads and memory limits stay as before. If the
+  pool cannot start or loses a worker (antivirus, memory), the blocks run in-process. The frozen entry point
+  already calls `multiprocessing.freeze_support()` first, so a worker never starts a second app.
+- **Header and marker scan shortcut:** an ASCII line holding none of the Time words (`time`, `timestamp`,
+  `tiempo`), or not holding `grabacion`, is not canonicalized cell by cell. This is exact because
+  canonicalizing an ASCII line never splits or joins those words. The block scan dropped from 6.4 s to 0.17 s.
+- **Not changed:** the fixation detector. Its I-DT window recomputes support from scratch on every step, which
+  is slow, but it is pinned by protected goldens. Rewriting it for speed is a separate job.
+- **Checked (dev, idle machine):** the SAIO CSV (6 blocks, 232,759 lines) took 51.4 s before. It now takes
+  41.4 s serial, 23.0 s with 2 workers, 15.6 s with 4 and 9.7 s with 8. At every worker count all 60 Parquets
+  were byte-identical and the `ProcessingResult` equal; each worker peaked at about 240 MiB.
+  `test_csv_block_workers.py` (26) covers byte-identical real pools, the error block, both fallbacks, the
+  small-CSV path, the shortcuts against full canonicalization, and the worker count.
+- **Checked (frozen):** rebuilt in `output/student-m1` (the `delivery/` package was not repackaged). `selftest`
+  passed; it calls the service serially. The `serve` gate uploads the SAIO ZIP through the real route in local
+  mode, so it uses the pool: upload 60.5 s (2026-09-28 build) became 17.0 s. All HTTP stages passed, the
+  browser spec passed 3/3 and no non-loopback connections appeared. Stray profile files stayed at 2, and the
+  app process's private-memory peak fell from 762–803 MB to 640 MB.
+- **Checked (repo):** `verify.ps1` passed the backend suite (959 tests, 25 snapshots), Ruff, Vulture, deptry,
+  import contracts, tsc and the 44 Chromium hook tests. ESLint failed on one error in
+  `frontend/tests/hooks/participant-comparison-entry.test.mjs`, an untracked file from another work stream.
+- **Sized to the machine (same day, second pass):** `INGESTION_BLOCK_WORKERS=0` no longer means "1 on the
+  server". Both editions use `shared/machine_resources.py`: half the usable CPUs, capped so that each ingestion
+  that may run at once gets 1 GiB plus 256 MiB per worker from its share of the memory. Usable CPUs honour the
+  cgroup quota, and usable memory is the container limit, or half the RAM without one. The server's defaults
+  (2 GiB, 4 concurrent uploads) still give 1 worker. With `UPLOAD_MAX_CONCURRENT_GLOBAL=1`, 2 GiB gives 4
+  workers; so does 4 GiB with 2 concurrent uploads. `docker-compose.yml` now forwards `INGESTION_BLOCK_WORKERS`.
+  On a first install, the Windows installer (`deployment/scripts/comun.ps1`) sets `BACKEND_MEM_LIMIT` to a
+  quarter of the RAM, between 2 and 8 GB. An existing or supplied `.env` keeps its value. Checked:
+  `test_csv_block_workers.py` (8 sizing cases, simulated cgroup v2, probes on this machine), backend 969 passed
+  with 25 snapshots, Ruff, Vulture, import contracts and deptry. `instalador.Tests.ps1` passed 58 checks,
+  3 of them new. Not rebuilt: the student package (this machine still resolves to 8 workers) and the Docker image.
+- **Trap:** `%TEMP%\ndtest\pg-template` had been emptied to bare folders at 00:10, probably by Windows temp
+  cleanup, so a fresh `serve` could not create its cluster. A good copy is now in `output/student-m1/pg-template`;
+  pass that as `-TemplateSource`.
+
+### 2026-09-28 — "Comparar participantes": the pinned line appears on every card
+- **Pin shared on the recording axis too:** a click on a card's time chart now draws the dashed line on every
+  card, as in *Comparativas*. Before, only an axis aligned on the stimulus onset shared it; with «Todos los
+  escenarios» (axis «Tiempo de la grabación») the line stayed on the clicked card. Cards whose recording does
+  not contain that second draw no line. The side panel says which second the line marks.
+- **Header close is the X alone:** the «Cerrar» label next to the X was dropped; `aria-label` and a
+  `title` tooltip keep the name.
+- **Checked:** `tsc`, ESLint, `participant-comparison.spec.ts` 8/8 (new case: unaligned pin reaches another
+  card). Student package rebuilt: zip SHA-256 `C8FE25EA…F4BED4EB`; selftest, serve (browser 3/3), race and
+  package smoke green. The first `pg` run failed once (crash recovery took over the 30 s start timeout);
+  a re-run of `pg` + `pg-adopt` passed with nothing changed.
+
+### 2026-09-28 — Student package rebuilt from today's tree and trimmed
+- **Rebuilt** `delivery/NeuroDatics-Estudiantes` (it was the 2026-09-21 build, missing every analytics, report
+  and dashboard change since). New zip `NeuroDatics-Estudiantes-0.1-win64.zip`, SHA-256 `ACF5AC18…AAC7`;
+  the superseded `0.1-prueba` zip was deleted.
+- **Trimmed, 700 → 631 MiB (zip 270 → 251 MiB, 5155 → 4078 files):** `run-frozen.ps1 -Assemble` now drops
+  pyarrow's tests, C headers, Cython sources and `.lib` files, matplotlib's sample data, and from PostgreSQL
+  the StackBuilder GUI (wx*, libcurl), regression-test and ecpg programs, link libraries and every message
+  catalog but `es` (pgsql 124 → 65 MiB). A PE import scan confirmed no removed DLL is loaded by postgres,
+  pg_ctl, pg_isready, pg_controldata, psql or any `lib\` extension. `build.ps1` excludes `alembic.testing`
+  and `sqlalchemy.testing` (pulled in by `--collect-submodules alembic`, never imported at run time).
+- **Offline spec follows the new sidebar order:** the dashboard opens on Eye Tracker (the first sensor in
+  `projectSensors.ts`), so `student-offline.spec.ts` now expects that and then visits EEG and GSR.
+- **Checked:** selftest, pg, pg-adopt, serve (HTTP + browser 3/3, 0 non-loopback connections) and race gates
+  on the trimmed folder; `package.ps1` smoke from the extracted zip on an accented path. Note: the serve gate
+  reports `browser exit=1` but still exits 0, so read its log rather than the exit code. The three
+  release blockers (ffmpeg licence, laptop run, data governance) are unchanged.
+
+### 2026-09-28 — Spectrogram of a short scenario no longer drawn as ~10 blocks
+- **Why:** a ~5 s scenario gave 10 windows (1.5 s, hop 0.375 s), so each panel showed ten wide columns of
+  noisy stripes ("38 x 10") while longer scenarios looked continuous.
+- `compute_spectrogram(min_time_bins=None)` and the matching optional query parameter (1–600, in the cache
+  key): when fewer windows exist, the hop shrinks until about that many fit. The window, frequency bins,
+  resolution and each window's values are unchanged; `metadata.hop_s`/`noverlap` report the hop used. The
+  frontend always sends `min(120, max_time_bins)`. Default `None`, so reports, snapshots and other callers keep
+  75 % overlap. `METHODS.md` updated.
+- Validation: new `test_short_spectrogram_denser_hop_keeps_the_window`; backend 933 passed, 25 snapshots
+  unchanged; Ruff and `tsc` clean. `./verify.ps1` stopped at ESLint on another agent's untracked
+  `tests/hooks/participant-comparison-entry.test.mjs`. Not yet checked in the browser against a real recording.
+
+### 2026-09-28 — AOI comparison: findings, attention sequence and one metrics table
+- **Why:** after *Distribución temporal por áreas de interés* the tab was hard to draw conclusions from. Eight
+  signal extremes sat in three unbalanced columns under counters that mixed event types ("3/8", "Precio (2)").
+  The 7-column table printed TTFF on the recording clock (128311 ms for a first fixation 2.9 s into the
+  scenario). The transition matrix ranked nothing. The per-AOI pupil and distance means the API already returns
+  were never shown.
+- **New order after the distribution chart** (`AoiComparisonTab.tsx`, cards in `components/aoi/`):
+  *Hallazgos clave* (first AOI to catch the gaze, longest fixations, most revisited, largest pupil response,
+  busiest connection, AOIs without fixations; each only when the data supports the comparison) →
+  *Secuencia de atención* (discovery order; one lane per AOI plus "Fuera de AOIs", one block per fixation;
+  pupil and distance extremes as marks with tooltips; hover readout) → *Métricas por AOI* (Atención /
+  Descubrimiento / Respuesta: time in AOI, fixations and hit rate, mean duration, TTFF and fixation number,
+  visits, pupil Δ% and distance vs. baseline, plus a "Fuera de AOIs" row) → *Transiciones entre AOIs* (top 3
+  connections with both directions, then the matrix without never-fixated AOIs, with Entradas/Salidas) beside
+  *Picos de señal* (one min/max table with the AOI at each extreme). KPIs, stimulus and chart are unchanged
+  apart from accents.
+- **Time basis:** the tab measures from the scenario onset, taken as the first sample of the pupil, gaze and
+  distance series, as the PDF report does. A chip gives that onset on the recording clock the other tabs use.
+  `docs/REPORTS.md` updated.
+- **Frontend only**, no API or snapshot change. One more request (`/analytics/fixations`, same threshold as
+  `/aois`) builds the sequence; fixations get the backend's first-match AOI, so the lanes agree with the matrix.
+  Visits end at a fixation outside the AOI or at a segment break. Derivations are in
+  `features/analytics/aoiInsights.ts` (JSX-free, type-only imports). The key-event fallback for older APIs moved
+  there and now skips the gaze series' (0, 0) lost samples and zero pupil values.
+- **Removed:** the three event counters, per-event gaze positions, the "Max N" chip, "Hit rate" and "Hasta
+  objetivo" (now "% del total" and "fijación nº N").
+- **Found on the way:** Chromium tinted the anti-aliased corners of translucent oklch borders yellow on the violet
+  marker chips; they use solid border colours.
+- **Validation:** `tsc` clean for these files (two errors remain in `features/analytics/participantComparison/`,
+  another agent's work in progress); ESLint 0 errors / 6 warnings; 86 unit tests and 42 hook/component tests
+  pass. A temporary mocked-API Playwright harness (deleted) rendered the tab at 1366×768, 1536×730 and
+  1920×950, light and dark: no horizontal overflow, no new console errors. It also covered a failed
+  `/fixations`, an API without `events`, no time series and a single AOI. Not checked against real recordings.
+- **Follow-up:** the uncommitted `GET /analytics/scenario-timing` (another agent) returns `onset_s`; once it lands,
+  `scenarioOnsetS` can use it instead of the series' first sample.
+
+### 2026-09-28 — EEG opens smoothed; quality warnings only at the end
+- **Smoothed is the default again** on *EEG por canal* (`EegTab.tsx`, `useState<SignalMode>("smooth")`), at the
+  owner's request. This reverses the audit's raw default (`eeg-audit/FINDINGS.md` §3, `METHODS.md`): the 0.2 s
+  mean has zeros at multiples of 5 Hz, including 10 Hz. The "Suavizado 0.2 s" chip, shown whenever smoothing is
+  on, still says so. Cruda and Ambas are one click away.
+- **No "N avisos de calidad" chip on any chart** (time series, PSD, spectrogram, topography). Warnings and unit
+  caveats appear only in the "Calidad y alcance de EEG" card that closes the tab. `eegQualityLines` was removed.
+  Chips about the chart itself remain: clipped axis, marked events, envelope, lane scale, PSD flagged windows,
+  "Sin PSD", black bands, per-panel limits, schematic montage.
+- Validation: `npm run typecheck`, eslint on the changed files, 74 feature unit tests, 42 hook/component tests,
+  `eeg-dashboard.spec.ts` (now expects Suavizada pressed and no quality chip; its mock gained smooth statistics).
+
+### 2026-09-27 — Scanpath tab drawn like the Python plot, scaled to the image
+- **Why:** the owner found the web scanpath harder to follow than the Python plot of the same recording.
+  Translucent nodes showed the lines and circles underneath. Thick white rings stacked up in clusters. The
+  12 px minimum radius made short fixations nearly as large as long ones.
+- **New `frontend/features/analytics/scanpathStyle.ts`** with two presets for the main *Mapa de recorridos*
+  tab. `python` (active) uses nodes at 0.9 opacity, a 1 px outline and a 1.5 px line. Its white digits get a
+  solid black outline (3 px stroke under the fill, round joins), as in the Colab plot. `legacy` keeps the
+  previous values exactly.
+- **Node sizes unchanged:** both presets use the original fixed 12→40 px radii and 9–16 px labels. A first
+  version used 6→28 px radii scaled with the displayed stimulus (×max(w/1024, h/576), clamped to 0.6–2). The
+  owner found the nodes too small, so `python` now has `scaleWithImage: false`. The scaling code remains
+  available per preset and keeps the absolute area encoding (`absolute-area-v1`, 2 s cap).
+- **Rollback:** set `ACTIVE_SCANPATH_STYLE = "legacy"` in `scanpathStyle.ts`.
+- **Not changed:** comparison panel (`SpatialPanels.tsx`), PDF renderer, backend fixation data. The 16-vs-15
+  fixation difference against the Python plot is still unexplained.
+- Validation: `npm run typecheck`, eslint on both files (one existing `<img>` warning), 74 feature unit tests.
+  A Chromium preview drew both presets using the real modules. The legacy preset reproduced the old radii,
+  strokes and font sizes. Not checked in the running dashboard with real data.
+
+### 2026-09-27 — Document EEG scales per recording and verify mixed-unit ingestion
+
+- Added `docs/eeg-audit/ESCALAS-POR-GRABACION.md`: SAIO F3 declares `kilo` only in block 5; other blocks retain blank-unit assumptions. Describes channel-local conversion, persisted provenance, precision limits and re-ingestion of old processed files. Linked from audit findings and methods.
+- Added a full-ingestion regression with four recordings alternating `kilo`, missing unit, `uV`, and `kilo`, while F4 remains in `uV`. Covers an empty or absent unit line, participant/scenario storage, source metadata, warning isolation, expected spectral power, repeated analytics without double scaling, and untouched source bytes.
+- Validation: six focused EEG scale tests passed; Ruff passed for the modified test. No production conversion changes, data migration, or project re-ingestion. Existing frontend work preserved.
+
 ### 2026-09-24 — EEG caveats become chips; quality notes close the tab
 - **Why:** the owner found the EEG tab congested after the audit fixes: two notice boxes above the first
   chart, two sentences under it, and an 18-button list of artifact spans. They asked for the notices at the end,
@@ -449,4 +663,4 @@ These still apply to any future cleanup. They came from the old DO-NOT-TOUCH lis
 - **Mocked Playwright e2e only protects rendering, not the backend.** Framework-bound code is
   never dead by reference count: handlers, Pydantic schemas, SQLAlchemy models, Next.js App
   Router files, `__init__` re-exports.
-- **Never regenerate a golden to turn a test green.** See the project `CLAUDE.md`.
+- **Never regenerate a golden to turn a test green.** See the project `AGENTS.md`.

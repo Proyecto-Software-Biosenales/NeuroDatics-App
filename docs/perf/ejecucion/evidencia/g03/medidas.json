@@ -1,0 +1,5921 @@
+{
+  "scope": "real reader/services/HTTP; synthetic storage 20ms; MemoryCache; no cloud",
+  "python": "3.14.3",
+  "pandas": "2.3.3",
+  "numpy": "2.4.4",
+  "pyarrow": "25.0.0",
+  "repeats": 5,
+  "fixtures": [
+    {
+      "label": "small",
+      "rows": 1600,
+      "columns": 68,
+      "full_frame_bytes": 2152342,
+      "parquet_bytes": 98844,
+      "sha256_parquet": "b313c426c9314623d5834f48e818fb226cba3d77f8d0634d9654b02046acda52",
+      "category": {
+        "decision": "discarded; current null-fill contract fails and groupby adds unused categories",
+        "scenario_object_bytes": 94532,
+        "scenario_category_bytes": 1958,
+        "conversion_ms": 0.4336000420153141,
+        "null_mask_equal": true,
+        "encounter_order_equal": true,
+        "json_equal": true,
+        "groupby_object": "{\"b\":2,\"nan\":2,\"a\":1}",
+        "groupby_category": "{\"b\":2,\"nan\":2,\"a\":1,\"unused\":0}",
+        "concat_dtype": "object",
+        "errors": {
+          "null_fill": "Cannot setitem on a Categorical with a new category (), set the categories first",
+          "eeg_query": "Cannot setitem on a Categorical with a new category (), set the categories first"
+        },
+        "gsr_query_equal": true
+      }
+    },
+    {
+      "label": "large",
+      "rows": 102400,
+      "columns": 84,
+      "full_frame_bytes": 161056772,
+      "parquet_bytes": 17366952,
+      "sha256_parquet": "0dc04b8956c06df29d0a73d4542595a00b690578e2b52a8b3de2fb0ac6bfabf1",
+      "category": {
+        "decision": "discarded; current null-fill contract fails and groupby adds unused categories",
+        "scenario_object_bytes": 6041732,
+        "scenario_category_bytes": 102758,
+        "conversion_ms": 2.436299982946366,
+        "null_mask_equal": true,
+        "encounter_order_equal": true,
+        "json_equal": true,
+        "groupby_object": "{\"b\":2,\"nan\":2,\"a\":1}",
+        "groupby_category": "{\"b\":2,\"nan\":2,\"a\":1,\"unused\":0}",
+        "concat_dtype": "object",
+        "errors": {
+          "null_fill": "Cannot setitem on a Categorical with a new category (), set the categories first",
+          "eeg_query": "Cannot setitem on a Categorical with a new category (), set the categories first"
+        },
+        "gsr_query_equal": true
+      }
+    }
+  ],
+  "queries": [
+    {
+      "fixture": "small",
+      "endpoint": "/scenario-timing",
+      "state": "disk",
+      "profile": "timing",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 10.896099964156747,
+        "min_ms": 10.236700007226318,
+        "max_ms": 11.716900044120848,
+        "samples": [
+          {
+            "ms": 11.716900044120848,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 449122304,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.005799984559417,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 450985984,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.533399996347725,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 452452352,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.896099964156747,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 453664768,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.236700007226318,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 454311936,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 9.153099963441491,
+        "min_ms": 8.532100007869303,
+        "max_ms": 9.74449998466298,
+        "samples": [
+          {
+            "ms": 8.789200044702739,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 449216512,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.74449998466298,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 451051520,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.153099963441491,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 452583424,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 8.532100007869303,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 453758976,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.459300024900585,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 454447104,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 101,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/scenario-timing",
+      "state": "cold",
+      "profile": "timing",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 37.83979994477704,
+        "min_ms": 36.4621999906376,
+        "max_ms": 38.54350000619888,
+        "samples": [
+          {
+            "ms": 38.04579999996349,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 455753728,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 38.54350000619888,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 456384512,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.4621999906376,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 456474624,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.70779999811202,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 456720384,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.83979994477704,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 456781824,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 34.97169999172911,
+        "min_ms": 34.76320003392175,
+        "max_ms": 36.9162000133656,
+        "samples": [
+          {
+            "ms": 35.28599999845028,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 455802880,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.9162000133656,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 456425472,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 34.76320003392175,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 456499200,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 34.97169999172911,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 456749056,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 34.77010002825409,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 456880128,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 101,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/timeseries/gsr",
+      "state": "disk",
+      "profile": "gsr",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 13.308800000231713,
+        "min_ms": 12.846299970988184,
+        "max_ms": 14.006000012159348,
+        "samples": [
+          {
+            "ms": 13.427899975795299,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 458973184,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 12.846299970988184,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 459829248,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 13.308800000231713,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 460394496,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 14.006000012159348,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 460767232,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 13.076200033538043,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 460804096,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 11.541400046553463,
+        "min_ms": 11.173199978657067,
+        "max_ms": 12.956699996721,
+        "samples": [
+          {
+            "ms": 11.541400046553463,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 459042816,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 12.956699996721,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 459927552,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.55210001161322,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 460414976,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.173199978657067,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 460787712,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.235899990424514,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 460832768,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 14950,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/timeseries/gsr",
+      "state": "cold",
+      "profile": "gsr",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 40.0917999795638,
+        "min_ms": 38.79429999506101,
+        "max_ms": 45.056200004182756,
+        "samples": [
+          {
+            "ms": 39.13220000686124,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 461791232,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 40.0917999795638,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 461946880,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 42.1710999798961,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 462524416,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 38.79429999506101,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 462839808,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 45.056200004182756,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 462872576,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 38.18660002434626,
+        "min_ms": 37.615499983076006,
+        "max_ms": 39.39479996915907,
+        "samples": [
+          {
+            "ms": 38.131500012241304,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 461840384,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 39.39479996915907,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 461946880,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 38.18660002434626,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 462553088,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 39.01770000811666,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 462856192,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.615499983076006,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 462872576,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 14950,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/statistics/gsr",
+      "state": "disk",
+      "profile": "gsr",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 11.438499961514026,
+        "min_ms": 11.194500024430454,
+        "max_ms": 12.315300002228469,
+        "samples": [
+          {
+            "ms": 11.890800029505044,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 463495168,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.438499961514026,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 464257024,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.316799966152757,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 464531456,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 12.315300002228469,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 464896000,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.194500024430454,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465510400,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 9.770900011062622,
+        "min_ms": 9.190800017677248,
+        "max_ms": 10.408599977381527,
+        "samples": [
+          {
+            "ms": 9.770900011062622,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 463495168,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.572200011461973,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 464236544,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.790599986445159,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 464601088,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.408599977381527,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 464994304,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.190800017677248,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465575936,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 197,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/statistics/gsr",
+      "state": "cold",
+      "profile": "gsr",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 37.83869999460876,
+        "min_ms": 37.0075999526307,
+        "max_ms": 40.006999974139035,
+        "samples": [
+          {
+            "ms": 37.0075999526307,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465580032,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.83869999460876,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465510400,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.137100007385015,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465526784,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 39.89230003207922,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465571840,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 40.006999974139035,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465666048,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 35.32439999980852,
+        "min_ms": 34.95850000763312,
+        "max_ms": 37.226099986582994,
+        "samples": [
+          {
+            "ms": 34.95850000763312,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465485824,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.32439999980852,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465526784,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.17930000089109,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465559552,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.226099986582994,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465571840,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.825900034978986,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 465637376,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 197,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/timeseries/pupil",
+      "state": "disk",
+      "profile": "pupil",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 12.524600024335086,
+        "min_ms": 11.571200040634722,
+        "max_ms": 13.05160002084449,
+        "samples": [
+          {
+            "ms": 12.524600024335086,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465707008,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 12.60249997721985,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465707008,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 13.05160002084449,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465711104,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.571200040634722,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465711104,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 12.248100014403462,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465756160,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 10.73419995373115,
+        "min_ms": 10.247499973047525,
+        "max_ms": 11.982400028500706,
+        "samples": [
+          {
+            "ms": 11.982400028500706,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465707008,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.73419995373115,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465707008,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.495000053197145,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465711104,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.790199961978942,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465682432,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.247499973047525,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 465772544,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 59714,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 147332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/timeseries/pupil",
+      "state": "cold",
+      "profile": "pupil",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 39.11549999611452,
+        "min_ms": 37.79390000272542,
+        "max_ms": 39.66700000455603,
+        "samples": [
+          {
+            "ms": 37.79390000272542,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466268160,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 39.66700000455603,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466268160,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 39.11549999611452,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466247680,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 39.20579998521134,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466296832,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 38.20479998830706,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466300928,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 36.41749999951571,
+        "min_ms": 35.82210000604391,
+        "max_ms": 37.766700028441846,
+        "samples": [
+          {
+            "ms": 37.766700028441846,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466268160,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.82210000604391,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466268160,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.30199998244643,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466264064,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.36410000035539,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466296832,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.41749999951571,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466300928,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 59714,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 147332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/statistics/pupil",
+      "state": "disk",
+      "profile": "pupil",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 11.154000007081777,
+        "min_ms": 10.427800007164478,
+        "max_ms": 12.445100001059473,
+        "samples": [
+          {
+            "ms": 12.445100001059473,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466321408,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.427800007164478,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466305024,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.982799973338842,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466321408,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.120699986349791,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466321408,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.154000007081777,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466432000,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 9.669399994891137,
+        "min_ms": 9.098300011828542,
+        "max_ms": 10.336699953768402,
+        "samples": [
+          {
+            "ms": 10.336699953768402,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466292736,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.669399994891137,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466321408,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.482799971010536,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466321408,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.846100001595914,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466321408,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.098300011828542,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466436096,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 194,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 147332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/statistics/pupil",
+      "state": "cold",
+      "profile": "pupil",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 36.84459999203682,
+        "min_ms": 36.258600011933595,
+        "max_ms": 38.01660001045093,
+        "samples": [
+          {
+            "ms": 37.73920005187392,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466456576,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 38.01660001045093,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466481152,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.258600011933595,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466481152,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.55710001476109,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466481152,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.84459999203682,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466530304,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 36.42349998699501,
+        "min_ms": 34.963499987497926,
+        "max_ms": 36.458299960941076,
+        "samples": [
+          {
+            "ms": 34.963499987497926,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466472960,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.458299960941076,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466481152,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.18930001882836,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466481152,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.45790001610294,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466452480,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.42349998699501,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466546688,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 194,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 147332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/timeseries/distance",
+      "state": "disk",
+      "profile": "distance",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 10.726100008469075,
+        "min_ms": 10.607800038997084,
+        "max_ms": 11.634800001047552,
+        "samples": [
+          {
+            "ms": 11.634800001047552,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466612224,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.607800038997084,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466616320,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.726100008469075,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466616320,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.181399982888252,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466636800,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.662599990610033,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466653184,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 9.09989996580407,
+        "min_ms": 8.925700036343187,
+        "max_ms": 10.594599996693432,
+        "samples": [
+          {
+            "ms": 10.594599996693432,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466612224,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.09989996580407,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466616320,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.223999979440123,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466587648,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.022400015965104,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466653184,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 8.925700036343187,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466653184,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 9399,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/timeseries/distance",
+      "state": "cold",
+      "profile": "distance",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 37.226199987344444,
+        "min_ms": 37.018499977421016,
+        "max_ms": 38.49389997776598,
+        "samples": [
+          {
+            "ms": 37.226199987344444,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466653184,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 38.49389997776598,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466632704,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.165399990044534,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466661376,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.018499977421016,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466661376,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.6537999836728,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466665472,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 35.80099996179342,
+        "min_ms": 35.57149996049702,
+        "max_ms": 36.00720001850277,
+        "samples": [
+          {
+            "ms": 35.80099996179342,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466653184,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.57149996049702,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466649088,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.78709997236729,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466661376,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.00720001850277,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466661376,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.80289997626096,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466665472,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 9399,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/statistics/distance",
+      "state": "disk",
+      "profile": "distance",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 11.218100029509515,
+        "min_ms": 10.464999999385327,
+        "max_ms": 12.58179999422282,
+        "samples": [
+          {
+            "ms": 12.58179999422282,
+            "cpu_ms": 203.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466673664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.218100029509515,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466673664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.733599996659905,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466673664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.994700016453862,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466673664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.464999999385327,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466649088,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 9.37859999248758,
+        "min_ms": 9.156800049822778,
+        "max_ms": 10.347099974751472,
+        "samples": [
+          {
+            "ms": 9.233499993570149,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466673664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.156800049822778,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466673664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.37859999248758,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466673664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 10.347099974751472,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466673664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 9.58439998794347,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 466665472,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 81,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/statistics/distance",
+      "state": "cold",
+      "profile": "distance",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 37.30779996840283,
+        "min_ms": 36.22250002808869,
+        "max_ms": 38.23279996868223,
+        "samples": [
+          {
+            "ms": 36.882299988064915,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466722816,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.22250002808869,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466722816,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.56440000142902,
+            "cpu_ms": 156.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466722816,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 37.30779996840283,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466706432,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 38.23279996868223,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466722816,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 35.791900008916855,
+        "min_ms": 34.52459996333346,
+        "max_ms": 36.14069998729974,
+        "samples": [
+          {
+            "ms": 34.52459996333346,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466722816,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.88729997863993,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466722816,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.791900008916855,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466694144,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 36.14069998729974,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466722816,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 35.18259996781126,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 466722816,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 81,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 134532
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/timeseries/eeg",
+      "state": "disk",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 22.985199990216643,
+        "min_ms": 22.722300025634468,
+        "max_ms": 24.5291999890469,
+        "samples": [
+          {
+            "ms": 24.5291999890469,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467013632,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 22.722300025634468,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467030016,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 23.166599974501878,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467156992,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 22.985199990216643,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467177472,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 22.754100034944713,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467185664,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 22.91729999706149,
+        "min_ms": 21.46229997742921,
+        "max_ms": 29.564600030425936,
+        "samples": [
+          {
+            "ms": 29.564600030425936,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467009536,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 21.46229997742921,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467152896,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 22.049599967431277,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467156992,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 22.91729999706149,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467177472,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 23.467499995604157,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 467288064,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 147477,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 211332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/timeseries/eeg",
+      "state": "cold",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 49.609299981966615,
+        "min_ms": 49.22919999808073,
+        "max_ms": 51.13949999213219,
+        "samples": [
+          {
+            "ms": 49.22919999808073,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467394560,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 49.261200008913875,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467394560,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 50.02319999039173,
+            "cpu_ms": 62.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467505152,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 49.609299981966615,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467480576,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 51.13949999213219,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467615744,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 48.22509997757152,
+        "min_ms": 47.644299978856,
+        "max_ms": 52.55849997047335,
+        "samples": [
+          {
+            "ms": 52.55849997047335,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467394560,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 47.65770002268255,
+            "cpu_ms": 78.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467501056,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 48.22509997757152,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467505152,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 47.644299978856,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467607552,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 50.90660002315417,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 467722240,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 147477,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 211332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/psd/eeg",
+      "state": "disk",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 19.595199963077903,
+        "min_ms": 19.12340003764257,
+        "max_ms": 19.98989999992773,
+        "samples": [
+          {
+            "ms": 19.12340003764257,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468041728,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 19.32439999654889,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468017152,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 19.98989999992773,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468242432,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 19.595199963077903,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468242432,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 19.643799983896315,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468242432,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 17.74829998612404,
+        "min_ms": 17.380999983288348,
+        "max_ms": 21.054100012406707,
+        "samples": [
+          {
+            "ms": 21.054100012406707,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468041728,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 17.380999983288348,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468033536,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 17.84579997183755,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468242432,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 17.74829998612404,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468242432,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 17.39280001493171,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468246528,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 35052,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 211332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/psd/eeg",
+      "state": "cold",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 45.18950002966449,
+        "min_ms": 44.62589998729527,
+        "max_ms": 47.3026999970898,
+        "samples": [
+          {
+            "ms": 45.18950002966449,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468398080,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 47.3026999970898,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468541440,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 44.73690001759678,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468647936,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 46.0359999560751,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468754432,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 44.62589998729527,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468738048,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 43.47360000247136,
+        "min_ms": 42.589400021824986,
+        "max_ms": 45.84850004175678,
+        "samples": [
+          {
+            "ms": 42.589400021824986,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468520960,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 45.41989997960627,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468647936,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 43.21249999338761,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468754432,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 43.47360000247136,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468725760,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 45.84850004175678,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 468754432,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 35052,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 211332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/spectrogram/eeg",
+      "state": "disk",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 24.2629999993369,
+        "min_ms": 23.652900010347366,
+        "max_ms": 27.193999965675175,
+        "samples": [
+          {
+            "ms": 24.604300037026405,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468865024,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 24.2629999993369,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468865024,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 27.193999965675175,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468951040,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 23.652900010347366,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468975616,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 23.95619999151677,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468975616,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 23.37499998975545,
+        "min_ms": 23.081499966792762,
+        "max_ms": 26.2986000161618,
+        "samples": [
+          {
+            "ms": 23.555399966426194,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468865024,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 26.2986000161618,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468971520,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 23.37499998975545,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468967424,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 23.081499966792762,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468975616,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 23.173999972641468,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 468975616,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 98825,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 211332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/spectrogram/eeg",
+      "state": "cold",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 52.332399995066226,
+        "min_ms": 50.94210000243038,
+        "max_ms": 57.84309998853132,
+        "samples": [
+          {
+            "ms": 51.60700000124052,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469061632,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 52.332399995066226,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469086208,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 54.04179997276515,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469086208,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 50.94210000243038,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469086208,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 57.84309998853132,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469061632,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 49.963400000706315,
+        "min_ms": 48.866799974348396,
+        "max_ms": 50.40519998874515,
+        "samples": [
+          {
+            "ms": 50.40519998874515,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469078016,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 50.10679998667911,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469086208,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 49.919000011868775,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469086208,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 48.866799974348396,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469086208,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 49.963400000706315,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469078016,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 98825,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 211332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/topography/eeg",
+      "state": "disk",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 14.116100035607815,
+        "min_ms": 13.323799998033792,
+        "max_ms": 14.361899986397475,
+        "samples": [
+          {
+            "ms": 14.116100035607815,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469233664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 14.361899986397475,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469233664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 13.323799998033792,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469233664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 14.189800014719367,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469401600,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 13.43509997241199,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469426176,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 12.40100001450628,
+        "min_ms": 11.707400029990822,
+        "max_ms": 13.244600035250187,
+        "samples": [
+          {
+            "ms": 12.40100001450628,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469233664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.779699998442084,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469233664,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 11.707400029990822,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469336064,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 12.724399974104017,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469417984,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 13.244600035250187,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 469426176,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 6174,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 211332
+    },
+    {
+      "fixture": "small",
+      "endpoint": "/topography/eeg",
+      "state": "cold",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 40.42149998713285,
+        "min_ms": 39.35249999631196,
+        "max_ms": 43.333500041626394,
+        "samples": [
+          {
+            "ms": 39.35249999631196,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469426176,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 43.333500041626394,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469569536,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 40.60680000111461,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469622784,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 40.11619999073446,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469639168,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 40.42149998713285,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469639168,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 38.61190000316128,
+        "min_ms": 37.815499992575496,
+        "max_ms": 41.37719998834655,
+        "samples": [
+          {
+            "ms": 37.815499992575496,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469426176,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 38.61190000316128,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469540864,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 38.503099989611655,
+            "cpu_ms": 0.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469639168,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 40.54700001142919,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469639168,
+            "process_lifetime_peak_bytes": 500183040
+          },
+          {
+            "ms": 41.37719998834655,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844
+            },
+            "rss_bytes": 469745664,
+            "process_lifetime_peak_bytes": 500183040
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 6174,
+      "full_frame_bytes": 2152342,
+      "projected_frame_bytes": 211332
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/scenario-timing",
+      "state": "disk",
+      "profile": "timing",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 95.49820004031062,
+        "min_ms": 92.18749997671694,
+        "max_ms": 104.29779998958111,
+        "samples": [
+          {
+            "ms": 94.91320000961423,
+            "cpu_ms": 312.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 664268800,
+            "process_lifetime_peak_bytes": 759099392
+          },
+          {
+            "ms": 95.49820004031062,
+            "cpu_ms": 109.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 683106304,
+            "process_lifetime_peak_bytes": 767815680
+          },
+          {
+            "ms": 92.18749997671694,
+            "cpu_ms": 78.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 722862080,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 104.29779998958111,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 672690176,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 97.71969995927066,
+            "cpu_ms": 328.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 700698624,
+            "process_lifetime_peak_bytes": 807997440
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 23.49360001971945,
+        "min_ms": 22.59020000929013,
+        "max_ms": 24.887400039006025,
+        "samples": [
+          {
+            "ms": 23.448600026313215,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 668254208,
+            "process_lifetime_peak_bytes": 759099392
+          },
+          {
+            "ms": 24.887400039006025,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 687013888,
+            "process_lifetime_peak_bytes": 767815680
+          },
+          {
+            "ms": 23.49360001971945,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 726454272,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 24.555699958000332,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 675737600,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 22.59020000929013,
+            "cpu_ms": 78.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 703016960,
+            "process_lifetime_peak_bytes": 807997440
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 104,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/scenario-timing",
+      "state": "cold",
+      "profile": "timing",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 127.40450003184378,
+        "min_ms": 122.31369997607544,
+        "max_ms": 194.28310001967475,
+        "samples": [
+          {
+            "ms": 125.4789000377059,
+            "cpu_ms": 312.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 682590208,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 122.31369997607544,
+            "cpu_ms": 109.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 703832064,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 127.40450003184378,
+            "cpu_ms": 500.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 707284992,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 177.27399995783344,
+            "cpu_ms": 156.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 678203392,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 194.28310001967475,
+            "cpu_ms": 78.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 696713216,
+            "process_lifetime_peak_bytes": 807997440
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 92.94129995396361,
+        "min_ms": 53.72179998084903,
+        "max_ms": 164.79670000262558,
+        "samples": [
+          {
+            "ms": 53.72179998084903,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 686784512,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 164.79670000262558,
+            "cpu_ms": 78.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 706945024,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 65.31570001970977,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 524972032,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 92.94129995396361,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 681336832,
+            "process_lifetime_peak_bytes": 807997440
+          },
+          {
+            "ms": 109.8234000382945,
+            "cpu_ms": 93.75,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 700268544,
+            "process_lifetime_peak_bytes": 807997440
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 104,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/timeseries/gsr",
+      "state": "disk",
+      "profile": "gsr",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 139.58860002458096,
+        "min_ms": 132.7995999599807,
+        "max_ms": 144.67259997036308,
+        "samples": [
+          {
+            "ms": 141.58979995409027,
+            "cpu_ms": 343.75,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 733413376,
+            "process_lifetime_peak_bytes": 898433024
+          },
+          {
+            "ms": 132.7995999599807,
+            "cpu_ms": 156.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 736456704,
+            "process_lifetime_peak_bytes": 901492736
+          },
+          {
+            "ms": 138.18110001739115,
+            "cpu_ms": 140.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 700010496,
+            "process_lifetime_peak_bytes": 901492736
+          },
+          {
+            "ms": 139.58860002458096,
+            "cpu_ms": 156.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 736063488,
+            "process_lifetime_peak_bytes": 901492736
+          },
+          {
+            "ms": 144.67259997036308,
+            "cpu_ms": 156.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 746647552,
+            "process_lifetime_peak_bytes": 903004160
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 39.164200017694384,
+        "min_ms": 34.99259997624904,
+        "max_ms": 57.46139999246225,
+        "samples": [
+          {
+            "ms": 39.164200017694384,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 743370752,
+            "process_lifetime_peak_bytes": 898433024
+          },
+          {
+            "ms": 46.549699967727065,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 525766656,
+            "process_lifetime_peak_bytes": 901492736
+          },
+          {
+            "ms": 37.08510001888499,
+            "cpu_ms": 62.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 704319488,
+            "process_lifetime_peak_bytes": 901492736
+          },
+          {
+            "ms": 34.99259997624904,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 739946496,
+            "process_lifetime_peak_bytes": 901492736
+          },
+          {
+            "ms": 57.46139999246225,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 534011904,
+            "process_lifetime_peak_bytes": 903004160
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 102704,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/timeseries/gsr",
+      "state": "cold",
+      "profile": "gsr",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 162.0761000085622,
+        "min_ms": 152.31239999411628,
+        "max_ms": 229.66340003767982,
+        "samples": [
+          {
+            "ms": 152.31239999411628,
+            "cpu_ms": 359.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 703262720,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 159.49569997610524,
+            "cpu_ms": 250.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 686755840,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 162.0761000085622,
+            "cpu_ms": 562.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 707031040,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 229.66340003767982,
+            "cpu_ms": 156.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 530407424,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 167.20600001281127,
+            "cpu_ms": 359.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 687575040,
+            "process_lifetime_peak_bytes": 903004160
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 104.56070001237094,
+        "min_ms": 64.3982999608852,
+        "max_ms": 204.41450004000217,
+        "samples": [
+          {
+            "ms": 64.3982999608852,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 705847296,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 68.63190000876784,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 696700928,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 104.56070001237094,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 709947392,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 204.41450004000217,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 541118464,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 163.14059996511787,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 690393088,
+            "process_lifetime_peak_bytes": 903004160
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 102704,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/statistics/gsr",
+      "state": "disk",
+      "profile": "gsr",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 126.84079998871312,
+        "min_ms": 114.53969997819513,
+        "max_ms": 135.12460002675653,
+        "samples": [
+          {
+            "ms": 129.67009999556467,
+            "cpu_ms": 359.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 704618496,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 120.59599999338388,
+            "cpu_ms": 343.75,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 711753728,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 135.12460002675653,
+            "cpu_ms": 515.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 524660736,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 114.53969997819513,
+            "cpu_ms": 359.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 700801024,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 126.84079998871312,
+            "cpu_ms": 343.75,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 740204544,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 23.05359998717904,
+        "min_ms": 21.95899997605011,
+        "max_ms": 24.192800046876073,
+        "samples": [
+          {
+            "ms": 23.775700014084578,
+            "cpu_ms": 62.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 714928128,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 23.05359998717904,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 720650240,
+            "process_lifetime_peak_bytes": 903004160
+          },
+          {
+            "ms": 24.192800046876073,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 540934144,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 21.95899997605011,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 704421888,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 22.375999949872494,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 744513536,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 197,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/statistics/gsr",
+      "state": "cold",
+      "profile": "gsr",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 161.0454000183381,
+        "min_ms": 153.28329999465495,
+        "max_ms": 169.9644000036642,
+        "samples": [
+          {
+            "ms": 153.8223999668844,
+            "cpu_ms": 375.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 678641664,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 169.9644000036642,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 689414144,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 161.0454000183381,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 690565120,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 167.08559996914119,
+            "cpu_ms": 281.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 720617472,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 153.28329999465495,
+            "cpu_ms": 312.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 748953600,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 58.327000006102026,
+        "min_ms": 54.43259997991845,
+        "max_ms": 78.34259996889159,
+        "samples": [
+          {
+            "ms": 54.43259997991845,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 688766976,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 69.96310001704842,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 699187200,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 55.62790000112727,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 694272000,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 58.327000006102026,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 730525696,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 78.34259996889159,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 543428608,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 197,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/timeseries/pupil",
+      "state": "disk",
+      "profile": "pupil",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 101.64239996811375,
+        "min_ms": 96.04189998935908,
+        "max_ms": 105.64410005463287,
+        "samples": [
+          {
+            "ms": 99.11329997703433,
+            "cpu_ms": 515.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 720924672,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 101.64239996811375,
+            "cpu_ms": 312.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 749674496,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 105.64410005463287,
+            "cpu_ms": 390.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 704782336,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 102.81960002612323,
+            "cpu_ms": 328.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 747634688,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 96.04189998935908,
+            "cpu_ms": 312.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 750673920,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 29.41310004098341,
+        "min_ms": 28.647399973124266,
+        "max_ms": 29.96990003157407,
+        "samples": [
+          {
+            "ms": 28.647399973124266,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 723226624,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 29.013600025791675,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 752525312,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 29.615300009027123,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 707293184,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 29.41310004098341,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 750956544,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 29.96990003157407,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 752971776,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 382140,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 14524932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/timeseries/pupil",
+      "state": "cold",
+      "profile": "pupil",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 143.77550000790507,
+        "min_ms": 138.52470001438633,
+        "max_ms": 179.88800001330674,
+        "samples": [
+          {
+            "ms": 139.34850000077859,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 743915520,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 147.67269999720156,
+            "cpu_ms": 562.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 752865280,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 138.52470001438633,
+            "cpu_ms": 78.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 694960128,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 143.77550000790507,
+            "cpu_ms": 93.75,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 745394176,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 179.88800001330674,
+            "cpu_ms": 328.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 684400640,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 72.88100000005215,
+        "min_ms": 59.777499991469085,
+        "max_ms": 93.7936999835074,
+        "samples": [
+          {
+            "ms": 67.4330999609083,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 746229760,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 74.73980000941083,
+            "cpu_ms": 78.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 547971072,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 59.777499991469085,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 697659392,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 72.88100000005215,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 748265472,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 93.7936999835074,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 687435776,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 382140,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 14524932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/statistics/pupil",
+      "state": "disk",
+      "profile": "pupil",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 102.43999998783693,
+        "min_ms": 98.81379996659234,
+        "max_ms": 116.03470001136884,
+        "samples": [
+          {
+            "ms": 100.98480002488941,
+            "cpu_ms": 328.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 752029696,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 102.83089999575168,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 728993792,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 98.81379996659234,
+            "cpu_ms": 93.75,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 749035520,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 102.43999998783693,
+            "cpu_ms": 109.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 756895744,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 116.03470001136884,
+            "cpu_ms": 296.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 539029504,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 23.442300036549568,
+        "min_ms": 22.859000018797815,
+        "max_ms": 24.97839997522533,
+        "samples": [
+          {
+            "ms": 24.97839997522533,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 756482048,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 24.199899984523654,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 733290496,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 22.859000018797815,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 753631232,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 23.442300036549568,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 761532416,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 23.074799973983318,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 551510016,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 197,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 14524932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/statistics/pupil",
+      "state": "cold",
+      "profile": "pupil",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 145.03269997658208,
+        "min_ms": 131.30950002232566,
+        "max_ms": 154.34649999951944,
+        "samples": [
+          {
+            "ms": 131.30950002232566,
+            "cpu_ms": 328.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 742866944,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 142.497299995739,
+            "cpu_ms": 312.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 693280768,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 145.03269997658208,
+            "cpu_ms": 140.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 720969728,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 154.34649999951944,
+            "cpu_ms": 93.75,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 727097344,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 150.04029998090118,
+            "cpu_ms": 359.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 714727424,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 59.51190000632778,
+        "min_ms": 53.655399999115616,
+        "max_ms": 65.51210000179708,
+        "samples": [
+          {
+            "ms": 54.0043999790214,
+            "cpu_ms": 93.75,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 747790336,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 53.655399999115616,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 698290176,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 59.51190000632778,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 725610496,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 65.51210000179708,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 552480768,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 61.388200032524765,
+            "cpu_ms": 109.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 719310848,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 197,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 14524932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/timeseries/distance",
+      "state": "disk",
+      "profile": "distance",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 106.47910000989214,
+        "min_ms": 100.32950004097074,
+        "max_ms": 128.1412999960594,
+        "samples": [
+          {
+            "ms": 118.29249997390434,
+            "cpu_ms": 140.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 747126784,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 128.1412999960594,
+            "cpu_ms": 343.75,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 704995328,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 106.47910000989214,
+            "cpu_ms": 109.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 748621824,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 100.32950004097074,
+            "cpu_ms": 359.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 753410048,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 103.22089999681339,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 705277952,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 27.14620000915602,
+        "min_ms": 23.75640004174784,
+        "max_ms": 35.65930004697293,
+        "samples": [
+          {
+            "ms": 35.18380003515631,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 553664512,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 27.14620000915602,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 709017600,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 23.75640004174784,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 752283648,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 35.65930004697293,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 552468480,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 23.839799978304654,
+            "cpu_ms": 62.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 709144576,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 68272,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/timeseries/distance",
+      "state": "cold",
+      "profile": "distance",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 142.28249998996034,
+        "min_ms": 131.65509997634217,
+        "max_ms": 222.67610003473237,
+        "samples": [
+          {
+            "ms": 134.21849999576807,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 729157632,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 131.65509997634217,
+            "cpu_ms": 140.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 698667008,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 222.67610003473237,
+            "cpu_ms": 109.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 747028480,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 161.97529999772087,
+            "cpu_ms": 328.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 715087872,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 142.28249998996034,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 726544384,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 60.27109996648505,
+        "min_ms": 54.36110001755878,
+        "max_ms": 94.83209997415543,
+        "samples": [
+          {
+            "ms": 62.9281000001356,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 554762240,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 60.27109996648505,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 703021056,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 94.83209997415543,
+            "cpu_ms": 46.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 750751744,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 57.07719997735694,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 719007744,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 54.36110001755878,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 730472448,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 68272,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/statistics/distance",
+      "state": "disk",
+      "profile": "distance",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 101.5746999764815,
+        "min_ms": 98.01989997504279,
+        "max_ms": 131.94839999778196,
+        "samples": [
+          {
+            "ms": 131.94839999778196,
+            "cpu_ms": 156.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 699609088,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 114.68420003075153,
+            "cpu_ms": 296.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 712220672,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 101.5746999764815,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 718786560,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 99.07669998938218,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 709283840,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 98.01989997504279,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 753524736,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 21.38089999789372,
+        "min_ms": 20.790799986571074,
+        "max_ms": 23.73509999597445,
+        "samples": [
+          {
+            "ms": 23.73509999597445,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 703762432,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 22.778999991714954,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 716185600,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 20.841200021095574,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 722808832,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 20.790799986571074,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 713437184,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 21.38089999789372,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 757547008,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 81,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/statistics/distance",
+      "state": "cold",
+      "profile": "distance",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 135.17379999393597,
+        "min_ms": 133.32460005767643,
+        "max_ms": 174.08099997555837,
+        "samples": [
+          {
+            "ms": 135.17379999393597,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 726753280,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 174.08099997555837,
+            "cpu_ms": 343.75,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 736587776,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 137.01549998950213,
+            "cpu_ms": 328.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 743800832,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 133.32460005767643,
+            "cpu_ms": 312.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 696262656,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 134.9462000071071,
+            "cpu_ms": 390.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 727638016,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 54.209600028116256,
+        "min_ms": 52.227400010451674,
+        "max_ms": 60.66760001704097,
+        "samples": [
+          {
+            "ms": 52.53809998976067,
+            "cpu_ms": 78.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 730734592,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 54.209600028116256,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 740577280,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 60.66760001704097,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 556015616,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 52.227400010451674,
+            "cpu_ms": 15.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 702210048,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 57.03730002278462,
+            "cpu_ms": 31.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 727638016,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 81,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 13705732
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/timeseries/eeg",
+      "state": "disk",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 277.22279995214194,
+        "min_ms": 271.60899998852983,
+        "max_ms": 287.5753999687731,
+        "samples": [
+          {
+            "ms": 287.5753999687731,
+            "cpu_ms": 500.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 730566656,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 271.60899998852983,
+            "cpu_ms": 515.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 717180928,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 281.2573999981396,
+            "cpu_ms": 296.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 758358016,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 277.22279995214194,
+            "cpu_ms": 453.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 729415680,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 272.04100001836196,
+            "cpu_ms": 468.75,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 719630336,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 213.34529999876395,
+        "min_ms": 202.27580005303025,
+        "max_ms": 214.40940001048148,
+        "samples": [
+          {
+            "ms": 213.37539999512956,
+            "cpu_ms": 281.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 735485952,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 202.27580005303025,
+            "cpu_ms": 203.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 723632128,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 214.40940001048148,
+            "cpu_ms": 203.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 583471104,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 210.10710002155975,
+            "cpu_ms": 265.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 734478336,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 213.34529999876395,
+            "cpu_ms": 218.75,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 724647936,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 887158,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 18620932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/timeseries/eeg",
+      "state": "cold",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 305.4856000235304,
+        "min_ms": 272.7516000159085,
+        "max_ms": 313.0214000120759,
+        "samples": [
+          {
+            "ms": 305.4856000235304,
+            "cpu_ms": 437.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 718934016,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 272.7516000159085,
+            "cpu_ms": 390.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 718905344,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 311.73089996445924,
+            "cpu_ms": 296.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 760360960,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 313.0214000120759,
+            "cpu_ms": 328.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 732413952,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 283.5338999866508,
+            "cpu_ms": 312.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 724811776,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 238.90290001872927,
+        "min_ms": 228.34699996747077,
+        "max_ms": 271.3705999776721,
+        "samples": [
+          {
+            "ms": 237.2939000488259,
+            "cpu_ms": 234.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 722755584,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 228.34699996747077,
+            "cpu_ms": 203.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 722919424,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 248.16529999952763,
+            "cpu_ms": 218.75,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 583147520,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 238.90290001872927,
+            "cpu_ms": 203.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 736145408,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 271.3705999776721,
+            "cpu_ms": 234.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 729108480,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 887158,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 18620932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/psd/eeg",
+      "state": "disk",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 230.73579999618232,
+        "min_ms": 225.186700001359,
+        "max_ms": 248.09960002312437,
+        "samples": [
+          {
+            "ms": 248.09960002312437,
+            "cpu_ms": 265.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 723111936,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 225.186700001359,
+            "cpu_ms": 234.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 726753280,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 229.7351000015624,
+            "cpu_ms": 453.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 738545664,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 230.73579999618232,
+            "cpu_ms": 265.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 737964032,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 233.85949997464195,
+            "cpu_ms": 468.75,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 775827456,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 179.86229999223724,
+        "min_ms": 170.5633999663405,
+        "max_ms": 184.20909997075796,
+        "samples": [
+          {
+            "ms": 174.59840001538396,
+            "cpu_ms": 171.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 730750976,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 179.86229999223724,
+            "cpu_ms": 187.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 733569024,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 181.9273000000976,
+            "cpu_ms": 171.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 567562240,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 170.5633999663405,
+            "cpu_ms": 171.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 746807296,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 184.20909997075796,
+            "cpu_ms": 187.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 587939840,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 35155,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 18620932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/psd/eeg",
+      "state": "cold",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 275.9982999996282,
+        "min_ms": 265.37749997805804,
+        "max_ms": 291.3230999838561,
+        "samples": [
+          {
+            "ms": 265.37749997805804,
+            "cpu_ms": 265.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 711237632,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 275.9982999996282,
+            "cpu_ms": 250.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 743931904,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 273.99690001038834,
+            "cpu_ms": 515.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 726532096,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 291.3230999838561,
+            "cpu_ms": 500.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 566456320,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 286.3626999896951,
+            "cpu_ms": 468.75,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 741703680,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 211.872499960009,
+        "min_ms": 203.07200000388548,
+        "max_ms": 246.0539999883622,
+        "samples": [
+          {
+            "ms": 207.94950000708923,
+            "cpu_ms": 187.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 717074432,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 218.69070001412183,
+            "cpu_ms": 203.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 568631296,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 203.07200000388548,
+            "cpu_ms": 171.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 734896128,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 246.0539999883622,
+            "cpu_ms": 234.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 589217792,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 211.872499960009,
+            "cpu_ms": 187.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 569487360,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 35155,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 18620932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/spectrogram/eeg",
+      "state": "disk",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 823.4555999515578,
+        "min_ms": 725.8311999612488,
+        "max_ms": 1016.9140999787487,
+        "samples": [
+          {
+            "ms": 950.1918999594636,
+            "cpu_ms": 968.75,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 585773056,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 1016.9140999787487,
+            "cpu_ms": 1234.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 586051584,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 823.4555999515578,
+            "cpu_ms": 1031.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 742125568,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 725.8311999612488,
+            "cpu_ms": 937.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 585920512,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 763.5053999838419,
+            "cpu_ms": 796.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 584028160,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 691.5941000333987,
+        "min_ms": 669.6347999968566,
+        "max_ms": 928.690800035838,
+        "samples": [
+          {
+            "ms": 887.7302000182681,
+            "cpu_ms": 890.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 585957376,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 928.690800035838,
+            "cpu_ms": 937.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 587411456,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 669.7351000038907,
+            "cpu_ms": 687.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 604237824,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 669.6347999968566,
+            "cpu_ms": 671.875,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 608219136,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 691.5941000333987,
+            "cpu_ms": 703.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 609206272,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 2844387,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 18620932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/spectrogram/eeg",
+      "state": "cold",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 777.1045000408776,
+        "min_ms": 751.0843999916688,
+        "max_ms": 838.0200000246987,
+        "samples": [
+          {
+            "ms": 788.8757000328042,
+            "cpu_ms": 1109.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 585674752,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 777.1045000408776,
+            "cpu_ms": 984.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 581189632,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 767.9249999928288,
+            "cpu_ms": 984.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 586637312,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 751.0843999916688,
+            "cpu_ms": 781.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 582361088,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 838.0200000246987,
+            "cpu_ms": 953.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 743489536,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 674.2520999978296,
+        "min_ms": 663.4606999577954,
+        "max_ms": 773.2731999712996,
+        "samples": [
+          {
+            "ms": 668.5693000326864,
+            "cpu_ms": 656.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 607744000,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 663.4606999577954,
+            "cpu_ms": 640.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 604606464,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 693.7770000076853,
+            "cpu_ms": 656.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 608931840,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 773.2731999712996,
+            "cpu_ms": 656.25,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 605794304,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 674.2520999978296,
+            "cpu_ms": 640.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 587026432,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 2844387,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 18620932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/topography/eeg",
+      "state": "disk",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 183.78010002197698,
+        "min_ms": 181.9958999985829,
+        "max_ms": 195.52299997303635,
+        "samples": [
+          {
+            "ms": 181.9958999985829,
+            "cpu_ms": 187.5,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 752201728,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 195.52299997303635,
+            "cpu_ms": 359.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 734388224,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 183.78010002197698,
+            "cpu_ms": 406.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 756375552,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 182.05900001339614,
+            "cpu_ms": 203.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 730853376,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 184.16839995188639,
+            "cpu_ms": 203.125,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 742318080,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 123.0216000112705,
+        "min_ms": 113.30079997424036,
+        "max_ms": 134.8291999893263,
+        "samples": [
+          {
+            "ms": 134.8291999893263,
+            "cpu_ms": 140.625,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 583462912,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 123.96090000402182,
+            "cpu_ms": 156.25,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 741552128,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 123.0216000112705,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 583393280,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 117.348600004334,
+            "cpu_ms": 109.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 737316864,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 113.30079997424036,
+            "cpu_ms": 109.375,
+            "counts": {
+              "parquet_reads": 1
+            },
+            "rss_bytes": 747159552,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 63184,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 18620932
+    },
+    {
+      "fixture": "large",
+      "endpoint": "/topography/eeg",
+      "state": "cold",
+      "profile": "eeg",
+      "full": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 225.43099999893457,
+        "min_ms": 213.83940003579482,
+        "max_ms": 232.3638999951072,
+        "samples": [
+          {
+            "ms": 225.43099999893457,
+            "cpu_ms": 203.125,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 759136256,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 213.83940003579482,
+            "cpu_ms": 390.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 743219200,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 219.99380004126579,
+            "cpu_ms": 187.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 756195328,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 232.3638999951072,
+            "cpu_ms": 187.5,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 736374784,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 226.57619998790324,
+            "cpu_ms": 390.625,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 750366720,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "projected": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 157.09679998690262,
+        "min_ms": 152.82680001109838,
+        "max_ms": 185.92190003255382,
+        "samples": [
+          {
+            "ms": 153.8095999858342,
+            "cpu_ms": 109.375,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 763695104,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 157.09679998690262,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 748277760,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 185.92190003255382,
+            "cpu_ms": 171.875,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 583442432,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 167.0149000128731,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 743415808,
+            "process_lifetime_peak_bytes": 905601024
+          },
+          {
+            "ms": 152.82680001109838,
+            "cpu_ms": 125.0,
+            "counts": {
+              "parquet_reads": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952
+            },
+            "rss_bytes": 602042368,
+            "process_lifetime_peak_bytes": 905601024
+          }
+        ]
+      },
+      "equivalent_http_bytes": true,
+      "response_bytes": 63184,
+      "full_frame_bytes": 161056772,
+      "projected_frame_bytes": 18620932
+    }
+  ],
+  "limits": [
+    "OS file cache not cleared",
+    "RSS snapshot and process lifetime peak, not operation peak",
+    "No Redis/Drive/PostgreSQL",
+    "full and projected outputs compared exactly",
+    "Before is the same real reader forced full, no response cache; no frontend/global gate rerun"
+  ]
+}

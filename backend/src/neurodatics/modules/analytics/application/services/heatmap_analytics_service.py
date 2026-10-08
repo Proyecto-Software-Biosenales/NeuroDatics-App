@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from ...domain.stimulus_geometry import resolve_output_size
-from .fixation_analytics_service import FixationEventService as FixationEventService
+from .fixation_analytics_service import FixationEventResult, FixationEventService
 
 
 class HeatmapAnalyticsService:
@@ -73,11 +73,22 @@ class HeatmapAnalyticsService:
         proportionally, so it still overlays exactly. Returns the RGBA PNG
         bytes plus the canonical fixation provenance used to build it.
         """
-        events, metadata = FixationEventService.build_events(
+        result = FixationEventService.build_result(
             df,
             scenario=scenario,
             min_fixation_duration_ms=min_fixation_duration_ms,
         )
+        return cls.compute_heatmap_overlay_from_events(
+            result, gamma=gamma, threshold=threshold, alpha=alpha, width=width, height=height,
+        )
+
+    @classmethod
+    def compute_heatmap_overlay_from_events(
+        cls, result: FixationEventResult, gamma: float = 0.7,
+        threshold: float = 0.10, alpha: float = 0.75,
+        width: Optional[int] = None, height: Optional[int] = None,
+    ) -> tuple[Optional[bytes], dict]:
+        events, metadata = result.events, result.metadata
         png_bytes = cls.render_overlay(
             events,
             gamma=gamma,

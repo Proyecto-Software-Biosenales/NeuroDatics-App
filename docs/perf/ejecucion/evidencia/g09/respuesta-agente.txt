@@ -1,0 +1,13 @@
+G09 completo y pendiente de revisión de root; G10 no iniciado.
+
+- Lecturas SQL reales:
+  - Participantes: 20/200/2.000 → 2/2/2.
+  - AOIs: 22/202/2.002 → 3/3/3.
+- 25 pruebas aprobadas en ambos runtimes.
+- Ruff e import-linter: verdes.
+- Preservación: 998/998 archivos ajenos sin drift.
+- Reverse patch check: exit 0.
+- PostgreSQL real no disponible; limitación documentada sin inferir equivalencia.
+
+Entrega: [G09.md](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/G09.md)  
+Evidencia: [evidencia/g09](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g09)

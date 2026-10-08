@@ -1,0 +1,69 @@
+{
+  "recording": "csv-08",
+  "block": 5,
+  "sha256": "92d9847d6fcd3fe13b50afc5a37b5e6a2df1298ba8dad03a28dfba6e77d24f0a",
+  "scope": "entire block, all available EEG channels, original scenario boundaries preserved",
+  "processing": "default as-exported reference, no bandpass or notch; explicit PSD window exclusion only in excluded result",
+  "f3": {
+    "windows_total": 55,
+    "windows_flagged": 4,
+    "windows_kept_excluded": 51,
+    "nperseg": 1024,
+    "frequency_resolution_hz": 0.29329303484005875,
+    "total_power_included_assumed_uV2": 207384.41775740142,
+    "total_power_excluded_assumed_uV2": 3252.18009743548,
+    "included_to_excluded_power_ratio": 63.767814679431574,
+    "total_power_before_scale_correction": 0.20738441775740138,
+    "scale_correction_power_ratio": 1000000.0000000002,
+    "source": {
+      "valid": 37326,
+      "missing": 1216,
+      "leading_missing": 1022,
+      "trailing_missing": 194,
+      "internal_missing": 0,
+      "min": -0.97,
+      "max": 9.64,
+      "median": -0.21,
+      "std": 0.5656804038491559,
+      "rms": 0.5811716216739656,
+      "p99_absolute_step": 0.040000000000000036,
+      "max_absolute_step": 0.4500000000000002,
+      "identical_adjacent": 4632
+    },
+    "normalized": {
+      "valid": 37326,
+      "missing": 1216,
+      "leading_missing": 1022,
+      "trailing_missing": 194,
+      "internal_missing": 0,
+      "min": -970.0,
+      "max": 9640.0,
+      "median": -210.0,
+      "std": 565.6804038491559,
+      "rms": 581.1716216739655,
+      "p99_absolute_step": 40.0,
+      "max_absolute_step": 450.0,
+      "identical_adjacent": 4632
+    },
+    "band_power_included_assumed_uV2": {
+      "delta": 138625.72711543393,
+      "theta": 3120.0451272851255,
+      "alpha": 103.7685077756542,
+      "beta": 55.24990666308324,
+      "gamma": 16.206453226874107
+    },
+    "band_power_excluded_assumed_uV2": {
+      "delta": 1626.3178579569726,
+      "theta": 186.13020901514832,
+      "alpha": 38.491246877924844,
+      "beta": 29.69399321039186,
+      "gamma": 13.63520911793452
+    }
+  },
+  "limits": [
+    "Unit physical basis assumed where undeclared",
+    "Heuristic artifact flags are not ground truth",
+    "Excluded windows change time coverage",
+    "Scale comparison uses same current Welch code on raw versus normalized values, not a reconstructed historical application"
+  ]
+}

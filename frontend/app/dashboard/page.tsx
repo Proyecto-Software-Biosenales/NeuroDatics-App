@@ -1,6 +1,7 @@
 "use client"
 
 import { AnalyticsTabs } from "@/features/analytics/components/AnalyticsTabs"
+import { useAnalyticsProjectContext } from "@/features/analytics/hooks/useAnalyticsContext"
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { AuthGuard } from "@/features/auth/components/AuthGuard"
@@ -23,6 +24,7 @@ import { FixationHistogramTab } from "@/features/analytics/components/FixationHi
 import { AoiComparisonTab } from "@/features/analytics/components/AoiComparisonTab"
 import { FixationDurationControl } from "@/features/analytics/components/FixationDurationControl"
 import { ComparisonTab } from "@/features/analytics/comparison/ComparisonTab"
+import { ParticipantComparisonProvider } from "@/features/analytics/participantComparison/ParticipantComparisonProvider"
 import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
@@ -99,6 +101,7 @@ export default function DashboardPage() {
     string | null
   >(null)
   const sawParticipantLoading = useRef(false)
+  useAnalyticsProjectContext(selectedProjectId)
 
   const { participants, loading: participantsLoading } =
     useAnalyticsParticipants(selectedProjectId)
@@ -198,6 +201,15 @@ export default function DashboardPage() {
         ) ?? availableFixationDurations[0])
       : minFixationDurationMs
 
+  // Only the current project's participants, never the previous project's list.
+  const comparisonParticipantCodes = useMemo(
+    () =>
+      participantDataProjectId === selectedProjectId
+        ? participants.map((participant) => participant.participant_code)
+        : [],
+    [participantDataProjectId, participants, selectedProjectId]
+  )
+
   const availableSensors = useMemo(
     () => (selectedProject?.sensors ?? []).map((sensor) => sensor.sensor_type),
     [selectedProject]
@@ -253,6 +265,11 @@ export default function DashboardPage() {
             participantsLoading={participantsLoading}
           />
 
+          <ParticipantComparisonProvider
+            projectId={selectedProjectId}
+            participantCodes={comparisonParticipantCodes}
+            generation={selectedProject?.ingestion_generation ?? null}
+          >
           <main className="analytics-shell min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-4 xl:px-6 xl:pb-6">
             {!selectedProjectId ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -370,6 +387,7 @@ export default function DashboardPage() {
               </AnalyticsTabs>
             )}
           </main>
+          </ParticipantComparisonProvider>
         </div>
       </div>
     </AuthGuard>

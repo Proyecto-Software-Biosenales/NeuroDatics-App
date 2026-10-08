@@ -2647,6 +2647,38 @@
     }),
   })
 # ---
+# name: test_successful_analytics_contract[/scenario-timing]
+  dict({
+    'SYN-01/stimulus-a': dict({
+      'end_s': 'number',
+      'gsr_origin_s': 'number',
+      'onset_s': 'number',
+      'scenario': 'str',
+      'time_basis': 'str',
+    }),
+    'SYN-01/stimulus-b': dict({
+      'end_s': 'number',
+      'gsr_origin_s': 'number',
+      'onset_s': 'number',
+      'scenario': 'str',
+      'time_basis': 'str',
+    }),
+    'SYN-02/stimulus-a': dict({
+      'end_s': 'number',
+      'gsr_origin_s': 'number',
+      'onset_s': 'number',
+      'scenario': 'str',
+      'time_basis': 'str',
+    }),
+    'SYN-02/stimulus-b': dict({
+      'end_s': 'number',
+      'gsr_origin_s': 'number',
+      'onset_s': 'number',
+      'scenario': 'str',
+      'time_basis': 'str',
+    }),
+  })
+# ---
 # name: test_successful_analytics_contract[/scenarios]
   dict({
     'SYN-01/stimulus-a': list([

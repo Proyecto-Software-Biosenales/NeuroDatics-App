@@ -1,0 +1,133 @@
+ M .env.example
+ M backend/.env.example
+ M backend/src/neurodatics/config/settings.py
+ M backend/src/neurodatics/modules/analytics/api/routes.py
+ M backend/src/neurodatics/modules/analytics/api/schemas.py
+ M backend/src/neurodatics/modules/analytics/application/services/analytics_service.py
+ M backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py
+ M backend/src/neurodatics/modules/analytics/application/services/eeg_analytics_service.py
+ M backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py
+ M backend/src/neurodatics/modules/analytics/application/services/fixation_summaries.py
+ M backend/src/neurodatics/modules/analytics/application/services/gsr_analytics_service.py
+ M backend/src/neurodatics/modules/analytics/application/services/heatmap_analytics_service.py
+ M backend/src/neurodatics/modules/analytics/application/services/numeric_helpers.py
+ M backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py
+ M backend/src/neurodatics/modules/analytics/application/services/pupil_analytics_service.py
+ M backend/src/neurodatics/modules/analytics/application/services/scanpath_analytics_service.py
+ M backend/src/neurodatics/modules/analytics/infrastructure/parquet_cache.py
+ M backend/src/neurodatics/modules/projects/application/services/csv_processing_service.py
+ M backend/src/neurodatics/modules/projects/application/services/fixation_detection_service.py
+ M backend/src/neurodatics/modules/projects/application/use_cases/upload_experiment_zip.py
+ M backend/src/neurodatics/modules/reports/application/sensor_reports/eye_tracking.py
+ M backend/tests/characterization/__snapshots__/test_analytics_http_contracts.ambr
+ M backend/tests/characterization/conftest.py
+ M backend/tests/characterization/test_analytics_http_contracts.py
+ M backend/tests/fixtures/route_inventory.json
+ M backend/tests/unit/test_eeg_scientific_contract.py
+ M backend/tests/unit/test_parquet_participant_identity.py
+ M backend/tests/unit/test_scanpath_radius_scale.py
+ M backend/tests/unit/test_stimulus_coordinate_analytics.py
+ M backend/tests/unit/test_upload_csv_processing_metadata.py
+ M deployment/scripts/comun.ps1
+ M deployment/tests/instalador.Tests.ps1
+ M docker-compose.yml
+ M docs/CHANGELOG.md
+ M docs/REPORTS.md
+ M docs/UPLOAD_PIPELINE.md
+ M docs/eeg-audit/FINDINGS.md
+ M docs/eeg-audit/METHODS.md
+ M frontend/app/dashboard/page.tsx
+ M frontend/features/analytics/api/analyticsApi.ts
+ M frontend/features/analytics/comparison/ComparisonCharts.tsx
+ M frontend/features/analytics/comparison/ComparisonTab.tsx
+ M frontend/features/analytics/comparison/SpatialPanels.tsx
+ M frontend/features/analytics/comparison/useComparisonData.ts
+ M frontend/features/analytics/components/AoiComparisonTab.tsx
+ M frontend/features/analytics/components/DeviceDistanceTab.tsx
+ M frontend/features/analytics/components/EegTab.tsx
+ M frontend/features/analytics/components/FiltersBar.tsx
+ M frontend/features/analytics/components/FixationHistogramTab.tsx
+ M frontend/features/analytics/components/GazePointTab.tsx
+ M frontend/features/analytics/components/GsrTab.tsx
+ M frontend/features/analytics/components/HeatmapTab.tsx
+ M frontend/features/analytics/components/PupilDilationTab.tsx
+ M frontend/features/analytics/components/ScanpathTab.tsx
+ M frontend/features/analytics/components/SingleSignalTab.tsx
+ M frontend/features/analytics/components/eeg/EegCanvasPanels.tsx
+ M frontend/features/analytics/components/eeg/EegPsdView.tsx
+ M frontend/features/analytics/components/eeg/EegQualityPanel.tsx
+ M frontend/features/analytics/components/eeg/EegSpectrogramView.tsx
+ M frontend/features/analytics/components/eeg/EegTimeseriesView.tsx
+ M frontend/features/analytics/components/eeg/EegTopographyView.tsx
+ M frontend/features/analytics/eegPresentation.test.mjs
+ M frontend/features/analytics/eegPresentation.ts
+ M frontend/features/analytics/hooks/useAnalyticsData.ts
+ M frontend/features/analytics/projectSensors.ts
+ M frontend/features/analytics/types.ts
+ M frontend/features/projects/api/projectsApi.ts
+ M frontend/features/projects/create-project/components/AoiEditor.tsx
+ M frontend/features/projects/create-project/components/StimulusPlacementEditor.tsx
+ M frontend/features/projects/create-project/stimulusPlacement.test.mjs
+ M frontend/features/projects/create-project/stimulusPlacement.ts
+ M frontend/features/reports/components/ReportScopeCard.tsx
+ M frontend/lib/api/apiFetch.ts
+ M frontend/lib/auth/sessionStore.ts
+ M frontend/lib/providers/AuthProvider.tsx
+ M frontend/tests/components/combobox.test.mjs
+ M frontend/tests/components/ui-interactions.test.mjs
+ M frontend/tests/e2e/comparison-dashboard.spec.ts
+ M frontend/tests/e2e/dashboard-navigation.spec.ts
+ M frontend/tests/e2e/eeg-dashboard.spec.ts
+ M frontend/tests/e2e/single-signal-dashboard.spec.ts
+ M frontend/tests/hooks/analytics-cancellation.test.mjs
+ M frontend/tests/hooks/analytics-request.test.mjs
+ M frontend/tests/local/student-offline.spec.ts
+ M student/README.md
+ M student/build.ps1
+ M student/run-frozen.ps1
+?? backend/scripts/presentation_baseline.py
+?? backend/scripts/presentation_eeg_comparison.py
+?? backend/src/neurodatics/modules/analytics/application/services/scenario_timing_service.py
+?? backend/src/neurodatics/modules/analytics/domain/parquet_projection.py
+?? backend/src/neurodatics/modules/analytics/infrastructure/singleflight.py
+?? backend/src/neurodatics/shared/machine_resources.py
+?? backend/tests/characterization/test_backend_singleflight.py
+?? backend/tests/characterization/test_projected_frame_endpoints.py
+?? backend/tests/characterization/test_shared_fixation_report.py
+?? backend/tests/unit/test_analytics_singleflight.py
+?? backend/tests/unit/test_csv_block_workers.py
+?? backend/tests/unit/test_display_envelope.py
+?? backend/tests/unit/test_fixation_idt_equivalence.py
+?? backend/tests/unit/test_parquet_projection.py
+?? backend/tests/unit/test_shared_fixation_result.py
+?? docs/eeg-audit/ESCALAS-POR-GRABACION.md
+?? docs/entrega-comparar-participantes.md
+?? docs/instruccion-comparar-participantes.md
+?? docs/perf/PLAN-IMPLEMENTACION-RENDIMIENTO.md
+?? docs/perf/REVISION-RENDIMIENTO-APLICACION-2026-10-01.md
+?? docs/perf/bench/bench_runtime_algorithms.py
+?? docs/perf/bench/bench_runtime_projection.py
+?? docs/perf/bench/g00_backend.py
+?? docs/perf/bench/g00_browser.mjs
+?? docs/perf/bench/g00_frontend.ps1
+?? docs/perf/bench/g00_media_report.py
+?? docs/perf/bench/g01_lazy_browser.mjs
+?? docs/perf/bench/g01_static_frontend.ps1
+?? docs/perf/bench/g02_browser.mjs
+?? docs/perf/bench/g02_static_frontend.ps1
+?? docs/perf/bench/g03_projection.py
+?? docs/perf/bench/g04_singleflight.py
+?? docs/perf/bench/g05_fixations.py
+?? docs/perf/ejecucion/
+?? docs/presentation/propuesta-final/
+?? frontend/features/analytics/analyticsCache.test.mjs
+?? frontend/features/analytics/analyticsCache.ts
+?? frontend/features/analytics/aoiInsights.ts
+?? frontend/features/analytics/components/aoi/
+?? frontend/features/analytics/hooks/useAnalyticsContext.ts
+?? frontend/features/analytics/participantComparison/
+?? frontend/features/analytics/scanpathStyle.ts
+?? frontend/tests/e2e/eeg-active-view.spec.ts
+?? frontend/tests/e2e/participant-comparison.spec.ts
+?? frontend/tests/hooks/analytics-cache.test.mjs
+?? frontend/tests/hooks/participant-comparison-entry.test.mjs

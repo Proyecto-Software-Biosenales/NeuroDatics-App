@@ -68,13 +68,13 @@ export function FiltersBar({
         disabled={participantsLoading || participants.length === 0}
       >
         <SelectTrigger className="flex w-40 shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-44 2xl:py-2">
-          <SelectValue placeholder="Sin sujetos">{selectedParticipant ?? undefined}</SelectValue>
+          <SelectValue placeholder="Sin participantes">{selectedParticipant ?? undefined}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
             {participants.map((participant) => (
               <SelectItem key={participant.participant_code} value={participant.participant_code}>
-                {`Sujeto ${participant.participant_code}`}
+                {`Participante ${participant.participant_code}`}
               </SelectItem>
             ))}
           </SelectGroup>

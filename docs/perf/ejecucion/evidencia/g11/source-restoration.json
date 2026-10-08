@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-10-03T15:21:04.5575692Z",
+  "basis": "ignored output/perf-g11/base snapshot captured before G11 edits",
+  "files": [
+    {
+      "path": "frontend/features/analytics/components/eeg/EegCanvasPanels.tsx",
+      "expected_sha256": "164103f8acf58bd9281f0c8eb6ae30b3a74ea8666cd49e6c06a71a8c1f52d271",
+      "actual_sha256": "164103f8acf58bd9281f0c8eb6ae30b3a74ea8666cd49e6c06a71a8c1f52d271",
+      "equal": true
+    },
+    {
+      "path": "frontend/features/analytics/eegPresentation.ts",
+      "expected_sha256": "01e09bbabfae68d51b19d5cf21c1f764291c5eb926845b1e85ce9e515ff5b37a",
+      "actual_sha256": "01e09bbabfae68d51b19d5cf21c1f764291c5eb926845b1e85ce9e515ff5b37a",
+      "equal": true
+    },
+    {
+      "path": "frontend/features/analytics/eegPresentation.test.mjs",
+      "expected_sha256": "8681b918d42753109df9c9fb5a0fe6bd2281049e8348189e0dc996c421aef780",
+      "actual_sha256": "8681b918d42753109df9c9fb5a0fe6bd2281049e8348189e0dc996c421aef780",
+      "equal": true
+    },
+    {
+      "path": "frontend/tests/e2e/eeg-dashboard.spec.ts",
+      "expected_sha256": "128bae37590c44fed95e79b9c81b1dc90d41d26cdb30f6aad779852ee06dc16b",
+      "actual_sha256": "128bae37590c44fed95e79b9c81b1dc90d41d26cdb30f6aad779852ee06dc16b",
+      "equal": true
+    },
+    {
+      "path": "frontend/package.json",
+      "expected_sha256": "732a6bb678966b1936c6fdbabd58990335e8a65fbade1dc35fcb64c66c2a2b57",
+      "actual_sha256": "732a6bb678966b1936c6fdbabd58990335e8a65fbade1dc35fcb64c66c2a2b57",
+      "equal": true
+    },
+    {
+      "path": "frontend/playwright.config.ts",
+      "expected_sha256": "5c08ec995ab2ecf2f71142e9eabe6e9e4fbb94eb473151d9227e39e1dec405cf",
+      "actual_sha256": "5c08ec995ab2ecf2f71142e9eabe6e9e4fbb94eb473151d9227e39e1dec405cf",
+      "equal": true
+    }
+  ],
+  "all_equal": true
+}

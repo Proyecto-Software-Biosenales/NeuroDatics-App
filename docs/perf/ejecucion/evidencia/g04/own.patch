@@ -1,0 +1,1671 @@
+--- a/backend/src/neurodatics/modules/analytics/api/routes.py
++++ b/backend/src/neurodatics/modules/analytics/api/routes.py
+@@ -5,11 +5,11 @@
+ from typing import List, Optional, TypeVar
+ from uuid import UUID
+ 
+-import anyio
++import copy
+ import pandas as pd
+ from fastapi import APIRouter, Depends, HTTPException, Query, Request
+ from fastapi.responses import Response, StreamingResponse
+-from pydantic import BaseModel
++from pydantic import BaseModel, ConfigDict, TypeAdapter
+ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+ from sqlalchemy.orm import selectinload
+@@ -43,6 +43,7 @@
+ from neurodatics.shared.cache_generation import project_cache_generation
+ from ..domain.coordinate_transform import transform_cache_token
+ from neurodatics.shared.scenario_identity import is_all_scenarios, resolve_scenario
++from ..infrastructure.singleflight import response_flights, settled_thread, SingleFlightBusy, SingleFlightTimeout
+ from ..infrastructure.redis_cache import AnalyticsRedisCache
+ from ..infrastructure.transform_token_store import persist_transform_token, stored_transform_token
+ from .schemas import (
+@@ -74,6 +75,7 @@
+ logger = logging.getLogger(__name__)
+ router = APIRouter(prefix="/projects/{project_id}/analytics", tags=["analytics"])
+ _redis = AnalyticsRedisCache()
++_live_json = TypeAdapter(dict, config=ConfigDict(ser_json_inf_nan="constants"))
+ _CORRELATIONS_CACHE_ENDPOINT = "correlations:v3"
+ _CORRELATIONS_CACHE_TTL_SECONDS = 900
+ 
+@@ -254,7 +256,7 @@
+         return token, None
+     reader = reader or AnalyticsFrameReader(db)
+     df = await reader.read(project.id, participant_code, generation, cache_only=cache_only)
+-    token = await anyio.to_thread.run_sync(lambda: transform_cache_token(df))
++    token = await settled_thread(lambda: transform_cache_token(df))
+     await persist_transform_token(db, project, participant_code, generation, token)
+     return token, df
+ 
+@@ -293,21 +295,54 @@
+     cache_key = _redis.build_key(
+         project.id, participant_code, endpoint, scenario, generation=generation,
+     )
+-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
++    cached = await settled_thread(lambda: _redis.get_json(cache_key))
+     if cached:
+         return response_model(**{**cached, **(cached_fields or {})})
+-    if df is None:
+-        df = await reader.read(project.id, participant_code, generation, projection=projection)
++    async def calculate():
++        # Redis may have been filled since initial lookup/admission.
++        existing = await settled_thread(lambda: _redis.get_json(cache_key))
++        if existing:
++            return {**existing, **(cached_fields or {})}
++        frame = df
++        if frame is None:
++            frame = await reader.read(project.id, participant_code, generation, projection=projection)
++        try:
++            response_data = await settled_thread(lambda: compute(frame))
++        except ValueError as exc:
++            if computation_error_status is None:
++                raise
++            raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
++        if enrich is not None:
++            response_data = await enrich(response_data)
++        await settled_thread(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
++        return response_data
++
++    # Authorized project comes from each caller's ownership query. Include
++    # owner and projection even when HTTP output/Redis identity is equivalent.
++    key = (str(project.owner_id), cache_key, projection, response_model)
++    return await _shared_model_response(key, calculate, response_model)
++
++
++async def _shared_response(key, calculate):
+     try:
+-        response_data = await anyio.to_thread.run_sync(lambda: compute(df))
+-    except ValueError as exc:
+-        if computation_error_status is None:
+-            raise
+-        raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
+-    if enrich is not None:
+-        response_data = await enrich(response_data)
+-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
+-    return response_model(**response_data)
++        return await response_flights.run(key, calculate)
++    except (SingleFlightBusy, SingleFlightTimeout) as exc:
++        raise HTTPException(status_code=503, detail=str(exc)) from exc
++
++
++async def _shared_model_response(key, calculate, response_model):
++    async def serialized():
++        data = await calculate()
++        # Immutable live JSON avoids deep-copying large nested arrays once per
++        # consumer. Validation/serialization happens once; each caller parses
++        # its own model, including nested Any metadata, without mutable aliases.
++        # Preserve non-finite values in nested metadata too. The default
++        # model serializer turns these into null; the live adapter does not.
++        return await settled_thread(lambda: _live_json.dump_json(response_model(**data).model_dump()))
++
++    payload = await _shared_response(key, serialized)
++    return response_model.model_validate_json(payload)
++
+ 
+ 
+ def _aoi_cache_token(scenary, aois) -> str:
+@@ -630,76 +665,86 @@
+             canonical_scenario,
+             generation=generation,
+         )
+-    cached = await anyio.to_thread.run_sync(lambda: _redis.get_json(cache_key))
++    cached = await settled_thread(lambda: _redis.get_json(cache_key))
+     if cached:
+         return GazeAtResponse(**cached)
+ 
+-    if df is None:
+-        reader = ParquetReaderService(db)
+-        df = await reader.read_from_cache_only(
+-            project_id,
+-            participant_code,
+-            generation=generation,
++    async def calculate():
++        cached = await settled_thread(lambda: _redis.get_json(cache_key))
++        if cached:
++            return cached
++        frame = df
++        scenary_request = requested_scenary
++        if frame is None:
++            reader = ParquetReaderService(db)
++            frame = await reader.read_from_cache_only(
++                project_id,
++                participant_code,
++                generation=generation,
++            )
++
++            if frame is None:
++                try:
++                    frame = await reader.read(project_id, participant_code, generation=generation)
++                except (ValueError, FileNotFoundError) as exc:
++                    raise HTTPException(status_code=404, detail=str(exc)) from exc
++                except RuntimeError as exc:
++                    raise HTTPException(status_code=503, detail=str(exc)) from exc
++
++        gaze_data = await settled_thread(
++            lambda: PupilAnalyticsService.find_gaze_at(
++                frame,
++                t_s,
++                scenario=canonical_scenario,
++            )
+         )
+ 
+-        if df is None:
+-            try:
+-                df = await reader.read(project_id, participant_code, generation=generation)
+-            except (ValueError, FileNotFoundError) as exc:
+-                raise HTTPException(status_code=404, detail=str(exc)) from exc
+-            except RuntimeError as exc:
+-                raise HTTPException(status_code=503, detail=str(exc)) from exc
+-
+-    gaze_data = await anyio.to_thread.run_sync(
+-        lambda: PupilAnalyticsService.find_gaze_at(
+-            df,
+-            t_s,
+-            scenario=canonical_scenario,
++        if requested_scenary is not None and gaze_data.get("scenario") is not None:
++            gaze_data["scenario"] = canonical_scenario
++
++        scenario_name = gaze_data.get("scenario")
++        scenario_file_id = None
++        scenario_type = None
++        scenary = scenary_request
++        if scenario_name:
++            # An unscoped lookup reports whichever scenario the nearest sample
++            # belongs to, spelled the way the Parquet spells it; the stimulus it
++            # refers to still has to be found among the project's scenarios.
++            if scenary is None:
++                scenary = await _resolve_scenary_for_analytics(db, project_id, scenario_name)
++
++            if scenary:
++                scenario_type = scenary.type
++                if scenary.file_id:
++                    scenario_file_id = str(scenary.file_id)
++            else:
++                logger.warning(
++                    "No scenario found for name=%r in project_id=%s",
++                    scenario_name,
++                    project_id,
++                )
++
++        scenario_time_s = await settled_thread(
++            lambda: PupilAnalyticsService.compute_scenario_relative_time(
++                frame,
++                scenario_name,
++                gaze_data.get("nearest_time_s"),
++            )
+         )
+-    )
+-
+-    if requested_scenary is not None and gaze_data.get("scenario") is not None:
+-        gaze_data["scenario"] = canonical_scenario
+-
+-    scenario_name = gaze_data.get("scenario")
+-    scenario_file_id = None
+-    scenario_type = None
+-    scenary = requested_scenary
+-    if scenario_name:
+-        # An unscoped lookup reports whichever scenario the nearest sample
+-        # belongs to, spelled the way the Parquet spells it; the stimulus it
+-        # refers to still has to be found among the project's scenarios.
+-        if scenary is None:
+-            scenary = await _resolve_scenary_for_analytics(db, project_id, scenario_name)
+-
+-        if scenary:
+-            scenario_type = scenary.type
+-            if scenary.file_id:
+-                scenario_file_id = str(scenary.file_id)
+-        else:
+-            logger.warning(
+-                "No scenario found for name=%r in project_id=%s",
+-                scenario_name,
+-                project_id,
+-            )
+-
+-    scenario_time_s = await anyio.to_thread.run_sync(
+-        lambda: PupilAnalyticsService.compute_scenario_relative_time(
+-            df,
+-            scenario_name,
+-            gaze_data.get("nearest_time_s"),
+-        )
+-    )
+-
+-    response_data = {
+-        **gaze_data,
+-        "scenario_file_id": scenario_file_id,
+-        "scenario_type": scenario_type,
+-        "scenario_time_s": scenario_time_s,
+-    }
+-
+-    await anyio.to_thread.run_sync(lambda: _redis.set_json(cache_key, response_data))
+-    return GazeAtResponse(**response_data)
++
++        response_data = {
++            **gaze_data,
++            "scenario_file_id": scenario_file_id,
++            "scenario_type": scenario_type,
++            "scenario_time_s": scenario_time_s,
++        }
++
++        await settled_thread(lambda: _redis.set_json(cache_key, response_data))
++        return response_data
++    return await _shared_model_response(
++        (str(project.owner_id), cache_key, None, GazeAtResponse), calculate, GazeAtResponse,
++    )
++
+ 
+ 
+ @router.get("/timeseries/gaze", response_model=GazeTimeseriesResponse)
+@@ -1318,8 +1363,8 @@
+         return Response(status_code=304, headers=response_headers)
+ 
+     metadata_cache_key = f"{cache_key}:metadata"
+-    cached_bytes = await anyio.to_thread.run_sync(lambda: _redis.get_bytes(cache_key))
+-    cached_metadata = await anyio.to_thread.run_sync(
++    cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
++    cached_metadata = await settled_thread(
+         lambda: _redis.get_json(metadata_cache_key)
+     )
+     if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+@@ -1333,34 +1378,44 @@
+             },
+         )
+ 
+-    if df is None:
+-        reader = ParquetReaderService(db)
++    async def calculate():
++        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
++        cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
++        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
++            return cached_bytes, cached_metadata
++        frame = df
++        if frame is None:
++            reader = ParquetReaderService(db)
++            try:
++                frame = await reader.read(project_id, participant_code, generation=cache_generation)
++            except (ValueError, FileNotFoundError) as exc:
++                raise HTTPException(status_code=404, detail=str(exc)) from exc
++            except RuntimeError as exc:
++                raise HTTPException(status_code=503, detail=str(exc)) from exc
++
+         try:
+-            df = await reader.read(project_id, participant_code, generation=cache_generation)
+-        except (ValueError, FileNotFoundError) as exc:
+-            raise HTTPException(status_code=404, detail=str(exc)) from exc
+-        except RuntimeError as exc:
+-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+-
+-    try:
+-        png_bytes, fixation_metadata = await anyio.to_thread.run_sync(
+-            lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+-                df,
+-                scenario,
+-                width=stimulus_width,
+-                height=stimulus_height,
+-                min_fixation_duration_ms=min_fixation_duration_ms,
++            png_bytes, fixation_metadata = await settled_thread(
++                lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
++                    frame,
++                    scenario,
++                    width=stimulus_width,
++                    height=stimulus_height,
++                    min_fixation_duration_ms=min_fixation_duration_ms,
++                )
+             )
++        except ValueError as exc:
++            raise HTTPException(status_code=422, detail=str(exc)) from exc
++        if not png_bytes:
++            raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
++
++        await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
++        await settled_thread(
++            lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+         )
+-    except ValueError as exc:
+-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+-    if not png_bytes:
+-        raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+-
+-    await anyio.to_thread.run_sync(lambda: _redis.set_bytes(cache_key, png_bytes))
+-    await anyio.to_thread.run_sync(
+-        lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+-    )
++        return png_bytes, fixation_metadata
++
++    png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
++    fixation_metadata = copy.deepcopy(metadata)
+     return StreamingResponse(
+         iter([png_bytes]),
+         media_type="image/png",
+--- a/backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py
+@@ -3,7 +3,6 @@
+ from typing import Any, Dict, List, Optional, Tuple
+ from uuid import UUID
+ 
+-import anyio
+ import pandas as pd
+ from sqlalchemy import select
+ from sqlalchemy.ext.asyncio import AsyncSession
+@@ -15,6 +14,7 @@
+ from neurodatics.shared.cache_generation import normalize_generation
+ from ...domain.parquet_projection import ParquetProjection
+ from ...infrastructure.parquet_cache import ParquetCacheService, read_parquet_frame
++from ...infrastructure.singleflight import parquet_flights, settled_thread
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -143,7 +143,7 @@
+         """Load a full frame or projection; download still transfers the full file."""
+         if generation is None:
+             generation = await self.resolve_cache_generation(project_id)
+-        cached = await anyio.to_thread.run_sync(
++        cached = await settled_thread(
+             lambda: self._cache.read_dataframe(
+                 project_id, participant_code, generation,
+                 **({"projection": projection} if projection is not None else {}),
+@@ -159,18 +159,32 @@
+         if client is None:
+             raise RuntimeError(f"{STORAGE_NAME} integration not configured")
+ 
+-        try:
+-            content = await anyio.to_thread.run_sync(
+-                lambda: client.download_file_content(parquet_file.external_id)
+-            )
+-        except Exception as exc:
+-            if _is_invalid_google_grant_error(exc):
+-                logger.warning("Google Drive OAuth token expired or revoked while reading parquet")
+-                raise RuntimeError(GOOGLE_DRIVE_RECONNECT_MESSAGE) from exc
+-            raise RuntimeError(f"No se pudo descargar el parquet desde {STORAGE_NAME}") from exc
+-
+-        path = self._cache.put(project_id, participant_code, content, generation)
+-        return await anyio.to_thread.run_sync(lambda: read_parquet_frame(path, projection))
++        # All ORM values and OAuth configuration resolve serially on this
++        # request's DB before joining the file operation. Its factory has no DB.
++        external_id = str(parquet_file.external_id)
++        file_id = str(getattr(parquet_file, "id", external_id))
++        cache = self._cache
++        key = (str(project_id), str(participant_code), file_id, external_id,
++               normalize_generation(generation))
++
++        async def obtain():
++            # Another endpoint/projection may have published the complete file.
++            path = cache.get(project_id, participant_code, generation)
++            if path is not None:
++                return path
++            try:
++                content = await settled_thread(lambda: client.download_file_content(external_id))
++            except Exception as exc:
++                if _is_invalid_google_grant_error(exc):
++                    logger.warning("Google Drive OAuth token expired or revoked while reading parquet")
++                    raise RuntimeError(GOOGLE_DRIVE_RECONNECT_MESSAGE) from exc
++                raise RuntimeError(f"No se pudo descargar el parquet desde {STORAGE_NAME}") from exc
++            # Publish atomically as before; never decode partial temp bytes.
++            return await settled_thread(lambda: cache.put(project_id, participant_code, content, generation))
++
++        path = await parquet_flights.run(key, obtain)
++        # Only the immutable file location is shared, never a mutable frame.
++        return await settled_thread(lambda: read_parquet_frame(path, projection))
+ 
+     async def read_from_cache_only(
+         self,
+@@ -182,7 +196,7 @@
+         """Read only from disk cache - no Drive download. Returns None if not cached."""
+         if generation is None:
+             generation = await self.resolve_cache_generation(project_id)
+-        return await anyio.to_thread.run_sync(
++        return await settled_thread(
+             lambda: self._cache.read_dataframe(
+                 project_id, participant_code, generation,
+                 **({"projection": projection} if projection is not None else {}),
+--- a/backend/tests/unit/test_parquet_participant_identity.py
++++ b/backend/tests/unit/test_parquet_participant_identity.py
+@@ -140,6 +140,10 @@
+         self.reads.append(participant_code)
+         return None
+ 
++    def get(self, project_id, participant_code, generation=0):
++        path = self._dir / f"{project_id}-g{generation}-{participant_code}.parquet"
++        return path if path.exists() else None
++
+     def put(self, project_id, participant_code, content, generation=0):
+         path = self._dir / f"{project_id}-g{generation}-{participant_code}.parquet"
+         path.write_bytes(content)
+--- a/docs/perf/ejecucion/ESTADO.md
++++ b/docs/perf/ejecucion/ESTADO.md
+@@ -1,14 +1,15 @@
+ # Estado de ejecución
+ 
+-G00, G01, G02 y G03 cerrados, 2026-10-02. Coordinador y un ejecutor secuencial; sin otros agentes de bloque ni cambios de producto por G00.
++G00–G03 cerrados; G04 implementación completa, pendiente revisión final coordinador, 2026-10-02. Coordinador y un ejecutor secuencial; sin otros agentes de bloque ni cambios de producto por G00.
+ 
+ | Bloque | Estado | Entrega |
+ |---|---|---|
+ | G00 | completa (preparación local) | [G00.md](G00.md), [BASELINE.md](BASELINE.md), [evidencia](evidencia/g00/) |
+ | G01 | completa; lazy dashboard descartado con evidencia | [G01.md](G01.md), [evidencia](evidencia/g01/) |
+ | G02 | completa (caché compartida, admisión acotada y contexto espacial vigente) | [G02.md](G02.md), [evidencia](evidencia/g02/) |
+-| G03 | completa; pendiente revisión coordinador | [G03.md](G03.md), [evidencia](evidencia/g03/) |
+-| G04–G12 | pendiente | no iniciados |
++| G03 | completa; revisión coordinador aprobada | [G03.md](G03.md), [evidencia](evidencia/g03/) |
++| G04 | completa; pendiente revisión final coordinador | [G04.md](G04.md), [evidencia](evidencia/g04/) |
++| G05–G12 | pendiente | no iniciados |
+ 
+ Base: HEAD `f310003bd734203a41268f40a4627bd99d5a3233` más cambios locales iniciales, registrados con SHA-256 en `evidencia/g00/inventario-inicial.json`. No se copian secretos ni datos privados. El inventario incluye archivos nuevos previos y los documentos del plan/coordinación. Las huellas no reemplazan una copia de recuperación: los cambios permanecen en este checkout.
+ 
+@@ -20,4 +21,6 @@
+ 
+ G02 cerrado: navegación A→B→A reutiliza respuestas vigentes; metadata HTTP no-store al abrir/reabrir/foco, aislamiento de sesión y generación, digest SHA-256 del contexto espacial/AOIs independiente de ingesta. Desconocido no retiene resultados; revalidación desconocida estable conserva sólo HTTP legítimo en curso. Red 4/128/48/16 MiB + tarjetas 4/128/48/8 MiB, TTL 5 min, admisión previa 128 claves/128 barreras y contextos 64; peso estimado, no RSS. Gates vigentes: typecheck/lint global (0 errores/6 warnings), 104 frontend + 54 hooks/componentes, 21 dirigidas, 21 E2E producción; build g02-closure/export g02-local-closure y smoke aprobados. Fuente equivalente 30/30, patch contra base propia, preservación 669/669. Medida n=5: regreso A 4→1 requests, 17.928→424 B; flujo 16→15 y −4,44% bytes fixture, sin mejora global de latencia demostrada. Servidores temporales 3320–3327 detenidos. Evidencia y contratos G10 en G02.md. G03 ejecutado posteriormente; siguiente G04 tras revisión, gate integral reservado G12.
+ 
+-G03 cerrado: perfiles GSR/pupila/distancia/timing/EEG en 11 endpoints; matriz completa 24 = 11 proyección +11 full +2 SQL. Full default y mismo helper frío/cache/cache-only, attrs/índice/orden/precisión preservados, opcionales intencionales para sensores ausentes legacy, identidad/generación/auth intactos. Category descartado por fillna/groupby/concat incompatibles. 285 pruebas/24 snapshots en runtime recibido y aislado Python3.12/PyArrow16.1; ajuste índice vacío25 pruebas ambos y EEG procesamiento12 ambos, Ruff/import boundaries aprobados. Medida n=5: large GSR temporal139,59→39,16ms; pupil101,64→29,41ms; frames161.056.772→13.705.732–18.620.932B. 44 casos HTTP sin caché full/proyección byte-equivalentes; cold siempre archivo entero +I/O simulado20ms. No peak de operación RSS, Redis/Drive/PostgreSQL ni equivalencia deployment inferidos. Preservación792/792 ajenos y236/236 frontend; own.patch contra base recibida, .venv/deps intactas. API/matriz/evidencia en G03.md. G04 no iniciado; requiere revisión coordinador.
++G03 cerrado: perfiles GSR/pupila/distancia/timing/EEG en 11 endpoints; matriz completa 24 = 11 proyección +11 full +2 SQL. Full default y mismo helper frío/cache/cache-only, attrs/índice/orden/precisión preservados, opcionales intencionales para sensores ausentes legacy, identidad/generación/auth intactos. Category descartado por fillna/groupby/concat incompatibles. 285 pruebas/24 snapshots en runtime recibido y aislado Python3.12/PyArrow16.1; ajuste índice vacío25 pruebas ambos y EEG procesamiento12 ambos, Ruff/import boundaries aprobados. Medida n=5: large GSR temporal139,59→39,16ms; pupil101,64→29,41ms; frames161.056.772→13.705.732–18.620.932B. 44 casos HTTP sin caché full/proyección byte-equivalentes; cold siempre archivo entero +I/O simulado20ms. No peak de operación RSS, Redis/Drive/PostgreSQL ni equivalencia deployment inferidos. Preservación792/792 ajenos y236/236 frontend; own.patch contra base recibida, .venv/deps intactas. API/matriz/evidencia en G03.md. G04 ejecutado posteriormente; detalle siguiente y G04.md.
++
++G04 implementación/checks/medidas completos:22 respuestas coordinadas (20 helper+gaze+PNG) y obtención archivo por identidad/generación, por proceso/loop. Auth cada solicitante; reconsulta cache; frames/proyecciones/modelos independientes. Líder conserva lease request/DB hasta settlement incluso cancelaciones reiteradas; follower superviviente/último/timeout y worker físico probados.4running/32queued/256consumers por nivel, deadline120s solicita cancelación; worker no preemptible prolonga lease. Redis opcional/oversize8MiB live; legacy token conserva lectura previa.313 pruebas/24snapshots ambos runtimes inicialmente,163/24 finales afectados; Ruff/3 import contracts aprobados. n5 burstdisk small65,80→10,33ms/large179,71→44,60,10reads/calculations→1; coldlarge10downloads→1. Secuencial+0,83/+1,92ms visible. Baseline coldsmall49/50 WinError publicación, after50/50; tiempos fallidos no comparables. Preservación837/837 ajenos, frontend intacto; patch contra snapshot propio, sin deps/deploy/DB/Drive/Redis real/global gate. API/medidas/logs en G04.md. Aguarda revisión coordinador; G05 no iniciado.
+--- /dev/null
++++ b/backend/src/neurodatics/modules/analytics/infrastructure/singleflight.py
+@@ -0,0 +1,155 @@
++"""Bounded, event-loop-local operations. No distributed coordination or cache.
++
++The caller that supplies a factory owns its resources until settlement. If it
++is cancelled, its request stays suspended here until the factory settles, so
++FastAPI cannot close its DB dependency underneath the shared operation. Other
++callers may leave immediately. A synchronous worker must use settled_thread:
++Python threads cannot be preempted, and their slot stays occupied until done.
++"""
++
++import asyncio
++from collections.abc import Awaitable, Callable, Hashable
++from dataclasses import dataclass, field
++from typing import TypeVar
++from weakref import WeakKeyDictionary
++
++import anyio
++
++T = TypeVar("T")
++
++
++class SingleFlightBusy(RuntimeError):
++    pass
++
++
++class SingleFlightTimeout(RuntimeError):
++    pass
++
++
++async def _drain(task: asyncio.Task) -> None:
++    """Wait through repeated caller cancellation; consume orphan exceptions."""
++    with anyio.CancelScope(shield=True):
++        while not task.done():
++            try:
++                await asyncio.shield(task)
++            except asyncio.CancelledError:
++                continue
++            except Exception:
++                break
++    if not task.cancelled():
++        task.exception()
++
++
++async def settled_thread(operation: Callable[[], T]) -> T:
++    task = asyncio.create_task(anyio.to_thread.run_sync(operation))
++    try:
++        return await asyncio.shield(task)
++    except asyncio.CancelledError:
++        await _drain(task)
++        raise
++
++
++@dataclass
++class _Entry:
++    task: asyncio.Task | None = None
++    consumers: int = 0
++    accepting: bool = True
++
++
++@dataclass
++class _State:
++    slots: asyncio.Semaphore
++    entries: dict[Hashable, _Entry] = field(default_factory=dict)
++    consumers: int = 0
++    running: int = 0
++
++
++class SingleFlight:
++    def __init__(self, *, max_running=4, max_queued=32, max_consumers=256, timeout=120.0):
++        if max_running < 1 or max_queued < 0 or max_consumers < 1 or timeout <= 0:
++            raise ValueError("Invalid singleflight budget")
++        self.max_running = max_running
++        self.max_queued = max_queued
++        self.max_consumers = max_consumers
++        self.timeout = timeout
++        self._states: WeakKeyDictionary = WeakKeyDictionary()
++
++    def stats(self) -> dict[str, int]:
++        state = self._states.get(asyncio.get_running_loop())
++        return {"entries": len(state.entries) if state else 0,
++                "running": state.running if state else 0,
++                "consumers": state.consumers if state else 0}
++
++    async def run(self, key: Hashable, factory: Callable[[], Awaitable[T]]) -> T:
++        # Admission and bookkeeping have no await: no global lock serializes
++        # independent keys, and no task is created before bounded admission.
++        loop = asyncio.get_running_loop()
++        state = self._states.get(loop)
++        if state is None:
++            state = _State(asyncio.Semaphore(self.max_running))
++            self._states[loop] = state
++        entry = state.entries.get(key)
++        if state.consumers >= self.max_consumers:
++            raise SingleFlightBusy("Analytics consumer limit reached; retry later")
++        owner = entry is None
++        if owner:
++            if len(state.entries) >= self.max_running + self.max_queued:
++                raise SingleFlightBusy("Analytics operation queue full; retry later")
++            entry = _Entry()
++            state.entries[key] = entry
++
++            async def operation():
++                async with state.slots:
++                    state.running += 1
++                    try:
++                        return await factory()
++                    finally:
++                        state.running -= 1
++
++            async def execute():
++                try:
++                    # wait_for waits for cancellation to settle, including
++                    # non-preemptible workers, before removing this entry.
++                    return await asyncio.wait_for(operation(), self.timeout)
++                except asyncio.TimeoutError as exc:
++                    raise SingleFlightTimeout("Analytics operation timed out; retry later") from exc
++                finally:
++                    entry.accepting = False
++                    state.entries.pop(key, None)
++                    if not state.entries and not state.consumers:
++                        self._states.pop(loop, None)
++
++            entry.task = asyncio.create_task(execute(), name="analytics-singleflight")
++        elif not entry.accepting:
++            raise SingleFlightBusy("Analytics operation is settling; retry later")
++        state.consumers += 1
++        entry.consumers += 1
++        left = False
++
++        def leave():
++            nonlocal left
++            if not left:
++                left = True
++                state.consumers -= 1
++                entry.consumers -= 1
++                if entry.consumers == 0 and not entry.task.done():
++                    entry.accepting = False
++                    entry.task.cancel()
++                if not state.entries and not state.consumers:
++                    self._states.pop(loop, None)
++
++        try:
++            return await asyncio.shield(entry.task)
++        except asyncio.CancelledError:
++            leave()
++            if owner:
++                # Keep the factory owner's request-scoped resources alive.
++                # Followers never operate on their own DB while waiting here.
++                await _drain(entry.task)
++            raise
++        finally:
++            leave()
++
++
++response_flights = SingleFlight()
++parquet_flights = SingleFlight(max_running=4, max_queued=32, timeout=120.0)
+--- /dev/null
++++ b/backend/tests/unit/test_analytics_singleflight.py
+@@ -0,0 +1,176 @@
++import asyncio
++import threading
++
++import anyio
++import pytest
++
++from neurodatics.modules.analytics.infrastructure.singleflight import (
++    SingleFlight, SingleFlightBusy, SingleFlightTimeout, settled_thread,
++)
++
++
++async def tick():
++    for _ in range(10):
++        await asyncio.sleep(0)
++
++
++@pytest.mark.asyncio
++async def test_ten_identical_one_operation_and_distinct_keys_advance():
++    flight = SingleFlight(max_running=2)
++    entered, release = asyncio.Event(), asyncio.Event()
++    calls = []
++
++    async def work(key):
++        calls.append(key)
++        if len(calls) == 2:
++            entered.set()
++        await release.wait()
++        return key
++
++    tasks = [asyncio.create_task(flight.run("a", lambda: work("a"))) for _ in range(10)]
++    other = asyncio.create_task(flight.run("b", lambda: work("b")))
++    await asyncio.wait_for(entered.wait(), 1)
++    assert sorted(calls) == ["a", "b"]
++    release.set()
++    assert await asyncio.gather(*tasks, other) == ["a"] * 10 + ["b"]
++    assert flight.stats() == {"entries": 0, "running": 0, "consumers": 0}
++    assert not flight._states
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("cancel_owner", [False, True])
++async def test_cancel_one_consumer_keeps_survivor_and_owner_lease(cancel_owner):
++    flight = SingleFlight()
++    started, release = asyncio.Event(), asyncio.Event()
++    resources = {"closed": False}
++
++    async def work():
++        started.set()
++        await release.wait()
++        assert not resources["closed"]
++        return 7
++
++    async def owner_request():
++        try:
++            return await flight.run("a", work)
++        finally:
++            resources["closed"] = True
++
++    owner = asyncio.create_task(owner_request())
++    await started.wait()
++    follower = asyncio.create_task(flight.run("a", work))
++    await tick()
++    cancelled, survivor = (owner, follower) if cancel_owner else (follower, owner)
++    cancelled.cancel()
++    await tick()
++    cancelled.cancel()
++    await tick()
++    assert not resources["closed"]
++    if cancel_owner:
++        assert not owner.done()
++    release.set()
++    assert await survivor == 7
++    with pytest.raises(asyncio.CancelledError):
++        await cancelled
++    assert flight.stats()["entries"] == 0
++
++
++@pytest.mark.asyncio
++async def test_error_and_timeout_allow_retry():
++    flight = SingleFlight(timeout=0.02)
++
++    async def fail():
++        await asyncio.sleep(0)
++        raise ValueError("bad input")
++
++    results = await asyncio.gather(*(flight.run("a", fail) for _ in range(10)), return_exceptions=True)
++    assert all(isinstance(result, ValueError) for result in results)
++
++    async def slow():
++        await asyncio.sleep(1)
++
++    with pytest.raises(SingleFlightTimeout):
++        await flight.run("a", slow)
++    assert await flight.run("a", lambda: asyncio.sleep(0, result=3)) == 3
++    assert not flight._states
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("timeout", [False, True])
++async def test_last_consumer_or_timeout_retains_physical_worker_slot(timeout):
++    flight = SingleFlight(max_running=1, max_queued=1, timeout=0.03 if timeout else 2)
++    started, release, finished = threading.Event(), threading.Event(), threading.Event()
++
++    def worker():
++        started.set()
++        assert release.wait(2)
++        finished.set()
++
++    owner = asyncio.create_task(flight.run("a", lambda: settled_thread(worker)))
++    await asyncio.to_thread(started.wait, 1)
++    if timeout:
++        await asyncio.sleep(0.05)
++    else:
++        owner.cancel()
++        await tick()
++        owner.cancel()
++    queued = asyncio.create_task(flight.run("b", lambda: asyncio.sleep(0, result=8)))
++    await tick()
++    assert not finished.is_set() and not owner.done() and not queued.done()
++    assert flight.stats()["running"] == 1
++    with pytest.raises(SingleFlightBusy):
++        await flight.run("c", lambda: asyncio.sleep(0))
++    release.set()
++    with pytest.raises(SingleFlightTimeout if timeout else asyncio.CancelledError):
++        await owner
++    assert await queued == 8
++    assert finished.is_set()
++    assert not flight._states
++
++
++@pytest.mark.asyncio
++async def test_consumer_budget_and_queued_cancellation():
++    flight = SingleFlight(max_running=1, max_queued=1, max_consumers=2)
++    gate = asyncio.Event()
++    owner = asyncio.create_task(flight.run("a", gate.wait))
++    await tick()
++    queued = asyncio.create_task(flight.run("b", gate.wait))
++    await tick()
++    with pytest.raises(SingleFlightBusy):
++        await flight.run("a", gate.wait)
++    queued.cancel()
++    with pytest.raises(asyncio.CancelledError):
++        await queued
++    assert flight.stats() == {"entries": 1, "running": 1, "consumers": 1}
++    gate.set()
++    await owner
++    assert not flight._states
++
++
++@pytest.mark.asyncio
++async def test_anyio_level_cancellation_drains_worker_without_busy_loop():
++    flight = SingleFlight(max_running=1)
++    started, release = threading.Event(), threading.Event()
++    done = asyncio.Event()
++
++    def worker():
++        started.set()
++        assert release.wait(2)
++
++    async def request():
++        with anyio.CancelScope() as scope:
++            scopes.append(scope)
++            try:
++                await flight.run("a", lambda: settled_thread(worker))
++            finally:
++                done.set()
++
++    scopes = []
++    task = asyncio.create_task(request())
++    await asyncio.to_thread(started.wait, 1)
++    scopes[0].cancel()
++    await tick()
++    assert not done.is_set() and flight.stats()["running"] == 1
++    release.set()
++    await asyncio.wait_for(task, 1)
++    assert done.is_set() and not flight._states
+--- /dev/null
++++ b/backend/tests/characterization/test_backend_singleflight.py
+@@ -0,0 +1,535 @@
++"""Actual ASGI dependency teardown, routes, reader and atomic disk publication.
++
++Only DB transport and object storage are synthetic. Each request receives a
++distinct AsyncSession subclass; SQL statements, auth and session teardown use
++the application's real path. No Drive/Redis/PostgreSQL claim is made.
++"""
++
++import asyncio
++import io
++import math
++import threading
++import time
++from types import SimpleNamespace as NS
++from uuid import UUID
++
++import httpx
++import pandas as pd
++import pytest
++from pydantic import BaseModel
++from sqlalchemy.ext.asyncio import AsyncSession
++
++from neurodatics.api.deps import get_db
++from neurodatics.config.security import create_access_token
++from neurodatics.main import app
++from neurodatics.modules.analytics.api import routes
++from neurodatics.modules.analytics.application.services.parquet_reader_service import ParquetReaderService
++from neurodatics.modules.analytics.domain.parquet_projection import GSR_PROJECTION, PUPIL_PROJECTION
++from neurodatics.modules.analytics.infrastructure.parquet_cache import ParquetCacheService
++from neurodatics.modules.analytics.infrastructure.singleflight import SingleFlight
++from neurodatics.modules.projects.domain.entities import Project, ProjectFile
++from neurodatics.modules.scenaries.domain.entities import Scenaries
++
++PROJECT = UUID("00000000-0000-0000-0000-000000000101")
++OWNER = UUID("00000000-0000-0000-0000-000000000102")
++PREFIX = f"/api/projects/{PROJECT}/analytics"
++PARAMS = {"participant_code": "SYN-01", "scenario": "stimulus-a"}
++
++
++class NoRedis:
++    build_key = staticmethod(routes.AnalyticsRedisCache.build_key)
++
++    def get_json(self, key):
++        return None
++
++    def set_json(self, *args, **kwargs):
++        pass
++
++    get_bytes = get_json
++    set_bytes = set_json
++
++
++@pytest.fixture
++def shared_harness(corpus, http_client, monkeypatch, tmp_path):
++    project = NS(id=PROJECT, owner_id=OWNER, ingestion_generation=3)
++    cache = ParquetCacheService()
++    cache._cache_dir = tmp_path
++    payloads = {}
++    for code, frame in corpus.frames.items():
++        buffer = io.BytesIO()
++        frame.to_parquet(buffer, index=False)
++        payloads[code] = buffer.getvalue()
++    files = [NS(id=UUID(int=401 + i), filename=f"user{i+1}.parquet", external_id=code,
++                file_metadata={"type": "user_parquet", "participant_code": code})
++             for i, code in enumerate(payloads)]
++    scenarios = [NS(name=name, type="image", file_id=UUID(int=301+i), width=1280, height=720)
++                 for i, name in enumerate(["stimulus-a", "stimulus-b"])]
++    sessions, downloads, reads = [], [], []
++    trace = []
++
++    class DB(AsyncSession):
++        def __init__(self):
++            super().__init__()
++            self.closed, self.executing = False, False
++            self.index = len(sessions)
++            sessions.append(self)
++
++        async def execute(self, statement, *args, **kwargs):
++            assert not self.closed and not self.executing
++            self.executing = True
++            try:
++                await asyncio.sleep(0)
++                params = statement.compile().params
++                entity = statement.column_descriptions[0]["entity"]
++                if entity is Project:
++                    values = [project] if params.get("owner_id_1", OWNER) == OWNER else []
++                elif entity is ProjectFile:
++                    values = files
++                elif entity is Scenaries:
++                    values = scenarios
++                else:
++                    raise AssertionError(entity)
++                trace.append((self.index, entity.__name__))
++                return NS(scalar_one_or_none=lambda: values[0] if values else None,
++                          scalars=lambda: NS(all=lambda: values))
++            finally:
++                self.executing = False
++
++        async def close(self):
++            assert not self.executing
++            self.closed = True
++            trace.append((self.index, "close"))
++            await super().close()
++
++    class Storage:
++        def download_file_content(self, external_id):
++            downloads.append(external_id)
++            time.sleep(0.02)
++            return payloads[external_id]
++
++    class Reader(ParquetReaderService):
++        def __init__(self, db):
++            super().__init__(db)
++            self._cache = cache
++
++        async def _build_drive_client(self):
++            # Assert OAuth configuration would run with a live request DB.
++            assert not self._db.closed and not self._db.executing
++            return Storage()
++
++        async def read(self, *args, **kwargs):
++            reads.append(kwargs.get("projection"))
++            return await super().read(*args, **kwargs)
++
++    async def database():
++        session = DB()
++        try:
++            yield session
++        finally:
++            await session.close()
++
++    async def token(*args, **kwargs):
++        return "persisted-token", None
++
++    monkeypatch.setattr(routes, "ParquetReaderService", Reader)
++    monkeypatch.setattr(routes, "_redis", NoRedis())
++    monkeypatch.setattr(routes, "response_flights", SingleFlight())
++    monkeypatch.setattr(routes, "_resolve_transform_token", token)
++    app.dependency_overrides[get_db] = database
++    return NS(project=project, cache=cache, sessions=sessions, downloads=downloads,
++              reads=reads, trace=trace, db_factory=DB, headers=dict(http_client.headers))
++
++
++def client(harness):
++    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test",
++                             headers=harness.headers)
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("endpoint,service,method", [
++    ("/timeseries/pupil", "PupilAnalyticsService", "compute_timeseries"),
++    ("/gaze-at", "PupilAnalyticsService", "find_gaze_at"),
++    ("/heatmap", "HeatmapAnalyticsService", "compute_heatmap_overlay_with_metadata"),
++])
++async def test_ten_http_requests_one_response_one_file_no_redis(shared_harness, monkeypatch,
++                                                              endpoint, service, method):
++    harness = shared_harness
++    calls = []
++    target = getattr(routes, service)
++    compute = getattr(target, method)
++
++    def tracked(*args, **kwargs):
++        calls.append(1)
++        time.sleep(0.02)
++        return compute(*args, **kwargs)
++
++    monkeypatch.setattr(target, method, tracked)
++    params = {**PARAMS, **({"t_s": 0.5} if endpoint == "/gaze-at" else {})}
++    async with client(harness) as http:
++        responses = await asyncio.gather(*(http.get(PREFIX + endpoint, params=params) for _ in range(10)))
++    assert all(r.status_code == 200 for r in responses), [r.text for r in responses]
++    assert all(r.content == responses[0].content for r in responses)
++    assert len(calls) == len(harness.downloads) == len(harness.reads) == 1
++    assert len(harness.sessions) == 10 and all(s.closed for s in harness.sessions)
++    assert routes.response_flights.stats() == {"entries": 0, "running": 0, "consumers": 0}
++
++
++@pytest.mark.asyncio
++async def test_distinct_responses_share_only_complete_file_projection_and_mutability(shared_harness):
++    harness = shared_harness
++    async with client(harness) as http:
++        responses = await asyncio.gather(
++            http.get(PREFIX + "/timeseries/pupil", params=PARAMS),
++            http.get(PREFIX + "/timeseries/gsr", params=PARAMS),
++            http.get(PREFIX + "/statistics/pupil", params=PARAMS),
++        )
++    assert all(r.status_code == 200 for r in responses)
++    assert len(harness.reads) == 3 and len(harness.downloads) == 1
++    assert GSR_PROJECTION in harness.reads and PUPIL_PROJECTION in harness.reads
++    reader = ParquetReaderService(None)
++    reader._cache = harness.cache
++    frames = await asyncio.gather(*(reader.read(PROJECT, "SYN-01", 3, projection=PUPIL_PROJECTION) for _ in range(2)))
++    before = frames[1].copy(deep=True)
++    frames[0].iloc[0, 0] = -999
++    pd.testing.assert_frame_equal(frames[1], before)
++
++
++@pytest.mark.asyncio
++async def test_every_request_authorized_before_join_and_generation_filters_participants_isolated(shared_harness):
++    harness = shared_harness
++    wrong_token = create_access_token(str(UUID(int=999)), "other@example.invalid", "Other")
++    async with client(harness) as http:
++        valid, denied = await asyncio.gather(
++            http.get(PREFIX + "/timeseries/pupil", params=PARAMS),
++            http.get(PREFIX + "/timeseries/pupil", params=PARAMS,
++                     headers={"Authorization": f"Bearer {wrong_token}"}),
++        )
++        assert valid.status_code == 200 and denied.status_code == 404
++        responses = await asyncio.gather(
++            http.get(PREFIX + "/timeseries/pupil", params={**PARAMS, "participant_code": "SYN-02"}),
++            http.get(PREFIX + "/timeseries/pupil", params={**PARAMS, "max_points": 7}),
++            http.get(PREFIX + "/timeseries/pupil", params={**PARAMS, "start_time_s": 0.5}),
++            http.get(PREFIX + "/timeseries/pupil", params={**PARAMS, "scenario": "stimulus-b"}),
++        )
++        assert all(r.status_code == 200 for r in responses)
++        harness.project.ingestion_generation = 4
++        newer = await http.get(PREFIX + "/timeseries/pupil", params=PARAMS)
++        assert newer.status_code == 200
++    assert len(harness.reads) == 6
++    assert sorted(harness.downloads) == ["SYN-01", "SYN-01", "SYN-02"]
++    assert all(s.closed for s in harness.sessions)
++
++
++@pytest.mark.asyncio
++@pytest.mark.parametrize("mode", ["leader", "follower", "last", "timeout"])
++async def test_asgi_dependency_lives_until_worker_and_enrichment_settle(shared_harness, monkeypatch, mode):
++    harness = shared_harness
++    started, release, finished = threading.Event(), threading.Event(), threading.Event()
++    compute = routes.ScanpathAnalyticsService.compute_scanpath
++    if mode == "timeout":
++        monkeypatch.setattr(routes, "response_flights", SingleFlight(timeout=0.1))
++
++    def tracked(*args, **kwargs):
++        started.set()
++        assert release.wait(2)
++        result = compute(*args, **kwargs)
++        finished.set()
++        return result
++
++    monkeypatch.setattr(routes.ScanpathAnalyticsService, "compute_scanpath", tracked)
++    async with client(harness) as http:
++        leader = asyncio.create_task(http.get(PREFIX + "/scanpath", params=PARAMS))
++        assert await asyncio.to_thread(started.wait, 1)
++        follower = None
++        if mode in ("leader", "follower"):
++            follower = asyncio.create_task(http.get(PREFIX + "/scanpath", params=PARAMS))
++            while routes.response_flights.stats()["consumers"] < 2:
++                await asyncio.sleep(0)
++        cancelled = follower if mode == "follower" else leader
++        if mode == "timeout":
++            await asyncio.sleep(0.15)
++        else:
++            cancelled.cancel()
++            await asyncio.sleep(0)
++            cancelled.cancel()
++            await asyncio.sleep(0)
++        assert not harness.sessions[0].closed and not leader.done() and not finished.is_set()
++        assert routes.response_flights.stats()["running"] == 1
++        release.set()
++        if mode == "timeout":
++            assert (await leader).status_code == 503
++        else:
++            with pytest.raises(asyncio.CancelledError):
++                await cancelled
++            if follower is not None:
++                survivor = leader if mode == "follower" else follower
++                assert (await survivor).status_code == 200
++                # Enrichment executed SQL on owner's DB AFTER abort and worker.
++                assert (0, "Scenaries") in harness.trace
++        assert finished.is_set() and all(s.closed for s in harness.sessions)
++        assert not routes.response_flights._states
++        # Same key can be retried after cancellation/timeout settlement.
++        assert (await http.get(PREFIX + "/scanpath", params=PARAMS)).status_code == 200
++
++
++@pytest.mark.asyncio
++async def test_live_result_not_shared_mutable_and_projections_have_distinct_flights(monkeypatch):
++    class Payload(BaseModel):
++        values: list[int]
++
++    class Reader:
++        db = None
++
++        async def read(self, *args, **kwargs):
++            await asyncio.sleep(0.02)
++            return pd.DataFrame()
++
++    monkeypatch.setattr(routes, "_redis", NoRedis())
++    monkeypatch.setattr(routes, "response_flights", SingleFlight())
++    calls = []
++
++    def compute(frame):
++        calls.append(1)
++        return {"values": [1, 2]}
++
++    async def run(owner=OWNER, projection=PUPIL_PROJECTION):
++        return await routes.cached_frame_endpoint(
++            reader=Reader(), project=NS(id=PROJECT, owner_id=owner, ingestion_generation=3),
++            participant_code="SYN-01", scenario="a", endpoint="same",
++            response_model=Payload, compute=compute, projection=projection,
++        )
++
++    a, b, other_projection, other_owner = await asyncio.gather(run(), run(), run(projection=GSR_PROJECTION), run(owner=UUID(int=999)))
++    assert len(calls) == 3
++    a.values.append(9)
++    assert b.values == other_projection.values == other_owner.values == [1, 2]
++
++
++@pytest.mark.asyncio
++async def test_file_flight_leader_abort_preserves_follower_and_no_request_db_in_download(shared_harness, monkeypatch):
++    harness = shared_harness
++    started, release = threading.Event(), threading.Event()
++    source = harness.cache._cache_dir / "source.parquet"
++    pd.DataFrame({"time": [0.0], "gsr": [1.0], "pupil_left": [2.0]}).to_parquet(source)
++    payload = source.read_bytes()
++    downloads = []
++
++    class Storage:
++        def download_file_content(self, external_id):
++            downloads.append(external_id)
++            started.set()
++            assert release.wait(2)
++            return payload
++
++    async def storage(self):
++        assert not self._db.closed
++        return Storage()
++
++    monkeypatch.setattr(routes.ParquetReaderService, "_build_drive_client", storage)
++
++    async def request(projection):
++        db = harness.db_factory()
++        try:
++            return await routes.ParquetReaderService(db).read(PROJECT, "SYN-01", 3, projection=projection)
++        finally:
++            await db.close()
++
++    owner = asyncio.create_task(request(GSR_PROJECTION))
++    assert await asyncio.to_thread(started.wait, 1)
++    follower = asyncio.create_task(request(PUPIL_PROJECTION))
++    from neurodatics.modules.analytics.application.services import parquet_reader_service as module
++    while module.parquet_flights.stats()["consumers"] < 2:
++        await asyncio.sleep(0)
++    owner.cancel()
++    await asyncio.sleep(0)
++    owner.cancel()
++    await asyncio.sleep(0)
++    assert not harness.sessions[0].closed and not owner.done()
++    release.set()
++    with pytest.raises(asyncio.CancelledError):
++        await owner
++    frame = await follower
++    assert "gsr" not in frame and len(downloads) == 1
++    assert all(s.closed for s in harness.sessions)
++    assert not module.parquet_flights._states
++    assert not list(harness.cache._cache_dir.rglob("*.tmp"))
++
++
++@pytest.mark.asyncio
++async def test_oversized_json_shared_live_without_redis_write(monkeypatch):
++    class Payload(BaseModel):
++        values: list[str]
++
++    class Redis:
++        writes = 0
++
++        def get(self, key):
++            return None
++
++        def set(self, *args, **kwargs):
++            self.writes += 1
++
++    cache = routes.AnalyticsRedisCache()
++    redis = Redis()
++    cache._client = redis
++    monkeypatch.setattr(routes, "_redis", cache)
++    monkeypatch.setattr(routes, "response_flights", SingleFlight())
++    huge = "x" * (cache.MAX_JSON_BYTES + 1)
++    calls = []
++
++    class Reader:
++        db = None
++
++        async def read(self, *args, **kwargs):
++            await asyncio.sleep(0.02)
++            return pd.DataFrame()
++
++    def compute(frame):
++        calls.append(1)
++        return {"values": [huge]}
++
++    async def run():
++        return await routes.cached_frame_endpoint(
++            reader=Reader(), project=NS(id=PROJECT, owner_id=OWNER, ingestion_generation=3),
++            participant_code="SYN-01", scenario="a", endpoint="oversize",
++            response_model=Payload, compute=compute,
++        )
++
++    results = await asyncio.gather(*(run() for _ in range(10)))
++    assert len(calls) == 1 and redis.writes == 0
++    results[0].values.append("mine")
++    assert all(result.values == [huge] for result in results[1:])
++    await run()
++    assert len(calls) == 2 and not routes.response_flights._states
++
++
++@pytest.mark.asyncio
++async def test_response_cache_rechecked_after_admission_before_reader(monkeypatch):
++    class Payload(BaseModel):
++        value: int
++        generation: int
++
++    class Cache(NoRedis):
++        gets = 0
++
++        def get_json(self, key):
++            self.gets += 1
++            return None if self.gets == 1 else {"value": 8}
++
++    cache = Cache()
++    monkeypatch.setattr(routes, "_redis", cache)
++
++    class Reader:
++        db = None
++
++        async def read(self, *args, **kwargs):
++            pytest.fail("cache was populated before shared work began")
++
++    result = await routes.cached_frame_endpoint(
++        reader=Reader(), project=NS(id=PROJECT, owner_id=OWNER, ingestion_generation=3),
++        participant_code="SYN-01", scenario="a", endpoint="cache-fill",
++        response_model=Payload, compute=lambda frame: pytest.fail("unexpected compute"),
++        cached_fields={"generation": 3},
++    )
++    assert result.value == 8 and result.generation == 3 and cache.gets == 2
++
++
++@pytest.mark.asyncio
++async def test_abort_during_actual_request_db_await_keeps_dependency_until_followers_finish(shared_harness, monkeypatch):
++    harness = shared_harness
++    started, release = asyncio.Event(), asyncio.Event()
++    execute = harness.db_factory.execute
++
++    async def delayed(self, statement, *args, **kwargs):
++        if statement.column_descriptions[0]["entity"] is ProjectFile:
++            started.set()
++            await release.wait()
++            assert not self.closed
++        return await execute(self, statement, *args, **kwargs)
++
++    monkeypatch.setattr(harness.db_factory, "execute", delayed)
++    async with client(harness) as http:
++        owner = asyncio.create_task(http.get(PREFIX + "/scanpath", params=PARAMS))
++        await asyncio.wait_for(started.wait(), 1)
++        follower = asyncio.create_task(http.get(PREFIX + "/scanpath", params=PARAMS))
++        while routes.response_flights.stats()["consumers"] < 2:
++            await asyncio.sleep(0)
++        owner.cancel()
++        await asyncio.sleep(0)
++        owner.cancel()
++        await asyncio.sleep(0)
++        assert not owner.done() and not harness.sessions[0].closed
++        release.set()
++        assert (await follower).status_code == 200
++        with pytest.raises(asyncio.CancelledError):
++            await owner
++    assert all(session.closed for session in harness.sessions)
++    assert harness.trace.index((0, "Scenaries")) < harness.trace.index((0, "close"))
++
++
++@pytest.mark.asyncio
++async def test_file_download_failure_shared_and_retry_after_settlement(shared_harness, monkeypatch):
++    harness = shared_harness
++    attempts = []
++    payload_buffer = io.BytesIO()
++    pd.DataFrame({"time": [0.0], "gsr": [2.0]}).to_parquet(payload_buffer)
++
++    class Storage:
++        def download_file_content(self, external_id):
++            attempts.append(external_id)
++            time.sleep(0.02)
++            if len(attempts) == 1:
++                raise OSError("synthetic disconnected store")
++            return payload_buffer.getvalue()
++
++    async def storage(self):
++        assert not self._db.closed
++        return Storage()
++
++    monkeypatch.setattr(routes.ParquetReaderService, "_build_drive_client", storage)
++
++    async def request():
++        db = harness.db_factory()
++        try:
++            return await routes.ParquetReaderService(db).read(PROJECT, "SYN-01", 3, projection=GSR_PROJECTION)
++        finally:
++            await db.close()
++
++    failures = await asyncio.gather(*(request() for _ in range(10)), return_exceptions=True)
++    assert len(attempts) == 1 and all(isinstance(item, RuntimeError) for item in failures)
++    assert (await request()).gsr.tolist() == [2.0]
++    assert len(attempts) == 2 and all(s.closed for s in harness.sessions)
++    assert not list(harness.cache._cache_dir.rglob("*.tmp"))
++
++
++@pytest.mark.asyncio
++async def test_live_model_roundtrip_preserves_nonfinite_precision_and_nested_any(monkeypatch):
++    class ScientificPayload(BaseModel):
++        precise: float
++        nan: float
++        infinity: float
++        metadata: dict
++
++    data = {"precise": 0.12345678901234568, "nan": float("nan"), "infinity": float("inf"),
++            "metadata": {"units": "μS", "array": [float("nan"), 1.0000000000000002]}}
++    expected = ScientificPayload(**data)
++    monkeypatch.setattr(routes, "response_flights", SingleFlight())
++    gate = asyncio.Event()
++
++    async def calculate():
++        await gate.wait()
++        return data
++
++    a = asyncio.create_task(routes._shared_model_response("science", calculate, ScientificPayload))
++    b = asyncio.create_task(routes._shared_model_response("science", calculate, ScientificPayload))
++    await asyncio.sleep(0)
++    gate.set()
++    first, second = await asyncio.gather(a, b)
++    assert first.precise == second.precise == expected.precise
++    assert math.isnan(first.nan) and math.isnan(second.nan)
++    assert first.infinity == second.infinity == expected.infinity
++    assert first.metadata["units"] == second.metadata["units"] == "μS"
++    assert first.metadata["array"][1] == expected.metadata["array"][1]
++    assert math.isnan(first.metadata["array"][0])
++    first.metadata["array"].append(9)
++    assert len(second.metadata["array"]) == 2
+--- /dev/null
++++ b/docs/perf/bench/g04_singleflight.py
+@@ -0,0 +1,217 @@
++"""Compare received G03 source vs G04 on the same corpus/runtime, offline.
++
++Real endpoint helper, reader/Parquet/publication/services; DB identity resolution
++and 20ms object-store transport synthetic. No response cache in either mode.
++"""
++
++import asyncio
++import gc
++import hashlib
++import importlib.util
++import json
++import platform
++import statistics
++import sys
++import tempfile
++import threading
++import time
++from collections import Counter
++from types import SimpleNamespace as NS
++
++import g00_backend as baseline
++import numpy as np
++import pandas as pd
++import pyarrow
++import pytest
++
++ROOT = baseline.ROOT
++COUNTS = Counter()
++COUNT_LOCK = threading.Lock()
++
++
++def count(key):
++    with COUNT_LOCK:
++        COUNTS[key] += 1
++
++
++def received(module, relative):
++    path = ROOT / "output/perf-g04/base" / relative
++    spec = importlib.util.spec_from_file_location(module, path)
++    result = importlib.util.module_from_spec(spec)
++    sys.modules[module] = result
++    spec.loader.exec_module(result)
++    return result
++
++
++class NoRedis:
++    build_key = staticmethod(baseline.analytics_routes.AnalyticsRedisCache.build_key)
++
++    def get_json(self, key):
++        count("response_lookups")
++
++    def set_json(self, *args, **kwargs):
++        count("response_write_attempts")
++
++
++def summary(rows):
++    times = [row["ms"] for row in rows]
++    return {"n": len(rows), "warmup": 1, "median_ms": statistics.median(times),
++            "failures": sum(row["failures"] for row in rows),
++            "min_ms": min(times), "max_ms": max(times), "samples": rows}
++
++
++async def main():
++    from neurodatics.modules.analytics.api.schemas import PupilTimeseriesResponse
++    from neurodatics.modules.analytics.application.services import (
++        parquet_reader_service as new_reader,
++    )
++    from neurodatics.modules.analytics.domain.parquet_projection import PUPIL_PROJECTION
++
++    old_reader = received("neurodatics.modules.analytics.application.services.g04_received_reader",
++                          "backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py")
++    old_routes = received("neurodatics.modules.analytics.api.g04_received_routes",
++                          "backend/src/neurodatics/modules/analytics/api/routes.py")
++    modes = {"before": (old_reader, old_routes), "after": (new_reader, baseline.analytics_routes)}
++    evidence = ROOT / "docs/perf/ejecucion/evidencia/g04/medidas.json"
++    runtime = ROOT / "output/perf-g04/runtime"
++    runtime.mkdir(parents=True, exist_ok=True)
++    fixture = baseline.load_fixture_module()
++    result = {"python": platform.python_version(), "pandas": pd.__version__, "numpy": np.__version__,
++              "pyarrow": pyarrow.__version__, "scope": "same received G03/G04 code, helper+file IO; no Redis/DB/Drive",
++              "fixtures": [], "cases": []}
++    with tempfile.TemporaryDirectory(dir=runtime) as temp:
++        from pathlib import Path
++        directory = Path(temp)
++
++        class Factory:
++            def mktemp(self, name):
++                path = directory / name
++                path.mkdir()
++                return path
++
++        corpus = fixture.corpus.__wrapped__(Factory())
++        small = corpus.frames["SYN-01"]
++        pieces = []
++        for block in range(64):
++            part = small.copy(deep=True)
++            part["time"] += block * 16
++            for column in ("segment_id", "fixation_segment_id"):
++                if column in part:
++                    part[column] = part[column].astype(str) + f"-block-{block}"
++            for column in part.columns:
++                if column == "fixation_id" or column.startswith("fixation_id__"):
++                    part[column] += block * 10000
++            pieces.append(part)
++        large = pd.concat(pieces, ignore_index=True)
++        large.attrs = dict(small.attrs)
++        for index in range(16):
++            large[f"g00_unused_{index:02d}"] = np.sin(np.arange(len(large), dtype=float) / (index + 5))
++        for label, frame in [("small", small), ("large", large)]:
++            path = directory / f"{label}.parquet"
++            frame.to_parquet(path, index=False)
++            payload = path.read_bytes()
++            result["fixtures"].append({"name": label, "rows": len(frame), "parquet_bytes": len(payload),
++                                       "sha256": hashlib.sha256(payload).hexdigest()})
++            caches = {}
++            for mode in modes:
++                cache = baseline.ParquetCacheService()
++                cache._cache_dir = directory / mode / label
++                caches[mode] = cache
++                cache.put(baseline.PROJECT, "SYN-01", payload, 0)
++            generation = 10
++            for level, state, requests in [("response", "disk", 1), ("response", "cold", 1),
++                                            ("response", "disk", 10), ("response", "cold", 10),
++                                            ("file", "cold", 10)]:
++                rows = {mode: [] for mode in modes}
++                expected = None
++                for repeat in range(6):
++                    for mode, (reader_module, route_module) in modes.items():
++                        generation += 1
++                        gen = generation if state == "cold" else 0
++                        cache = caches[mode]
++                        project = NS(id=baseline.PROJECT, owner_id=fixture.USER_ID, ingestion_generation=gen)
++                        reader = reader_module.ParquetReaderService(None)
++                        reader._cache = cache
++
++                        async def resolve(project_id, participant_code):
++                            count("resolve_files")
++                            return NS(project_file=NS(id="synthetic-file", external_id=participant_code))
++
++                        class Storage:
++                            def download_file_content(self, external_id, payload=payload):
++                                count("downloads")
++                                count("download_bytes")
++                                time.sleep(0.020)
++                                return payload
++
++                        async def drive(storage_type=Storage):
++                            return storage_type()
++
++                        reader.resolve_user_parquet, reader._build_drive_client = resolve, drive
++
++                        class FrameReader:
++                            db = None
++
++                            async def read(self, project_id, participant_code, generation, *, projection=None, reader=reader):
++                                return await reader.read(project_id, participant_code, generation, projection=projection)
++
++                        def compute(data, route_module=route_module):
++                            count("computations")
++                            return route_module.PupilAnalyticsService.compute_timeseries(data, "stimulus-a", max_points=5000)
++
++                        async def request(level=level, reader=reader, project=project, gen=gen, route_module=route_module, frame_reader=FrameReader, compute=compute):
++                            if level == "file":
++                                data = await reader.read(project.id, "SYN-01", gen, projection=PUPIL_PROJECTION)
++                                return data.to_json()
++                            value = await route_module.cached_frame_endpoint(
++                                reader=frame_reader(), project=project, participant_code="SYN-01", scenario="stimulus-a",
++                                endpoint="timeseries_pupil:5000", compute=compute, response_model=PupilTimeseriesResponse,
++                                projection=PUPIL_PROJECTION,
++                            )
++                            return value.model_dump_json()
++
++                        gc.collect()
++                        COUNTS.clear()
++                        decode = pd.read_parquet
++
++                        def counted_read(*args, decode=decode, **kwargs):
++                            count("parquet_reads")
++                            return decode(*args, **kwargs)
++
++                        with pytest.MonkeyPatch.context() as patch:
++                            patch.setattr(pd, "read_parquet", counted_read)
++                            patch.setattr(route_module, "_redis", NoRedis())
++                            started, cpu = time.perf_counter(), time.process_time()
++                            values = await asyncio.gather(*(request() for _ in range(requests)), return_exceptions=True)
++                            sample = {"ms": (time.perf_counter() - started) * 1000,
++                                      "cpu_ms": (time.process_time() - cpu) * 1000,
++                                      "counts": dict(COUNTS), **baseline.rss()}
++                        errors = [value for value in values if isinstance(value, BaseException)]
++                        sample["failures"] = len(errors)
++                        sample["errors"] = [type(value).__name__ + ": " + str(value) for value in errors]
++                        if mode == "after":
++                            assert not errors
++                        values = [value for value in values if not isinstance(value, BaseException)]
++                        assert values and len(set(values)) == 1
++                        if expected is None:
++                            expected = values[0]
++                        assert values[0] == expected
++                        sample["counts"]["download_bytes"] = COUNTS["downloads"] * len(payload)
++                        if repeat:
++                            rows[mode].append(sample)
++                result["cases"].append({"fixture": label, "level": level, "state": state,
++                                        "requests": requests, "equivalent": True,
++                                        "timings_comparable": not any(row["failures"] for samples in rows.values() for row in samples),
++                                        **{mode: summary(samples) for mode, samples in rows.items()}})
++                evidence.write_text(json.dumps(result, indent=2), encoding="utf-8")
++    result["limits"] = ["n=5 median/range, no p95", "20ms synthetic storage, complete bytes each download",
++                        "OS file cache not cleared", "RSS snapshot/lifetime peak, not operation peak",
++                        "request auth checked in tests, benchmark measures helper+reader rather than network/DB latency",
++                        "received Windows baseline concurrent publication errors are recorded; failed timings do not prove acceleration",
++                        "sequential misses intentionally bypass response cache to expose coordination overhead"]
++    evidence.write_text(json.dumps(result, indent=2), encoding="utf-8")
++    print(json.dumps({"output": str(evidence), "cases": len(result["cases"])}))
++
++
++if __name__ == "__main__":
++    asyncio.run(main())
+--- /dev/null
++++ b/docs/perf/ejecucion/G04.md
+@@ -0,0 +1,21 @@
++# G04 — Deduplicación backend
++
++**Estado: completa, pendiente revisión final del coordinador.** Codex GPT-6.1 Sol/high; recomendación Claude Sonnet/alto por concurrencia/auth/DB y mismos checks. Sin cambios de modelo en otras sesiones; un ejecutor, sin agentes recursivos ni G05.
++
++Base recibida HEAD `f310003bd734203a41268f40a4627bd99d5a3233` + cambios previos/G00–G03; G03 aprobado según ORQUESTACION. [Inventario](evidencia/g04/inventario-inicial.json):841 archivos. Snapshot sólo archivos propios recibidos en ignored `output/perf-g04/base`; [own.patch](evidencia/g04/own.patch) compara **esa base, nunca HEAD**. [Preservación](evidencia/g04/preservacion.json):837/837 ajenos intactos, frontend íntegro; ORQUESTACION no editado. Sin reset/stash/commit, dependencias/.venv modificadas, datos usuarios, migración, distribución ni despliegue.
++
++Resultado: dos coordinadores por proceso/event loop, sin locks distribuidos. **22 cálculos de respuesta** (20 helper+gaze-at+heatmap); las dos listas SQL no requieren coordinación. Claves incluyen identidad/generación/parámetros vigentes y owner/proyección/modelo. Cada request verifica propiedad antes de unirse. **Archivo:** coordina proyecto/participante/ProjectFile/external_id/generación, reconsulta disco y publica el archivo completo atómicamente. Cada consumidor decodifica su propia proyección/DF; no comparte frames mutables. File tier resolve identidad/OAuth DB antes de unirse, factory sin DB/ORM. Hits respuesta/persisted-token conservan cero lector/Parquet; **legacy token requiere lectura previa actual**, sin prometer zero-read allí.
++
++Lifecycle: cancelar follower no afecta superviviente; el líder cancelado mantiene su request/DB abierto, incluso cancelación reiterada, hasta settlement del factory. La sesión no se usa concurrentemente. Último consumidor cancela trabajo; entrada/slot permanecen hasta settlement **físico** de threads. Error/timeout permite retry una vez liberado. Cada nivel4 operaciones running/32 claves cola/256 consumidores/36 entradas; admisión antes de tareas. Deadline120s incluye cola y solicita cancelación: worker bloqueado puede prolongar respuesta/lease; no timeout duro de CPU/red ni límite RSS. [API/handoff](evidencia/g04/API.md) detalla errores503, mutabilidad, estado de loop y uso G05/G07/G08/G10.
++
++JSON live se valida/serializa una vez a bytes inmutables con TypeAdapter público Pydantic y `ser_json_inf_nan=constants`; cada consumidor parsea modelo propio. Conserva precisión y NaN/Infinity/metadatos anidados. PNG comparte sólo bytes, metadata/headers/StreamingResponse independientes. Redis sigue best-effort; **oversize >8MiB** se comparte live sin nueva caché persistente. Se descartaron deepcopies grandes y stdlib JSON por overhead; evidencia provisional conservada, sin cambios HTTP/claves/retención/ciencia.
++
++Verificación: **313 pruebas/24snapshots** iniciales ambos runtimes, luego **163 pruebas/24snapshots** finales afectadas ambos (incluye nuevos casos; no se repite integral sin motivo). Diez requests1cálculo/1descarga; claves distintas/proyecciones/generaciones/usuarios/participantes/filtros aislados; modelos/frames propios; fallo descarga compartido/retry; Redis oversize; reconsulta; bounded queue/consumers/tasks, worker slot hasta settlement, asyncio/AnyIO cancelación. ASGI/get_db real con **AsyncSession subclass y transporte sintético**, incluidos teardown ante cancelación repetida, DB await y SQL enrich posterior al abort, follower/último/timeout. Ciencia y contratos previos byte-equivalentes/snapshots; Ruff propio/probe y3 import contracts aprobados. [Comandos/logs](evidencia/g04/comandos.md), [verificación](evidencia/g04/verificacion.json).
++
++Medición [n5+warmup](evidencia/g04/medidas.md), [JSON](evidencia/g04/medidas.json): mismo corpus G00/G03 small1.600/large102.400, mismo Python3.14/PyArrow25, base recibida exacta vs final, pupil `max_points=5000`, caché respuesta miss; archivo completo frío con20ms I/O simulado. **Ráfaga disk10:** small65,80→10,33ms; large179,71→44,60ms;10reads/10compute→1/1. Coldlarge258,33→73,94ms,10downloads→1 (173.669.520→17.366.952B). File-only frío10:10downloads→1, **10reads→10**, small54,96→47,59ms/large526,97→473,78ms. Todos after10/10 por muestra.
++
++**Overhead secuencial explícito:** small disk5,88→6,71ms (+0,83/+14,2%); large22,11→24,03 (+1,92/+8,7%); coldsmall+0,46ms/+1,4%, coldlarge+3,54ms/+6,8%. No mejora secuencial/global demostrada. **Baseline coldsmall response49/50**, after50/50: carrera Windows os.replace mientras otro reader abre destino; no comparar como aceleración los tiempos del caso fallido. Todas las otras muestras finales50/50 o5/5. Logs/fallos/alternativas provisionales conservados; sólo medidas.json final válido. RSS snapshot/peak acumulado no es peak operación; no p95 ni extrapolación nube.
++
++Compatibilidad dirigida: recibido Python3.14/PyArrow25 y entorno G03 aislado Python3.12/PyArrow16.1, sin instalar/modificar dependencias. Sin Redis/Drive/PostgreSQL reales, equivalencia deployment ni gate global/frontend (G12). Informe/video heredan file tier si usan lector; sus cálculos/onset/FFmpeg no se deduplican en G04. G07 debe acotar lecturas directas/DB por lote; G05 no recibe caché global de eventos.
++
++Archivos: routes, reader, singleflight nuevo, dos tests nuevos, fake-cache.get en fixture de identidad, probe g04, G04/ESTADO/API/medidas/comandos y evidencia; [manifiesto](evidencia/g04/manifiesto-final.json). Reversión: retirar sólo own.patch contra snapshot recibido; mantener trabajo previo/evidencia G00–G03. Próximo G05 **después de revisión**: leer ficha/API G03–G04, sin reauditar ni reiniciar otras suites. Implementación/checks/medidas cerrados; aguarda coordinador.
+--- /dev/null
++++ b/docs/perf/ejecucion/evidencia/g04/API.md
+@@ -0,0 +1,31 @@
++# API G04 — coordinación por proceso
++
++`SingleFlight.run(key, async_factory)` en `analytics/infrastructure/singleflight.py`. No es caché ni lock distribuido. Se mantiene un estado separado por event loop del proceso (un loop habitual de ASGI); loops/procesos distintos no deduplican entre sí. No existe lock global con I/O bajo él: admisión/bookkeeping son pasos sin await. `stats()` expone entries/running/consumers del loop actual para contratos y pruebas, no un endpoint público.
++
++## Dos niveles y claves
++
++- **Respuesta:** `response_flights`, 20 endpoints por `cached_frame_endpoint` + `/gaze-at` JSON + `/heatmap` PNG = 22. `/participants` y `/scenarios` conservan SQL simple (sin cálculo/Parquet/caché de respuesta). Clave del helper: `(owner_id, Redis_key_completa, ParquetProjection_o_None, response_model)`; gaze añade su esquema; PNG usa `(owner_id, Redis_key_completa, "png")`. La clave Redis vigente conserva namespace/generación/proyecto/participante/endpoint/escenario y todos los parámetros, token de transformación, AOI digest, tamaño/duración/ventana/canales/procesamiento. El lector proyectado no se confunde con otro perfil. Auth/ownership de **cada solicitante** ocurre antes de los dos niveles; el helper confía en el Project ya autorizado que le entrega cada ruta.
++- **Archivo:** `parquet_flights`, en `ParquetReaderService.read`: `(project_id, participant_code_exacto, ProjectFile.id, external_id, normalize_generation(generation))`. Identidad de archivo y configuración de almacenamiento/OAuth se resuelven secuencialmente en la DB del solicitante **antes de unirse**. El factory de descarga no accede a DB/ORM: sólo scalars/cliente/cache. Reconsulta `cache.get()` bajo coordinación y mantiene `put` atómico de archivo completo. Se comparte exclusivamente Path; cada `read` decodifica su DataFrame/attrs/índice/proyección propios. Full sigue default. Cache hit de disco conserva el acceso anterior sin DB/download.
++
++Ambos niveles reconsultan la caché después de admisión y antes de producir. Hits de respuesta simples/persisted-token siguen sin construir lector/abrir Parquet. **Legacy sin token persistido conserva lectura previa y persistencia request-local**, antes de construir la clave; no se promete zero-read ni se deduplican esas lecturas/token-DB entre solicitantes. Informes/video que llaman `ParquetReaderService` reciben sólo coordinación de archivo; sus cálculos no pasan por el coordinador HTTP. G07/G08 siguen responsables de auth/DB/generación/concurrencia propia.
++
++## Lifecycle y recursos
++
++El primer consumidor es dueño de los recursos del factory de respuesta (lector/enrich que pueden usar su AsyncSession). El factory corre secuencialmente; el request dueño permanece suspendido en `run` hasta settlement, inclusive cancelación reiterada. **Cancelar el líder no permite que FastAPI cierre get_db** mientras un follower usa el cálculo; el líder espera shielded hasta que el factory termine y luego propaga CancelledError. El follower que cancela sale sin afectar supervivientes ni operar con su DB mientras espera. No se usa una AsyncSession desde tareas simultáneas: el request dueño sólo espera; el factory hace sus pasos DB uno por uno. Tests ejecutan ASGI/get_db real y AsyncSession subclass con transporte sintético, incluyendo SQL de enrich tras abort y durante DB await.
++
++El último consumidor solicita cancelación; la entrada deja de aceptar consumidores hasta settlement. Un retry durante cancelación recibe Busy/503; después puede comenzar de nuevo. Errores se entregan a consumidores vivos; no se retienen como caché. Un timeout cancela después de 120 s desde admisión (incluye cola). Deadline **solicita** cancelación: el HTTP/error puede tardar más mientras termina I/O o CPU sincrónicos no preemptibles. `settled_thread` espera físicamente el worker bajo asyncio/AnyIO shield incluso cancelaciones repetidas; slots/entrada no se liberan por una cancelación meramente lógica. Transporte bloqueado prolonga su slot y lease DB; no se añade timeout de red ni se afirma latencia dura. El llamador debe esperar `run` dentro del lifecycle de sus recursos; no lanzarlo como tarea abandonada tras cerrar DB.
++
++## Presupuestos e inmutabilidad
++
++Cada nivel: **4 operaciones running**, **32 claves en cola** (36 entradas totales incluyendo settling), **256 consumidores activos**, deadline 120 s. Admisión falla antes de crear tareas adicionales; Busy/Timeout se mapean a 503 en HTTP. Se crean runners acotados por entrada; wait_for/settled_thread sólo tienen subtareas acotadas por operaciones admitidas. Cuando entradas/consumidores quedan vacíos se elimina estado del loop. Los slots son de operaciones, no un límite RSS; respuestas oversize/frames/HTTP en progreso aún usan memoria. Lecturas directas fuera de response_flights no tienen un nuevo límite de decodificaciones aquí; G07 debe aplicar su límite de I/O/frames. Se conserva el limiter de threads de AnyIO y sus configuraciones existentes.
++
++JSON live: validación de esquema una vez en productor, `TypeAdapter(dict, config=ser_json_inf_nan="constants")` serializa el `model_dump()` Python a bytes inmutables; cada consumidor crea su modelo con `response_model.model_validate_json`. Mantiene float64 roundtrip, NaN/Infinity y metadatos anidados sin alias mutable. Esta configuración ya figura en [Pydantic 2.5](https://docs.pydantic.dev/2.5/api/config/#pydantic.config.ConfigDict.ser_json_inf_nan). HTTP/caché/keys no se versionan porque salida permanece equivalente. PNG comparte bytes inmutables; metadata se copia por respuesta y cada StreamingResponse/headers/iterador es propio. No se comparte DF.
++
++Se conserva Redis best-effort/no Redis y su límite JSON existente de **8 MiB**: oversize se devuelve y comparte sólo live; no se convierte en una caché local persistente. Finalizado el trabajo se libera la entrada y un nuevo miss recalcula. No hay caché global de resultados científicos/eventos.
++
++## Próximos bloques
++
++- **G05:** reutilizar eventos dentro de cada operación admitida; mantener propiedad de mutación y parámetros. G04 no crea caché global de eventos.
++- **G07:** resolver lote DB antes de lanzar trabajos; no compartir AsyncSession en tareas concurrentes. Reusar `ParquetReaderService` para archivo y conservar sus presupuestos al sumar concurrencia de informe.
++- **G08:** archivo se deduplica; onset/video metadata y FFmpeg aún no. Mantener fuente vigente de generación/auth antes de reutilizar.
++- **G10:** conservar/actualizar claves completas y versionarlas si cambia esquema. Response helper puede compartir oversize live y distinguir proyección/modelo.
+--- /dev/null
++++ b/docs/perf/ejecucion/evidencia/g04/comandos.md
+@@ -0,0 +1,23 @@
++# Comandos G04
++
++Desde raíz, fixtures sintéticas y servicios externos sustituidos. Sin frontend/gate global/deploy/migraciones. Todos los resultados finales tienen exit0. Salidas diagnósticas fallidas se conservan y se distinguen por nombre.
++
++```powershell
++Push-Location backend
++../.venv/Scripts/python.exe -m pytest tests/unit/test_analytics_singleflight.py tests/unit/test_parquet_projection.py tests/unit/test_parquet_participant_identity.py tests/unit/test_cache_generation_identity.py tests/unit/test_analytics_cache_invalidation.py tests/characterization/test_backend_singleflight.py tests/characterization/test_cached_frame_endpoints.py tests/characterization/test_projected_frame_endpoints.py tests/characterization/test_transform_cache_short_circuit.py tests/characterization/test_analytics_http_contracts.py tests/unit/test_eeg_scientific_contract.py -q
++# Repetido con ../output/perf-g03/supported-env/Scripts/python.exe (sin instalar ni alterar entorno)
++# Tras cambio final sólo subset afectado, ambos runtimes:
++../.venv/Scripts/python.exe -m pytest tests/characterization/test_backend_singleflight.py tests/characterization/test_cached_frame_endpoints.py tests/characterization/test_projected_frame_endpoints.py tests/characterization/test_analytics_http_contracts.py tests/characterization/test_transform_cache_short_circuit.py -q
++$env:PYTHONPATH='src'
++../.venv/Scripts/lint-imports.exe --no-cache
++Remove-Item Env:PYTHONPATH
++Pop-Location
++.venv/Scripts/python.exe -m ruff check backend/src/neurodatics/modules/analytics/infrastructure/singleflight.py backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py backend/src/neurodatics/modules/analytics/api/routes.py backend/tests/unit/test_analytics_singleflight.py backend/tests/characterization/test_backend_singleflight.py backend/tests/unit/test_parquet_participant_identity.py
++.venv/Scripts/python.exe -m ruff check docs/perf/bench/g04_singleflight.py
++.venv/Scripts/python.exe docs/perf/bench/g04_singleflight.py
++git apply --reverse --check --ignore-space-change docs/perf/ejecucion/evidencia/g04/own.patch
++```
++
++Logs: tests-runtime/tests-supported inicialmente313/24snapshots, tests-final-runtime/tests-final-supported163/24snapshots tras TypeAdapter y tests nuevos. Unidad/file/identidad/límites iniciales sin cambios después; subset final revalidó todo comportamiento HTTP/esquemas/enriquecimiento/equivalencia/NaN. El conjunto completo actualizado contendría316 casos únicos; no se anuncia una repetición integral316 que no se hizo. Tests ASGI get_db real, AsyncSession subclass con transporte sintético; no PostgreSQL/Drive/Redis reales. Runtime recibido3.14/PyArrow25 y entorno aislado G03 Python3.12/PyArrow16.1; se reusó sin modificar deps/.venv. Detalles/versiones heredados en evidencia/g03/versions-supported.json.
++
++Ruff final ambos y import-boundaries3 contratos aprobados. Benchmark final se ejecutó sin tests/instalación simultáneos. Diagnostics tests-first (fake cache aún sin get), tests-http-first (UUIDfixture mal), tests-http-repair (deadline demasiado corto antes de compute), tests-singleflight-first (expectativa queue timeout equivocada) reparados; no representan fallos finales. Benchmark preliminary/baseWindowsrace y variantes retiradas permanecen con esa etiqueta. Fuentes finales y evidencia preservadas por manifiesto/own.patch.
+--- /dev/null
++++ b/docs/perf/ejecucion/evidencia/g04/medidas.md
+@@ -0,0 +1,26 @@
++# Medidas G04 — base recibida y final
++
++Mismo runtime Python3.14.3/pandas2.3.3/NumPy2.4.4/PyArrow25; corpus G00/G03 exacto: small1.600 filas/98.844B, large102.400/17.366.952B (SHA-256 en medidas.json). Lector, decodificador, servicios y helper de respuesta reales; resolución de identidad sin DB y almacenamiento sintético20ms; sin Redis. Respuestas pupil max_points=5000, valores completos byte-equivalentes tras model_dump_json. Nivel archivo prueba10 readers/proyecciones independientes y JSONframe equivalente. Auth/teardown HTTP se verifican en tests, no se incluyen sus latencias en este probe.
++
++Una muestra calentamiento + cinco medidas alternadas antes/después por caso. Antes carga código de snapshot output/perf-g04/base, nunca HEAD. Cache respuesta siempre miss para medir overhead; disco precargado o generación nueva fría por muestra. No limpiar OS cache. Median/rango, sin p95. RSS/peak acumulado proceso están en JSON: no peak aislado de operación ni presupuesto RSS garantizado.
++
++| Corpus/nivel/cache/requests | Antes ms, mediana [rango] | Después ms, mediana [rango] | Éxitos antes/después (5×requests) |
++|---|---:|---:|---:|
++| small/response/disk/1 | 5.88 [5.75–6.25] | 6.71 [6.34–6.95] | 5/5 y 5/5 |
++| small/response/cold/1 | 32.49 [31.64–35.72] | 32.95 [32.93–33.44] | 5/5 y 5/5 |
++| small/response/disk/10 | 65.80 [64.32–67.22] | 10.33 [9.74–10.67] | 50/50 y 50/50 |
++| small/response/cold/10 | 97.58 [96.21–100.04] | 37.46 [36.33–38.35] | 49/50 y 50/50 |
++| small/file/cold/10 | 54.96 [52.85–57.08] | 47.59 [45.49–48.05] | 50/50 y 50/50 |
++| large/response/disk/1 | 22.11 [20.49–23.79] | 24.03 [22.88–26.79] | 5/5 y 5/5 |
++| large/response/cold/1 | 52.14 [50.66–53.75] | 55.68 [53.69–62.47] | 5/5 y 5/5 |
++| large/response/disk/10 | 179.71 [177.02–184.28] | 44.60 [41.19–45.75] | 50/50 y 50/50 |
++| large/response/cold/10 | 258.33 [255.64–267.65] | 73.94 [73.34–79.13] | 50/50 y 50/50 |
++| large/file/cold/10 | 526.97 [517.49–533.33] | 473.78 [472.30–516.75] | 50/50 y 50/50 |
++
++**Ráfaga respuesta:** cada muestra disk before10 lecturas/10cálculos → after1/1, downloads0. Cold before10downloads → after1; byteslarge173.669.520→17.366.952, small988.440→98.844. La descarga sigue archivo completo. **Ráfaga archivo directo:** before10downloads→after1 y resoluciónDBsimulada10→10, lecturas10→10: no comparte DF ni finge deduplicar decodificación de diferentes proyecciones.
++
++**Overhead secuencial:** small disk+0,83ms/+14,2%; large disk+1,92ms/+8,7%; coldsmall+0,46ms/+1,4% y coldlarge+3,54ms/+6,8%. Incluye consulta cache adicional tras admisión, lifecycle/worker settlement y serialización live segura. Rangos/cpu muestran variabilidad; no se promete mejora secuencial ni del tiempo global aplicación. Ráfagas disk small−84,3% y large−75,2% en este harness; no extrapolar a red/DB real.
++
++**Fallo baseline:** coldsmall response1 fallo de50 (49/50); after50/50. Es carrera Windows os.replace(WinError5/32) al publicar el mismo destino mientras otro consumidor lee. Los tiempos del caso con fallo se incluyen como duración observada, **no comparativa válida de aceleración**. Warmups fuera n5 y corrida preliminary.log también mostraron error; no se modificó base para esconderlo. Todas las demás muestras finales completan sus 5×requests. Coldlarge response−71,4% con todas correctas; file directo small−13,4% y large−10,1%, con archivo aún decodificado10 veces.
++
++Corridas diagnósticas conservadas: medidas-preliminary parcial por fallo; medidas-deepcopy y medidas-stdlib-json midieron max_points=0 del servicio (salida full) y variantes retiradas. **Sólo medidas.json corresponde a implementación final y max_points5000 real de ruta.** No comparar sus cifras entre sí como mejora de G04. La configuración live TypeAdapter redujo coste sin cambiar ciencia; final equivalencia163 tests/24 snapshots ambos runtimes.

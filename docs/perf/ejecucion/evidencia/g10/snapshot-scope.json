@@ -1,0 +1,801 @@
+{
+  "generated_at": "2026-10-03T05:07:58.1491935Z",
+  "snapshot_root": "output/perf-g10/base",
+  "roots": [
+    "frontend/features/analytics",
+    "frontend/tests/e2e/comparison-dashboard.spec.ts",
+    "frontend/tests/hooks",
+    "backend/src/neurodatics/modules/analytics",
+    "backend/tests/characterization",
+    "backend/tests/unit/test_eeg_scientific_contract.py",
+    "docs/perf/ejecucion/ESTADO.md"
+  ],
+  "count": 157,
+  "files": [
+    {
+      "path": "frontend/features/analytics/analyticsCache.test.mjs",
+      "sha256": "716ff839e126ebe39ccd62da2b28a9760e72309948df49e067d64940eefc0fc8",
+      "bytes": 16659
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py",
+      "sha256": "631c3fdf979c1bdd7103793ede18e70914ae4ed536141aabc616d2e0518d1fd6",
+      "bytes": 25085
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/comparison_chart_config.py",
+      "sha256": "f9634bc1fb600589ccf00ad606bff9426a592573343d79bdc4ac2f7d890525fc",
+      "bytes": 13495
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/correlation_service.py",
+      "sha256": "0782a35139f83731ced8b968bb4f03858d6a07957e4e635d101bb62c53301c6a",
+      "bytes": 19622
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/eeg_analytics_service.py",
+      "sha256": "05e86a578e02d202c49384e168183c71f4655dd164830c3f875ced4da5948751",
+      "bytes": 30325
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/eeg_signal.py",
+      "sha256": "f34d4562673edae6e8dc2b109f39d28ca14b570761ddf68162fdd9296b12f28a",
+      "bytes": 21988
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py",
+      "sha256": "fbc9f6bbfecc6fdb2db83cf5f498358e101dd101324ff69edf27359f9dec8f03",
+      "bytes": 27477
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/fixation_event_reconstruction.py",
+      "sha256": "32faf493d1bc30c1423cedc34e94debd0a19731816b424e5fd03bde894f577b3",
+      "bytes": 16700
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/fixation_summaries.py",
+      "sha256": "82e14ccc16e621431e730d95dea06b6099c155586e4051fe09a419c7daa98ad6",
+      "bytes": 4680
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/gsr_analytics_service.py",
+      "sha256": "c11529461218e53381c8daf1138853921c873a374613daa10f568baba2b816f2",
+      "bytes": 6343
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/heatmap_analytics_service.py",
+      "sha256": "534a6504fcdb59270c3217c2fe81b7e7dd6ee01ce7d261863f529d02bdd4ee1d",
+      "bytes": 7215
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/numeric_helpers.py",
+      "sha256": "f46142f73bc0ac911b0520b12121099d12ff51bb900287c60ca1df70885420ec",
+      "bytes": 7790
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py",
+      "sha256": "80a1db9db9b78c748b151925a995fe7d9714d5e57b5ce548ddaa2e0e258fe1b2",
+      "bytes": 21371
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/pupil_analytics_service.py",
+      "sha256": "42a295fa35deda9a3eea4a37be0206430a25b9768119942ddafa077f004f8b80",
+      "bytes": 25991
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/scanpath_analytics_service.py",
+      "sha256": "d189e50a3434955a2f3080d0339aba66f83dd97db6dbf22e25b9132611effe38",
+      "bytes": 10410
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/scenario_timing_service.py",
+      "sha256": "421f58f47ab496c443645e77c7a07bfb334324d7722a8d1900f7e9c71b1def8c",
+      "bytes": 2028
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/analytics_service.py",
+      "sha256": "448ff0ca5d3e6bd3fed1b7e12c9877eec31d8ea07f75bdac857d0b55a57dc0c8",
+      "bytes": 3067
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/api/schemas.py",
+      "sha256": "31b59a7e64f74376ee71253dd243211efd3fc64ee64870ba0b5edde9073e711c",
+      "bytes": 12989
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/participantComparison.test.mjs",
+      "sha256": "3772a8f2b70e06b969f396365228e709c56c230970940c30bcc14463711907b7",
+      "bytes": 12600
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/ParticipantComparisonDialog.tsx",
+      "sha256": "561af543d710f5b6cd1e78e2d6e521e6a2b3d74e10a7ad1995d8e2a95ebb5b57",
+      "bytes": 23364
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/ParticipantComparisonProvider.tsx",
+      "sha256": "68686879528a7cc393a00cbe4d2ffbf8c3da25c9e27ee5506e7bd7964b25f8f0",
+      "bytes": 4105
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/ParticipantSelector.tsx",
+      "sha256": "a71509ac2f532361d68b9d46732504711bcb366409d6912594862e26ca02a145",
+      "bytes": 5070
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/scales.ts",
+      "sha256": "6da01f6e9b9fd33b33f766aeeee96327c83212afd07d213e20495542e66d2537",
+      "bytes": 2125
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/spec.ts",
+      "sha256": "0c03c89071a7c27400b05e05146fb9bf9ab2843f6d7ae3160a5e917c5297d9ec",
+      "bytes": 11790
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/timeAlignment.ts",
+      "sha256": "9db382d9706e457380abd4f0e7637d883a839878526d044983ff9db2b4416d07",
+      "bytes": 5915
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/domain/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "frontend/tests/e2e/comparison-dashboard.spec.ts",
+      "sha256": "1ed5a5c9a4f0243f2466055ce714f3a5cd10ee8239be16d60ddb8dcbce9e7dc9",
+      "bytes": 27547
+    },
+    {
+      "path": "frontend/tests/hooks/analytics-cancellation.test.mjs",
+      "sha256": "694137fd96e981574e2a157037626bd35353ea2dfd0494628e3fedcc63eda42c",
+      "bytes": 6921
+    },
+    {
+      "path": "frontend/tests/hooks/analytics-request.test.mjs",
+      "sha256": "8f37c59c5346b2b647b5adf8468db91baaccaff5c7b1147ab9a4207cb267dbf2",
+      "bytes": 9795
+    },
+    {
+      "path": "frontend/tests/hooks/participant-comparison-entry.test.mjs",
+      "sha256": "0eabf879e0bfae487c70081dd4ac9fcbd45b1c55d53a0bd85d4850d380385992",
+      "bytes": 7759
+    },
+    {
+      "path": "frontend/tests/hooks/upload-wizard.test.mjs",
+      "sha256": "f6c98a6ed8c8a2b237bf02affd4a4ed7b75811be12a5c8378d699b258a127045",
+      "bytes": 12112
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/api/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/api/routes.py",
+      "sha256": "11a21695172cdc5905b6393c8d0900698eb491cd9ed3f6b77234e17779697559",
+      "bytes": 63667
+    },
+    {
+      "path": "frontend/tests/hooks/analytics-cache.test.mjs",
+      "sha256": "626be36d0f9245af73ff006d0c68e933798df1475bcc11dba7ee588df4299fdf",
+      "bytes": 12243
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/domain/cache_generation.py",
+      "sha256": "78807149293561878c0e783526d22a59d326f4c03b8a6f0c820ee3b6aa0128d7",
+      "bytes": 389
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/domain/coordinate_transform.py",
+      "sha256": "ca80929a8e127558d3e739c2aa81819cd6883a80128856754cf334914aadf898",
+      "bytes": 12932
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/domain/parquet_projection.py",
+      "sha256": "ef9b34977cd9c7abd6d0ea873e242eba350c9031ba05b483929a80ae27785b79",
+      "bytes": 1943
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_executive_report_numeric_summaries.csv",
+      "sha256": "a3995b4de4f363281c1fe2b0ce7324e1c36347ddc46c477076f9fe1283764399",
+      "bytes": 1044
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_heatmap_numeric_substrate.csv",
+      "sha256": "2d14923b92aa3d2ddd641d861d4b7932bcea12c482aae99668be9d7caafbb128",
+      "bytes": 182
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_ingested_detector_events_SYN_01_stimulus_a_.csv",
+      "sha256": "e001a339df26ee1a64e4cddcbf18d524ffd3f06a0fc64b8c45b8ab6fd1af8a63",
+      "bytes": 752
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_ingested_detector_events_SYN_01_stimulus_b_.csv",
+      "sha256": "e9349d842f84f1abcceebafc8977d82585b4c0cdcdc287cce861f1ecbee99aa0",
+      "bytes": 710
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_ingested_detector_events_SYN_02_stimulus_a_.csv",
+      "sha256": "b0a14cb1ec60affe4620974140a7661be42b6b13372b992f4c40d0f0f32defa2",
+      "bytes": 741
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_ingested_detector_events_SYN_02_stimulus_b_.csv",
+      "sha256": "66dacb742c60f755b60a113bc1fc90f2f10b1cbae3ff2dea2eb016515b8f0f3a",
+      "bytes": 699
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_spatial_and_duration_outputs_SYN_01_stimulus_a_.csv",
+      "sha256": "ccc2721ab121cf483e7ef2d834d082f328ec01e0071a6ce54ad591bd66ef9386",
+      "bytes": 10381
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_eeg_spectral_outputs_SYN_02_stimulus_b_.csv",
+      "sha256": "fb302ff6c41668d1f90eedbc06b69fa22267cab7b716769ad21e788d1fa15082",
+      "bytes": 62051
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_spatial_and_duration_outputs_SYN_01_stimulus_b_.csv",
+      "sha256": "13a55f09e68f14de708eaca940b2767a28ea5f5027606cb51437bc643b84f01e",
+      "bytes": 10336
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_spatial_and_duration_outputs_SYN_02_stimulus_b_.csv",
+      "sha256": "14d33873a0266176a4ee2ff1d187fb5e66fa428ff5c51bd0a625b29f9d039317",
+      "bytes": 10369
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_timeseries_and_statistics_SYN_01_stimulus_a_.csv",
+      "sha256": "5921af4b0387888dfbd71607acf6e9e0c3931a9c4d109e4c5024ffdde45e5f17",
+      "bytes": 266784
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_timeseries_and_statistics_SYN_01_stimulus_b_.csv",
+      "sha256": "6092e7bc5d07bb977926d6beb99b4cbd7ecbfeb4bfd393b901a3c9dcf39e2b9b",
+      "bytes": 261162
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_timeseries_and_statistics_SYN_02_stimulus_a_.csv",
+      "sha256": "e69a3f3e77604a9646ee2640f41e97f28f5d14ab91882771ee170c8626f610fb",
+      "bytes": 267048
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_timeseries_and_statistics_SYN_02_stimulus_b_.csv",
+      "sha256": "c98106150dd7a9c382d3fcc06d15a2cadd5952d1c0a272c66419b05e770ddcc8",
+      "bytes": 261832
+    },
+    {
+      "path": "backend/tests/characterization/__snapshots__/test_analytics_http_contracts.ambr",
+      "sha256": "42b6a4089b4690ccd00bdc4ddc79cd0a0e15be5781255f5b3b5ccefca17193d5",
+      "bytes": 102547
+    },
+    {
+      "path": "backend/tests/characterization/__snapshots__/test_numeric_characterization.ambr",
+      "sha256": "e44f0eb9d158a59715c8e4dfd2dce808dae36e33b7cab377e7d79f3e2a7f96e9",
+      "bytes": 6122
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_spatial_and_duration_outputs_SYN_02_stimulus_a_.csv",
+      "sha256": "675ab32f4d55e84078c3140fafcfdee8352576de4758960236098f587a29b0d5",
+      "bytes": 10389
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/ParticipantCard.tsx",
+      "sha256": "f5a739ac8e67b4956c1e37f3f18e1ab47db3b46e73f7598defcaac8e1e058294",
+      "bytes": 20487
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_eeg_spectral_outputs_SYN_02_stimulus_a_.csv",
+      "sha256": "de5466040b8a5b112ca5b070c83d39b1b5c828a2be83b82f6a2f78c8425e9924",
+      "bytes": 62106
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_eeg_spectral_outputs_SYN_01_stimulus_a_.csv",
+      "sha256": "2489263d66e35599bc1c684b317aa35c8d2d899494a951d3c190b1d726c683fc",
+      "bytes": 62419
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/domain/scenario_identity.py",
+      "sha256": "f3be4e23d9817efe41ef600036a4a9f5f1e92a04a8752fc758e5db257380cd1d",
+      "bytes": 432
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/domain/stimulus_geometry.py",
+      "sha256": "e1e5e6dfc130f2f4d1106f8fe090db58e4ade17b4c4f55ed23dfbc3b43723d77",
+      "bytes": 3329
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/infrastructure/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/infrastructure/parquet_cache.py",
+      "sha256": "ddf17ec7edfb7ab89c7b9b1dc68c8068032f7647501cd3def56b25a8cfd8d1bb",
+      "bytes": 10566
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/infrastructure/redis_cache.py",
+      "sha256": "02b27c1e39aa025764e6d4dfa6cbf87df7f8628f6ec64c74e5e05933366e709c",
+      "bytes": 8004
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/infrastructure/singleflight.py",
+      "sha256": "8ed46285fcac73809a57cb9d02da3eb7f92869dbd27a00abb3f9e97fe2983a84",
+      "bytes": 5562
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/infrastructure/transform_token_store.py",
+      "sha256": "dd066e151b2808f64f4b46fe7e2252d15b458cd643e500507ed54fafab178a14",
+      "bytes": 2142
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization/test_eeg_spectral_outputs_SYN_01_stimulus_b_.csv",
+      "sha256": "387c97d29a08eaeabaa197f8e5d29143a69cb46cb36aa8828ad1408546b27c58",
+      "bytes": 62364
+    },
+    {
+      "path": "backend/tests/characterization/conftest.py",
+      "sha256": "259aca7b8fec8f4c17e8e6047ccfacc304e5b8d2177f79395208e3a005d4a9d1",
+      "bytes": 5449
+    },
+    {
+      "path": "backend/tests/characterization/test_backend_singleflight.py",
+      "sha256": "f8bc2485857e965b44654d80cf9080d5a484a125c8f2cfab943e2f845eb760f3",
+      "bytes": 21419
+    },
+    {
+      "path": "backend/tests/characterization/test_cached_frame_endpoints.py",
+      "sha256": "ad1e843d197a0d012096d602045cb5fb3171e3bc748fd9779d7e10d9bdb2d832",
+      "bytes": 4250
+    },
+    {
+      "path": "backend/tests/characterization/test_numeric_characterization.py",
+      "sha256": "12f2114f689085b39ef39218039eebaedf001386f51759eb70339ebd572b31c9",
+      "bytes": 9566
+    },
+    {
+      "path": "backend/tests/characterization/test_projected_frame_endpoints.py",
+      "sha256": "321f1b3c9caaabedc36fef2f324f2be35d7693eec514f60b5fd1447320e90894",
+      "bytes": 3151
+    },
+    {
+      "path": "backend/tests/characterization/test_sensor_reports.py",
+      "sha256": "01660be858e85673bfc4be01f8ea610373e646b8ea87da6732dc36b3b058451b",
+      "bytes": 9586
+    },
+    {
+      "path": "backend/tests/characterization/test_shared_fixation_report.py",
+      "sha256": "f7e9068ddb77945fdf7cb913556af24131175e9dbf2a33bc5a782cbef364bf67",
+      "bytes": 3033
+    },
+    {
+      "path": "backend/tests/characterization/test_transform_cache_short_circuit.py",
+      "sha256": "99856e5135ea14564babbaaf186f6b6e247e7fbfea312916f9b34a24e4cbcdf7",
+      "bytes": 4544
+    },
+    {
+      "path": "backend/tests/characterization/test_analytics_http_contracts.py",
+      "sha256": "4954365311db8938bcb2020dcacc64d9ccb5d728aff16d0c581a95abdc3559f2",
+      "bytes": 4962
+    },
+    {
+      "path": "backend/tests/unit/test_eeg_scientific_contract.py",
+      "sha256": "4bbe5a3353b04f0efe4240c1b61611e72dbf32320b46fb4896f428b84f122c03",
+      "bytes": 23704
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/comparisonLoader.ts",
+      "sha256": "b4afb6c123ea67132ace1304b123b71cd23fce689a683a2a4d65b0b6d3331e8c",
+      "bytes": 12219
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/cardHooks.ts",
+      "sha256": "cfc3dfabec9d60693557bc8f0a8943a5d668e218f96c4079ea8f8d05ef0f2aa2",
+      "bytes": 8242
+    },
+    {
+      "path": "frontend/features/analytics/comparison/registry.ts",
+      "sha256": "20d486c465542b0f8c785c3d75b8551682e152793432de227a21d38ef9943601",
+      "bytes": 5750
+    },
+    {
+      "path": "frontend/features/analytics/comparison/SpatialPanels.tsx",
+      "sha256": "581a8fe5918e45eeecc7101c1a01753b9a8ba8b015b86d4cd412435c3a7f61cb",
+      "bytes": 22093
+    },
+    {
+      "path": "frontend/features/analytics/comparison/stimulusGeometry.test.mjs",
+      "sha256": "0e13611e002668260377233159010bf6c14c856bf0a702bcb312457cd81e85b5",
+      "bytes": 3734
+    },
+    {
+      "path": "frontend/features/analytics/comparison/stimulusState.test.mjs",
+      "sha256": "e6ce1c16083f975879a20d89f26e19fb62cccfe96c72aa127d171bd99bae2829",
+      "bytes": 4609
+    },
+    {
+      "path": "frontend/features/analytics/comparison/useComparisonData.ts",
+      "sha256": "2ffd8a7a07b847e88eabea42d66eb343f1d0737df63368d8457ab5997c3bfcca",
+      "bytes": 12050
+    },
+    {
+      "path": "frontend/features/analytics/comparison/VisualizationSelector.tsx",
+      "sha256": "452456aa3b07bada829606501f797248cf0ffdd03dcbeb6317bb9e134794d887",
+      "bytes": 6971
+    },
+    {
+      "path": "frontend/features/analytics/components/AnalyticsChartShell.tsx",
+      "sha256": "f87a500e6a09ef4fc988e1e84885bc9530e1c42a8af600b83cc96291948ff6af",
+      "bytes": 3201
+    },
+    {
+      "path": "frontend/features/analytics/components/AnalyticsModeSelector.tsx",
+      "sha256": "f892d48ec667517a084099d2b1b5a48e28c7cedae92b50a846edd84620e0e059",
+      "bytes": 678
+    },
+    {
+      "path": "frontend/features/analytics/components/AnalyticsSidebar.tsx",
+      "sha256": "6fc405b43dfc853c8365d5bc0a046cd233ec2d697b07eda03863fdee4ba3eed7",
+      "bytes": 6887
+    },
+    {
+      "path": "frontend/features/analytics/components/AnalyticsTabs.tsx",
+      "sha256": "b23e4b9faa755258cd712faf72f3bb07d1525415ec2811072a45af6f653159ff",
+      "bytes": 1280
+    },
+    {
+      "path": "frontend/features/analytics/components/AoiComparisonTab.tsx",
+      "sha256": "3bb6682633294510b8411a5a7c157b9c7f61c71569ec0b804348e6f637862134",
+      "bytes": 15067
+    },
+    {
+      "path": "frontend/features/analytics/components/AoiOverlay.tsx",
+      "sha256": "ea6809289ebadac65a8e7a8bfe0e326de8da2ce302a6b810d3af0ae0ba8625f0",
+      "bytes": 6974
+    },
+    {
+      "path": "frontend/features/analytics/components/ChartDragZoom.tsx",
+      "sha256": "b290d434944fd7cac93671224334631e507a684ce70678afecc5a7c7f5ba47e6",
+      "bytes": 8766
+    },
+    {
+      "path": "frontend/features/analytics/components/DeviceDistanceTab.tsx",
+      "sha256": "601e97a301eba5654f274d98babd63f20a4c69cb1853d022b17e0ea45e62e176",
+      "bytes": 21575
+    },
+    {
+      "path": "frontend/features/analytics/components/EegTab.tsx",
+      "sha256": "457ba69776100c0ded73baf0074696ad1796d1332bd34118aa10c4f837c30135",
+      "bytes": 31532
+    },
+    {
+      "path": "frontend/features/analytics/comparison/CorrelationMatrixSection.tsx",
+      "sha256": "653e40d3e00bfe30b5e9e4bfcfeb77b0d62104246f08c5a39981706192e95c88",
+      "bytes": 15865
+    },
+    {
+      "path": "frontend/features/analytics/comparison/ComparisonTab.tsx",
+      "sha256": "37cd2de712214f987b760d6f850f462c37cd5006d5feac574e192004cc25dc02",
+      "bytes": 19671
+    },
+    {
+      "path": "frontend/features/analytics/comparison/ComparisonStatistics.tsx",
+      "sha256": "c6f60d1487486426b048d9896f9ada8e7d92297e74fdff4390393ff2add12afc",
+      "bytes": 25589
+    },
+    {
+      "path": "frontend/features/analytics/comparison/comparisonPreferences.ts",
+      "sha256": "52cbcecb779b211401354157c2d3729e6f433338678379bea5137fff901084e0",
+      "bytes": 3629
+    },
+    {
+      "path": "frontend/features/analytics/analyticsCache.ts",
+      "sha256": "1b82e81e3960db544f5db2c9b5947b8e7cef51f22aecfce91f464da737bc26a2",
+      "bytes": 14197
+    },
+    {
+      "path": "frontend/features/analytics/aoiInsights.ts",
+      "sha256": "16d03ca82858a8bfb8462cd2a45365d2b1c0393a2a002ee4b647397286953dbb",
+      "bytes": 17667
+    },
+    {
+      "path": "frontend/features/analytics/chartZoom.test.mjs",
+      "sha256": "161258476f60bdf477badd2ace89de504d0a9a5ea62d50d47a973c48d6dbeb73",
+      "bytes": 6405
+    },
+    {
+      "path": "frontend/features/analytics/chartZoom.ts",
+      "sha256": "08c9ffddd43d99e33338b486f8f303951c8d71f20b487f2abb1bbc238cad6bc4",
+      "bytes": 6259
+    },
+    {
+      "path": "frontend/features/analytics/eegPresentation.test.mjs",
+      "sha256": "8681b918d42753109df9c9fb5a0fe6bd2281049e8348189e0dc996c421aef780",
+      "bytes": 17439
+    },
+    {
+      "path": "frontend/features/analytics/eegPresentation.ts",
+      "sha256": "01e09bbabfae68d51b19d5cf21c1f764291c5eb926845b1e85ce9e515ff5b37a",
+      "bytes": 26995
+    },
+    {
+      "path": "frontend/features/analytics/projectSensors.ts",
+      "sha256": "d3ae6276e6226b46958e0dfa7126f6e4858605b5fa24ddf797e497eb4880acb6",
+      "bytes": 570
+    },
+    {
+      "path": "frontend/features/analytics/components/FiltersBar.tsx",
+      "sha256": "653678764c2aa03c66ae007b726de4a70a46b591513c17b493bb40d367c70909",
+      "bytes": 3456
+    },
+    {
+      "path": "frontend/features/analytics/scanpathScale.test.mjs",
+      "sha256": "dd8d3b12bd130191b0118d4e11a8597ee675f05ad6fa18a4316738d1645cc995",
+      "bytes": 3001
+    },
+    {
+      "path": "frontend/features/analytics/scanpathStyle.ts",
+      "sha256": "821732d2f835302a4e5303b185a644c021c5d8995b2704beba8a7e31edd24b4b",
+      "bytes": 4783
+    },
+    {
+      "path": "frontend/features/analytics/types.ts",
+      "sha256": "265fa6ba28b5f2e67c9305a7dcab3768fecf53bb21caf459b4000abea2faa271",
+      "bytes": 13216
+    },
+    {
+      "path": "frontend/features/analytics/api/analyticsApi.ts",
+      "sha256": "42df93077bad6e06a5387ffc329b488fe62fe555c0bfe0a431300d6fae484920",
+      "bytes": 17025
+    },
+    {
+      "path": "frontend/features/analytics/comparison/chartInteraction.test.mjs",
+      "sha256": "90be9f803463a36bcdafd384f34cb89534225ebc1d3e3e424fff5d20d15aa64f",
+      "bytes": 1795
+    },
+    {
+      "path": "frontend/features/analytics/comparison/chartInteraction.ts",
+      "sha256": "9426111dee960e8d24b7b656278220a7c7e3902ce74b1a11710f5e997b8e1381",
+      "bytes": 2321
+    },
+    {
+      "path": "frontend/features/analytics/comparison/ComparisonCharts.tsx",
+      "sha256": "439e6868864a9bbd8f7f8140917ee37ceb6813e7c40d285e71d44b63b052268c",
+      "bytes": 22840
+    },
+    {
+      "path": "frontend/features/analytics/comparison/comparisonPreferences.test.mjs",
+      "sha256": "f996cecb680cf54c55ccfc773e6058d4bdb7a4f2b0bfa4aee87693e0e6141aee",
+      "bytes": 5314
+    },
+    {
+      "path": "frontend/features/analytics/scanpathScale.ts",
+      "sha256": "fed3008c8cd9e1a07756b93ca283529c9a2b2fdd31082f2d018dde9549d4e147",
+      "bytes": 2967
+    },
+    {
+      "path": "frontend/features/analytics/components/FixationDurationControl.tsx",
+      "sha256": "d853a2def224a28d76e8504ed55eab5f335a87a1896d6db63beead1de74c56b6",
+      "bytes": 2192
+    },
+    {
+      "path": "frontend/features/analytics/components/FixationHistogramTab.tsx",
+      "sha256": "5ed4931dff75460db6d2da5b5f3ddccf0d29bf0b80f21c07e3e9b878c65093d8",
+      "bytes": 16829
+    },
+    {
+      "path": "frontend/features/analytics/components/GazePointTab.tsx",
+      "sha256": "54945401639c7a84f83e3ff2baa5b171fa264ad7e2748bb924945d1ec2c274b6",
+      "bytes": 28922
+    },
+    {
+      "path": "frontend/features/analytics/components/aoi/AoiTransitionsCard.tsx",
+      "sha256": "29ca5f2f6278d7a8d5784d2d4f7e74016779b02565b4f38d1276e83b83c8abb6",
+      "bytes": 10593
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/EegCanvasPanels.tsx",
+      "sha256": "164103f8acf58bd9281f0c8eb6ae30b3a74ea8666cd49e6c06a71a8c1f52d271",
+      "bytes": 21013
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/EegChannelSelector.tsx",
+      "sha256": "6ffe6d8aa2d857316b075e803c02560480ca66769ac5928b5b6e4973394a65b7",
+      "bytes": 1103
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/EegPsdView.tsx",
+      "sha256": "9eee46229ff07f6428b4e9dc5f8ce8830e9724e81937da362873a26a396c7d7f",
+      "bytes": 13843
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/EegQualityPanel.tsx",
+      "sha256": "7e313243f1775325b6e2c2ce3c4711fef40fa17faa5318712fcc92a4b14c0af3",
+      "bytes": 18520
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/EegSpectrogramView.tsx",
+      "sha256": "de3e28a144ae86088f9f2bc941b29efff9bbe0013997e49588c6e57670e0aa53",
+      "bytes": 18670
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/EegStatsTables.tsx",
+      "sha256": "c7b5421fc3bba9d6814068db939554ab768e5bda0a74abe28e2427330ba58de7",
+      "bytes": 8687
+    },
+    {
+      "path": "frontend/features/analytics/components/aoi/AoiSignalPeaksCard.tsx",
+      "sha256": "818aab5eb827d41d564acecd34b108312d8726c100f987c42e9aa61072a11bb7",
+      "bytes": 5979
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/EegTimeseriesView.tsx",
+      "sha256": "914197fc0d552982917ef2f3f8ce8207447c9fc0d962f55ecf2333c777305469",
+      "bytes": 24548
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/EegTopographyView.tsx",
+      "sha256": "866de7bb04422fb502a4ba40ee97c6f2002cc842d4a0900e1f9ce680ae433b23",
+      "bytes": 12501
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/eegViewShared.ts",
+      "sha256": "853f5df9b1989086798e2990aa7ce5ae41e3f96b6144e1902052d27857f3cfe0",
+      "bytes": 2920
+    },
+    {
+      "path": "frontend/features/analytics/hooks/useAnalyticsContext.ts",
+      "sha256": "0d567f83c2dbcdf98b7a82f8750703f04eb1b6e8046d9790ff5e1f7e799f6a45",
+      "bytes": 888
+    },
+    {
+      "path": "frontend/features/analytics/hooks/useAnalyticsData.ts",
+      "sha256": "5bb78db422baf618e3d52d2ca387506f20af67272ab7467790aa095b5c8a6f47",
+      "bytes": 16767
+    },
+    {
+      "path": "frontend/features/analytics/hooks/useSingleSignalData.ts",
+      "sha256": "d9c43c122333d4a1063f80f3b6bf9e99652dfe349e140162ec3ae672aba05e9b",
+      "bytes": 4433
+    },
+    {
+      "path": "frontend/features/analytics/hooks/useZoomHistory.ts",
+      "sha256": "06d44429339fce6eee516cb68e7e943a770a6301182abf5c59c3db3305c68637",
+      "bytes": 2444
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/cardData.ts",
+      "sha256": "e51ddf6efe06e97d6f7e91f75772887ab768668ee1c8b04d4d6c860207e28742",
+      "bytes": 11082
+    },
+    {
+      "path": "frontend/features/analytics/components/eeg/EegTooltips.tsx",
+      "sha256": "27cabfc36a02b8ff33be3f12b1823e9e125d873592da390591313629c0377ec5",
+      "bytes": 2550
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/CompareParticipantsButton.tsx",
+      "sha256": "6a362f2ed5fb8ddcc7fc53eb47c9c52c7aaf54fb3ae6c0f469756e8c7c992b2c",
+      "bytes": 1359
+    },
+    {
+      "path": "frontend/features/analytics/components/aoi/AoiSequenceCard.tsx",
+      "sha256": "2de0f69b13861eb5ce477fe517a23fea937949d119b17b62343536d48aa31021",
+      "bytes": 17145
+    },
+    {
+      "path": "frontend/features/analytics/components/aoi/AoiMetricsCard.tsx",
+      "sha256": "0968dbdee95e0a4bef947e614f353f9b93de73587556f9c02fc0bb9b047b1e35",
+      "bytes": 10928
+    },
+    {
+      "path": "frontend/features/analytics/components/GsrTab.tsx",
+      "sha256": "e2b96d9c56cae3bdb11b6ed4121db4fd39cad1b6d9ed6035b1b0e1645e7db1ba",
+      "bytes": 13269
+    },
+    {
+      "path": "frontend/features/analytics/components/HeatmapTab.tsx",
+      "sha256": "7b15b8e2c47d7225f72010f84290eb1e916cb1bf03162930ef004359dbd7eb7b",
+      "bytes": 11548
+    },
+    {
+      "path": "frontend/features/analytics/components/InfoChip.tsx",
+      "sha256": "6cbb453255a2609c4ed21db162151be66477bd71f28b38b488c6ee31f28ce2c3",
+      "bytes": 2991
+    },
+    {
+      "path": "frontend/features/analytics/components/KpiCard.tsx",
+      "sha256": "254760ae2a979ac556fa719ee9bbfa3a609b375d16360c6b1b1c7fc1078f0b0f",
+      "bytes": 6308
+    },
+    {
+      "path": "frontend/features/analytics/components/MissingStimulusImage.tsx",
+      "sha256": "9c8b26df903ef8060603864c0a2e0ad38ae62edc89e5a8bd6b4564b60c35f197",
+      "bytes": 2309
+    },
+    {
+      "path": "frontend/features/analytics/components/PlaceholderTab.tsx",
+      "sha256": "f50b088ec1eb2fc1c65ff9743dfb55ba281657b4be25c59abed4a21041c004ad",
+      "bytes": 454
+    },
+    {
+      "path": "frontend/features/analytics/components/PupilDilationTab.tsx",
+      "sha256": "5d5ba54c12b1c146e01a70a9ae986dd97b0f8e8ca6bc11940653814f9015186d",
+      "bytes": 36863
+    },
+    {
+      "path": "frontend/features/analytics/components/aoi/AoiName.tsx",
+      "sha256": "874d4cccf4017e659660b9e23780943b3e9f585639cd8708a23b42538399e814",
+      "bytes": 1283
+    },
+    {
+      "path": "frontend/features/analytics/components/ScanpathDurationLegend.tsx",
+      "sha256": "9913e4084b429867bbb2c890fa698b00315eace4b47019cec03dfe28eeaeede9",
+      "bytes": 1734
+    },
+    {
+      "path": "frontend/features/analytics/components/SingleSignalTab.tsx",
+      "sha256": "470859768871f777e0fa5358bf6afbf3b3d0c5cb003520e5fb780b9172e29d07",
+      "bytes": 3444
+    },
+    {
+      "path": "frontend/features/analytics/components/StatisticsTable.tsx",
+      "sha256": "fea85d9e381695c5a1f589dfbb66251a0ed7343e179cba0fa7429b1e373b7b1c",
+      "bytes": 9956
+    },
+    {
+      "path": "frontend/features/analytics/components/StimulusFixationCard.tsx",
+      "sha256": "f4569ab3bdece16299a2a7f6b809a5c3057d584578f0ae1ef6eb3f4e4579a170",
+      "bytes": 25303
+    },
+    {
+      "path": "frontend/features/analytics/components/stimulusGeometry.ts",
+      "sha256": "56aae06554261cb13c6036806052f38e6cd999adb65201c744d2af5bff6b6e22",
+      "bytes": 2548
+    },
+    {
+      "path": "frontend/features/analytics/components/stimulusState.ts",
+      "sha256": "86d6686912d3347ec43756ffca7f6474cd0b073f10dd6e9a40d06cc6595f7a08",
+      "bytes": 4346
+    },
+    {
+      "path": "frontend/features/analytics/components/TimeWindowControls.tsx",
+      "sha256": "d4482838b4e66d63a007cd8eabecbf70376708d25ef548416e2589fc2228b153",
+      "bytes": 6285
+    },
+    {
+      "path": "frontend/features/analytics/components/aoi/AoiFindingsCard.tsx",
+      "sha256": "1100383f544079024113703c78a3fedec2aa453447e9bca36a65594d525345ff",
+      "bytes": 7180
+    },
+    {
+      "path": "frontend/features/analytics/components/ScanpathTab.tsx",
+      "sha256": "7d8368f61af8c256b8f62c58c8d21aed7470cfd362722a7a566e16bb1c0c2ceb",
+      "bytes": 16850
+    },
+    {
+      "path": "docs/perf/ejecucion/ESTADO.md",
+      "sha256": "857383fe91fb0c6e36482ca85a4b5c61d8dedb0382c00e998e23f6556b566cc6",
+      "bytes": 11379
+    }
+  ]
+}

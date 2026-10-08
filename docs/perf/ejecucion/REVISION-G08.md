@@ -1,0 +1,9 @@
+# Revisión temprana G08 del coordinador
+
+Referencia concreta leída en fuentes recibidas: ScenarioTimingService.compute.onset_s toma mínimo de tiempos finitos y redondea6; gsr_origin_s es otro campo, no el onset. PupilAnalyticsService.compute_scenario_relative_time (preview) toma min después de dropna, si min no finito devuelveNone (con -Inf y muestras finitas cae a absoluto), resta sin redondear onset y redondea relativo4 antes del frame0,1s. No compartir onset automáticamente ni sustituir por gsr_origin_s. Caracterizar estos bordes y precisión antes de cambiar helpers; mantener la semántica preview recibida. No ampliar ciencia de timing ni G09.
+
+Para preservar tokens/contexto, limita salidas de comandos/lecturas a scope útil; inventarios/logs grandes a archivos, no volcar completos. Esta revisión y ORQUESTACION/ASIGNACION son root, excluir de huellas ajenas y del manifiesto propio vivo.
+
+Revisión de implementación inicial (16:26 Bogota): `_onsets`/`_durations` sí están acotados, pero `_project_generations: dict` nuevo crece por cada proyecto sin capacidad/TTL; acotar también ese registro (o eliminarlo usando claves generacionales y límites existentes), declarar suma real y probar exceso de proyectos. El stats actual omite ese almacenamiento.
+
+Revisar lifetime de coordinación existente por video con un caso real de handoff/cancelación: `_cleanup_video_preview_lock` elimina cuando `not lock.locked()`, pero `release` puede despertar waiter reservando turno mientras locked sigueFalse antes de que éste reanude. Si llega otro solicitante con lock nuevo, se pueden extraer simultáneamente para misma identidad. El bloque depende de esa coordinación para duration/FFmpeg; preservar una única exclusión por video durante cola/settlement, no añadir concurrencia. Resolver mínimamente si el test confirma, sin pool general. No ampliar G09 ni otra ciencia.

@@ -80,6 +80,7 @@ if ($remote) { throw "web build still references a remote font or script: $($rem
     --exclude-module google.auth --exclude-module google.oauth2 --exclude-module google.api_core `
     --exclude-module google.protobuf --exclude-module oauth2client `
     --exclude-module tkinter --exclude-module IPython --exclude-module pytest `
+    --exclude-module alembic.testing --exclude-module sqlalchemy.testing `
     "$student\src\student_entry.py"
 if ($LASTEXITCODE) { throw "PyInstaller failed (exit $LASTEXITCODE)" }
 "built $Work\dist\neurodatics-estudiantes"

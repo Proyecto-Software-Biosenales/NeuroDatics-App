@@ -1,0 +1,6 @@
+2026-10-03T05:03:04.143151Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-03T05:03:04.143187Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-03T05:03:04.151405Z  WARN codex_core::shell_snapshot: Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell
+2026-10-03T05:03:04.281995Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-03T05:03:04.282040Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-03T05:05:56.569776Z  WARN codex_core::responses_retry: stream disconnected - retrying sampling request (1/5 in 212ms)... turn_id=01a10024-f480-7820-9f82-b863436c1b49 retries=1 max_retries=5 sampling_error=stream disconnected before completion: failed to send websocket request: Connection closed normally

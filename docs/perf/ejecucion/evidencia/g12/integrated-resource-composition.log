@@ -1,0 +1,104 @@
+2026-10-03 18:28:49,095 - neurodatics.config.logging - INFO - Logging configured successfully
+2026-10-03 18:28:49,224 - neurodatics.modules.projects.application.services.csv_processing_service - INFO - Starting CSV processing: csv_path=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g12\backend\g12-integrated-82slt7yz\synthetic-experiment\experiment.csv, output_dir=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g12\backend\g12-integrated-82slt7yz\synthetic-experiment\parquet, users=2, encoding=utf-8
+2026-10-03 18:28:49,697 - asyncio - DEBUG - Using proactor: IocpProactor
+{
+  "output": "C:\\AAMisArchivos\\AAprogramming\\AAAWebDeb\\Biose\u00f1ales\\NeuroDatics-App\\docs\\perf\\ejecucion\\evidencia\\g12\\integrated-resource-composition.json",
+  "maxima": {
+    "response_entries": 6,
+    "response_running": 4,
+    "response_consumers": 6,
+    "parquet_entries": 6,
+    "parquet_running": 4,
+    "parquet_consumers": 6,
+    "report_running": 2,
+    "report_waiting": 4,
+    "rss_bytes": 318230528
+  },
+  "physical": {
+    "drive": {
+      "active": 0,
+      "maximum": 4,
+      "calls": 12
+    },
+    "parquet_decodes": {
+      "active": 0,
+      "maximum": 6,
+      "calls": 13
+    },
+    "response_computes": {
+      "active": 0,
+      "maximum": 4,
+      "calls": 5
+    }
+  },
+  "outcomes": {
+    "queries": [
+      "ok",
+      "CancelledError",
+      "ok",
+      "ok",
+      "ok",
+      "ok"
+    ],
+    "reports": [
+      {
+        "outcome": "CancelledError"
+      },
+      {
+        "outcome": "ok",
+        "frame_order": [
+          "R01",
+          "R02",
+          "R03",
+          "R04"
+        ],
+        "warnings": []
+      },
+      {
+        "outcome": "ok",
+        "frame_order": [
+          "R01",
+          "R02",
+          "R03",
+          "R04"
+        ],
+        "warnings": []
+      }
+    ]
+  },
+  "settled": {
+    "response_flights": {
+      "entries": 0,
+      "running": 0,
+      "consumers": 0
+    },
+    "parquet_flights": {
+      "entries": 0,
+      "running": 0,
+      "consumers": 0
+    },
+    "report_io_budget": {
+      "running": 0,
+      "waiting": 0
+    },
+    "drive": {
+      "active": 0,
+      "maximum": 4,
+      "calls": 12
+    },
+    "decode": {
+      "active": 0,
+      "maximum": 6,
+      "calls": 13
+    },
+    "compute": {
+      "active": 0,
+      "maximum": 4,
+      "calls": 5
+    },
+    "rss": {
+      "rss_bytes": 318230528,
+      "process_lifetime_peak_bytes": 318230528
+    }
+  }
+}

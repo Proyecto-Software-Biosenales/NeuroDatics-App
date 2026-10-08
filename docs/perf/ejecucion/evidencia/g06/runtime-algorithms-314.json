@@ -1,0 +1,36 @@
+{
+  "scope": "synthetic component timings only; not end-to-end API latency",
+  "python": "3.14.3",
+  "numpy": "2.4.4",
+  "repeats": 5,
+  "edge_case_equivalence": true,
+  "rectangle_mask": {
+    "rows": 300000,
+    "current_median_ms": 102.03,
+    "candidate_median_ms": 0.6758,
+    "exact_equal": true
+  },
+  "cadence": [
+    {
+      "rows": 100000,
+      "segments": 1,
+      "current_median_ms": 1.1626,
+      "candidate_median_ms": 54.9137,
+      "exact_equal": true
+    },
+    {
+      "rows": 100000,
+      "segments": 20,
+      "current_median_ms": 51.8206,
+      "candidate_median_ms": 54.3405,
+      "exact_equal": true
+    },
+    {
+      "rows": 100000,
+      "segments": 100,
+      "current_median_ms": 51.9684,
+      "candidate_median_ms": 54.8646,
+      "exact_equal": true
+    }
+  ]
+}

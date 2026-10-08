@@ -1,0 +1,2 @@
+git apply --reverse --check --ignore-space-change own.patch
+exit_code=0

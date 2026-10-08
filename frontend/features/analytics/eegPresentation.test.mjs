@@ -4,7 +4,8 @@ import {
   buildStats, finiteValues, formatChannel, formatNumber, hexToRgb,
   interpolateColor, interpolateTopographyValue, mean, median, fullResolutionStats, nearestTimeIndex,
   readClickedTime, rotateTopographyPositionClockwise, scaleSpectrogramValue,
-  std, VIRIDIS_GRADIENT,
+  std, VIRIDIS_GRADIENT, medianHop, packRgba, topographyValueAt, viridisPixel, VIRIDIS_LUT,
+  spectrogramColumns, spectrogramGaps,
   channelQualityRows, clusterArtifactSpans, describeArtifactCluster, describeArtifactSpan,
   envelopeWarning, formatSpanRange, montageLanes, qualityCardWarnings, reingestionNotice,
   robustDomain, visibleArtifactSpans,
@@ -44,6 +45,95 @@ test("spectrogram hit testing keeps the real clock and rejects gaps", () => {
   assert.equal(nearestTimeIndex(times,21.1,1),3)
   assert.equal(nearestTimeIndex(times,10,1),-1)
   assert.equal(nearestTimeIndex([],0,1),-1)
+  // A caller without a hop still gets the axis spacing, and the cached
+  // derivation must not change the answer on a second pass.
+  assert.equal(medianHop(times), 1)
+  assert.equal(medianHop(times), 1)
+  assert.equal(medianHop([5]), 0)
+  assert.equal(nearestTimeIndex(times, 10), -1)
+  assert.equal(nearestTimeIndex(times, 21.1), 3)
+})
+
+test("the drawing pixel matches the colour ramp it replaced", () => {
+  const domain = { min: 0, max: 4 }
+  const expected = (value, d) => {
+    const { r, g, b } = interpolateColor(scaleSpectrogramValue(value, d))
+    return packRgba(r, g, b)
+  }
+  // Both ends and a flat domain keep the exact colours; in between the pixel
+  // is the ramp quantised to 256 levels, so allow one level of drift.
+  assert.equal(viridisPixel(-1, domain), expected(-1, domain))
+  assert.equal(viridisPixel(5, domain), expected(5, domain))
+  assert.equal(viridisPixel(NaN, domain), expected(NaN, domain))
+  assert.equal(viridisPixel(2, { min: 3, max: 3 }), VIRIDIS_LUT[128])
+  const channel = (pixel, shift) => (pixel >>> shift) & 255
+  for (const value of [0.25, 1, 1.9, 2.7, 3.5]) {
+    const pixel = viridisPixel(value, domain)
+    const reference = expected(value, domain)
+    for (const shift of [0, 8, 16, 24]) {
+      assert.ok(Math.abs(channel(pixel, shift) - channel(reference, shift)) <= 2,
+        `value ${value} channel ${shift}`)
+    }
+  }
+})
+
+test("spectrogram columns keep gaps out of the interpolation", () => {
+  // Windows every second, then a jump: 3 s and 4 s were never observed.
+  const times = [0, 1, 2, 5, 6]
+  const flat = spectrogramColumns(times, 7, 1)
+  // 7 columns across 0..6 s land exactly on the whole seconds.
+  assert.deepEqual([...flat.left], [0, 1, 2, -1, -1, 3, 4])
+  assert.deepEqual([...flat.right], [...flat.left])
+  assert.deepEqual([...flat.weight], [0, 0, 0, 0, 0, 0, 0])
+
+  // 13 columns put a sample every half second. The gap keeps the extent it has
+  // without interpolation: half a window either side of it is observed, and
+  // 3.0 s, 3.5 s and 4.0 s are not.
+  const smooth = spectrogramColumns(times, 13, 1, true)
+  assert.deepEqual([...smooth.left].map((index) => index < 0), [
+    false, false, false, false, false, false, true, true, true, false, false, false, false,
+  ])
+  // Halfway between two adjacent windows mixes them evenly.
+  assert.deepEqual([...smooth.left].slice(0, 5), [0, 0, 1, 1, 2])
+  assert.deepEqual([...smooth.right].slice(0, 5), [1, 1, 2, 2, 2])
+  assert.equal(smooth.weight[1], 0.5)
+  assert.equal(smooth.weight[2], 0)
+  // The edges of a gap read one window only; the two are never mixed.
+  assert.deepEqual([smooth.left[5], smooth.right[5], smooth.weight[5]], [2, 2, 0])
+  assert.deepEqual([smooth.left[9], smooth.right[9], smooth.weight[9]], [3, 3, 0])
+  assert.deepEqual([...spectrogramColumns([], 4, 1, true).left], [-1, -1, -1, -1])
+})
+
+test("the spectrogram gap summary separates skipped windows from absent ones", () => {
+  const times = [0, 1, 2, 5, 6]
+  // C4 lost the window at 2 s; F3 lost none. Whole columns, as the backend sends.
+  const power = {
+    c4: [[1, 2, null, 3, 4], [1, 2, null, 3, 4]],
+    f3: [[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]],
+  }
+  const gaps = spectrogramGaps(times, power, ["c4", "f3"], 1)
+  assert.equal(gaps.columns, 5)
+  // The axis spans 0..6 s at a 1 s hop, so it has room for 7 windows.
+  assert.equal(gaps.missingWindows, 2)
+  assert.equal(gaps.nullColumnsAny, 1)
+  assert.deepEqual(gaps.nullColumns, [{ channel: "c4", count: 1 }])
+  assert.equal(gaps.seconds, 3)
+  assert.equal(gaps.hopS, 1)
+  // A channel that is not shown cannot add a band.
+  assert.equal(spectrogramGaps(times, power, ["f3"], 1).nullColumnsAny, 0)
+  assert.equal(spectrogramGaps([], power, ["c4"], 1).columns, 0)
+})
+
+test("the head map's value-only interpolation matches the one with the nearest electrode", () => {
+  const rows = [
+    { channel: "f3", value: 2, x: -0.5, y: 0.5 },
+    { channel: "f4", value: 6, x: 0.5, y: 0.5 },
+    { channel: "c3", value: NaN, x: -0.5, y: 0 },
+  ]
+  for (const [x, y] of [[0, 0], [-0.5, 0.5], [0.4, -0.3], [0.9, 0]]) {
+    assert.equal(topographyValueAt(x, y, rows), interpolateTopographyValue(x, y, rows).value)
+  }
+  assert.equal(topographyValueAt(0, 0, []), 0)
 })
 
 test("EEG labels and color mapping preserve boundaries and missing values", () => {

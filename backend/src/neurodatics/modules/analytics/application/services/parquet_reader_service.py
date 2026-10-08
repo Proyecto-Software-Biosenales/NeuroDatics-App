@@ -1,9 +1,9 @@
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-import anyio
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,9 @@ from ....integrations.storage_provider import build_isolated_drive_client
 from ....participants.domain.entities import Participant
 from ....projects.domain.entities import Project, ProjectFile
 from neurodatics.shared.cache_generation import normalize_generation
-from ...infrastructure.parquet_cache import ParquetCacheService
+from ...domain.parquet_projection import ParquetProjection
+from ...infrastructure.parquet_cache import ParquetCacheService, read_parquet_frame
+from ...infrastructure.singleflight import parquet_flights, settled_thread
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +63,25 @@ class ParquetResolution:
     @property
     def is_legacy(self) -> bool:
         return self.strategy == RESOLUTION_LEGACY_POSITIONAL
+
+
+@dataclass(frozen=True)
+class PreparedParquetRead:
+    """Scalar-only input safe to consume after request DB work has finished."""
+
+    project_id: UUID
+    participant_code: str
+    generation: int
+    cached_path: Optional[Path] = None
+    file_id: str = ""
+    external_id: str = ""
+
+
+@dataclass(frozen=True)
+class PreparedParquetBatch:
+    reads: Dict[str, PreparedParquetRead]
+    errors: Dict[str, ParquetIdentityError]
+    storage_client: Any
 
 
 @dataclass(frozen=True)
@@ -137,12 +158,16 @@ class ParquetReaderService:
         project_id: UUID,
         participant_code: str,
         generation: object = None,
+        *, projection: Optional[ParquetProjection] = None,
     ) -> pd.DataFrame:
-        """Load participant Parquet from cache or Drive."""
+        """Load a full frame or projection; download still transfers the full file."""
         if generation is None:
             generation = await self.resolve_cache_generation(project_id)
-        cached = await anyio.to_thread.run_sync(
-            lambda: self._cache.read_dataframe(project_id, participant_code, generation)
+        cached = await settled_thread(
+            lambda: self._cache.read_dataframe(
+                project_id, participant_code, generation,
+                **({"projection": projection} if projection is not None else {}),
+            )
         )
         if cached is not None:
             return cached
@@ -151,33 +176,134 @@ class ParquetReaderService:
         parquet_file = resolution.project_file
 
         client = await self._build_drive_client()
-        if client is None:
+        prepared = PreparedParquetRead(
+            project_id=project_id,
+            participant_code=participant_code,
+            generation=normalize_generation(generation),
+            file_id=str(getattr(parquet_file, "id", parquet_file.external_id)),
+            external_id=str(parquet_file.external_id),
+        )
+        return await self.read_prepared(prepared, client, projection=projection)
+
+    async def read_prepared(
+        self,
+        prepared: PreparedParquetRead,
+        storage_client: Any,
+        *,
+        projection: Optional[ParquetProjection] = None,
+    ) -> pd.DataFrame:
+        """Read a pre-authorized scalar descriptor without DB/ORM access."""
+
+        if prepared.cached_path is not None:
+            try:
+                return await settled_thread(
+                    lambda: read_parquet_frame(prepared.cached_path, projection)
+                )
+            except OSError:
+                # A cache janitor can unlink between prepare/get and decode. The
+                # descriptor already carries the exact file identity/generation,
+                # so recovery remains DB-free and cannot switch ingestions.
+                logger.info(
+                    "Prepared Parquet cache path disappeared for project=%s participant=%s generation=%s; retrying exact storage identity",
+                    prepared.project_id,
+                    prepared.participant_code,
+                    prepared.generation,
+                )
+        if storage_client is None:
             raise RuntimeError(f"{STORAGE_NAME} integration not configured")
 
-        try:
-            content = await anyio.to_thread.run_sync(
-                lambda: client.download_file_content(parquet_file.external_id)
-            )
-        except Exception as exc:
-            if _is_invalid_google_grant_error(exc):
-                logger.warning("Google Drive OAuth token expired or revoked while reading parquet")
-                raise RuntimeError(GOOGLE_DRIVE_RECONNECT_MESSAGE) from exc
-            raise RuntimeError(f"No se pudo descargar el parquet desde {STORAGE_NAME}") from exc
+        cache = self._cache
+        key = (
+            str(prepared.project_id),
+            prepared.participant_code,
+            prepared.file_id,
+            prepared.external_id,
+            prepared.generation,
+        )
 
-        path = self._cache.put(project_id, participant_code, content, generation)
-        return await anyio.to_thread.run_sync(lambda: pd.read_parquet(path))
+        async def obtain():
+            # Another endpoint/projection may have published the complete file.
+            path = cache.get(
+                prepared.project_id,
+                prepared.participant_code,
+                prepared.generation,
+            )
+            if path is not None:
+                return path
+            try:
+                content = await settled_thread(
+                    lambda: storage_client.download_file_content(prepared.external_id)
+                )
+            except Exception as exc:
+                if _is_invalid_google_grant_error(exc):
+                    logger.warning("Google Drive OAuth token expired or revoked while reading parquet")
+                    raise RuntimeError(GOOGLE_DRIVE_RECONNECT_MESSAGE) from exc
+                raise RuntimeError(f"No se pudo descargar el parquet desde {STORAGE_NAME}") from exc
+            # Publish atomically as before; never decode partial temp bytes.
+            return await settled_thread(
+                lambda: cache.put(
+                    prepared.project_id,
+                    prepared.participant_code,
+                    content,
+                    prepared.generation,
+                )
+            )
+
+        path = await parquet_flights.run(key, obtain)
+        # Only the immutable file location is shared, never a mutable frame.
+        return await settled_thread(lambda: read_parquet_frame(path, projection))
+
+    async def prepare_batch(
+        self,
+        project_id: UUID,
+        participant_codes: List[str],
+        generation: object,
+    ) -> PreparedParquetBatch:
+        """Resolve cache/identity/OAuth once before concurrent report reads."""
+
+        if generation is None:
+            generation = await self.resolve_cache_generation(project_id)
+        resolved_generation = normalize_generation(generation)
+        ordered_codes = list(dict.fromkeys(str(code) for code in participant_codes))
+        cached_paths = await settled_thread(
+            lambda: {
+                code: self._cache.get(project_id, code, resolved_generation)
+                for code in ordered_codes
+            }
+        )
+        # Resolve every identity before workers, even for a warm path. Besides
+        # pinning exact/legacy semantics, these scalars allow DB-free recovery if
+        # the media janitor removes a path between prepare and decode.
+        resolutions, errors = await self.resolve_user_parquets(project_id, ordered_codes)
+        reads = {}
+        for code, resolution in resolutions.items():
+            project_file = resolution.project_file
+            reads[code] = PreparedParquetRead(
+                project_id=project_id,
+                participant_code=code,
+                generation=resolved_generation,
+                cached_path=cached_paths.get(code),
+                file_id=str(getattr(project_file, "id", project_file.external_id)),
+                external_id=str(project_file.external_id),
+            )
+        client = await self._build_drive_client() if resolutions else None
+        return PreparedParquetBatch(reads=reads, errors=errors, storage_client=client)
 
     async def read_from_cache_only(
         self,
         project_id: UUID,
         participant_code: str,
         generation: object = None,
+        *, projection: Optional[ParquetProjection] = None,
     ) -> Optional[pd.DataFrame]:
         """Read only from disk cache - no Drive download. Returns None if not cached."""
         if generation is None:
             generation = await self.resolve_cache_generation(project_id)
-        return await anyio.to_thread.run_sync(
-            lambda: self._cache.read_dataframe(project_id, participant_code, generation)
+        return await settled_thread(
+            lambda: self._cache.read_dataframe(
+                project_id, participant_code, generation,
+                **({"projection": projection} if projection is not None else {}),
+            )
         )
 
     async def resolve_user_parquet(
@@ -194,21 +320,65 @@ class ParquetReaderService:
         that mapping is unambiguous.
         """
 
-        requested = _normalize_participant_code(participant_code)
-        if not requested:
-            raise ParquetIdentityError("participant_code is required to select a Parquet file")
+        resolved, errors = await self.resolve_user_parquets(project_id, [participant_code])
+        if participant_code in errors:
+            raise errors[participant_code]
+        return resolved[participant_code]
+
+    async def resolve_user_parquets(
+        self,
+        project_id: UUID,
+        participant_codes: List[str],
+    ) -> Tuple[Dict[str, ParquetResolution], Dict[str, ParquetIdentityError]]:
+        """Resolve a participant batch with one candidate query (plus legacy rows)."""
+
+        requested_items = list(
+            dict.fromkeys(
+                (str(code), _normalize_participant_code(code))
+                for code in participant_codes
+            )
+        )
+        resolved: Dict[str, ParquetResolution] = {}
+        errors: Dict[str, ParquetIdentityError] = {}
+        valid_items = []
+        for original, requested in requested_items:
+            if requested:
+                valid_items.append((original, requested))
+            else:
+                errors[original] = ParquetIdentityError(
+                    "participant_code is required to select a Parquet file"
+                )
+        if not valid_items:
+            return resolved, errors
 
         candidates = await self._load_user_parquet_candidates(project_id)
         if not candidates:
-            raise ParticipantParquetNotFoundError(
-                f"No processed Parquet file for participant='{requested}'"
-            )
+            for original, requested in valid_items:
+                errors[original] = ParticipantParquetNotFoundError(
+                    f"No processed Parquet file for participant='{requested}'"
+                )
+            return resolved, errors
 
         identified = [candidate for candidate in candidates if candidate.participant_code]
-        if identified:
-            return self._resolve_by_identity(requested, identified, candidates)
+        participants = None
+        if not identified:
+            participants = await self._load_participants(project_id)
 
-        return await self._resolve_by_legacy_position(project_id, requested, candidates)
+        for original, requested in valid_items:
+            try:
+                if identified:
+                    resolution = self._resolve_by_identity(requested, identified, candidates)
+                else:
+                    resolution = self._resolve_by_legacy_position(
+                        project_id,
+                        requested,
+                        candidates,
+                        participants or [],
+                    )
+                resolved[original] = resolution
+            except ParquetIdentityError as exc:
+                errors[original] = exc
+        return resolved, errors
 
     def _resolve_by_identity(
         self,
@@ -252,11 +422,12 @@ class ParquetReaderService:
             f"Known participants: {known}"
         )
 
-    async def _resolve_by_legacy_position(
+    def _resolve_by_legacy_position(
         self,
         project_id: UUID,
         requested: str,
         candidates: List[_UserParquetCandidate],
+        participants: List[Participant],
     ) -> ParquetResolution:
         """Historical mapping for Parquets stored before identity was recorded.
 
@@ -265,7 +436,6 @@ class ParquetReaderService:
         uniquely determined rather than returning a plausible wrong file.
         """
 
-        participants = await self._load_participants(project_id)
         codes = [
             _normalize_participant_code(participant.participant_code)
             for participant in participants

@@ -1,0 +1,43 @@
+{
+  "runtime_normal": {
+    "affected_unique_tests": 125,
+    "failed": 0
+  },
+  "runtime_supported": {
+    "python": "3.12.13",
+    "pyarrow": "16.1.0",
+    "affected_unique_tests": 125,
+    "failed": 0
+  },
+  "static": {
+    "ruff_exit": 0,
+    "import_contracts_kept": 3,
+    "import_contracts_broken": 0
+  },
+  "benchmark": {
+    "warmup": 1,
+    "n": 5,
+    "times_per_navigation": 4,
+    "real_ffmpeg": true,
+    "real_ffprobe": true,
+    "parquet_fixture": "deterministic in-memory DataFrame",
+    "before": {
+      "onset_wall_median_ms": 2.661,
+      "video_wall_median_ms": 555.58,
+      "parquet_reads_n5": 20,
+      "ffprobe_n5": 20,
+      "ffmpeg_n5": 20,
+      "downloads_n5": 0
+    },
+    "after": {
+      "onset_wall_median_ms": 0.749,
+      "video_wall_median_ms": 374.81,
+      "parquet_reads_n5": 5,
+      "ffprobe_n5": 5,
+      "ffmpeg_n5": 20,
+      "downloads_n5": 0
+    }
+  },
+  "reverse_patch_check_exit": 0,
+  "global_gate": "deferred to G12"
+}

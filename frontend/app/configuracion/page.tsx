@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { CheckCircle2, ExternalLink, Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,6 +13,7 @@ import { AuthGuard } from "@/features/auth/components/AuthGuard"
 import { apiFetch } from "@/lib/api/apiFetch"
 import { IS_LOCAL_MODE } from "@/lib/appMode"
 import { useAuth } from "@/lib/providers/AuthProvider"
+import { PreExperimentSettings } from "@/features/projects/pre-experiment/PreExperimentSettings"
 
 type DriveConnection = {
   connected: boolean
@@ -57,6 +57,7 @@ function DriveConfiguration() {
   }, [])
 
   useEffect(() => {
+    if (IS_LOCAL_MODE) { setChecking(false); return }
     void refreshConnection()
     const onFocus = () => { if (returningFromGoogle.current) void refreshConnection() }
     window.addEventListener("focus", onFocus)
@@ -100,13 +101,14 @@ function DriveConfiguration() {
           <div>
             <h1 className="app-page-title">Configuración</h1>
             <p className="app-page-description">
-              Conecta el almacenamiento de tus experimentos antes de subir el primer proyecto.
+              Organiza la información y los cuestionarios de tus proyectos.
             </p>
           </div>
         </div>
 
         <div className="space-y-5">
-          <Card>
+          <PreExperimentSettings />
+          {!IS_LOCAL_MODE && <><Card>
             <CardHeader>
               <CardTitle>Sesión de NeuroDatics</CardTitle>
               <CardDescription className="break-words">
@@ -181,6 +183,7 @@ function DriveConfiguration() {
             </p>
             <Button asChild variant="outline"><Link href="/proyectos">Ir a proyectos</Link></Button>
           </div>
+          </>}
         </div>
       </div>
 
@@ -204,14 +207,6 @@ function DriveConfiguration() {
   )
 }
 
-// The student edition has no Google Drive to connect; anyone who lands here goes to their projects.
-function LeaveForProjects() {
-  const router = useRouter()
-  useEffect(() => { router.replace("/proyectos") }, [router])
-  return null
-}
-
 export default function ConfiguracionPage() {
-  if (IS_LOCAL_MODE) return <LeaveForProjects />
   return <AuthGuard><DriveConfiguration /></AuthGuard>
 }

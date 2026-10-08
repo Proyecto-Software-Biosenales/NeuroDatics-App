@@ -1,0 +1,41 @@
+✔ EEG statistics preserve finite samples and sample standard deviation (0.8658ms)
+✔ EEG summaries use RMS without an invented experimental baseline (0.2119ms)
+✔ spectrogram hit testing keeps the real clock and rejects gaps (0.1184ms)
+✔ the drawing pixel matches the colour ramp it replaced (0.2065ms)
+✔ spectrogram columns keep gaps out of the interpolation (0.2248ms)
+✔ the spectrogram gap summary separates skipped windows from absent ones (0.1446ms)
+✔ the head map's value-only interpolation matches the one with the nearest electrode (0.1523ms)
+✔ EEG labels and color mapping preserve boundaries and missing values (0.1137ms)
+✔ topography interpolation preserves electrode values and clockwise orientation (0.0992ms)
+✔ EEG click extraction preserves payload priority and numeric labels (0.1314ms)
+✔ a robust y range cannot be stretched by one sample, and says what it hides (3.8076ms)
+✔ artifact spans are filtered to the visible channels and read back in time order (0.2814ms)
+✔ artifact spans of one channel that touch read back as one event (0.3153ms)
+✔ the quality card drops warnings another element already states (0.1744ms)
+✔ channel quality rows expose the export resolution the UI never showed (0.1874ms)
+✔ the re-ingestion notice fires on rescaled, assumed or excluded units only (0.0561ms)
+✔ montage lanes are evenly spaced at one shared uV per pixel (0.132ms)
+✔ usePupilTimeseries aborts the browser request on selection change and unmount (536.8235ms)
+✔ useGsrStatistics aborts the browser request on selection change and unmount (464.5828ms)
+✔ useEegTimeseries aborts the browser request on selection change and unmount (465.3406ms)
+✔ gaze scrubbing and clear cancel the real pending fetch (480.9026ms)
+✔ cancelling one heatmap fetch leaves an identical sibling fetch usable (250.3517ms)
+✔ StrictMode heatmap cleanup does not poison its replacement request (249.4127ms)
+✔ participant options disappear immediately when their project is cleared (263.2633ms)
+✔ a new participant never displays the previous participant's series (94.8965ms)
+✔ clearing a pending selection ends loading and ignores its late response (88.6002ms)
+✔ late responses cannot overwrite newer results or restart unchanged requests (99.6142ms)
+✔ reselecting a completed query starts clean and clears its previous error (103.857ms)
+✔ heatmaps wait for a generation, release old blobs and ignore cancelled blobs (152.9083ms)
+✔ useEegTimeseries only requests enabled selections and aborts a hidden view (97.2125ms)
+✔ useEegPsd only requests enabled selections and aborts a hidden view (99.2646ms)
+✔ useEegSpectrogram only requests enabled selections and aborts a hidden view (98.7228ms)
+✔ useEegTopography only requests enabled selections and aborts a hidden view (100.544ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3082.4721

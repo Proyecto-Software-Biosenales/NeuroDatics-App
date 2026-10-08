@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import Enum
 
 from ...scenaries.api.schemas import scenariesResponse
+from .pre_experiment_schemas import PreExperimentConfig
 
 
 class ProjectStatus(str, Enum):
@@ -17,6 +18,7 @@ class CreateProjectRequest(BaseModel):
     name: str
     description: Optional[str] = None
     status: Optional[ProjectStatus] = ProjectStatus.DRAFT
+    pre_experiment: Optional[PreExperimentConfig] = None
 
     @field_validator("name")
     @classmethod
@@ -211,6 +213,8 @@ class ProjectResponse(BaseModel):
     drive_root_folder_url: Optional[str] = None
     sensors: List[ProjectSensorResponse] = []
     participants_count: int = 0
+    is_pre_experiment: bool = False
+    planning_participants_count: int = 0
 
     class Config:
         from_attributes = True
@@ -229,6 +233,8 @@ class ProjectDetailResponse(BaseModel):
     drive_root_folder_name: Optional[str] = None
     drive_root_folder_url: Optional[str] = None
     source_folder_name: Optional[str] = None
+    is_pre_experiment: bool = False
+    planning_participants_count: int = 0
     files: List[ProjectFileResponse] = []
     sensors: List[ProjectSensorResponse] = []
     participants: List[ParticipantResponse] = []

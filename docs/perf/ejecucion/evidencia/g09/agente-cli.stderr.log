@@ -1,0 +1,23 @@
+2026-10-02T21:47:27.241822Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-02T21:47:27.241874Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-02T21:47:27.249389Z  WARN codex_core::shell_snapshot: Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell
+2026-10-02T21:47:27.393527Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-02T21:47:27.393545Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-02T22:00:15.739089Z ERROR codex_core::tools::router: error=apply_patch verification failed: Failed to find expected lines in C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\infrastructure\repository_impl.py:
+        for existing_aoi in existing_aois:
+            if (existing_aoi.scenaries_id, existing_aoi.name) not in incoming_keys:
+                await self.session.delete(existing_aoi)
+
+        await self.session.commit()
+
+        if not record_keys:
+            return []
+
+        # Re-read the committed project AOIs in one query, then rebuild the
+        # request order (including duplicate input keys) without per-row refresh.
+        loaded_result = await self.session.execute(existing_stmt)
+        loaded_by_key = {
+            (aoi.scenaries_id, aoi.name): aoi
+            for aoi in loaded_result.scalars().all()
+        }
+        return [loaded_by_key[key] for key in record_keys]

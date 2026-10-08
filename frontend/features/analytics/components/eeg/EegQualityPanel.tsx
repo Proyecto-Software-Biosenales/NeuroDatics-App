@@ -57,16 +57,10 @@ function unitCaveats(metadata: EegMetadata | undefined): string[] {
   return lines
 }
 
-/** Every line the end-of-tab quality card shows, unit caveats first: the chart
- *  chip counts them and previews the first few in its tooltip. */
-export function eegQualityLines(metadata: EegMetadata | undefined): string[] {
-  return [...unitCaveats(metadata), ...qualityCardWarnings(metadata)]
-}
-
 /**
  * Processing warnings and unit caveats close the tab: they still have to be
- * read before comparing, but they no longer push every chart down. A chip
- * beside each chart counts them, previews them and jumps here.
+ * read before comparing, but they no longer push every chart down. This card
+ * is the only place they appear; the charts carry no quality chip.
  */
 export function EegQualityNotes({ metadata }: { metadata?: EegMetadata }) {
   const warnings = qualityCardWarnings(metadata)

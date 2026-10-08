@@ -4,8 +4,10 @@ import os
 from typing import Any, Literal, Optional
 from urllib.parse import parse_qs, urlsplit
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from neurodatics.shared import machine_resources
 
 
 _LOCAL_DATABASE_HOSTS = {"db", "localhost", "127.0.0.1", "::1"}
@@ -98,6 +100,11 @@ class Settings(BaseSettings):
     upload_max_concurrent_per_user: int = 1
     upload_max_concurrent_global: int = 4
     upload_min_seconds_between_uploads: float = 5.0
+    # Processes that share a CSV's participant blocks during ingestion. 0 sizes it to
+    # the machine: half the usable CPUs, as far as each concurrent ingestion's share of
+    # the memory allows (the container limit on the server, half the RAM otherwise).
+    # 1 keeps every block in-process.
+    ingestion_block_workers: int = 0
 
     # Redis / Queue
     redis_url: str = "redis://localhost:6379"
@@ -108,6 +115,11 @@ class Settings(BaseSettings):
     parquet_cache_dir: str = "/data/parquet_cache"
     parquet_cache_ttl_hours: int = 4
     analytics_redis_ttl_seconds: int = 900
+    # Executive reports retain every participant frame until rendering.  Keep
+    # independent reads small: two full large frames are about 322 MiB transient,
+    # below the 512 MiB G00 candidate budget (retained frames are additional).
+    report_io_max_concurrency: int = Field(default=2, ge=1, le=2)
+    report_io_max_waiting: int = Field(default=16, ge=0, le=16)
     image_cache_dir: str = "/data/image_cache"
     video_cache_dir: str = "/data/video_cache"
     video_frame_cache_dir: str = "/data/video_frame_cache"
@@ -121,6 +133,10 @@ class Settings(BaseSettings):
     media_cache_max_bytes: int = 2 * 1024 * 1024 * 1024
     media_cache_max_age_hours: int = 72
     media_cache_prune_max_removals: int = 500
+    video_onset_cache_ttl_seconds: int = Field(default=300, ge=1, le=3600)
+    video_onset_cache_max_items: int = Field(default=1024, ge=1, le=4096)
+    video_duration_cache_ttl_seconds: int = Field(default=3600, ge=1, le=86400)
+    video_duration_cache_max_items: int = Field(default=256, ge=1, le=1024)
 
     @field_validator("debug", mode="before")
     @classmethod
@@ -137,6 +153,22 @@ class Settings(BaseSettings):
     @property
     def is_local(self) -> bool:
         return self.app_mode == "local"
+
+    @property
+    def ingestion_block_worker_count(self) -> int:
+        if self.ingestion_block_workers > 0:
+            return self.ingestion_block_workers
+        # The student edition has one user; the server admits several ingestions at once.
+        concurrent = (
+            self.upload_max_concurrent_per_user
+            if self.is_local
+            else self.upload_max_concurrent_global
+        )
+        return machine_resources.block_workers_for(
+            machine_resources.usable_cpus(),
+            machine_resources.usable_memory(),
+            concurrent,
+        )
 
     @property
     def local_storage_dir(self) -> str:

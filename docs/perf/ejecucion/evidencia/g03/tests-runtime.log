@@ -1,0 +1,2050 @@
+.....................F.................................................. [ 28%]
+.........................FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.............. [ 57%]
+........................................................................ [ 86%]
+...................................                                      [100%]
+================================== FAILURES ===================================
+____________ test_no_matching_optional_columns_preserves_row_count ____________
+
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_no_matching_optional_colu0')
+
+    def test_no_matching_optional_columns_preserves_row_count(tmp_path):
+        path = tmp_path / "legacy.parquet"
+        pd.DataFrame({"other": [1, 2, 3]}).to_parquet(path, index=False)
+        frame = read_parquet_frame(path, PUPIL_PROJECTION)
+>       assert len(frame) == 3 and len(frame.columns) == 0
+E       assert (0 == 3)
+E        +  where 0 = len(Empty DataFrame\nColumns: []\nIndex: [])
+
+tests\unit\test_parquet_projection.py:67: AssertionError
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/scenario-timing] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE4289BB60>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE421291D0>
+endpoint = '/scenario-timing', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout setup ----------------------------
+2026-10-02 05:43:39,057 - neurodatics.modules.projects.application.services.csv_processing_service - INFO - Starting CSV processing: csv_path=C:\Users\jacob\AppData\Local\Temp\pytest-of-jacob\pytest-351\synthetic-experiment0\experiment.csv, output_dir=C:\Users\jacob\AppData\Local\Temp\pytest-of-jacob\pytest-351\synthetic-experiment0\parquet, users=2, encoding=utf-8
+----------------------------- Captured log setup ------------------------------
+INFO     neurodatics.modules.projects.application.services.csv_processing_service:csv_processing_service.py:1184 Starting CSV processing: csv_path=C:\Users\jacob\AppData\Local\Temp\pytest-of-jacob\pytest-351\synthetic-experiment0\experiment.csv, output_dir=C:\Users\jacob\AppData\Local\Temp\pytest-of-jacob\pytest-351\synthetic-experiment0\parquet, users=2, encoding=utf-8
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,378 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,379 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,380 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,381 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0020s
+2026-10-02 05:43:39,382 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0020s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/timeseries/pupil] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE426DB750>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE427857F0>
+endpoint = '/timeseries/pupil', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,460 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,461 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,461 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,462 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+2026-10-02 05:43:39,463 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/statistics/pupil] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE426DA990>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42B44BB0>
+endpoint = '/statistics/pupil', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,516 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,517 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,517 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,519 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+2026-10-02 05:43:39,519 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/timeseries/distance] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE428BA060>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42683950>
+endpoint = '/timeseries/distance', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,575 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,576 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,576 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,578 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+2026-10-02 05:43:39,578 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/statistics/distance] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE424A7E10>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42683A10>
+endpoint = '/statistics/distance', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,633 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,634 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,634 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,635 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:39,636 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/timeseries/gsr] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42811B50>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42C0D650>
+endpoint = '/timeseries/gsr', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,692 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,693 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,693 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,694 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:39,695 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/statistics/gsr] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42758C00>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_6')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42C0EBA0>
+endpoint = '/statistics/gsr', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,753 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,754 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,754 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,755 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:39,756 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/timeseries/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE4275B020>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_7')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42AFECB0>
+endpoint = '/timeseries/eeg', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,810 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,812 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,812 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,813 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0019s
+2026-10-02 05:43:39,814 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0019s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/psd/eeg] __
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE4275B570>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_8')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42936AD0>
+endpoint = '/psd/eeg', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,866 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,868 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,868 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,869 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:39,870 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/spectrogram/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE4275BAC0>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_9')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE4290B260>
+endpoint = '/spectrogram/eeg', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:39,933 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:39,934 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:39,934 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:39,936 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0019s
+2026-10-02 05:43:39,937 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0019s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/topography/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE4275BCE0>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_10')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42BF3350>
+endpoint = '/topography/eeg', scenario = 'all'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,015 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,016 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=all
+2026-10-02 05:43:40,016 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,018 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0018s
+2026-10-02 05:43:40,018 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=all
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0018s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=all "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/scenario-timing] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42918380>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_11')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42920750>
+endpoint = '/scenario-timing', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,072 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,073 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,073 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,075 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+2026-10-02 05:43:40,075 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/timeseries/pupil] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42918050>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_12')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE4294FF50>
+endpoint = '/timeseries/pupil', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,128 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,129 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,129 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,130 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:40,131 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/statistics/pupil] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42918490>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_13')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42BD84B0>
+endpoint = '/statistics/pupil', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,186 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,187 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,187 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,188 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:40,189 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/timeseries/distance] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42918C00>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_14')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42960B40>
+endpoint = '/timeseries/distance', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,243 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,244 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,245 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,246 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:40,246 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/statistics/distance] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42919260>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_15')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42B4D400>
+endpoint = '/statistics/distance', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,298 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,299 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,300 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,301 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+2026-10-02 05:43:40,302 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/timeseries/gsr] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE429198C0>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_16')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42AC9B70>
+endpoint = '/timeseries/gsr', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,355 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,356 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,356 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,357 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:40,358 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/statistics/gsr] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42919F20>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_17')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42C8E350>
+endpoint = '/statistics/gsr', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,413 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,414 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,414 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,415 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:40,416 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/timeseries/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE4291A580>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_18')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42CF2AC0>
+endpoint = '/timeseries/eeg', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,470 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,471 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,471 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,473 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+2026-10-02 05:43:40,474 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/psd/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE4291ABE0>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_19')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42D67150>
+endpoint = '/psd/eeg', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,528 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,529 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,530 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,531 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:40,532 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/spectrogram/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE4291B8A0>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_20')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42DCFA80>
+endpoint = '/spectrogram/eeg', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,590 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,591 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,591 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,592 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+2026-10-02 05:43:40,593 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/topography/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E28490>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_21')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42E20130>
+endpoint = '/topography/eeg', scenario = 'stimulus-a'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,640 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,641 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-02 05:43:40,642 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,643 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+2026-10-02 05:43:40,644 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/scenario-timing] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E28270>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_22')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42F0C830>
+endpoint = '/scenario-timing', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,695 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,696 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:40,696 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,697 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0014s
+2026-10-02 05:43:40,698 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0014s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/scenario-timing?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/timeseries/pupil] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E285A0>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_23')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42F7D080>
+endpoint = '/timeseries/pupil', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,750 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,752 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:40,752 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,753 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:40,754 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/pupil?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/statistics/pupil] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E28C00>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_24')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE42FE9D30>
+endpoint = '/statistics/pupil', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,812 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,813 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:40,814 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,815 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0019s
+2026-10-02 05:43:40,816 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0019s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/pupil?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/timeseries/distance] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E29260>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_25')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE4306A3C0>
+endpoint = '/timeseries/distance', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,873 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,874 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:40,874 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,875 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+2026-10-02 05:43:40,876 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0016s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/distance?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/statistics/distance] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E298C0>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_26')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE430BB5B0>
+endpoint = '/statistics/distance', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,929 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,930 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:40,930 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,931 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:40,932 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/distance?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/timeseries/gsr] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E29F20>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_27')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE43108520>
+endpoint = '/timeseries/gsr', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:40,983 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:40,985 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:40,985 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:40,986 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+2026-10-02 05:43:40,987 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/statistics/gsr] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E2A580>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_28')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE431ECF30>
+endpoint = '/statistics/gsr', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:41,041 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:41,043 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:41,043 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:41,044 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+2026-10-02 05:43:41,045 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/statistics/gsr?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/timeseries/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E2ABE0>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_29')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE43259940>
+endpoint = '/timeseries/eeg', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:41,097 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:41,098 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:41,099 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:41,100 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+2026-10-02 05:43:41,101 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/psd/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE42E2B8A0>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_30')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE432BE2E0>
+endpoint = '/psd/eeg', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:41,154 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:41,155 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:41,156 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:41,157 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0020s
+2026-10-02 05:43:41,158 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0020s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/spectrogram/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE43274490>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_31')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE4331EC80>
+endpoint = '/spectrogram/eeg', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:41,209 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:41,210 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:41,210 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:41,212 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+2026-10-02 05:43:41,212 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0015s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+_ test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/topography/eeg] _
+
+http_client = <starlette.testclient.TestClient object at 0x000002EE43274270>
+corpus = namespace(frames={'SYN-01':        time  ...                                  fixation_warnings
+0      0.00  ...  ["ti...isArchivos/AAprogramming/AAAWebDeb/Biose�ales/NeuroDatics-App/backend/tests/fixtures/golden/synthetic-experiment.zip'))
+tmp_path = WindowsPath('C:/Users/jacob/AppData/Local/Temp/pytest-of-jacob/pytest-351/test_real_disk_read_same_http_32')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002EE433932A0>
+endpoint = '/topography/eeg', scenario = 'stimulus-b'
+
+    @pytest.mark.parametrize("endpoint", ENDPOINTS)
+    @pytest.mark.parametrize("scenario", ["all", "stimulus-a", "stimulus-b"])
+    def test_real_disk_read_same_http_contract_and_hit_skips_parquet(http_client, corpus, tmp_path, monkeypatch, endpoint, scenario):
+        cache = ParquetCacheService()
+        cache._cache_dir = tmp_path / "cache"
+        reader = ParquetReaderService(None)
+        reader._cache = cache
+        project = corpus.frames["SYN-01"]
+        path = tmp_path / "synthetic.parquet"
+        project.to_parquet(path, index=False)
+        from uuid import UUID
+        cache.put(UUID(int=257), "SYN-01", path.read_bytes(), 3)
+        selections = []
+        decode = pd.read_parquet
+    
+        def counted(*args, **kwargs):
+            selections.append(kwargs.get("columns"))
+            return decode(*args, **kwargs)
+    
+        class FullReader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None, **kwargs):
+                return await reader.read(project_id, participant_code, generation)
+    
+        monkeypatch.setattr(pd, "read_parquet", counted)
+        monkeypatch.setattr(routes, "ParquetReaderService", FullReader)
+        params = {"participant_code": "SYN-01", "scenario": scenario}
+        full = http_client.get(PREFIX + endpoint, params=params)
+>       assert full.status_code == 200, full.text
+E       AssertionError: {"detail":"Internal server error"}
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\characterization\test_projected_frame_endpoints.py:48: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 05:43:41,266 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-02 05:43:41,267 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-b
+2026-10-02 05:43:41,267 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-02 05:43:41,269 - neurodatics.api.middlewares - ERROR - Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+2026-10-02 05:43:41,269 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+INFO     neurodatics.api.middlewares:middlewares.py:49 Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-b
+DEBUG    neurodatics.config.security:security.py:87 Auth check - credentials present: True, scheme: bearer
+ERROR    neurodatics.api.middlewares:middlewares.py:63 Error: 'NoneType' object has no attribute 'execute' - 0.0017s
+INFO     httpx:_client.py:1013 HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-b "HTTP/1.1 500 Internal Server Error"
+============================== warnings summary ===============================
+src\neurodatics\infra\db\base.py:4
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\infra\db\base.py:4: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+src\neurodatics\modules\scenaries\api\schemas.py:105
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:105: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AOIResponse(BaseModel):
+
+src\neurodatics\modules\scenaries\api\schemas.py:117
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:117: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class scenariesResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:50: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectFileResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:182
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:182: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectSensorResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:190
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:190: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:200
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:200: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:219
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:219: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectDetailResponse(BaseModel):
+
+..\.venv\Lib\site-packages\fastapi\routing.py:211: 94 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\routing.py:211: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+
+..\.venv\Lib\site-packages\starlette\_utils.py:17: 98 warnings
+tests/characterization/test_projected_frame_endpoints.py: 33 warnings
+tests/characterization/test_cached_frame_endpoints.py: 27 warnings
+tests/characterization/test_transform_cache_short_circuit.py: 14 warnings
+tests/characterization/test_analytics_http_contracts.py: 68 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:17: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj) or (
+
+src\neurodatics\modules\participants\api\schemas.py:22
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\api\schemas.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+src\neurodatics\main.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\main.py:50: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+..\.venv\Lib\site-packages\fastapi\applications.py:4547
+..\.venv\Lib\site-packages\fastapi\applications.py:4547
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\applications.py:4547: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+src\neurodatics\main.py:55
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\main.py:55: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+..\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: 4197 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj)
+
+tests/unit/test_parquet_projection.py: 1 warning
+tests/unit/test_parquet_participant_identity.py: 24 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:564: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+
+tests/unit/test_parquet_projection.py: 1 warning
+tests/unit/test_parquet_participant_identity.py: 24 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:395: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_parquet_projection.py: 1 warning
+tests/unit/test_parquet_participant_identity.py: 24 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:441: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_parquet_projection.py: 1 warning
+tests/unit/test_parquet_participant_identity.py: 24 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:462: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/characterization/test_projected_frame_endpoints.py: 33 warnings
+tests/characterization/test_cached_frame_endpoints.py: 20 warnings
+tests/characterization/test_transform_cache_short_circuit.py: 14 warnings
+tests/characterization/test_analytics_http_contracts.py: 46 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:18: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    callable(obj) and asyncio.iscoroutinefunction(obj.__call__)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+--------------------------- snapshot report summary ---------------------------
+24 snapshots passed.
+=========================== short test summary info ===========================
+FAILED tests/unit/test_parquet_projection.py::test_no_matching_optional_columns_preserves_row_count
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/scenario-timing]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/timeseries/pupil]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/statistics/pupil]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/timeseries/distance]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/statistics/distance]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/timeseries/gsr]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/statistics/gsr]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/timeseries/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/psd/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/spectrogram/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[all-/topography/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/scenario-timing]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/timeseries/pupil]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/statistics/pupil]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/timeseries/distance]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/statistics/distance]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/timeseries/gsr]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/statistics/gsr]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/timeseries/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/psd/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/spectrogram/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-a-/topography/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/scenario-timing]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/timeseries/pupil]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/statistics/pupil]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/timeseries/distance]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/statistics/distance]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/timeseries/gsr]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/statistics/gsr]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/timeseries/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/psd/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/spectrogram/eeg]
+FAILED tests/characterization/test_projected_frame_endpoints.py::test_real_disk_read_same_http_contract_and_hit_skips_parquet[stimulus-b-/topography/eeg]
+34 failed, 217 passed, 4757 warnings in 8.17s

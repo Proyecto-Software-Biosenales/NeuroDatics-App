@@ -310,6 +310,7 @@ class UploadExperimentZipUseCase:
                             stimulus_placements_by_scenario=(
                                 resolved_stimulus_placements.by_scenario_name
                             ),
+                            max_workers=settings.ingestion_block_worker_count,
                         )
                     except CsvProcessingError as exc:
                         csv_summary["failed"] += 1

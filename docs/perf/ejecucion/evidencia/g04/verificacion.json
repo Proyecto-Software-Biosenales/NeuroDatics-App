@@ -1,0 +1,36 @@
+{
+  "initial_full_directed": {
+    "runtime": 313,
+    "supported": 313,
+    "snapshots_each": 24,
+    "logs": [
+      "tests-runtime.log",
+      "tests-supported.log"
+    ]
+  },
+  "final_affected": {
+    "runtime": 163,
+    "supported": 163,
+    "snapshots_each": 24,
+    "logs": [
+      "tests-final-runtime.log",
+      "tests-final-supported.log"
+    ]
+  },
+  "ruff_source": "ruff-final.log",
+  "ruff_probe": "ruff-probe-final.log",
+  "import_contracts": 3,
+  "import_log": "import-boundaries.log",
+  "bench_final": "medidas.json",
+  "bench_success_after_per_burst": "10/10 each sample",
+  "baseline_coldsmall_response": "49/50 measured requests; no acceleration claim for failed timings",
+  "versions": "../g03/versions-runtime.json and ../g03/versions-supported.json",
+  "no_global_gate": true,
+  "no_external_services": true,
+  "patch_reverse_check": {
+    "exit": 0,
+    "log": "patch-reverse-check.log",
+    "base": "received snapshot, never HEAD"
+  },
+  "final_unique_cases_across_initial_and_affected": 316
+}

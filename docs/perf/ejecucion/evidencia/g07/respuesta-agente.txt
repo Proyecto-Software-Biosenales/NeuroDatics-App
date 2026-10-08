@@ -1,0 +1,12 @@
+G07 quedó completo y listo para revisión root. G08 no fue iniciado.
+
+- Identidad Parquet por lote, generación consistente y recuperación DB-free.
+- Caché compartida y coherente de imágenes.
+- I/O concurrente acotado: 2 activos/16 en espera, FIFO y cancelación física.
+- Revisión del coordinador incorporada.
+- Pruebas: 170 aprobadas en Python 3.14 y 3.12; corrida amplia previa: 350 + 25 snapshots; almacenamiento: 47.
+- Benchmark final: frío −16,8 %, caliente −8,2 %; RSS dentro del criterio experimental.
+- Preservación: 934 archivos protegidos; sin deriva.
+- `own.patch` verificado en reversa, exit 0.
+
+Entregas: [G07.md](<C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/G07.md>) · [evidencia](<C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g07>) · [ESTADO.md](<C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/ESTADO.md>)

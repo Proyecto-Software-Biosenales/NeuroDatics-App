@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-03T15:24:34.8878131Z",
+  "manifest_count": 28,
+  "manifest_drift": [],
+  "foreign_checked": 1067,
+  "foreign_drift": [],
+  "reverse_patch_exit": 0,
+  "decision": "G11 approved as documented discard; no product changes. Measurements, helpers/key/budget candidate and restoration reviewed."
+}

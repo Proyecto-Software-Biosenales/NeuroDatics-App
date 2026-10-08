@@ -1,0 +1,338 @@
+{
+  "fixture": "G02-UI: G00-UI + synthetic ApiProjectDetail shape (424 B, 2 participants, empty files/scenaries, EEG sensor), current generation=3; same probe before/after",
+  "n": 5,
+  "warmup": 1,
+  "rows": [
+    {
+      "step": "initial_A",
+      "requests_before": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "requests_after": [
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "bytes_before": [
+        35630,
+        35630,
+        35630,
+        35630,
+        35630
+      ],
+      "bytes_after": [
+        36054,
+        36054,
+        36054,
+        36054,
+        36054
+      ],
+      "ms_before": {
+        "median": 724.6900999999998,
+        "range": [
+          708.4939999999997,
+          727.2470000000003
+        ]
+      },
+      "ms_after": {
+        "median": 741.8691000000017,
+        "range": [
+          740.2289000000001,
+          758.9868999999999
+        ]
+      }
+    },
+    {
+      "step": "PSD",
+      "requests_before": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "requests_after": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bytes_before": [
+        17499,
+        17499,
+        17499,
+        17499,
+        17499
+      ],
+      "bytes_after": [
+        17499,
+        17499,
+        17499,
+        17499,
+        17499
+      ],
+      "ms_before": {
+        "median": 181.95870000000014,
+        "range": [
+          181.8081000000002,
+          182.26659999999993
+        ]
+      },
+      "ms_after": {
+        "median": 181.28350000000046,
+        "range": [
+          164.81600000000026,
+          182.16650000000027
+        ]
+      }
+    },
+    {
+      "step": "spectrogram",
+      "requests_before": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "requests_after": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bytes_before": [
+        268117,
+        268117,
+        268117,
+        268117,
+        268117
+      ],
+      "bytes_after": [
+        268117,
+        268117,
+        268117,
+        268117,
+        268117
+      ],
+      "ms_before": {
+        "median": 150.08690000000024,
+        "range": [
+          149.72049999999945,
+          167.46540000000005
+        ]
+      },
+      "ms_after": {
+        "median": 166.84079999999994,
+        "range": [
+          150.1898000000001,
+          167.33740000000034
+        ]
+      }
+    },
+    {
+      "step": "topography",
+      "requests_before": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "requests_after": [
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "bytes_before": [
+        17835,
+        17835,
+        17835,
+        17835,
+        17835
+      ],
+      "bytes_after": [
+        17835,
+        17835,
+        17835,
+        17835,
+        17835
+      ],
+      "ms_before": {
+        "median": 166.92269999999917,
+        "range": [
+          165.60930000000008,
+          167.4414999999999
+        ]
+      },
+      "ms_after": {
+        "median": 216.0508000000009,
+        "range": [
+          166.26609999999982,
+          216.20579999999973
+        ]
+      }
+    },
+    {
+      "step": "B_topography",
+      "requests_before": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "requests_after": [
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "bytes_before": [
+        17928,
+        17928,
+        17928,
+        17928,
+        17928
+      ],
+      "bytes_after": [
+        18352,
+        18352,
+        18352,
+        18352,
+        18352
+      ],
+      "ms_before": {
+        "median": 166.4313000000002,
+        "range": [
+          149.60850000000028,
+          166.59829999999965
+        ]
+      },
+      "ms_after": {
+        "median": 266.8567000000003,
+        "range": [
+          249.6167000000005,
+          283.2937000000002
+        ]
+      }
+    },
+    {
+      "step": "return_A_topography",
+      "requests_before": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "requests_after": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "bytes_before": [
+        17928,
+        17928,
+        17928,
+        17928,
+        17928
+      ],
+      "bytes_after": [
+        424,
+        424,
+        424,
+        424,
+        424
+      ],
+      "ms_before": {
+        "median": 150.4286000000011,
+        "range": [
+          149.04039999999986,
+          166.92630000000008
+        ]
+      },
+      "ms_after": {
+        "median": 150.4361000000008,
+        "range": [
+          100.21429999999964,
+          166.95269999999982
+        ]
+      }
+    }
+  ],
+  "request_totals_before": [
+    16,
+    16,
+    16,
+    16,
+    16
+  ],
+  "request_totals_after": [
+    15,
+    15,
+    15,
+    15,
+    15
+  ],
+  "bytes_totals_before": [
+    374937,
+    374937,
+    374937,
+    374937,
+    374937
+  ],
+  "bytes_totals_after": [
+    358281,
+    358281,
+    358281,
+    358281,
+    358281
+  ],
+  "heap_used_before": [
+    13218928,
+    15093080,
+    13425104,
+    15164984,
+    15135184
+  ],
+  "heap_used_after": [
+    13306956,
+    13651204,
+    15384848,
+    15283088,
+    13243508
+  ],
+  "chunks_before": {
+    "count": 43,
+    "total_bytes": 2318191,
+    "total_gzip_bytes": 695521
+  },
+  "chunks_after": {
+    "count": 44,
+    "total_bytes": 2321555,
+    "total_gzip_bytes": 697158
+  },
+  "limits": [
+    "mocked API, not full system latency",
+    "initial navigation includes networkidle (500 ms); clicks await mocked response completion, visible content and two animation frames",
+    "fresh browser contexts; server and OS warm",
+    "no cloud or frozen local package",
+    "synthetic UI fixture does not test numeric equivalence",
+    "CDP memory is snapshot, not peak RSS",
+    "synthetic project detail is 424 bytes, not measured production ApiProjectDetail (which may contain many files/scenaries/AOIs/participants); byte savings apply only to this corpus"
+  ]
+}

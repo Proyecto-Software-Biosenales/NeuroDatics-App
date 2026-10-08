@@ -1,0 +1,31 @@
+{
+  "reviewed_at": "2026-10-02T21:45:32.7302514Z",
+  "manifest_checked": 24,
+  "manifest_drift": [],
+  "patch_reverse_exit": 0,
+  "preservation": {
+    "generated_at": "2026-10-02T16:42:01.2677398-05:00",
+    "inventory_total": 973,
+    "protected_checked": 965,
+    "missing": [],
+    "drift": [],
+    "excluded_own_received": [
+      ".env.example",
+      "backend/.env.example",
+      "backend/src/neurodatics/config/settings.py",
+      "backend/src/neurodatics/modules/projects/api/routes.py",
+      "backend/src/neurodatics/modules/projects/infrastructure/media_cache_janitor.py",
+      "backend/tests/unit/test_image_conditional_get.py",
+      "backend/tests/unit/test_media_cache_janitor.py",
+      "docs/perf/ejecucion/ESTADO.md"
+    ],
+    "original_scope_snapshot_checked": 8,
+    "original_scope_snapshot_mismatch": [],
+    "exclusions": [
+      "coordinator control files and live CLI/continuation logs were excluded by initial inventory",
+      "new G08 product/tests/docs/evidence are own output, not protected input",
+      "reconciliacion-coordinador.json is root-owned and was not edited"
+    ]
+  },
+  "review": "Preview onset min/dropna/nonfinite/precision kept distinct from analytics; identity/stat duration; early 304; bounded two metadata LRU without project map; lock users survive handoff and physical cancellation; no FFmpeg concurrency increase. Bench real FFmpeg with in-memory Parquet fixture, not HTTP; code paths measured unchanged by final route lock correction. Root does not edit product."
+}

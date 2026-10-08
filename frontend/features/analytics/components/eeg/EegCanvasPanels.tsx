@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from "react"
 import { cn } from "@/lib/utils"
-import { formatChannel, nearestTimeIndex, interpolateColor, interpolateTopographyValue, scaleSpectrogramValue, type TopographyFrameRow } from "../../eegPresentation"
+import { formatChannel, nearestTimeIndex, interpolateTopographyValue, spectrogramColumns, topographyValueAt, viridisPixel, type TopographyFrameRow } from "../../eegPresentation"
 import { StimulusPreviewSurface } from "../StimulusFixationCard"
 import { usePointerDragZoom, ZoomControls } from "../ChartDragZoom"
 import { CHANNEL_COLORS } from "./eegViewShared"
@@ -36,7 +36,11 @@ export function SpectrogramPanel({
   onZoomReset,
   onZoomBack,
   hopS,
+  interpolate = false,
+  compact = false,
 }: {
+  /** Shorter panel for grids of many participants. */
+  compact?: boolean
   hopS?: number
   channel: string
   time: number[]
@@ -49,6 +53,9 @@ export function SpectrogramPanel({
   onTimeZoom?: (start: number, end: number) => void
   onZoomReset?: () => void
   onZoomBack?: () => void
+  /** Blend adjacent windows and frequency bins instead of drawing one flat
+   *  cell each. A display choice: the tooltip keeps reading the real window. */
+  interpolate?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hover, setHover] = useState<SpectrogramHover | null>(null)
@@ -93,33 +100,121 @@ export function SpectrogramPanel({
       }
 
       const image = ctx.createImageData(width, height)
-      for (let y = 0; y < height; y += 1) {
-        const freqRatio = 1 - y / Math.max(1, height - 1)
-        const freqIndex = Math.min(freqCount - 1, Math.max(0, Math.round(freqRatio * (freqCount - 1))))
-        for (let x = 0; x < width; x += 1) {
-          const timeRatio = x / Math.max(1, width - 1)
-          const timeIndex = nearestTimeIndex(time, minTime + timeRatio * (maxTime - minTime), hopS)
-          const value = matrix[freqIndex]?.[timeIndex]
-          if (typeof value !== "number" || !Number.isFinite(value)) continue
-          const color = interpolateColor(scaleSpectrogramValue(value, colorDomain))
-          const offset = (y * width + x) * 4
-          image.data[offset] = color.r
-          image.data[offset + 1] = color.g
-          image.data[offset + 2] = color.b
-          image.data[offset + 3] = 255
+      // One 32-bit write per pixel instead of four 8-bit ones.
+      const pixels = new Uint32Array(image.data.buffer)
+
+      // A column's windows depend on x alone. Hit-testing per pixel meant
+      // ~440,000 searches of the time axis per panel, which froze the tab.
+      const { left, right, weight } = spectrogramColumns(time, width, hopS, interpolate)
+
+      if (!interpolate) {
+        // Rows landing on the same frequency bin are identical, and there are
+        // height/freqCount of them (~13 at 38 bins on a 256 px panel at dpr 2):
+        // shade the first and copy it down.
+        let sourceFreqIndex = -1
+        let sourceRowStart = 0
+        for (let y = 0; y < height; y += 1) {
+          const freqRatio = height > 1 ? 1 - y / (height - 1) : 1
+          const freqIndex = Math.min(freqCount - 1, Math.max(0, Math.round(freqRatio * (freqCount - 1))))
+          const rowStart = y * width
+          if (freqIndex === sourceFreqIndex) {
+            pixels.copyWithin(rowStart, sourceRowStart, sourceRowStart + width)
+            continue
+          }
+
+          const row = matrix[freqIndex]
+          if (row) {
+            for (let x = 0; x < width; x += 1) {
+              const timeIndex = left[x]
+              // A gap stays transparent so the panel background shows through.
+              if (timeIndex < 0) continue
+              const value = row[timeIndex]
+              if (typeof value !== "number" || !Number.isFinite(value)) continue
+              pixels[rowStart + x] = viridisPixel(value, colorDomain)
+            }
+          }
+          sourceFreqIndex = freqIndex
+          sourceRowStart = rowStart
+        }
+      } else {
+        for (let y = 0; y < height; y += 1) {
+          const freqPosition = height > 1 ? (1 - y / (height - 1)) * (freqCount - 1) : freqCount - 1
+          const lowFreq = Math.min(freqCount - 1, Math.max(0, Math.floor(freqPosition)))
+          const highFreq = Math.min(freqCount - 1, lowFreq + 1)
+          const freqWeight = freqPosition - lowFreq
+          const lowRow = matrix[lowFreq]
+          const highRow = matrix[highFreq]
+          // The cell the pixel sits in decides whether it is a gap, so the
+          // bands stay where they are whether or not this is switched on.
+          const nearRow = freqWeight < 0.5 ? lowRow : highRow
+          const rowStart = y * width
+          for (let x = 0; x < width; x += 1) {
+            const lowTime = left[x]
+            if (lowTime < 0) continue
+            const highTime = right[x]
+            const timeWeight = weight[x]
+            const nearest = nearRow?.[timeWeight < 0.5 ? lowTime : highTime]
+            if (typeof nearest !== "number" || !Number.isFinite(nearest)) continue
+
+            // Bilinear over the four neighbours, renormalised so a missing one
+            // is left out rather than pulled in as a zero.
+            let total = 0
+            let shareTotal = 0
+            let share = (1 - freqWeight) * (1 - timeWeight)
+            let value = lowRow?.[lowTime]
+            if (share > 0 && typeof value === "number" && Number.isFinite(value)) {
+              total += value * share
+              shareTotal += share
+            }
+            share = (1 - freqWeight) * timeWeight
+            value = lowRow?.[highTime]
+            if (share > 0 && typeof value === "number" && Number.isFinite(value)) {
+              total += value * share
+              shareTotal += share
+            }
+            share = freqWeight * (1 - timeWeight)
+            value = highRow?.[lowTime]
+            if (share > 0 && typeof value === "number" && Number.isFinite(value)) {
+              total += value * share
+              shareTotal += share
+            }
+            share = freqWeight * timeWeight
+            value = highRow?.[highTime]
+            if (share > 0 && typeof value === "number" && Number.isFinite(value)) {
+              total += value * share
+              shareTotal += share
+            }
+            pixels[rowStart + x] = viridisPixel(
+              shareTotal > 0 ? total / shareTotal : nearest,
+              colorDomain
+            )
+          }
         }
       }
       ctx.putImageData(image, 0, 0)
     }
 
-    draw()
-    const observer = new ResizeObserver(draw)
+    // ResizeObserver fires once on observe, so the first paint would otherwise
+    // draw every panel twice. Coalescing into a frame also collapses the burst
+    // a layout change sends.
+    let frame: number | null = null
+    const schedule = () => {
+      if (frame != null) return
+      frame = requestAnimationFrame(() => {
+        frame = null
+        draw()
+      })
+    }
+
+    schedule()
+    const observer = new ResizeObserver(schedule)
     observer.observe(canvas)
 
     return () => {
+      if (frame != null) cancelAnimationFrame(frame)
       observer.disconnect()
     }
-  }, [colorDomain, matrix, time, minTime, maxTime, hopS])
+  }, [colorDomain, matrix, time, minTime, maxTime, hopS, interpolate])
 
   const getPointFromEvent = (event: MouseEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -172,8 +267,8 @@ export function SpectrogramPanel({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <div className={cn("rounded-lg border border-border bg-card", compact ? "p-2" : "p-4")}>
+      <div className={cn("flex items-center justify-between gap-3", compact ? "mb-1" : "mb-3")}>
         <div className="flex items-center gap-2">
           <span
             className="h-2.5 w-2.5 rounded-full"
@@ -191,7 +286,7 @@ export function SpectrogramPanel({
           <span>{maxFrequency.toFixed(1)} Hz</span>
           <span>{minFrequency.toFixed(1)} Hz</span>
         </div>
-        <div className="relative h-64 select-none overflow-hidden rounded-md bg-gray-950">
+        <div className={cn("relative select-none overflow-hidden rounded-md bg-gray-950", compact ? "h-14" : "h-64")}>
           <canvas
             ref={canvasRef}
             className={cn("h-full w-full", (onTimeSelect || onTimeZoom) && "cursor-crosshair")}
@@ -235,7 +330,7 @@ export function SpectrogramPanel({
   )
 }
 
-function TopographyPanel({
+export function TopographyPanel({
   rows,
   colorDomain,
   unit,
@@ -272,21 +367,15 @@ function TopographyPanel({
       if (rows.length === 0) return
 
       const image = ctx.createImageData(width, height)
+      const pixels = new Uint32Array(image.data.buffer)
       for (let py = 0; py < height; py += 1) {
         const y = range - (py / Math.max(1, height - 1)) * range * 2
+        const rowStart = py * width
         for (let px = 0; px < width; px += 1) {
           const x = (px / Math.max(1, width - 1)) * range * 2 - range
-          const offset = (py * width + px) * 4
-          if (x * x + y * y > 1) {
-            image.data[offset + 3] = 0
-            continue
-          }
-          const { value } = interpolateTopographyValue(x, y, rows)
-          const color = interpolateColor(scaleSpectrogramValue(value, colorDomain))
-          image.data[offset] = color.r
-          image.data[offset + 1] = color.g
-          image.data[offset + 2] = color.b
-          image.data[offset + 3] = 255
+          // Outside the head outline the pixel stays transparent.
+          if (x * x + y * y > 1) continue
+          pixels[rowStart + px] = viridisPixel(topographyValueAt(x, y, rows), colorDomain)
         }
       }
       ctx.putImageData(image, 0, 0)
@@ -343,11 +432,23 @@ function TopographyPanel({
       ctx.restore()
     }
 
-    draw()
-    const observer = new ResizeObserver(draw)
+    // As in the spectrogram: the manual call and the observer's first callback
+    // would otherwise shade the head twice.
+    let frame: number | null = null
+    const schedule = () => {
+      if (frame != null) return
+      frame = requestAnimationFrame(() => {
+        frame = null
+        draw()
+      })
+    }
+
+    schedule()
+    const observer = new ResizeObserver(schedule)
     observer.observe(canvas)
 
     return () => {
+      if (frame != null) cancelAnimationFrame(frame)
       observer.disconnect()
     }
   }, [colorDomain, rows])

@@ -33,8 +33,7 @@ import {
   TrendingUp,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { apiFetchBlob } from "@/lib/api/apiFetch"
-import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
+import { useStimulusImage } from "../participantComparison/cardHooks"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
 import {
@@ -118,7 +117,6 @@ export function DeviceDistanceTab({
   participantCode,
   scenario,
 }: DeviceDistanceTabProps) {
-  const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
   // Refs for letterbox-corrected gaze positioning
   const imageContainerRef = useRef<HTMLDivElement>(null)
@@ -171,6 +169,7 @@ export function DeviceDistanceTab({
   }, [gazeX, gazeY])
 
   // Recompute offset when gazeData changes (image may already be loaded)
+  const scenarioImageUrl = useStimulusImage(projectId, gazeData?.scenario_file_id ?? null).url
   useEffect(() => {
     computeGazeOffset()
   }, [computeGazeOffset])
@@ -196,31 +195,7 @@ export function DeviceDistanceTab({
     if (next !== null) fetchGaze(next)
   }
 
-  useEffect(() => {
-    if (!gazeData?.scenario_file_id) {
-      return
-    }
 
-    let cancelled = false
-    let currentUrl: string | null = null
-
-    apiFetchBlob(getStimulusImageUrl(projectId, gazeData.scenario_file_id))
-      .then((blob) => {
-        if (cancelled) return
-        currentUrl = URL.createObjectURL(blob)
-        setScenarioImageUrl(currentUrl)
-      })
-      .catch(() => {
-        if (!cancelled) setScenarioImageUrl(null)
-      })
-
-    return () => {
-      cancelled = true
-      if (currentUrl) {
-        URL.revokeObjectURL(currentUrl)
-      }
-    }
-  }, [gazeData?.scenario_file_id, projectId])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChartClick = (state: any) => {
@@ -247,6 +222,14 @@ export function DeviceDistanceTab({
       statisticsDescription="Resumen numérico de la señal de distancia ojo-pantalla: tendencia, variabilidad y extremos."
       signal={signal}
       legend={chartLegend}
+      compareSpec={() => ({
+        kind: "distance",
+        title: "Distancia al dispositivo",
+        scenario,
+        sourceParticipant: participantCode,
+        origin: "individual",
+        params: { window: signal.timeWindowControls.appliedWindow },
+      })}
       kpis={[
         {
           label: "Media",

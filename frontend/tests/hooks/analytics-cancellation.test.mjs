@@ -113,8 +113,11 @@ test("cancelling one heatmap fetch leaves an identical sibling fetch usable", as
   requests[1].res.setHeader("Content-Type", "image/png")
   requests[1].res.end("surviving image")
   assert.equal(await page.evaluate(async () => (await window.secondResult).blob.text()), "surviving image")
-  assert.equal(await page.evaluate(async () => (await window.analyticsNetwork.api.getHeatmapOverlay("project", "P01", "scene", "v1", 1, 100, new AbortController().signal)).blob.text()), "surviving image")
-  assert.equal(requests.length, 2, "completed blobs still use the TTL cache")
+  await page.evaluate(() => { window.thirdResult = window.analyticsNetwork.api.getHeatmapOverlay("project", "P01", "scene", "v1", 1, 100, new AbortController().signal) })
+  await expect.poll(() => requests.length).toBe(3)
+  requests[2].res.end("fresh image")
+  assert.equal(await page.evaluate(async () => (await window.thirdResult).blob.text()), "fresh image")
+  assert.equal(requests.length, 3, "raw API bypasses legacy blob cache; scoped callers own retention")
 })
 
 test("StrictMode heatmap cleanup does not poison its replacement request", async (t) => {

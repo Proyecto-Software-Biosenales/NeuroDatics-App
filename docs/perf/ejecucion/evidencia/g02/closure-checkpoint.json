@@ -1,0 +1,12 @@
+{
+  "status": "complete",
+  "current_delivery": "G02.md",
+  "gates": "gates-closure.json",
+  "directed": "legacy-spatial-tests.log",
+  "e2e": "e2e-closure.log",
+  "browser_gates": "browser-gates-closure.json",
+  "production": "g02-closure",
+  "export": "g02-local-closure",
+  "next": "G03",
+  "remaining": []
+}

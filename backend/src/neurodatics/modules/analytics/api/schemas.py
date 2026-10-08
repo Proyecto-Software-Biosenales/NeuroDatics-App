@@ -14,6 +14,16 @@ class ScenarioItem(BaseModel):
     file_id: Optional[str] = None
 
 
+class ScenarioTimingResponse(BaseModel):
+    """Recording-time references of one scenario for one participant."""
+
+    scenario: str
+    time_basis: Literal["scenario_onset", "recording"]
+    onset_s: Optional[float] = None
+    end_s: Optional[float] = None
+    gsr_origin_s: Optional[float] = None
+
+
 class PupilTimeseriesResponse(BaseModel):
     time: List[float]
     left: List[float]
@@ -232,8 +242,47 @@ class ComparisonChartConfig(BaseModel):
     height: int = 320
 
 
+class ComparisonNumericSummary(BaseModel):
+    count: int
+    mean: Optional[float] = None
+    median: Optional[float] = None
+    std: Optional[float] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
+    baseline: Optional[float] = None
+    peak: Optional[float] = None
+
+
+class ComparisonStatisticsSeries(BaseModel):
+    key: str
+    label: str
+    unit: str
+    summary: ComparisonNumericSummary
+
+
+class ComparisonStatisticsSource(BaseModel):
+    endpoint: str
+    resolution: Literal["legacy_timeseries_display_samples"]
+    source_samples: int
+    selected_samples: int
+    parameters: Dict[str, Any]
+    chart_resolution: Literal["comparison_chart_display_samples"]
+    relationship: str
+
+
+class ComparisonStatisticsBlock(BaseModel):
+    visualization_id: str
+    status: Literal["ok", "empty", "error"]
+    source: ComparisonStatisticsSource
+    series: List[ComparisonStatisticsSeries]
+    error: Optional[str] = None
+
+
 class ComparisonChartsResponse(BaseModel):
+    contract_version: Literal["comparison-charts-v3"]
+    statistics_schema_version: Literal["comparison-statistics-v1"]
     charts: List[ComparisonChartConfig]
+    statistics: List[ComparisonStatisticsBlock]
 
 
 class ScanpathObjective(BaseModel):

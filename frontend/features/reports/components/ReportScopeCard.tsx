@@ -55,7 +55,7 @@ export const ReportScopeCard = ({
               Un participante
             </Label>
             <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-              Gráficas y estadísticas completas de un solo sujeto en cada escenario.
+              Gráficas y estadísticas completas de un solo participante en cada escenario.
             </p>
             {scopeKind === "participant" ? (
               <Select
@@ -75,7 +75,7 @@ export const ReportScopeCard = ({
                         key={participant.participant_code}
                         value={participant.participant_code}
                       >
-                        {`Sujeto ${participant.participant_code}`}
+                        {`Participante ${participant.participant_code}`}
                       </SelectItem>
                     ))}
                   </SelectGroup>

@@ -1,0 +1,8 @@
+2026-10-03 G10 isolated production build
+Working copy: output/perf-g10/build/frontend
+Command: npm run build
+Next.js 16.1.6 (Turbopack), output=standalone
+Compiled successfully in 3.8s; TypeScript passed; 10/10 static pages generated.
+Routes: /, /_not-found, /authorize, /configuracion, /dashboard, /login, /proyectos, /reportes.
+Result: exit 0.
+Note: the first isolated attempt failed before compilation because the node_modules junction was outside the clone's Turbopack root. Only the ignored clone config was adjusted to the common workspace root; the product next.config.mjs and normal frontend .next were not used by the successful build.

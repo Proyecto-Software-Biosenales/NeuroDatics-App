@@ -1,5 +1,9 @@
 # EEG v2 methods and reproducibility
 
+For the current per-recording/channel scale policy, blank-unit assumptions,
+stored provenance and mixed-scale regression, see
+[Escalas por grabación y canal](ESCALAS-POR-GRABACION.md) (2026-09-27).
+
 ## Scope and provenance
 
 Inputs are exported channel voltages at recorded times. Scalp channels are F3,
@@ -84,6 +88,9 @@ Default windows: 1.5 s periodic Hann, 75% overlap, segment-mean removal, density
 scaling, no normalization and no Gaussian smoothing. A single complete window
 is valid. The display frequency limit of 25 Hz is a viewing choice; it says
 nothing about whether higher frequencies are neural or muscular.
+The dashboard asks for at least 120 windows (`min_time_bins`). When a short
+span has fewer, the hop shrinks; window length and resolution do not change,
+and `metadata.hop_s` records the hop used.
 
 Each channel is evaluated on a shared set of actual window centers. Its invalid
 windows remain null without deleting valid data from another channel. The UI

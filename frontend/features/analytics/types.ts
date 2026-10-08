@@ -9,6 +9,15 @@ export interface AnalyticsScenario {
   file_id: string | null
 }
 
+/** GET /analytics/scenario-timing: recording seconds of one scenario. */
+export interface ScenarioTimingData {
+  scenario: string
+  time_basis: "scenario_onset" | "recording"
+  onset_s: number | null
+  end_s: number | null
+  gsr_origin_s: number | null
+}
+
 export interface PupilTimeseriesData {
   time: number[]
   left: number[]
@@ -293,8 +302,45 @@ export interface ComparisonChartConfig {
   height: number
 }
 
+export interface ComparisonNumericSummary {
+  count: number
+  mean: number | null
+  median: number | null
+  std: number | null
+  min: number | null
+  max: number | null
+  baseline: number | null
+  peak: number | null
+}
+
+export interface ComparisonStatisticsSeries {
+  key: string
+  label: string
+  unit: string
+  summary: ComparisonNumericSummary
+}
+
+export interface ComparisonStatisticsBlock {
+  visualization_id: string
+  status: "ok" | "empty" | "error"
+  source: {
+    endpoint: string
+    resolution: "legacy_timeseries_display_samples"
+    source_samples: number
+    selected_samples: number
+    parameters: Record<string, unknown>
+    chart_resolution: "comparison_chart_display_samples"
+    relationship: string
+  }
+  series: ComparisonStatisticsSeries[]
+  error: string | null
+}
+
 export interface ComparisonChartsResponse {
+  contract_version: "comparison-charts-v3"
+  statistics_schema_version: "comparison-statistics-v1"
   charts: ComparisonChartConfig[]
+  statistics: ComparisonStatisticsBlock[]
 }
 
 export const FIXATION_DURATION_OPTIONS_MS = [100, 150, 200, 250, 300] as const

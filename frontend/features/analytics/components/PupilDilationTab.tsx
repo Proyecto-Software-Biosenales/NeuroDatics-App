@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
 import {
   CartesianGrid,
   Line,
@@ -114,6 +115,15 @@ interface PupilTooltipProps {
 function PupilTooltip({ active, payload, label }: PupilTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
 
+  // Instantaneous binocular average, same rule as the "Promedio" series:
+  // only shown when both pupils are plotted and have a valid value.
+  const validValues = payload
+    .map((entry) => Number(entry.value))
+    .filter((value) => isValidPupilValue(value))
+  const average = payload.length >= 2 && validValues.length === payload.length
+    ? validValues.reduce((sum, value) => sum + value, 0) / validValues.length
+    : null
+
   return (
     <div className="rounded-lg bg-gray-800 px-3 py-2 text-xs text-white shadow-lg">
       {typeof label === "number" && (
@@ -128,6 +138,12 @@ function PupilTooltip({ active, payload, label }: PupilTooltipProps) {
           <span>{entry.name}: {Number(entry.value).toFixed(2)} mm</span>
         </div>
       ))}
+      {average != null && (
+        <div className="mt-1 flex items-center gap-2 border-t border-gray-600 pt-1">
+          <span className="inline-block h-2 w-2 rounded-full bg-gray-400" />
+          <span className="font-medium">Promedio: {average.toFixed(2)} mm</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -555,6 +571,16 @@ export function PupilDilationTab({
               }
               onApply={windowState.apply}
               onReset={windowState.reset}
+            />
+            <CompareParticipantsButton
+              spec={() => ({
+                kind: "pupil",
+                title: "Dilatación pupilar",
+                scenario,
+                sourceParticipant: participantCode,
+                origin: "individual",
+                params: { eyes: viewMode, window: timeWindow },
+              })}
             />
           </div>
         </CardHeader>

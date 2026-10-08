@@ -96,11 +96,12 @@ def collect(participant: common.ReportParticipant, scenario: common.ReportScenar
         return None
     name = scenario.name
 
-    events = _best_effort(
+    fixation_result = _best_effort(
         "fixation events",
-        lambda: FixationEventService.build_events(frame, scenario=name)[0],
-        FixationEventService.empty_events(),
+        lambda: FixationEventService.build_result(frame, scenario=name),
+        None,
     )
+    events = fixation_result.events if fixation_result is not None else FixationEventService.empty_events()
     durations = _array(events["duration_s"]) * 1000.0 if not events.empty else np.asarray([], dtype=float)
     durations = durations[np.isfinite(durations) & (durations > 0)]
     first_fixation = None
@@ -110,11 +111,14 @@ def collect(participant: common.ReportParticipant, scenario: common.ReportScenar
         if times.size:
             first_fixation = max(0.0, float(times.min()) - start)
 
-    histogram = _best_effort("histogram", lambda: FixationHistogramService.compute_histogram(frame, name), {"bins": []})
-    scanpath = _best_effort("scanpath", lambda: ScanpathAnalyticsService.compute_scanpath(frame, name), {"objectives": []})
+    histogram = {"bins": []}
+    scanpath = {"objectives": []}
     aoi = None
-    if scenario.aois:
-        aoi = _best_effort("AOI metrics", lambda: AoiAnalyticsService.compute_metrics(frame, name, list(scenario.aois)), None)
+    if fixation_result is not None:
+        histogram = _best_effort("histogram", lambda: FixationHistogramService.compute_histogram_from_events(fixation_result), histogram)
+        scanpath = _best_effort("scanpath", lambda: ScanpathAnalyticsService.compute_scanpath_from_events(fixation_result), scanpath)
+        if scenario.aois:
+            aoi = _best_effort("AOI metrics", lambda: AoiAnalyticsService.compute_metrics_from_events(frame, name, list(scenario.aois), fixation_result), None)
 
     pupil = _best_effort("pupil", lambda: PupilAnalyticsService.compute_timeseries(frame, name), {})
     pupil_time = _array(pupil.get("time")) - start

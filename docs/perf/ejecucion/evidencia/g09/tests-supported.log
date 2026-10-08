@@ -1,0 +1,50 @@
+.........................                                                [100%]
+============================== warnings summary ===============================
+backend\src\neurodatics\infra\db\base.py:4
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\infra\db\base.py:4: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend\src\neurodatics\modules\participants\api\schemas.py:22
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\api\schemas.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ParticipantResponse(BaseModel):
+
+backend\src\neurodatics\modules\scenaries\api\schemas.py:105
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:105: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class AOIResponse(BaseModel):
+
+backend\src\neurodatics\modules\scenaries\api\schemas.py:117
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:117: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class scenariesResponse(BaseModel):
+
+backend\src\neurodatics\modules\projects\api\schemas.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:50: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ProjectFileResponse(BaseModel):
+
+backend\src\neurodatics\modules\projects\api\schemas.py:182
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:182: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ProjectSensorResponse(BaseModel):
+
+backend\src\neurodatics\modules\projects\api\schemas.py:190
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:190: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ParticipantResponse(BaseModel):
+
+backend\src\neurodatics\modules\projects\api\schemas.py:200
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:200: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ProjectResponse(BaseModel):
+
+backend\src\neurodatics\modules\projects\api\schemas.py:219
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:219: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ProjectDetailResponse(BaseModel):
+
+tests/unit/test_batch_repository_persistence.py::test_participant_route_keeps_response_contract_and_repository_order
+tests/unit/test_batch_repository_persistence.py::test_participant_route_keeps_response_contract_and_repository_order
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\api\routes.py:35: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    participants_data = [p.dict() for p in request.participants]
+
+tests/unit/test_batch_repository_persistence.py::test_aoi_route_keeps_response_contract_and_repository_order
+tests/unit/test_batch_repository_persistence.py::test_aoi_route_keeps_response_contract_and_repository_order
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\routes.py:101: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    aois_data = [a.dict() for a in request.aois]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+25 passed, 13 warnings in 1.33s

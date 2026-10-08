@@ -1,0 +1,6 @@
+2026-10-02T12:02:20.843522Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-02T12:02:20.843561Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-02T12:02:20.850845Z  WARN codex_core::shell_snapshot: Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell
+2026-10-02T12:02:21.544517Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-02T12:02:21.544535Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-02T12:19:27.347005Z ERROR codex_core::tools::router: error=apply_patch verification failed: invalid patch: multiple operations target C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\docs\perf\ejecucion\G06.md

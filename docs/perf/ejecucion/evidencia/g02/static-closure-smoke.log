@@ -1,0 +1,80 @@
+[
+  {
+    "step": "initial_A",
+    "n": 1,
+    "median_ms": 755.7926000000002,
+    "min_ms": 755.7926000000002,
+    "max_ms": 755.7926000000002,
+    "request_counts": [
+      5
+    ],
+    "bytes": [
+      36054
+    ]
+  },
+  {
+    "step": "PSD",
+    "n": 1,
+    "median_ms": 182.71540000000005,
+    "min_ms": 182.71540000000005,
+    "max_ms": 182.71540000000005,
+    "request_counts": [
+      1
+    ],
+    "bytes": [
+      17499
+    ]
+  },
+  {
+    "step": "spectrogram",
+    "n": 1,
+    "median_ms": 165.85509999999977,
+    "min_ms": 165.85509999999977,
+    "max_ms": 165.85509999999977,
+    "request_counts": [
+      1
+    ],
+    "bytes": [
+      268117
+    ]
+  },
+  {
+    "step": "topography",
+    "n": 1,
+    "median_ms": 217.49659999999994,
+    "min_ms": 217.49659999999994,
+    "max_ms": 217.49659999999994,
+    "request_counts": [
+      2
+    ],
+    "bytes": [
+      17835
+    ]
+  },
+  {
+    "step": "B_topography",
+    "n": 1,
+    "median_ms": 265.4023000000002,
+    "min_ms": 265.4023000000002,
+    "max_ms": 265.4023000000002,
+    "request_counts": [
+      5
+    ],
+    "bytes": [
+      18352
+    ]
+  },
+  {
+    "step": "return_A_topography",
+    "n": 1,
+    "median_ms": 166.71939999999995,
+    "min_ms": 166.71939999999995,
+    "max_ms": 166.71939999999995,
+    "request_counts": [
+      1
+    ],
+    "bytes": [
+      424
+    ]
+  }
+]

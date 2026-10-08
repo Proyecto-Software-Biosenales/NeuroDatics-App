@@ -4,22 +4,24 @@ import { EegChannelSelector } from "./EegChannelSelector"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { type Dispatch, type SetStateAction } from "react"
+import { type Dispatch, type SetStateAction, type ReactNode } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Activity, Radio, SlidersHorizontal, TrendingUp, Waves } from "lucide-react"
+import { Activity, Radio, SlidersHorizontal, SquareDashed, TrendingUp, Waves } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
 
 import { StimulusFixationCard } from "../StimulusFixationCard"
 import { InfoChip } from "../InfoChip"
-import type { AnalyticsChartNote } from "../AnalyticsChartShell"
 import { TimeWindowControls, type TimeWindow, type TimeWindowDraft } from "../TimeWindowControls"
 import { type EegSpectrogramData } from "../../types"
-import { formatChannel, VIRIDIS_GRADIENT } from "../../eegPresentation"
+import { formatChannel, VIRIDIS_GRADIENT, type SpectrogramGaps } from "../../eegPresentation"
 import { EEG_CHANNELS, type EegView, type SpectrogramStats } from "./eegViewShared"
 import { SpectrogramStatsTable } from "./EegStatsTables"
 import { SpectrogramPanel } from "./EegCanvasPanels"
+
+/** Shared so a channel without a matrix keeps the same prop across renders. */
+const EMPTY_MATRIX: Array<Array<number | null>> = []
 
 interface EegSpectrogramViewProps {
   availableChannels: string[]
@@ -49,10 +51,14 @@ interface EegSpectrogramViewProps {
   handleResetSpectrogramWindow: () => void
   perChannelColorDomain: boolean
   setPerChannelColorDomain: Dispatch<SetStateAction<boolean>>
+  interpolateSpectrogram: boolean
+  setInterpolateSpectrogram: Dispatch<SetStateAction<boolean>>
+  /** What the black bands are, counted; null while there is nothing to draw. */
+  spectrogramGaps: SpectrogramGaps | null
   view: EegView
+  /** "Comparar participantes" for this chart, built by EegTab. */
+  compareAction?: ReactNode
   visibleSpectrogramChannels: string[]
-  /** Points at the quality card that closes the tab; absent on a clean export. */
-  qualityNote: AnalyticsChartNote | null
 }
 
 export function EegSpectrogramView({
@@ -83,9 +89,12 @@ export function EegSpectrogramView({
   handleResetSpectrogramWindow,
   perChannelColorDomain,
   setPerChannelColorDomain,
+  interpolateSpectrogram,
+  setInterpolateSpectrogram,
+  spectrogramGaps,
   view,
+  compareAction,
   visibleSpectrogramChannels,
-  qualityNote,
 }: EegSpectrogramViewProps) {
   return <>
 {view === "spectrogram" ? (
@@ -133,6 +142,7 @@ export function EegSpectrogramView({
                 onReset={handleResetSpectrogramWindow}
               />
             </div>
+            {compareAction}
           </CardHeader>
           <CardContent>
             <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -219,6 +229,69 @@ export function EegSpectrogramView({
                     />
                     Escala de color por canal
                   </Label>
+                  {/* Each cell is one window by one frequency bin, so at this
+                      size the matrix reads as blocks. Blending them is a
+                      display choice and stays off by default. */}
+                  <Label
+                    htmlFor="spectrogram-interpolate"
+                    className="flex items-center gap-2 whitespace-nowrap text-xs font-normal text-muted-foreground"
+                  >
+                    <Checkbox
+                      id="spectrogram-interpolate"
+                      checked={interpolateSpectrogram}
+                      onCheckedChange={(value) => setInterpolateSpectrogram(value === true)}
+                    />
+                    Interpolar celdas
+                  </Label>
+                  {spectrogramGaps && (spectrogramGaps.nullColumnsAny > 0 || spectrogramGaps.missingWindows > 0) ? (
+                    <InfoChip
+                      Icon={SquareDashed}
+                      label={`Bandas negras: ${(
+                        spectrogramGaps.nullColumnsAny + spectrogramGaps.missingWindows
+                      ).toLocaleString()} ventanas`}
+                      detail={
+                        <>
+                          <p>
+                            Una banda negra es tiempo sin estimación espectral. Las ventanas nunca se
+                            calculan a caballo de un hueco, así que el color no se interpola sobre ellas.
+                          </p>
+                          <dl className="grid grid-cols-[auto_auto] gap-x-3 tabular-nums">
+                            {spectrogramGaps.missingWindows > 0 ? (
+                              <div className="contents">
+                                <dt className="font-semibold">{spectrogramGaps.missingWindows}</dt>
+                                <dd>
+                                  ventanas que no existen: la ventana de análisis no cabe entre dos
+                                  discontinuidades (salto de reloj o cambio de escenario)
+                                </dd>
+                              </div>
+                            ) : null}
+                            {spectrogramGaps.nullColumnsAny > 0 ? (
+                              <div className="contents">
+                                <dt className="font-semibold">{spectrogramGaps.nullColumnsAny}</dt>
+                                <dd>
+                                  ventanas descartadas por contener muestras ausentes, en al menos un
+                                  canal mostrado
+                                </dd>
+                              </div>
+                            ) : null}
+                          </dl>
+                          {spectrogramGaps.nullColumns.length > 0 ? (
+                            <p>
+                              Por canal:{" "}
+                              {spectrogramGaps.nullColumns
+                                .map((row) => `${formatChannel(row.channel)} ${row.count}`)
+                                .join(" · ")}
+                              .
+                            </p>
+                          ) : null}
+                          <p className="text-muted-foreground">
+                            {spectrogramGaps.seconds.toFixed(1)} s del eje sin estimación, sobre ventanas
+                            de {spectrogramGaps.hopS.toFixed(2)} s.
+                          </p>
+                        </>
+                      }
+                    />
+                  ) : null}
                   {perChannelColorDomain && spectrogramData.channel_color_domain ? (
                     <InfoChip
                       Icon={SlidersHorizontal}
@@ -244,7 +317,6 @@ export function EegSpectrogramView({
                       }
                     />
                   ) : null}
-                  {qualityNote ? <InfoChip {...qualityNote} /> : null}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -254,13 +326,14 @@ export function EegSpectrogramView({
                       channel={channel}
                       time={spectrogramData.time}
                       frequency={spectrogramData.frequency}
-                      matrix={spectrogramData.power[channel] ?? []}
+                      matrix={spectrogramData.power[channel] ?? EMPTY_MATRIX}
                       hopS={Number(spectrogramData.metadata?.display_hop_s ?? spectrogramData.metadata?.hop_s)}
                       colorDomain={
                         spectrogramData.channel_color_domain?.[channel] ??
                         spectrogramData.color_domain
                       }
                       unit={spectrogramData.unit}
+                      interpolate={interpolateSpectrogram}
                       selectedTime={selectedTime}
                       onTimeSelect={setSelectedTime}
                       onTimeZoom={handleZoomSpectrogramTime}

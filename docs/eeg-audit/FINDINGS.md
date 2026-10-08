@@ -1,5 +1,9 @@
 # Electroencefalógrafo: scientific audit
 
+**Ampliación del 27 de septiembre de 2026:** [escalas por grabación y canal](ESCALAS-POR-GRABACION.md)
+documenta la alternancia entre `kilo` y unidad vacía, su tratamiento y persistencia,
+los proyectos antiguos y una prueba de regresión de importación con escalas mezcladas.
+
 Audit date: 2026-09-15/16. Scope: local reference recordings, ingestion, EEG
 analytics, correlation, charts and executive metrics. No recordings were uploaded,
 rewritten or committed. Anonymous aggregate evidence is reproducible with

@@ -1,0 +1,11 @@
+{
+  "reviewed_at": "2026-10-03T05:01:12.9452339Z",
+  "manifest_checked": 30,
+  "manifest_drift": [],
+  "foreign_checked": 998,
+  "foreign_drift": [],
+  "missing": [],
+  "patch_reverse_exit": 0,
+  "own_runner_active": false,
+  "review": "Reviewed batch SQL/PK reread, duplicate guards only incoming AOI, defaults/expire-on-commit/portable SQLite rollback; real SQL counts; corrected key[0] FK with red then 26 tests each runtime. PG real unavailable. No product implementation by root."
+}

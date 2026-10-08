@@ -1,0 +1,305 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+_ test_aoi_batch_assigns_each_new_aoi_to_its_scenario_when_last_input_is_invalid _
+
+self = <sqlalchemy.engine.base.Connection object at 0x00000178DB282FD0>
+dialect = <sqlalchemy.dialects.sqlite.pysqlite.SQLiteDialect_pysqlite object at 0x00000178DB25D010>
+context = <sqlalchemy.dialects.sqlite.base.SQLiteExecutionContext object at 0x00000178DB396270>
+
+    def _exec_insertmany_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for an "insertmanyvalues"
+        operation, which will invoke DBAPI
+        cursor.execute() one or more times with individual log and
+        event hook calls.
+    
+        """
+    
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+        else:
+            generic_setinputsizes = None
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters = parameters
+    
+        engine_events = self._has_events or self.engine._has_events
+        if self.dialect._has_events:
+            do_execute_dispatch: Iterable[Any] = (
+                self.dialect.dispatch.do_execute
+            )
+        else:
+            do_execute_dispatch = ()
+    
+        if engine_events:
+            _WORKAROUND_ISSUE_13018 = getattr(
+                self, "_WORKAROUND_ISSUE_13018", False
+            )
+        else:
+            _WORKAROUND_ISSUE_13018 = False
+    
+        if self._echo:
+            stats = context._get_cache_stats() + " (insertmanyvalues)"
+    
+        preserve_rowcount = context.execution_options.get(
+            "preserve_rowcount", False
+        )
+        rowcount = 0
+    
+        for imv_batch in dialect._deliver_insertmanyvalues_batches(
+            self,
+            cursor,
+            str_statement,
+            effective_parameters,
+            generic_setinputsizes,
+            context,
+        ):
+            if imv_batch.processed_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor,
+                        imv_batch.processed_setinputsizes,
+                        context,
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e,
+                        sql_util._long_statement(imv_batch.replaced_statement),
+                        imv_batch.replaced_parameters,
+                        None,
+                        context,
+                        is_sub_exec=True,
+                    )
+    
+            sub_stmt = imv_batch.replaced_statement
+            sub_params = imv_batch.replaced_parameters
+    
+            if engine_events:
+                for fn in self.dispatch.before_cursor_execute:
+                    sub_stmt, sub_params = fn(
+                        self,
+                        cursor,
+                        sub_stmt,
+                        sub_params,
+                        context,
+                        True,
+                    )
+    
+            if self._echo:
+                self._log_info(sql_util._long_statement(sub_stmt))
+    
+                imv_stats = f""" {imv_batch.batchnum}/{
+                            imv_batch.total_batches
+                } ({
+                    'ordered'
+                    if imv_batch.rows_sorted else 'unordered'
+                }{
+                    '; batch not supported'
+                    if imv_batch.is_downgraded
+                    else ''
+                })"""
+    
+                if imv_batch.batchnum == 1:
+                    stats += imv_stats
+                else:
+                    stats = f"insertmanyvalues{imv_stats}"
+    
+                if not self.engine.hide_parameters:
+                    self._log_info(
+                        "[%s] %r",
+                        stats,
+                        sql_util._repr_params(
+                            sub_params,
+                            batches=10,
+                            ismulti=False,
+                        ),
+                    )
+                else:
+                    self._log_info(
+                        "[%s] [SQL parameters hidden due to "
+                        "hide_parameters=True]",
+                        stats,
+                    )
+    
+            try:
+                for fn in do_execute_dispatch:
+                    if fn(
+                        cursor,
+                        sub_stmt,
+                        sub_params,
+                        context,
+                    ):
+                        break
+                else:
+>                   dialect.do_execute(
+                        cursor,
+                        sub_stmt,
+                        sub_params,
+                        context,
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.sqlite.pysqlite.SQLiteDialect_pysqlite object at 0x00000178DB25D010>
+cursor = <sqlite3.Cursor object at 0x00000178DB399C40>
+statement = 'INSERT INTO aois (id, scenaries_id, name, color, shape_type, shape, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?,...AMP, CURRENT_TIMESTAMP), (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING created_at, updated_at, id'
+parameters = ('dd3812347b4f4064970f11c7bdd935ba', None, 'first', '#112233', 'rect', '{"x": 1, "y": 2, "width": 3, "height": 4}', ...)
+context = <sqlalchemy.dialects.sqlite.base.SQLiteExecutionContext object at 0x00000178DB396270>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlite3.IntegrityError: NOT NULL constraint failed: aois.scenaries_id
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+
+The above exception was the direct cause of the following exception:
+
+database = (Engine(sqlite://), sessionmaker(class_='Session', bind=Engine(sqlite://), autoflush=True, expire_on_commit=False))
+
+    @pytest.mark.asyncio
+    async def test_aoi_batch_assigns_each_new_aoi_to_its_scenario_when_last_input_is_invalid(
+        database,
+    ):
+        _engine, factory = database
+        with factory() as session:
+            project = add_project(session)
+            other_project = add_project(session)
+            scenario_a = add_scenario(session, project, "A")
+            scenario_b = add_scenario(session, project, "B")
+            other_scenario = add_scenario(session, other_project, "A")
+            other_aoi = AOI(
+                scenaries_id=other_scenario.id,
+                name="other-project",
+                color="#abcdef",
+                shape_type="rect",
+                shape={},
+            )
+            session.add(other_aoi)
+            session.commit()
+    
+>           result = await SQLscenariesRepository(
+                SyncSessionAdapter(session)
+            ).upsert_aois(
+                project.id,
+                [
+                    aoi_payload("A", "first"),
+                    aoi_payload("B", "second"),
+                    aoi_payload("missing", "ignored"),
+                ],
+            )
+
+backend\tests\unit\test_batch_repository_persistence.py:285: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+backend\src\neurodatics\modules\scenaries\infrastructure\repository_impl.py:268: in upsert_aois
+    await self.session.flush()
+backend\tests\unit\test_batch_repository_persistence.py:46: in flush
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4331: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4466: in _flush
+    with util.safe_reraise():
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:121: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4427: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:466: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:642: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:93: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1143: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1419: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:527: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1641: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1844: in _execute_context
+    return self._exec_insertmany_context(dialect, context)
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2133: in _exec_insertmany_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2363: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2125: in _exec_insertmany_context
+    dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.sqlite.pysqlite.SQLiteDialect_pysqlite object at 0x00000178DB25D010>
+cursor = <sqlite3.Cursor object at 0x00000178DB399C40>
+statement = 'INSERT INTO aois (id, scenaries_id, name, color, shape_type, shape, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?,...AMP, CURRENT_TIMESTAMP), (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING created_at, updated_at, id'
+parameters = ('dd3812347b4f4064970f11c7bdd935ba', None, 'first', '#112233', 'rect', '{"x": 1, "y": 2, "width": 3, "height": 4}', ...)
+context = <sqlalchemy.dialects.sqlite.base.SQLiteExecutionContext object at 0x00000178DB396270>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: aois.scenaries_id
+E       [SQL: INSERT INTO aois (id, scenaries_id, name, color, shape_type, shape, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP), (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING created_at, updated_at, id]
+E       [parameters: ('dd3812347b4f4064970f11c7bdd935ba', None, 'first', '#112233', 'rect', '{"x": 1, "y": 2, "width": 3, "height": 4}', '5d4289586d764bc5a50285e89dc0f59c', None, 'second', '#112233', 'rect', '{"x": 1, "y": 2, "width": 3, "height": 4}')]
+E       (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: IntegrityError
+============================== warnings summary ===============================
+backend\src\neurodatics\infra\db\base.py:4
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\infra\db\base.py:4: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+backend\src\neurodatics\modules\participants\api\schemas.py:22
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\api\schemas.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+.venv\Lib\site-packages\fastapi\routing.py:211
+.venv\Lib\site-packages\fastapi\routing.py:211
+.venv\Lib\site-packages\fastapi\routing.py:211
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\routing.py:211: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+
+.venv\Lib\site-packages\starlette\_utils.py:17
+.venv\Lib\site-packages\starlette\_utils.py:17
+.venv\Lib\site-packages\starlette\_utils.py:17
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:17: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj) or (
+
+backend\src\neurodatics\modules\scenaries\api\schemas.py:105
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:105: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AOIResponse(BaseModel):
+
+backend\src\neurodatics\modules\scenaries\api\schemas.py:117
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:117: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class scenariesResponse(BaseModel):
+
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: 456 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj)
+
+tests/unit/test_batch_repository_persistence.py::test_aoi_batch_assigns_each_new_aoi_to_its_scenario_when_last_input_is_invalid
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:564: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+
+tests/unit/test_batch_repository_persistence.py::test_aoi_batch_assigns_each_new_aoi_to_its_scenario_when_last_input_is_invalid
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:395: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_batch_repository_persistence.py::test_aoi_batch_assigns_each_new_aoi_to_its_scenario_when_last_input_is_invalid
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:441: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_batch_repository_persistence.py::test_aoi_batch_assigns_each_new_aoi_to_its_scenario_when_last_input_is_invalid
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:462: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED backend\tests\unit\test_batch_repository_persistence.py::test_aoi_batch_assigns_each_new_aoi_to_its_scenario_when_last_input_is_invalid
+1 failed, 470 warnings in 0.95s
+exit_code=1

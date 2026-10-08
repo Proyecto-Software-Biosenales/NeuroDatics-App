@@ -1,0 +1,29 @@
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\frontend\features\analytics\analyticsCache.ts
+  102:9  error  'release' is never reassigned. Use 'const' instead  prefer-const
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\frontend\features\analytics\hooks\useAnalyticsData.ts
+   98:7  warning  React Hook useCallback has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  417:5  warning  React Hook useCallback has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  456:5  warning  React Hook useCallback has an unnecessary dependency: 'revision'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\frontend\features\analytics\participantComparison\ParticipantComparisonDialog.tsx
+  71:15  warning  '_generation' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\frontend\tests\hooks\participant-comparison-entry.test.mjs
+  55:7  error  Error: This value cannot be modified
+
+Modifying a variable defined outside a component or hook is not allowed. Consider using an effect.
+
+  53 |     const probeState = { current: null, calls }
+  54 |     function Probe({ cardKey }) {
+> 55 |       probeState.current = useLoaderEntry(cardKey, fetcher, 0, cardKey ?? "none")
+     |       ^^^^^^^^^^ value cannot be modified
+  56 |       return null
+  57 |     }
+  58 |     probeState.render = (cardKey) => flushSync(() => root.render(cardKey === undefined ? null : React.createElement(Probe, { cardKey })))
+
+Hint: If this value is a Ref (value returned by `useRef()`), rename the variable to end in "Ref"  react-hooks/immutability
+
+✖ 6 problems (2 errors, 4 warnings)
+

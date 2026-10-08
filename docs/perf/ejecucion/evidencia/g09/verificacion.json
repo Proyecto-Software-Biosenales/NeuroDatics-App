@@ -1,0 +1,43 @@
+{
+  "status": "passed_with_postgresql_engine_limitation",
+  "runtime_normal": {
+    "python": "3.14.3",
+    "pyarrow": "25.0.0",
+    "tests": 25,
+    "exit_code": 0,
+    "log": "tests-runtime.log"
+  },
+  "runtime_supported": {
+    "python": "3.12.13",
+    "pyarrow": "16.1.0",
+    "path": "output/perf-g03/supported-env",
+    "tests": 25,
+    "exit_code": 0,
+    "log": "tests-supported.log"
+  },
+  "static": {
+    "ruff_exit_code": 0,
+    "import_contracts_kept": 3,
+    "import_contracts_broken": 0
+  },
+  "sql_measurement": {
+    "engine": "SQLite 3.50.4 in-memory",
+    "fresh_database_per_case": true,
+    "actual_sql_event_hook": true,
+    "sizes": [10, 100, 1000],
+    "participants_before": [20, 200, 2000],
+    "participants_after": [2, 2, 2],
+    "aois_before": [22, 202, 2002],
+    "aois_after": [3, 3, 3]
+  },
+  "postgresql": {
+    "engine_executed": false,
+    "reason": "Docker CLI present but daemon unavailable; psql/initdb/pg_ctl absent",
+    "dialect_ddl_compiled": true,
+    "aoi_named_constraint_checked": true,
+    "equivalence_claimed": false
+  },
+  "patch_reverse_check_exit_code": 0,
+  "global_or_frontend_suite_run": false,
+  "global_gate_reserved_for": "G12"
+}

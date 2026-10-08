@@ -806,6 +806,7 @@ export const useCreateProjectWizard = (
     setFolderStructureSelection,
     discardDraftProject,
     openForResume,
+    hasDraftProject: !!draftProjectId,
     isResumedDraft,
   };
 };

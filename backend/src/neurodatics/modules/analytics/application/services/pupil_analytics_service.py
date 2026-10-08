@@ -11,7 +11,7 @@ from ...domain.coordinate_transform import (
     valid_stimulus_gaze_mask,
 )
 from neurodatics.shared.scenario_identity import is_all_scenarios
-from .numeric_helpers import _decimation_indices
+from .numeric_helpers import _display_indices
 from .numeric_helpers import _filter_time_window
 from .numeric_helpers import _infer_fs
 from .numeric_helpers import _moving_average
@@ -42,8 +42,13 @@ class PupilAnalyticsService:
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
         max_points: int = 0,
+        decimation: str = "linspace",
     ) -> dict:
-        """Compute pupil timeseries from DataFrame."""
+        """Compute pupil timeseries from DataFrame.
+
+        ``decimation="minmax_envelope"`` keeps each display bucket's extremes of
+        the smoothed traces the charts draw; see ``_envelope_display_indices``.
+        """
         df = scope_to_scenario(df, scenario)
 
         for col in ("time", "lx_pupil", "rx_pupil"):
@@ -89,7 +94,9 @@ class PupilAnalyticsService:
 
         # Decimate only after smoothing, which needs the full-rate signal, and
         # with one index set so every series stays aligned to the time axis.
-        indices = _decimation_indices(time_arr.size, max_points)
+        indices = _display_indices(
+            time_arr.size, (smooth_left, smooth_right), max_points, decimation
+        )
         return {
             "time": time_arr[indices].tolist(),
             "left": left_arr[indices].tolist(),
@@ -465,6 +472,7 @@ class PupilAnalyticsService:
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
         max_points: int = 0,
+        decimation: str = "linspace",
     ) -> dict:
         """Compute cleaned gaze X/Y timeseries."""
         df = scope_to_scenario(df, scenario)
@@ -495,7 +503,10 @@ class PupilAnalyticsService:
         def _safe_list(arr: np.ndarray) -> list:
             return [0.0 if not np.isfinite(float(v)) else round(float(v), 4) for v in arr]
 
-        indices = _decimation_indices(len(df), max_points)
+        # The envelope reads the values as drawn: non-finite samples become 0.
+        gx_display = np.nan_to_num(df["gx_clean"].to_numpy(dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
+        gy_display = np.nan_to_num(df["gy_clean"].to_numpy(dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
+        indices = _display_indices(len(df), (gx_display, gy_display), max_points, decimation)
         return attach_transform_provenance({
             "time": df["time"].to_numpy(dtype=float)[indices].tolist(),
             "gx_clean": _safe_list(df["gx_clean"].to_numpy(dtype=float)[indices]),
@@ -562,6 +573,7 @@ class PupilAnalyticsService:
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
         max_points: int = 0,
+        decimation: str = "linspace",
     ) -> dict:
         """Compute eye-to-screen distance timeseries (mm -> cm)."""
         _empty: dict = {"time": [], "distance_cm": []}
@@ -581,7 +593,9 @@ class PupilAnalyticsService:
         if df.empty:
             return _empty
 
-        indices = _decimation_indices(len(df), max_points)
+        indices = _display_indices(
+            len(df), (df["distance_cm"].to_numpy(dtype=float),), max_points, decimation
+        )
         return {
             "time": df["time"].to_numpy(dtype=float)[indices].tolist(),
             "distance_cm": [

@@ -3,12 +3,15 @@ import hashlib
 import json
 import logging
 import math
+import multiprocessing
 import pathlib
 import re
 import statistics
 import unicodedata
+from concurrent.futures import Future, ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -114,6 +117,17 @@ STD_MAP = {
     for alias in aliases
 }
 
+# Header detection looks at every line of the file, and canonicalizing each cell was a
+# large share of ingestion time. On an ASCII line canonicalization only trims ends,
+# respaces whitespace and slashes, and lowercases; csv parsing only drops quotes. Every
+# word of a Time spelling therefore appears verbatim in any ASCII line whose cell spells
+# it, so a line holding none of these words cannot be a header.
+_TIME_HEADER_WORDS = frozenset(
+    max(re.split(r"[\s/]+", key), key=len)
+    for key in {*STD_MAP, "time"}
+    if STD_MAP.get(key, key) == "time"
+)
+
 _EEG_COLUMNS = {"le", "f4", "c4", "p4", "p3", "c3", "f3", "trg"}
 _EYE_COLUMNS = {
     "distance",
@@ -215,6 +229,13 @@ class _BlockSpec:
 
 
 @dataclass
+class _BlockOutcome:
+    block_metadata: BlockMetadata
+    user_paths: List[Tuple[int, str]]
+    scenario_paths: List[Tuple[int, str, str]]
+
+
+@dataclass
 class _ParsedFrame:
     dataframe: pd.DataFrame
     original_columns: List[str]
@@ -302,11 +323,18 @@ class CsvProcessingService:
     def _is_header_line(cls, line: str) -> bool:
         if not line.strip():
             return False
+        if line.isascii():
+            folded = line.replace('"', "").lower()
+            if not any(word in folded for word in _TIME_HEADER_WORDS):
+                return False
         _, cells = cls._header_cells(line)
         return any(cls._canonical_column(cell) == "time" for cell in cells)
 
     @classmethod
     def _is_recording_marker(cls, line: str) -> bool:
+        # Same shortcut as _is_header_line: an ASCII line keeps the word verbatim.
+        if line.isascii() and "grabacion" not in line.lower():
+            return False
         normalized = cls._norm(line)
         return normalized.startswith("grabación") or normalized.startswith("grabacion")
 
@@ -1121,6 +1149,10 @@ class CsvProcessingService:
             "No fue posible decodificar el CSV con utf-16, utf-8 o latin-1"
         )
 
+    # Starting a worker process costs about a second (it imports pandas and numpy);
+    # a CSV shorter than this finishes sooner one block at a time in this process.
+    _POOL_MIN_LINES = 10_000
+
     @classmethod
     def process(
         cls,
@@ -1130,6 +1162,7 @@ class CsvProcessingService:
         *,
         stimulus_placements_by_scenario: Optional[Mapping[str, Any]] = None,
         rename_vendor_fixations: bool = True,
+        max_workers: int = 1,
     ) -> ProcessingResult:
         try:
             detector_geometry, geometry_warnings = cls._screen_geometry(screen_geometry)
@@ -1167,207 +1200,46 @@ class CsvProcessingService:
                 detector_geometry
             )
 
-            for user_index, spec in enumerate(block_specs, start=1):
-                delimiter, _ = cls._header_cells(lines[spec.header_index])
-                parsed = cls._build_dataframe_with_info(
-                    lines[spec.header_index : spec.block_end],
-                    delimiter,
-                    source_header_line=spec.header_index + 1,
-                    rename_vendor_fixations=rename_vendor_fixations,
-                )
-                (
-                    channels,
-                    declared_file_rate_hz,
-                    metadata_warnings,
-                ) = cls._parse_metadata(
-                    spec.metadata_lines,
-                    rename_vendor_fixations=rename_vendor_fixations,
-                )
-                normalized_df, recording_units, detector_distance_unit = cls._normalize_declared_units(
-                    parsed.dataframe, channels
-                )
-                gaze_units = cls._gaze_units(channels)
-
-                participant_code = cls._extract_participant_code(spec.metadata_lines)
-                if not participant_code:
-                    participant_code = f"participante_{user_index}"
+            jobs = [
+                {
+                    "user_index": user_index,
+                    "spec": spec,
+                    "block_lines": lines[spec.header_index : spec.block_end],
+                    "output_dir": output_dir,
+                    "detector_geometry": detector_geometry,
+                    "geometry_warnings": geometry_warnings,
+                    "physical_geometry_snapshot": physical_geometry_snapshot,
+                    "stimulus_placements_by_scenario": stimulus_placements_by_scenario,
+                    "rename_vendor_fixations": rename_vendor_fixations,
+                }
+                for user_index, spec in enumerate(block_specs, start=1)
+            ]
+            workers = max_workers if len(lines) >= cls._POOL_MIN_LINES else 1
+            for outcome in cls._block_outcomes(jobs, workers):
+                block_metadata = outcome.block_metadata
                 participants.append(
                     ParticipantInfo(
-                        participant_code=participant_code,
-                        user_index=user_index,
+                        participant_code=block_metadata.participant_code,
+                        user_index=block_metadata.user_index,
                     )
                 )
-
-                detected_sensors = cls._detect_sensors(parsed.normalized_columns)
-                for sensor in detected_sensors:
+                for sensor in block_metadata.detected_sensors:
                     if sensor not in all_detected_sensors:
                         all_detected_sensors.append(sensor)
-
-                observed_grid_rate_hz, rate_warnings = cls._derive_observed_rate(
-                    normalized_df,
-                    declared_file_rate_hz,
-                )
-                declared_gaze_rate_hz, gaze_warnings = cls._derive_gaze_rate(channels)
-
-                warnings = [
-                    *metadata_warnings,
-                    *parsed.warnings,
-                    *rate_warnings,
-                    *gaze_warnings,
-                    *geometry_warnings,
-                ]
-                if len(parsed.vendor_fixation_axes) == 1:
-                    found = next(iter(parsed.vendor_fixation_axes))
-                    warnings.append(
-                        f"partial vendor fixation columns: found {found} without its paired axis"
-                    )
-                if (
-                    declared_gaze_rate_hz is not None
-                    and observed_grid_rate_hz is not None
-                    and abs(declared_gaze_rate_hz - observed_grid_rate_hz)
-                    / max(declared_gaze_rate_hz, observed_grid_rate_hz)
-                    > 0.02
-                ):
-                    warnings.append(
-                        "gaze channel rate differs from observed file grid; values may be resampled"
-                    )
-
-                cleaned_df = normalized_df
-                fixation_available = False
-                fixation_method: Optional[str] = None
-                fixation_detector_version: Optional[str] = None
-                fixation_source: Optional[str] = None
-                stimulus_transform_status: Optional[str] = None
-                stimulus_transform_version: Optional[str] = None
-                stimulus_transform_fingerprint: Optional[str] = None
-                fixation_coordinate_space: Optional[str] = None
-                block_stimulus_placements: Dict[str, Dict[str, Any]] = {}
-                effective_detection_rate_hz: Optional[float] = None
-                resampled_for_detection = False
-
-                has_gx = "gx" in cleaned_df.columns
-                has_gy = "gy" in cleaned_df.columns
-                if has_gx and has_gy:
-                    detector_result = FixationDetectionService.detect_duration_variants(
-                        cleaned_df,
-                        metadata=FixationDetectionMetadata(
-                            eye_sampling_rate_hz=declared_gaze_rate_hz,
-                            grid_sampling_rate_hz=observed_grid_rate_hz,
-                            gaze_units=gaze_units,
-                            distance_unit=detector_distance_unit,
-                            screen_geometry=detector_geometry,
-                            stimulus_placements_by_scenario=(
-                                stimulus_placements_by_scenario
-                            ),
-                        ),
-                    )
-                    cleaned_df = detector_result.samples
-                    detector_metadata = detector_result.metadata
-                    detector_warnings = [
-                        str(item) for item in detector_metadata.get("warnings", [])
-                    ]
-                    warnings.extend(detector_warnings)
-                    fixation_available = True
-                    fixation_method = str(detector_metadata.get("method") or "") or None
-                    fixation_detector_version = (
-                        str(detector_metadata.get("version") or "") or None
-                    )
-                    fixation_source = "raw_gaze"
-                    stimulus_transform_status = (
-                        str(detector_metadata.get("stimulus_transform_status") or "")
-                        or None
-                    )
-                    stimulus_transform_version = (
-                        str(detector_metadata.get("stimulus_transform_version") or "")
-                        or None
-                    )
-                    stimulus_transform_fingerprint = (
-                        str(
-                            detector_metadata.get("stimulus_transform_fingerprint")
-                            or ""
+                for scenario, payload in block_metadata.stimulus_placements_by_scenario.items():
+                    previous = all_stimulus_placements.get(scenario)
+                    if previous is not None and previous != payload:
+                        raise CsvProcessingError(
+                            "conflicting stimulus placement snapshots for "
+                            f"scenario {scenario!r}"
                         )
-                        or None
-                    )
-                    fixation_coordinate_space = (
-                        str(detector_metadata.get("fixation_coordinate_space") or "")
-                        or None
-                    )
-                    snapshot_value = detector_metadata.get(
-                        "stimulus_placements_by_scenario"
-                    )
-                    if isinstance(snapshot_value, Mapping):
-                        block_stimulus_placements = {
-                            str(scenario): dict(payload)
-                            for scenario, payload in snapshot_value.items()
-                            if isinstance(payload, Mapping)
-                        }
-                        for scenario, payload in block_stimulus_placements.items():
-                            previous = all_stimulus_placements.get(scenario)
-                            if previous is not None and previous != payload:
-                                raise CsvProcessingError(
-                                    "conflicting stimulus placement snapshots for "
-                                    f"scenario {scenario!r}"
-                                )
-                            all_stimulus_placements[scenario] = payload
-                    effective_value = detector_metadata.get("effective_rate_hz")
-                    effective_detection_rate_hz = (
-                        float(effective_value) if effective_value is not None else None
-                    )
-                    resampled_for_detection = bool(detector_metadata.get("resampled"))
-                elif has_gx or has_gy:
-                    missing_axis = "gy" if has_gx else "gx"
-                    warnings.append(
-                        f"partial raw gaze columns: missing {missing_axis}; fixation-v2 unavailable"
-                    )
-
-                user_paths, scenario_paths = cls._write_parquets(
-                    cleaned_df,
-                    user_index=user_index,
-                    output_dir=output_dir,
-                    stimulus_placements_by_scenario=block_stimulus_placements,
-                    physical_screen_geometry=physical_geometry_snapshot,
-                    recording_units=recording_units,
-                )
-                all_user_paths.extend(user_paths)
-                all_scenario_paths.extend(scenario_paths)
-
-                times = pd.to_numeric(cleaned_df["time"], errors="coerce")
-                block_metadata = BlockMetadata(
-                    user_index=user_index,
-                    participant_code=participant_code,
-                    recording_label=cls._extract_recording_label(spec.metadata_lines),
-                    source_start_line=spec.source_start + 1,
-                    header_line=spec.header_index + 1,
-                    source_end_line=spec.block_end,
-                    delimiter=delimiter,
-                    original_columns=parsed.original_columns,
-                    normalized_columns=list(cleaned_df.columns),
-                    extra_columns=parsed.extra_columns,
-                    detected_sensors=detected_sensors,
-                    declared_file_rate_hz=declared_file_rate_hz,
-                    observed_grid_rate_hz=observed_grid_rate_hz,
-                    declared_gaze_rate_hz=declared_gaze_rate_hz,
-                    effective_detection_rate_hz=effective_detection_rate_hz,
-                    resampled_for_detection=resampled_for_detection,
-                    sample_count=len(cleaned_df),
-                    time_start=float(times.iloc[0]) if len(times) else None,
-                    time_end=float(times.iloc[-1]) if len(times) else None,
-                    fixation_available=fixation_available,
-                    fixation_method=fixation_method,
-                    fixation_detector_version=fixation_detector_version,
-                    fixation_source=fixation_source,
-                    stimulus_transform_status=stimulus_transform_status,
-                    stimulus_transform_version=stimulus_transform_version,
-                    stimulus_transform_fingerprint=stimulus_transform_fingerprint,
-                    fixation_coordinate_space=fixation_coordinate_space,
-                    stimulus_placements_by_scenario=block_stimulus_placements,
-                    physical_screen_geometry=physical_geometry_snapshot,
-                    channels=channels,
-                    warnings=warnings,
-                )
+                    all_stimulus_placements[scenario] = payload
+                all_user_paths.extend(outcome.user_paths)
+                all_scenario_paths.extend(outcome.scenario_paths)
                 all_block_metadata.append(block_metadata)
                 all_warnings.extend(
-                    f"block {user_index}: {warning}" for warning in warnings
+                    f"block {block_metadata.user_index}: {warning}"
+                    for warning in block_metadata.warnings
                 )
 
             return ProcessingResult(
@@ -1388,3 +1260,250 @@ class CsvProcessingService:
             raise CsvProcessingError(
                 f"Error procesando CSV '{csv_path}': {exc}"
             ) from exc
+
+    @classmethod
+    def _block_outcomes(
+        cls, jobs: List[Dict[str, Any]], max_workers: int
+    ) -> Iterable[_BlockOutcome]:
+        """Each block's outcome in file order; a failing block raises where it would serially.
+
+        Blocks share nothing, so worker processes may finish them in any order. A pool
+        that cannot start or loses a worker (antivirus, memory) does not fail the
+        ingestion: the blocks then run one at a time in this process.
+        """
+        workers = min(max_workers, len(jobs))
+        if workers > 1:
+            futures = cls._run_in_pool(jobs, workers)
+            if futures is not None:
+                return (future.result() for future in futures)
+        return map(_process_block_job, jobs)
+
+    @staticmethod
+    def _run_in_pool(
+        jobs: List[Dict[str, Any]], workers: int
+    ) -> Optional[List["Future[_BlockOutcome]"]]:
+        try:
+            with ProcessPoolExecutor(
+                max_workers=workers,
+                mp_context=multiprocessing.get_context("spawn"),
+            ) as pool:
+                futures = [pool.submit(_process_block_job, job) for job in jobs]
+                for future in futures:
+                    error = future.exception()
+                    if isinstance(error, BrokenProcessPool):
+                        raise error
+                    if error is not None:
+                        # Later blocks cannot change the outcome; skip those not started.
+                        pool.shutdown(cancel_futures=True)
+                        break
+        except (BrokenProcessPool, OSError):
+            logger.warning(
+                "CSV block workers failed; processing the blocks in this process",
+                exc_info=True,
+            )
+            return None
+        return futures
+
+    @classmethod
+    def _process_block(
+        cls,
+        *,
+        user_index: int,
+        spec: _BlockSpec,
+        block_lines: List[str],
+        output_dir: str,
+        detector_geometry: Optional[ScreenGeometry],
+        geometry_warnings: List[str],
+        physical_geometry_snapshot: Optional[Dict[str, float]],
+        stimulus_placements_by_scenario: Optional[Mapping[str, Any]],
+        rename_vendor_fixations: bool,
+    ) -> _BlockOutcome:
+        """Parse one participant block, detect its fixations and write its Parquets.
+
+        May run in a worker process, so it uses nothing but its arguments.
+        `block_lines` starts at the block's header line.
+        """
+        delimiter, _ = cls._header_cells(block_lines[0])
+        parsed = cls._build_dataframe_with_info(
+            block_lines,
+            delimiter,
+            source_header_line=spec.header_index + 1,
+            rename_vendor_fixations=rename_vendor_fixations,
+        )
+        (
+            channels,
+            declared_file_rate_hz,
+            metadata_warnings,
+        ) = cls._parse_metadata(
+            spec.metadata_lines,
+            rename_vendor_fixations=rename_vendor_fixations,
+        )
+        normalized_df, recording_units, detector_distance_unit = cls._normalize_declared_units(
+            parsed.dataframe, channels
+        )
+        gaze_units = cls._gaze_units(channels)
+
+        participant_code = cls._extract_participant_code(spec.metadata_lines)
+        if not participant_code:
+            participant_code = f"participante_{user_index}"
+
+        detected_sensors = cls._detect_sensors(parsed.normalized_columns)
+
+        observed_grid_rate_hz, rate_warnings = cls._derive_observed_rate(
+            normalized_df,
+            declared_file_rate_hz,
+        )
+        declared_gaze_rate_hz, gaze_warnings = cls._derive_gaze_rate(channels)
+
+        warnings = [
+            *metadata_warnings,
+            *parsed.warnings,
+            *rate_warnings,
+            *gaze_warnings,
+            *geometry_warnings,
+        ]
+        if len(parsed.vendor_fixation_axes) == 1:
+            found = next(iter(parsed.vendor_fixation_axes))
+            warnings.append(
+                f"partial vendor fixation columns: found {found} without its paired axis"
+            )
+        if (
+            declared_gaze_rate_hz is not None
+            and observed_grid_rate_hz is not None
+            and abs(declared_gaze_rate_hz - observed_grid_rate_hz)
+            / max(declared_gaze_rate_hz, observed_grid_rate_hz)
+            > 0.02
+        ):
+            warnings.append(
+                "gaze channel rate differs from observed file grid; values may be resampled"
+            )
+
+        cleaned_df = normalized_df
+        fixation_available = False
+        fixation_method: Optional[str] = None
+        fixation_detector_version: Optional[str] = None
+        fixation_source: Optional[str] = None
+        stimulus_transform_status: Optional[str] = None
+        stimulus_transform_version: Optional[str] = None
+        stimulus_transform_fingerprint: Optional[str] = None
+        fixation_coordinate_space: Optional[str] = None
+        block_stimulus_placements: Dict[str, Dict[str, Any]] = {}
+        effective_detection_rate_hz: Optional[float] = None
+        resampled_for_detection = False
+
+        has_gx = "gx" in cleaned_df.columns
+        has_gy = "gy" in cleaned_df.columns
+        if has_gx and has_gy:
+            detector_result = FixationDetectionService.detect_duration_variants(
+                cleaned_df,
+                metadata=FixationDetectionMetadata(
+                    eye_sampling_rate_hz=declared_gaze_rate_hz,
+                    grid_sampling_rate_hz=observed_grid_rate_hz,
+                    gaze_units=gaze_units,
+                    distance_unit=detector_distance_unit,
+                    screen_geometry=detector_geometry,
+                    stimulus_placements_by_scenario=(
+                        stimulus_placements_by_scenario
+                    ),
+                ),
+            )
+            cleaned_df = detector_result.samples
+            detector_metadata = detector_result.metadata
+            detector_warnings = [
+                str(item) for item in detector_metadata.get("warnings", [])
+            ]
+            warnings.extend(detector_warnings)
+            fixation_available = True
+            fixation_method = str(detector_metadata.get("method") or "") or None
+            fixation_detector_version = (
+                str(detector_metadata.get("version") or "") or None
+            )
+            fixation_source = "raw_gaze"
+            stimulus_transform_status = (
+                str(detector_metadata.get("stimulus_transform_status") or "")
+                or None
+            )
+            stimulus_transform_version = (
+                str(detector_metadata.get("stimulus_transform_version") or "")
+                or None
+            )
+            stimulus_transform_fingerprint = (
+                str(
+                    detector_metadata.get("stimulus_transform_fingerprint")
+                    or ""
+                )
+                or None
+            )
+            fixation_coordinate_space = (
+                str(detector_metadata.get("fixation_coordinate_space") or "")
+                or None
+            )
+            snapshot_value = detector_metadata.get(
+                "stimulus_placements_by_scenario"
+            )
+            if isinstance(snapshot_value, Mapping):
+                block_stimulus_placements = {
+                    str(scenario): dict(payload)
+                    for scenario, payload in snapshot_value.items()
+                    if isinstance(payload, Mapping)
+                }
+            effective_value = detector_metadata.get("effective_rate_hz")
+            effective_detection_rate_hz = (
+                float(effective_value) if effective_value is not None else None
+            )
+            resampled_for_detection = bool(detector_metadata.get("resampled"))
+        elif has_gx or has_gy:
+            missing_axis = "gy" if has_gx else "gx"
+            warnings.append(
+                f"partial raw gaze columns: missing {missing_axis}; fixation-v2 unavailable"
+            )
+
+        user_paths, scenario_paths = cls._write_parquets(
+            cleaned_df,
+            user_index=user_index,
+            output_dir=output_dir,
+            stimulus_placements_by_scenario=block_stimulus_placements,
+            physical_screen_geometry=physical_geometry_snapshot,
+            recording_units=recording_units,
+        )
+
+        times = pd.to_numeric(cleaned_df["time"], errors="coerce")
+        block_metadata = BlockMetadata(
+            user_index=user_index,
+            participant_code=participant_code,
+            recording_label=cls._extract_recording_label(spec.metadata_lines),
+            source_start_line=spec.source_start + 1,
+            header_line=spec.header_index + 1,
+            source_end_line=spec.block_end,
+            delimiter=delimiter,
+            original_columns=parsed.original_columns,
+            normalized_columns=list(cleaned_df.columns),
+            extra_columns=parsed.extra_columns,
+            detected_sensors=detected_sensors,
+            declared_file_rate_hz=declared_file_rate_hz,
+            observed_grid_rate_hz=observed_grid_rate_hz,
+            declared_gaze_rate_hz=declared_gaze_rate_hz,
+            effective_detection_rate_hz=effective_detection_rate_hz,
+            resampled_for_detection=resampled_for_detection,
+            sample_count=len(cleaned_df),
+            time_start=float(times.iloc[0]) if len(times) else None,
+            time_end=float(times.iloc[-1]) if len(times) else None,
+            fixation_available=fixation_available,
+            fixation_method=fixation_method,
+            fixation_detector_version=fixation_detector_version,
+            fixation_source=fixation_source,
+            stimulus_transform_status=stimulus_transform_status,
+            stimulus_transform_version=stimulus_transform_version,
+            stimulus_transform_fingerprint=stimulus_transform_fingerprint,
+            fixation_coordinate_space=fixation_coordinate_space,
+            stimulus_placements_by_scenario=block_stimulus_placements,
+            physical_screen_geometry=physical_geometry_snapshot,
+            channels=channels,
+            warnings=warnings,
+        )
+        return _BlockOutcome(block_metadata, user_paths, scenario_paths)
+
+
+def _process_block_job(job: Dict[str, Any]) -> _BlockOutcome:
+    """Worker-process entry point; a module-level function pickles by name."""
+    return CsvProcessingService._process_block(**job)

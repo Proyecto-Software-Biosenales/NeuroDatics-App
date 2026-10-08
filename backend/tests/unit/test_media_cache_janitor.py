@@ -17,6 +17,11 @@ from neurodatics.modules.projects.infrastructure.media_cache_janitor import (
     prune_media_cache_dir,
     prune_media_caches,
 )
+from neurodatics.modules.projects.infrastructure.video_preview_metadata import (
+    cache_preview_onset,
+    observe_project_generation,
+    video_preview_metadata_stats,
+)
 
 
 def _write(directory, name, *, size=100, age_seconds=0.0):
@@ -203,8 +208,11 @@ def test_prune_media_caches_sweeps_every_configured_media_directory(
     monkeypatch.setattr(settings, "media_cache_max_bytes", 10**9)
     monkeypatch.setattr(settings, "media_cache_max_age_hours", 1)
     monkeypatch.setattr(settings, "media_cache_prune_max_removals", 10)
+    observe_project_generation("project", "generation")
+    cache_preview_onset("project", "generation", "p1", "s1", 1.0)
 
     results = prune_media_caches()
 
     assert [result.removed_files for result in results] == [1, 1, 1]
     assert all(not (directory / "stale").exists() for directory in directories)
+    assert video_preview_metadata_stats()["onset_items"] == 0

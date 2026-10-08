@@ -1,0 +1,11 @@
+✔ real hooks reuse A→B→A and revalidate focus, changed generation and failed context (574.8928ms)
+✔ real sibling hooks share request, cancel separately, invalidate AOIs and isolate sessions (1066.267ms)
+✔ scoped images share one download, bypass the legacy blob cache and revoke consumer URLs (218.2493ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2462.2596

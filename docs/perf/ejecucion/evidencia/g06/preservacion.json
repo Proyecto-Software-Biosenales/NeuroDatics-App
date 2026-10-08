@@ -1,0 +1,19 @@
+{
+  "received_files": 395,
+  "own_existing_excluded": [
+    "backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py",
+    "backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py",
+    "docs/perf/ejecucion/ESTADO.md"
+  ],
+  "foreign_checked": 392,
+  "foreign_intact": true,
+  "drift": [],
+  "missing": [],
+  "frontend_checked": 73,
+  "frontend_intact": true,
+  "frontend_drift": [],
+  "orquestacion_before": "5bfc8fcc99938e6f43a050c01889cc282a289475da4edaf3a25b583307236a53",
+  "orquestacion_after": "5bfc8fcc99938e6f43a050c01889cc282a289475da4edaf3a25b583307236a53",
+  "orquestacion_intact": true,
+  "note": "Initial inventory excludes output/perf-g06 and the CLI-owned evidencia/g06/agente-cli.jsonl."
+}

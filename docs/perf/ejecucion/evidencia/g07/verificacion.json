@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-10-02T17:04:22.9405081Z",
+  "runtime_received": "Python 3.14.3 / pandas 2.3.3 / PyArrow 25.0.0",
+  "runtime_supported": "Python 3.12.13 / pandas 2.3.3 / PyArrow 16.1.0",
+  "broad_pre_review": {
+    "received": "350 passed, 25 snapshots",
+    "supported": "350 passed, 25 snapshots",
+    "logs": [
+      "tests-runtime.log",
+      "tests-supported.log"
+    ]
+  },
+  "revision_final": {
+    "received": "170 passed",
+    "supported": "170 passed",
+    "logs": [
+      "tests-revision-runtime.log",
+      "tests-revision-supported.log"
+    ],
+    "contracts": [
+      "budget FIFO handoff/max_waiting=0",
+      "image disk complete identity/coherence/same UUID distinct refs",
+      "Parquet swept path DB-free recovery/generation None once",
+      "cached endpoints/sensor reports"
+    ]
+  },
+  "storage_thread_safety": "47 passed",
+  "ruff": "passed",
+  "import_boundaries": "3 kept, 0 broken",
+  "benchmark": "warmup 1 + n=5 per phase/state in separate processes; after rerun following review; scientific fingerprints equal",
+  "patch_reverse_check": "exit 0",
+  "encoding": "G07/ESTADO/API/medidas/comandos strict UTF-8 without BOM",
+  "review_sha256": "5e356c3be8ae1804ca433fe03a1fafb59d4322f29bc2f4ec74c3ad63f3c85a1d",
+  "preservation": "934 protected: 933 unchanged hashes + 1 coordinator-authorized ORQUESTACION change; late REVISION excluded",
+  "not_run": [
+    "PostgreSQL real",
+    "Google Drive real",
+    "Redis real",
+    "frontend/global gate reserved G12",
+    "cloud/frozen distribution"
+  ]
+}

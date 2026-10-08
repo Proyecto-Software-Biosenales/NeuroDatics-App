@@ -1,8 +1,10 @@
+import { analyticsMutation } from "@/features/analytics/analyticsCache";
 import { ApiError, apiFetch, apiFetchBlob, apiUploadFormWithProgress, type UploadProgress } from "@/lib/api/apiFetch";
 import { getStimulusImageUrl, getStimulusPreviewUrl } from "./stimulusUrls";
 import type { UploadedProjectZip } from "../types";
 import type { FolderSelection } from "../create-project/folderStructure";
 import type { FixationScreenGeometryInput } from "../create-project/types";
+import type { PreExperimentConfig } from "../pre-experiment/types";
 
 export type ApiStimulusDisplayMode = "contain" | "cover" | "crop" | "fullscreen";
 
@@ -131,6 +133,8 @@ export type ApiProject = {
   updated_at?: string;
   sensors?: Array<{ id: string; sensor_type: string }>;
   participants_count?: number;
+  is_pre_experiment?: boolean;
+  planning_participants_count?: number;
 };
 
 export type ApiProjectParticipant = {
@@ -228,26 +232,26 @@ export type ApiDriveUploadProgress = {
 export const ProjectsApi = {
   list: () => apiFetch<ApiProject[]>("/api/projects/"),
 
-  create: (payload: { name: string; description?: string; status?: "draft" | "active" | "archived" }) =>
+  create: (payload: { name: string; description?: string; status?: "draft" | "active" | "archived"; pre_experiment?: PreExperimentConfig }) =>
     apiFetch<ApiProject>("/api/projects/", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
-  get: (projectId: string) =>
-    apiFetch<ApiProjectDetail>(`/api/projects/${projectId}`),
+  get: (projectId: string, signal?: AbortSignal) =>
+    apiFetch<ApiProjectDetail>(`/api/projects/${projectId}`, { signal }),
 
   update: (projectId: string, payload: Partial<{ name: string; description: string; status: string }>) =>
-    apiFetch<ApiProject>(`/api/projects/${projectId}`, {
+    analyticsMutation(projectId, () => apiFetch<ApiProject>(`/api/projects/${projectId}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
-    }),
+    })),
 
   remove: (projectId: string) =>
-    apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" }),
+    analyticsMutation(projectId, () => apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" })),
 
   delete: (projectId: string) =>
-    apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" }),
+    analyticsMutation(projectId, () => apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" })),
 
   uploadZip: (
     projectId: string,
@@ -264,12 +268,12 @@ export const ProjectsApi = {
     appendSelection(form, selection);
     appendFixationGeometry(form, fixationGeometry);
     appendStimulusPlacements(form, stimulusPlacements);
-    return apiUploadFormWithProgress<UploadedProjectZip>(
+    return analyticsMutation(projectId, () => apiUploadFormWithProgress<UploadedProjectZip>(
       `/api/projects/${projectId}/files/experiment-zip`,
       form,
       undefined,
       signal,
-    );
+    ));
   },
 
   uploadZipWithProgress: (
@@ -288,12 +292,12 @@ export const ProjectsApi = {
     appendSelection(form, selection);
     appendFixationGeometry(form, fixationGeometry);
     appendStimulusPlacements(form, stimulusPlacements);
-    return apiUploadFormWithProgress<UploadedProjectZip>(
+    return analyticsMutation(projectId, () => apiUploadFormWithProgress<UploadedProjectZip>(
       `/api/projects/${projectId}/files/experiment-zip`,
       form,
       onProgress,
       signal,
-    );
+    ));
   },
 
   getZipUploadProgress: (projectId: string, uploadId?: string, signal?: AbortSignal) =>
@@ -305,39 +309,39 @@ export const ProjectsApi = {
     }),
 
   deleteZip: (projectId: string) =>
-    apiFetch<{ message: string }>(`/api/projects/${projectId}/files/experiment-zip`, {
+    analyticsMutation(projectId, () => apiFetch<{ message: string }>(`/api/projects/${projectId}/files/experiment-zip`, {
       method: "DELETE",
-    }),
+    })),
 
   setSensors: (projectId: string, sensors: string[]) =>
-    apiFetch<void>(`/api/projects/${projectId}/sensors`, {
+    analyticsMutation(projectId, () => apiFetch<void>(`/api/projects/${projectId}/sensors`, {
       method: "PUT",
       body: JSON.stringify({ sensors }),
-    }),
+    })),
 
   setParticipants: (
     projectId: string,
     participants: Array<{ participant_code: string; age?: number | null; sex?: "male" | "female" | "other" | null }>
   ) =>
-    apiFetch<void>(`/api/projects/${projectId}/participants`, {
+    analyticsMutation(projectId, () => apiFetch<void>(`/api/projects/${projectId}/participants`, {
       method: "PUT",
       body: JSON.stringify({ participants }),
-    }),
+    })),
 
   setScenaries: (projectId: string, scenaries: ApiScenaryPayload[]) =>
-    apiFetch<void>(`/api/projects/${projectId}/scenaries`, {
+    analyticsMutation(projectId, () => apiFetch<void>(`/api/projects/${projectId}/scenaries`, {
       method: "PUT",
       body: JSON.stringify({ scenaries }),
-    }),
+    })),
 
   setAois: (projectId: string, aois: ApiAoiPayload[]) =>
-    apiFetch<void>(`/api/projects/${projectId}/aois`, {
+    analyticsMutation(projectId, () => apiFetch<void>(`/api/projects/${projectId}/aois`, {
       method: "PUT",
       body: JSON.stringify({ aois }),
-    }),
+    })),
 
   finalize: (projectId: string) =>
-    apiFetch<void>(`/api/projects/${projectId}/finalize`, { method: "POST" }),
+    analyticsMutation(projectId, () => apiFetch<void>(`/api/projects/${projectId}/finalize`, { method: "POST" })),
 
   fetchScenarioImage: (projectId: string, fileId: string) =>
     apiFetchBlob(getStimulusImageUrl(projectId, fileId)),

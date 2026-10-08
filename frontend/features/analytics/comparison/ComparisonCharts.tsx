@@ -1,6 +1,6 @@
 "use client"
 
-import { nearestTimeIndex } from "../eegPresentation"
+import { packRgba, spectrogramColumns } from "../eegPresentation"
 
 import { Fragment, useEffect, useMemo, useRef } from "react"
 import {
@@ -58,7 +58,13 @@ export interface TemporalSeries {
   label: string
   color: string
   unit: string
+  /** Optional stroke styling, e.g. faded raw EEG under its smoothed trace. */
+  opacity?: number
+  strokeWidth?: number
 }
+
+/** Zoom state a caller can own, so a card keeps its zoom across remounts. */
+export type ZoomController = ReturnType<typeof useZoomHistory<ZoomRange>>
 
 export interface TemporalPeak {
   kind: "min" | "max"
@@ -91,11 +97,23 @@ function ChartTooltip({
   series: TemporalSeries[]
 }) {
   if (!active || !payload?.length) return null
+  // Aligned axes draw time since the stimulus onset; the recording's own
+  // time stays readable next to it.
+  const sourceTime = payload[0]?.payload?.sourceTime
+  const showSource =
+    typeof sourceTime === "number" &&
+    Number.isFinite(sourceTime) &&
+    Math.abs(sourceTime - Number(label ?? 0)) > 1e-6
   return (
     <div className="max-w-[280px] rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg">
       <p className="mb-1 font-semibold text-gray-300">
         {Number(label ?? 0).toFixed(2)} s
       </p>
+      {showSource ? (
+        <p className="-mt-1 mb-1 text-[11px] text-gray-400">
+          Tiempo de la grabación: {sourceTime.toFixed(2)} s
+        </p>
+      ) : null}
       {payload.map((entry) => {
         const definition = series.find((item) => item.label === entry.name)
         return (
@@ -130,6 +148,11 @@ export function TemporalLineChart({
   interactionHint,
   synchronized = true,
   height = 320,
+  yDomain,
+  animate = true,
+  zoom: controlledZoom,
+  timeAxisDescription = "eje horizontal en segundos absolutos",
+  shellClassName,
 }: {
   data: TemporalChartPoint[]
   series: TemporalSeries[]
@@ -142,8 +165,15 @@ export function TemporalLineChart({
   interactionHint?: string
   synchronized?: boolean
   height?: number
+  /** Fixed y range, e.g. one shared by every participant card. */
+  yDomain?: [number, number] | null
+  animate?: boolean
+  zoom?: ZoomController
+  timeAxisDescription?: string
+  shellClassName?: string
 }) {
-  const zoomHistory = useZoomHistory<ZoomRange>(sameZoomRange)
+  const internalZoom = useZoomHistory<ZoomRange>(sameZoomRange)
+  const zoomHistory = controlledZoom ?? internalZoom
   const zoomRange = zoomHistory.range
   const times = useMemo(() => data.map((point) => point.time), [data])
   // A zoom that no longer covers two observations (new data) shows the full view.
@@ -171,7 +201,7 @@ export function TemporalLineChart({
     <div className="relative">
     <div
       role="img"
-      aria-label={`${yLabel}. ${data.length} observaciones; eje horizontal en segundos absolutos.${interactionHint ? ` ${interactionHint}` : ""}`}
+      aria-label={`${yLabel}. ${data.length} observaciones; ${timeAxisDescription}.${interactionHint ? ` ${interactionHint}` : ""}`}
       className={onPin ? "cursor-crosshair" : undefined}
     >
       <AnalyticsChartShell
@@ -179,6 +209,7 @@ export function TemporalLineChart({
         xAxisLabel={xLabel}
         variant={chartVariant}
         dragZoom={dragZoom}
+        className={shellClassName}
       >
       <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
         <LineChart
@@ -206,6 +237,9 @@ export function TemporalLineChart({
           />
           <YAxis
             width={62}
+            domain={yDomain ?? ["auto", "auto"]}
+            allowDataOverflow={Boolean(yDomain)}
+            tickFormatter={yDomain ? (value) => formatAxisTick(Number(value), axisTickDecimals(yDomain)) : undefined}
             tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
             label={{
               value: yLabel,
@@ -267,9 +301,11 @@ export function TemporalLineChart({
               dataKey={item.key}
               name={item.label}
               stroke={item.color}
-              strokeWidth={1.7}
+              strokeWidth={item.strokeWidth ?? 1.7}
+              strokeOpacity={item.opacity}
               dot={false}
               connectNulls={false}
+              isAnimationActive={animate}
               activeDot={{ r: 3.5 }}
             />
           ))}
@@ -287,15 +323,21 @@ export function TemporalLineChart({
 
 export function FixationHistogramChart({
   data,
+  yDomain,
+  animate = true,
+  shellClassName,
 }: {
   data: FixationHistogramData
+  yDomain?: [number, number] | null
+  animate?: boolean
+  shellClassName?: string
 }) {
   return (
     <div
       role="img"
       aria-label={`Histograma de ${data.n_fixations} fijaciones.`}
     >
-      <AnalyticsChartShell xAxisLabel="Duración (ms)" variant="compact">
+      <AnalyticsChartShell xAxisLabel="Duración (ms)" variant="compact" className={shellClassName}>
       <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
         <BarChart
           data={data.bins}
@@ -314,7 +356,11 @@ export function FixationHistogramChart({
             height={62}
             tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
           />
-          <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+          <YAxis
+            domain={yDomain ?? [0, "auto"]}
+            allowDataOverflow={Boolean(yDomain)}
+            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+          />
           <RechartsTooltip
             formatter={(value, name) => [
               Number(value).toLocaleString("es-CO"),
@@ -326,6 +372,7 @@ export function FixationHistogramChart({
             name="Fijaciones"
             fill="#8B5CF6"
             radius={[5, 5, 0, 0]}
+            isAnimationActive={animate}
           />
         </BarChart>
       </ResponsiveContainer>
@@ -334,8 +381,21 @@ export function FixationHistogramChart({
   )
 }
 
-export function EegPsdChart({ data: fullData }: { data: EegPsdData }) {
-  const zoomHistory = useZoomHistory<ZoomRange>(sameZoomRange)
+export function EegPsdChart({
+  data: fullData,
+  yDomain,
+  animate = true,
+  zoom: controlledZoom,
+  shellClassName,
+}: {
+  data: EegPsdData
+  yDomain?: [number, number] | null
+  animate?: boolean
+  zoom?: ZoomController
+  shellClassName?: string
+}) {
+  const internalZoom = useZoomHistory<ZoomRange>(sameZoomRange)
+  const zoomHistory = controlledZoom ?? internalZoom
   const zoom = zoomHistory.range && zoomSpan(fullData.frequency, zoomHistory.range) ? zoomHistory.range : null
   const data = sliceEegPsd(fullData, zoom) ?? fullData
   const dragZoom = useChartDragZoom((start, end) => {
@@ -360,7 +420,7 @@ export function EegPsdChart({ data: fullData }: { data: EegPsdData }) {
       role="img"
       aria-label={`Densidad espectral de ${data.channels.length} canales EEG.`}
     >
-      <AnalyticsChartShell legend={chartLegend} xAxisLabel="Frecuencia (Hz)" variant="mid" dragZoom={dragZoom}>
+      <AnalyticsChartShell legend={chartLegend} xAxisLabel="Frecuencia (Hz)" variant="mid" dragZoom={dragZoom} className={shellClassName}>
       <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
         <LineChart
           data={points}
@@ -381,6 +441,9 @@ export function EegPsdChart({ data: fullData }: { data: EegPsdData }) {
           />
           <YAxis
             width={72}
+            domain={yDomain ?? ["auto", "auto"]}
+            allowDataOverflow={Boolean(yDomain)}
+            tickFormatter={yDomain ? (value) => formatAxisTick(Number(value), axisTickDecimals(yDomain)) : undefined}
             tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
             label={{
               value: data.unit,
@@ -405,6 +468,7 @@ export function EegPsdChart({ data: fullData }: { data: EegPsdData }) {
               stroke={EEG_CHANNEL_COLORS[channel] ?? "#64748B"}
               strokeWidth={1.5}
               dot={false}
+              isAnimationActive={animate}
             />
           ))}
         </LineChart>
@@ -438,6 +502,18 @@ function spectrogramColor(ratio: number) {
     b: Math.round(start.b + (end.b - start.b) * mix),
   }
 }
+
+/** This grid's own ramp, pre-shaded: re-parsing the hex per pixel was the cost.
+ *  It keeps five stops where the single-participant view uses nine, so the two
+ *  are not pixel-identical; that difference is left as it was. */
+const SPECTROGRAM_LUT = (() => {
+  const lut = new Uint32Array(256)
+  for (let index = 0; index < lut.length; index += 1) {
+    const { r, g, b } = spectrogramColor(index / (lut.length - 1))
+    lut[index] = packRgba(r, g, b)
+  }
+  return lut
+})()
 
 function SpectrogramCanvas({
   matrix,
@@ -487,31 +563,64 @@ function SpectrogramCanvas({
         return
       }
       const image = context.createImageData(width, height)
+      const pixels = new Uint32Array(image.data.buffer)
       const span = domain.max - domain.min || 1
+      const scale = (SPECTROGRAM_LUT.length - 1) / span
+      // The window under a column depends on x alone; hit-testing it per pixel
+      // put a comparison grid's worth of axis searches on the main thread.
+      const { left } = spectrogramColumns(time, width, hopS)
+      let sourceFrequencyIndex = -1
+      let sourceRowStart = 0
       for (let y = 0; y < height; y += 1) {
         const frequencyIndex = Math.min(
           frequencyCount - 1,
           Math.round((1 - y / Math.max(1, height - 1)) * (frequencyCount - 1))
         )
-        for (let x = 0; x < width; x += 1) {
-          const target = (time[0] ?? 0) + x / Math.max(1, width - 1) * ((time.at(-1) ?? 0) - (time[0] ?? 0))
-          const timeIndex = nearestTimeIndex(time, target, hopS)
-          const value = matrix[frequencyIndex]?.[timeIndex]
-          if (typeof value !== "number" || !Number.isFinite(value)) continue
-          const color = spectrogramColor((value - domain.min) / span)
-          const offset = (y * width + x) * 4
-          image.data[offset] = color.r
-          image.data[offset + 1] = color.g
-          image.data[offset + 2] = color.b
-          image.data[offset + 3] = 255
+        const rowStart = y * width
+        // Rows on the same frequency bin are identical; copy instead of reshading.
+        if (frequencyIndex === sourceFrequencyIndex) {
+          pixels.copyWithin(rowStart, sourceRowStart, sourceRowStart + width)
+          continue
         }
+        const row = matrix[frequencyIndex]
+        if (row) {
+          for (let x = 0; x < width; x += 1) {
+            const timeIndex = left[x]
+            if (timeIndex < 0) continue
+            const value = row[timeIndex]
+            if (typeof value !== "number" || !Number.isFinite(value)) continue
+            const position = (value - domain.min) * scale
+            pixels[rowStart + x] = SPECTROGRAM_LUT[
+              position <= 0
+                ? 0
+                : position >= SPECTROGRAM_LUT.length - 1
+                  ? SPECTROGRAM_LUT.length - 1
+                  : (position + 0.5) | 0
+            ]
+          }
+        }
+        sourceFrequencyIndex = frequencyIndex
+        sourceRowStart = rowStart
       }
       context.putImageData(image, 0, 0)
     }
-    draw()
-    const observer = new ResizeObserver(draw)
+    // The observer fires once on observe, so a manual draw here would shade
+    // every panel of the grid twice.
+    let frame: number | null = null
+    const schedule = () => {
+      if (frame != null) return
+      frame = requestAnimationFrame(() => {
+        frame = null
+        draw()
+      })
+    }
+    schedule()
+    const observer = new ResizeObserver(schedule)
     observer.observe(canvas)
-    return () => observer.disconnect()
+    return () => {
+      if (frame != null) cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
   }, [domain.max, domain.min, matrix, time, hopS])
 
   return (

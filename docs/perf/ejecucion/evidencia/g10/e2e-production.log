@@ -1,0 +1,15 @@
+
+Running 7 tests using 1 worker
+
+
+
+(node:18076) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/7] [chromium] › tests\e2e\comparison-dashboard.spec.ts:565:1 › uses the versioned chart response for all five temporal summaries
+[2/7] [chromium] › tests\e2e\comparison-dashboard.spec.ts:595:1 › uses comparable absolute fixation sizes across participants
+[3/7] [chromium] › tests\e2e\comparison-dashboard.spec.ts:658:1 › renders a generic stimulus in the single-sensor view for a fileless moment
+[4/7] [chromium] › tests\e2e\comparison-dashboard.spec.ts:704:1 › renders a generic stimulus and gaze point when the selected moment has no file
+[5/7] [chromium] › tests\e2e\comparison-dashboard.spec.ts:773:1 › keeps the document fixed while the comparison shell consumes extra scroll
+[6/7] [chromium] › tests\e2e\comparison-dashboard.spec.ts:846:1 › contains the correlation matrix horizontal scroll on a narrow viewport
+[7/7] [chromium] › tests\e2e\comparison-dashboard.spec.ts:899:1 › restores applied views per user and project across filters, navigation, and reload
+  7 passed (7.7s)

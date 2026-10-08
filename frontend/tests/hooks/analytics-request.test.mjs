@@ -19,6 +19,9 @@ const modules = {
   "react-dom/client": cjs("react-dom", "react-dom-client.development.js"),
   scheduler: cjs("scheduler", "scheduler.development.js"),
   "../types": compile("features/analytics/types.ts"),
+  "../analyticsCache": compile("features/analytics/analyticsCache.ts"),
+  "./participantComparison/comparisonLoader": compile("features/analytics/participantComparison/comparisonLoader.ts"),
+  "./useAnalyticsContext": 'exports.useAnalyticsRevision = () => require("react").useSyncExternalStore(require("../analyticsCache").subscribeAnalyticsContext, require("../analyticsCache").analyticsContextVersion, () => 0)',
   hooks: compile("features/analytics/hooks/useAnalyticsData.ts"),
 }
 let browser
@@ -142,3 +145,24 @@ test("heatmaps wait for a generation, release old blobs and ignore cancelled blo
   await page.evaluate(() => window.hookTest.requests[1].resolve({ blob: new Blob(["late"]), headers: new Headers() }))
   assert.deepEqual(await snapshot(page), empty)
 })
+
+for (const hook of ["useEegTimeseries", "useEegPsd", "useEegSpectrogram", "useEegTopography"]) {
+  test(`${hook} only requests enabled selections and aborts a hidden view`, async (t) => {
+    const page = await fixture(t, hook, ["project-a", null, "all", ["f3", "f4"]])
+    const idle = { data: null, loading: false, error: null }
+    assert.deepEqual(await snapshot(page), idle)
+    assert.equal(await page.evaluate(() => window.hookTest.requests.length), 0)
+    await render(page, ["project-a", "P01", "all", ["f3", "f4"]])
+    await render(page, ["project-a", null, "all", ["f3", "f4"]])
+    assert.equal(await page.evaluate(() => window.hookTest.requests[0].args.at(-1).aborted), true)
+    await resolve(page, 0, { channels: ["f3"], time: [1] })
+    assert.deepEqual(await snapshot(page), idle)
+    await render(page, ["project-a", "P01", "all", ["f3", "f4"]])
+    assert.equal(await page.evaluate(() => window.hookTest.requests.length), 2)
+    const data = { channels: ["f3"], available_channels: ["f3", "f4"], time: [2] }
+    await resolve(page, 1, data)
+    await settle(page, { data, loading: false, error: null })
+    await render(page, ["project-a", null, "all", ["f4"]])
+    assert.deepEqual(await snapshot(page), idle)
+  })
+}

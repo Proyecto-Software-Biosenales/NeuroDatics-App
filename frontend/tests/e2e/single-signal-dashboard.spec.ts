@@ -199,7 +199,7 @@ for (const signal of ["gsr", "distance"] as const) {
     await expect(page.getByText("Todo el experimento", { exact: true })).toBeVisible()
     // Switching participant remounts the tab and handles an empty response without a plot.
     await page.getByRole("combobox").filter({ hasText: "P01" }).click()
-    await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()
+    await page.getByRole("option", { name: "Participante P02", exact: true }).click()
     await timeWindow.click()
     await expect(page.getByRole("button", { name: "Aplicar", exact: true })).toBeDisabled()
     await page.keyboard.press("Escape")

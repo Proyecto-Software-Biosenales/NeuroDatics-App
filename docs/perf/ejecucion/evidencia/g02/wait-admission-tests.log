@@ -1,0 +1,28 @@
+✔ A→B→A revalidates metadata and reuses only a current generation (56.8772ms)
+✔ two subscribers share one request; isolated cancellation preserves its sibling (20.729ms)
+✔ last cancellation aborts; ignored abort retains slot until settlement and never caches (40.7942ms)
+✔ in-flight project invalidation and logout discard late answers in both loaders (30.9943ms)
+✔ unknown/failed context and expired session cannot persist or consume old cache (8.5625ms)
+✔ keys isolate users, sessions, projects, generations, AOI revisions and every filter (13.0074ms)
+✔ revalidation blocks hits; a late metadata answer from an old session is ignored (9.3639ms)
+✔ mutation waits and invalidates work, including a failed write (15.4819ms)
+✔ physical active/queue bounds survive repeated ignored aborts; duplicate admission is free (61.7391ms)
+✔ LRU/TTL/bytes bound strings, metadata, blobs and oversize results (62.7342ms)
+✔ four card orchestrations can wait on the four network slots without deadlock (14.7008ms)
+✔ cancellation while validating metadata rejects immediately without cancelling its sibling (15.9773ms)
+✔ an evicted context's late metadata cannot invalidate its reopened replacement (31.2261ms)
+✔ slow metadata admits bounded unique waits, shares duplicates and detaches cancellations (19.3147ms)
+✔ real hooks reuse A→B→A and revalidate focus, changed generation and failed context (612.0935ms)
+✔ real sibling hooks share request, cancel separately, invalidate AOIs and isolate sessions (1049.4802ms)
+✔ scoped images share one download, bypass the legacy blob cache and revoke consumer URLs (202.1313ms)
+✔ a late answer for a previous card never replaces the current card's data (312.3252ms)
+✔ a remounted card attaches to its in-flight request instead of repeating it (168.0341ms)
+✔ a scoped remount waits for fresh metadata before reusing its card cache (111.9204ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2504.5223

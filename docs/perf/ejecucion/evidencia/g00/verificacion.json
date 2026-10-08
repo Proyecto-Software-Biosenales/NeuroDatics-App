@@ -1,0 +1,11 @@
+{
+  "media_report_probe_exit": 0,
+  "gate_reason": "Inherited ESLint error; 1 error / 6 warnings",
+  "gate_exit": 1,
+  "isolated_frontend_build_exit": 0,
+  "temporary_server_3317": "stopped",
+  "backend_probe_exit": 0,
+  "production_changes": 0,
+  "browser_probe_exit": 0,
+  "own_script_syntax": "Python, Node, PowerShell passed"
+}

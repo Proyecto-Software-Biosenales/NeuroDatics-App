@@ -1,0 +1,59 @@
+{
+  "aois": [
+    {
+      "deleted": 0,
+      "order_ok": true,
+      "reads": 3,
+      "refreshes": 0,
+      "returned": 10,
+      "selects": 3,
+      "size": 10
+    },
+    {
+      "deleted": 0,
+      "order_ok": true,
+      "reads": 3,
+      "refreshes": 0,
+      "returned": 100,
+      "selects": 3,
+      "size": 100
+    },
+    {
+      "deleted": 0,
+      "order_ok": true,
+      "reads": 3,
+      "refreshes": 0,
+      "returned": 1000,
+      "selects": 3,
+      "size": 1000
+    }
+  ],
+  "label": "after",
+  "method": "SQLAlchemy repository methods with a deterministic AsyncSession probe; execute(SELECT) and refresh are counted as SQL reads",
+  "participants": [
+    {
+      "order_ok": true,
+      "reads": 2,
+      "refreshes": 0,
+      "returned": 10,
+      "selects": 2,
+      "size": 10
+    },
+    {
+      "order_ok": true,
+      "reads": 2,
+      "refreshes": 0,
+      "returned": 100,
+      "selects": 2,
+      "size": 100
+    },
+    {
+      "order_ok": true,
+      "reads": 2,
+      "refreshes": 0,
+      "returned": 1000,
+      "selects": 2,
+      "size": 1000
+    }
+  ]
+}

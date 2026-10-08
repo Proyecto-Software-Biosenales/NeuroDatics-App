@@ -1,0 +1,74 @@
+{
+  "checks": [
+    {
+      "log": "tests-final-runtime.log",
+      "exit": 0,
+      "result": "285 passed, 24 snapshots"
+    },
+    {
+      "log": "tests-supported-final.log",
+      "exit": 0,
+      "result": "285 passed, 24 snapshots; isolated3.12/PyArrow16.1"
+    },
+    {
+      "log": "tests-empty-index-runtime.log",
+      "exit": 0,
+      "result": "25 passed; final zero-column/index correction"
+    },
+    {
+      "log": "tests-empty-index-supported.log",
+      "exit": 0,
+      "result": "25 passed; final zero-column/index correction"
+    },
+    {
+      "log": "tests-eeg-processing-runtime.log",
+      "exit": 0,
+      "result": "12 passed; selection/reference/bandpass/notch"
+    },
+    {
+      "log": "tests-eeg-processing-supported.log",
+      "exit": 0,
+      "result": "12 passed; selection/reference/bandpass/notch"
+    },
+    {
+      "log": "ruff-final.log",
+      "exit": 0,
+      "result": "product/tests"
+    },
+    {
+      "log": "ruff-probe-final.log",
+      "exit": 0,
+      "result": "probe"
+    },
+    {
+      "log": "import-boundaries-final.log",
+      "exit": 0,
+      "result": "3 kept, 0 broken"
+    },
+    {
+      "log": "benchmark-final.log",
+      "exit": 0,
+      "result": "44 cases n5 exact responses"
+    },
+    {
+      "log": "patch-reverse-check.log",
+      "exit": 0,
+      "result": "git apply --reverse --check --ignore-space-change own.patch; read-only applicability check"
+    },
+    {
+      "evidence": "encoding-documental.json",
+      "result": "G00-G02 state byte content restored from UTF-8 snapshot except explicit G03/G04 status markers; no product tests repeated"
+    }
+  ],
+  "diagnostic_logs_not_final": [
+    "tests-runtime.log",
+    "tests-supported.log",
+    "import-boundaries.log",
+    "supported-install.log",
+    "benchmark.log",
+    "medidas-preliminares.json",
+    "ruff.log"
+  ],
+  "no_frontend_or_global_gate": true,
+  "no_deployments_or_migrations": true
+}

@@ -57,7 +57,7 @@ def _cached_payload(scenario="Scenario canonical"):
 
 
 async def _allow_ownership(*args, **kwargs):
-    return SimpleNamespace(id=PROJECT_ID)
+    return SimpleNamespace(id=PROJECT_ID, owner_id=CURRENT_USER)
 
 
 async def _canonical_scenario(*args, **kwargs):
@@ -71,7 +71,7 @@ async def test_correlations_rejects_all_after_ownership_check(monkeypatch):
     async def allow(*args, **kwargs):
         nonlocal ownership_checked
         ownership_checked = True
-        return SimpleNamespace(id=PROJECT_ID)
+        return SimpleNamespace(id=PROJECT_ID, owner_id=CURRENT_USER)
 
     async def should_not_resolve(*args, **kwargs):
         raise AssertionError("scenario lookup must not run for scenario=all")

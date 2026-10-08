@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -203,43 +204,19 @@ class SQLscenariesRepository(scenariesRepository):
         return current is None or current.contract_fingerprint != contract.fingerprint
 
     async def upsert_aois(self, project_id: UUID, aois_data: List[dict]) -> List[AOI]:
-        records: List[AOI] = []
-
         stmt = select(Scenaries).where(Scenaries.project_id == project_id)
         result = await self.session.execute(stmt)
         scenaries_map = {sc.name: sc.id for sc in result.scalars().all()}
-        incoming_keys = set()
 
+        prepared: List[Tuple[Tuple[UUID, str], dict]] = []
+        incoming_keys = set()
         for data in aois_data:
-            scenary_name = data["scenaries_name"]
-            scenary_id = scenaries_map.get(scenary_name)
+            scenary_id = scenaries_map.get(data["scenaries_name"])
             if not scenary_id:
                 continue
-
-            incoming_keys.add((scenary_id, data["name"]))
-
-            stmt = select(AOI).where(
-                AOI.scenaries_id == scenary_id,
-                AOI.name == data["name"],
-            )
-            result = await self.session.execute(stmt)
-            aoi = result.scalar_one_or_none()
-
-            if aoi:
-                aoi.color = data["color"]
-                aoi.shape_type = data["shape_type"]
-                aoi.shape = data["shape"]
-            else:
-                aoi = AOI(
-                    scenaries_id=scenary_id,
-                    name=data["name"],
-                    color=data["color"],
-                    shape_type=data["shape_type"],
-                    shape=data["shape"],
-                )
-                self.session.add(aoi)
-
-            records.append(aoi)
+            key = (scenary_id, data["name"])
+            prepared.append((key, data))
+            incoming_keys.add(key)
 
         existing_stmt = (
             select(AOI)
@@ -247,15 +224,58 @@ class SQLscenariesRepository(scenariesRepository):
             .where(Scenaries.project_id == project_id)
         )
         existing_result = await self.session.execute(existing_stmt)
-        for existing_aoi in existing_result.scalars().all():
+        existing_aois = list(existing_result.scalars().all())
+        existing_by_key: Dict[Tuple[UUID, str], AOI] = {}
+        for existing_aoi in existing_aois:
+            key = (existing_aoi.scenaries_id, existing_aoi.name)
+            if key in existing_by_key and key in incoming_keys:
+                raise MultipleResultsFound(
+                    "Multiple AOI rows match the same scenario and name"
+                )
+            existing_by_key[key] = existing_aoi
+
+        record_keys: List[Tuple[UUID, str]] = []
+        for key, data in prepared:
+            aoi = existing_by_key.get(key)
+
+            if aoi:
+                aoi.color = data["color"]
+                aoi.shape_type = data["shape_type"]
+                aoi.shape = data["shape"]
+            else:
+                aoi = AOI(
+                    scenaries_id=key[0],
+                    name=data["name"],
+                    color=data["color"],
+                    shape_type=data["shape_type"],
+                    shape=data["shape"],
+                )
+                self.session.add(aoi)
+                existing_by_key[key] = aoi
+
+            record_keys.append(key)
+
+        for existing_aoi in existing_aois:
             if (existing_aoi.scenaries_id, existing_aoi.name) not in incoming_keys:
                 await self.session.delete(existing_aoi)
 
-        await self.session.commit()
-        for aoi in records:
-            await self.session.refresh(aoi)
+        if not record_keys:
+            await self.session.commit()
+            return []
 
-        return records
+        # Materialize generated identities/defaults once for the whole batch and
+        # retain PKs across commit even when the session expires ORM instances.
+        await self.session.flush()
+        record_ids = [existing_by_key[key].id for key in record_keys]
+        await self.session.commit()
+
+        # Re-read the committed project AOIs in one query, then rebuild the
+        # request order by PK, including duplicates, without adopting a concurrent
+        # natural-key duplicate or issuing a refresh per row.
+        loaded_stmt = select(AOI).where(AOI.id.in_(record_ids))
+        loaded_result = await self.session.execute(loaded_stmt)
+        loaded_by_id = {aoi.id: aoi for aoi in loaded_result.scalars().all()}
+        return [loaded_by_id[record_id] for record_id in record_ids]
 
     async def get_by_project(self, project_id: UUID) -> List[Scenaries]:
         stmt = (

@@ -1,0 +1,7 @@
+# Revisión temprana G11
+
+Root revisó primer candidato: distancias separables Float64 y spans de cabeza conservan la suma en orden original; key incluye backing size/range/orden/canal/coords/máscara finita y excluye valores finitos de animación, apropiado. Validar coincidencia exacta RGBA/float64 contra base real en electrodo/umbral, NaN/missing/resize y máscara cambiante. Probe candidato debe ejecutar helpers reales del producto (no una reimplementación parecida) o comprobar equivalencia explícita entre copia y fuente.
+
+El probe base usa siete posiciones sintéticas y canvas cuadrado; no generalizar a todos los montajes. Incluir rectangular real de panel o justificarlo con prueba de equivalencia, y montaje/orden/canal que cambie para comprobar invalidación. No necesariamente duplicar toda matriz si tests cubren esos cambios. Cota1MiB es bytes tipados+key estimado por instancia, no RSS; construcción retiene vieja geometría mientras crea nueva (hasta2×cota transitorio más metadata/imagedata), y varias instancias suman presupuestos. Documentar esto y fallback, no afirmar presupuesto total de aplicación. Comparar casos mask_change con construcción dentro de frame y frames fríos; no sólo warmed geometry. No tocar tipos científicos ni pixel goldens para adoptar un candidato lento.
+
+Antes de cierre y de nuevo antes final, lee esta revisión completa. No repetir checks ajenos sin cambios/preocupación, ni escribir controles root.

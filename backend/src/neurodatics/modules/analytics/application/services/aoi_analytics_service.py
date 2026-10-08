@@ -15,6 +15,7 @@ from .numeric_helpers import _robust_baseline as _robust_baseline
 from .numeric_helpers import scope_to_scenario as scope_to_scenario
 from .pupil_analytics_service import PupilAnalyticsService as PupilAnalyticsService
 from .fixation_summaries import FixationDataService
+from .fixation_analytics_service import FixationEventResult, FixationEventService
 
 
 class AoiAnalyticsService:
@@ -132,6 +133,66 @@ class AoiAnalyticsService:
 
         return inside
 
+    @classmethod
+    def _mask_for_shape(
+        cls,
+        shape: dict,
+        x_norm: np.ndarray,
+        y_norm: np.ndarray,
+    ) -> np.ndarray:
+        """Return one bounded membership mask without an AOI-by-sample matrix.
+
+        Rectangles and ellipses use NumPy over float64 coordinates. Polygons
+        deliberately retain the scalar ray-casting implementation so their
+        boundary semantics do not change.
+        """
+        x_values = np.asarray(x_norm, dtype=float)
+        y_values = np.asarray(y_norm, dtype=float)
+        if x_values.shape != y_values.shape:
+            raise ValueError("AOI coordinate arrays must have the same shape")
+
+        x0 = shape["x"] / 100.0
+        y0 = shape["y"] / 100.0
+        x1 = (shape["x"] + shape["width"]) / 100.0
+        y1 = (shape["y"] + shape["height"]) / 100.0
+        in_bounds = (
+            np.isfinite(x_values)
+            & np.isfinite(y_values)
+            & (x_values >= x0)
+            & (x_values <= x1)
+            & (y_values >= y0)
+            & (y_values <= y1)
+        )
+
+        if shape.get("type") == "circle":
+            rx = (x1 - x0) / 2.0
+            ry = (y1 - y0) / 2.0
+            if rx <= 0.0 or ry <= 0.0:
+                return np.zeros(x_values.shape, dtype=bool)
+            cx = x0 + rx
+            cy = y0 + ry
+            return in_bounds & (
+                ((x_values - cx) ** 2) / (rx ** 2)
+                + ((y_values - cy) ** 2) / (ry ** 2)
+                <= 1.0
+            )
+
+        points = shape.get("points")
+        if not isinstance(points, list) or len(points) < 3:
+            return in_bounds
+
+        # Polygon fallback: keep the existing scalar algorithm exactly. The
+        # bounds test inside _contains is intentional and part of its contract.
+        return np.asarray(
+            [
+                bool(valid) and cls._contains(shape, x_value, y_value)
+                for x_value, y_value, valid in zip(
+                    x_values, y_values, in_bounds
+                )
+            ],
+            dtype=bool,
+        )
+
     @staticmethod
     def _nanmean_pair(left: pd.Series, right: pd.Series) -> np.ndarray:
         left_arr = left.to_numpy(dtype=float)
@@ -211,6 +272,30 @@ class AoiAnalyticsService:
         pupil_baseline: Optional[float],
         distance_baseline: Optional[float],
     ) -> dict:
+        if sample_df.empty or "gx_clean" not in sample_df.columns or "gy_clean" not in sample_df.columns:
+            return cls._sample_metrics_for_mask(
+                sample_df,
+                np.zeros(len(sample_df), dtype=bool),
+                pupil_baseline,
+                distance_baseline,
+            )
+
+        gx = sample_df["gx_clean"].to_numpy(dtype=float)
+        gy = sample_df["gy_clean"].to_numpy(dtype=float)
+        return cls._sample_metrics_for_mask(
+            sample_df,
+            cls._mask_for_shape(shape, gx / 100.0, gy / 100.0),
+            pupil_baseline,
+            distance_baseline,
+        )
+
+    @staticmethod
+    def _sample_metrics_for_mask(
+        sample_df: pd.DataFrame,
+        in_shape: np.ndarray,
+        pupil_baseline: Optional[float],
+        distance_baseline: Optional[float],
+    ) -> dict:
         empty = {
             "pupil_sample_count": 0,
             "avg_pupil_mm": None,
@@ -223,17 +308,6 @@ class AoiAnalyticsService:
         }
         if sample_df.empty or "gx_clean" not in sample_df.columns or "gy_clean" not in sample_df.columns:
             return empty
-
-        gx = sample_df["gx_clean"].to_numpy(dtype=float)
-        gy = sample_df["gy_clean"].to_numpy(dtype=float)
-        valid_mask = np.isfinite(gx) & np.isfinite(gy)
-        in_shape = np.array(
-            [
-                bool(valid) and cls._contains(shape, x / 100.0, y / 100.0)
-                for x, y, valid in zip(gx, gy, valid_mask)
-            ],
-            dtype=bool,
-        )
 
         metrics = dict(empty)
 
@@ -295,7 +369,12 @@ class AoiAnalyticsService:
         return None
 
     @classmethod
-    def _key_events(cls, sample_df: pd.DataFrame, aoi_defs: list[dict]) -> list[dict]:
+    def _key_events(
+        cls,
+        sample_df: pd.DataFrame,
+        aoi_defs: list[dict],
+        sample_aoi_indices: Optional[np.ndarray] = None,
+    ) -> list[dict]:
         if sample_df.empty:
             return []
 
@@ -329,7 +408,11 @@ class AoiAnalyticsService:
             row = sample_df.iloc[selected_position]
             gx = float(row.get("gx_clean", np.nan))
             gy = float(row.get("gy_clean", np.nan))
-            aoi = cls._aoi_for_sample(aoi_defs, gx, gy)
+            if sample_aoi_indices is None:
+                aoi = cls._aoi_for_sample(aoi_defs, gx, gy)
+            else:
+                aoi_index = int(sample_aoi_indices[selected_position])
+                aoi = aoi_defs[aoi_index] if aoi_index >= 0 else None
             time_s = float(row.get("time", np.nan))
             value = float(row.get(column, np.nan))
 
@@ -359,12 +442,19 @@ class AoiAnalyticsService:
         aois: list,
         min_fixation_duration_ms: Optional[int] = None,
     ) -> dict:
-        ordered_aois = sorted(aois, key=lambda item: str(getattr(item, "name", "")).lower())
-        fixation_data = FixationDataService.compute_fixation_data(
-            df,
-            scenario,
+        result = FixationEventService.build_result(
+            df, scenario=scenario,
             min_fixation_duration_ms=min_fixation_duration_ms,
         )
+        return cls.compute_metrics_from_events(df, scenario, aois, result)
+
+    @classmethod
+    def compute_metrics_from_events(
+        cls, df: pd.DataFrame, scenario: str, aois: list, result: FixationEventResult,
+    ) -> dict:
+        result.require_source(df, scenario)
+        ordered_aois = sorted(aois, key=lambda item: str(getattr(item, "name", "")).lower())
+        fixation_data = FixationDataService.compute_fixation_data_from_events(result)
         fixations = fixation_data.get("fixations", [])
         sample_df, pupil_baseline, distance_baseline = cls._sample_frame(df, scenario)
 
@@ -385,38 +475,55 @@ class AoiAnalyticsService:
             })
 
         metrics = []
-        any_aoi_mask = [False] * total_fixations
-        assigned_sequence: list[tuple[Optional[str], Optional[str]]] = []
-
-        for fixation_index, fix in enumerate(fixations):
-            x_norm = float(fix.get("x_norm", np.nan))
-            y_norm = float(fix.get("y_norm", np.nan))
-            assigned = None
-            for aoi_def in aoi_defs:
-                if np.isfinite(x_norm) and np.isfinite(y_norm) and cls._contains(aoi_def["shape"], x_norm, y_norm):
-                    any_aoi_mask[fixation_index] = True
-                    if assigned is None:
-                        assigned = aoi_def["name"]
-            assigned_sequence.append((fix.get("segment_id"), assigned))
-
-        unique_aoi_dwell_time_ms = float(
-            sum(
-                float(fix.get("duration_s", 0.0)) * 1000.0
-                for fix, is_inside_any in zip(fixations, any_aoi_mask)
-                if is_inside_any
-            )
+        fixation_x = np.asarray(
+            [float(fix.get("x_norm", np.nan)) for fix in fixations], dtype=float
         )
+        fixation_y = np.asarray(
+            [float(fix.get("y_norm", np.nan)) for fix in fixations], dtype=float
+        )
+        any_aoi_mask = np.zeros(total_fixations, dtype=bool)
+        fixation_aoi_indices = np.full(total_fixations, -1, dtype=np.intp)
 
-        for aoi_def in aoi_defs:
-            inside = []
-            first_index = None
-            for fixation_index, fix in enumerate(fixations):
-                x_norm = float(fix.get("x_norm", np.nan))
-                y_norm = float(fix.get("y_norm", np.nan))
-                if np.isfinite(x_norm) and np.isfinite(y_norm) and cls._contains(aoi_def["shape"], x_norm, y_norm):
-                    inside.append(fix)
-                    if first_index is None:
-                        first_index = fixation_index
+        has_sample_coordinates = (
+            not sample_df.empty
+            and "gx_clean" in sample_df.columns
+            and "gy_clean" in sample_df.columns
+        )
+        sample_x = (
+            sample_df["gx_clean"].to_numpy(dtype=float) / 100.0
+            if has_sample_coordinates
+            else np.empty(0, dtype=float)
+        )
+        sample_y = (
+            sample_df["gy_clean"].to_numpy(dtype=float) / 100.0
+            if has_sample_coordinates
+            else np.empty(0, dtype=float)
+        )
+        sample_aoi_indices = np.full(len(sample_df), -1, dtype=np.intp)
+
+        # At most one fixation mask and one sample mask exist per AOI. They are
+        # consumed immediately; no unbounded samples-by-AOIs matrix is built.
+        for aoi_index, aoi_def in enumerate(aoi_defs):
+            fixation_mask = cls._mask_for_shape(
+                aoi_def["shape"], fixation_x, fixation_y
+            )
+            any_aoi_mask |= fixation_mask
+            first_fixation_assignment = fixation_mask & (fixation_aoi_indices < 0)
+            fixation_aoi_indices[first_fixation_assignment] = aoi_index
+
+            inside_indices = np.flatnonzero(fixation_mask)
+            inside = [fixations[int(index)] for index in inside_indices]
+            first_index = (
+                int(inside_indices[0]) if inside_indices.size else None
+            )
+
+            sample_mask = (
+                cls._mask_for_shape(aoi_def["shape"], sample_x, sample_y)
+                if has_sample_coordinates
+                else np.zeros(len(sample_df), dtype=bool)
+            )
+            first_sample_assignment = sample_mask & (sample_aoi_indices < 0)
+            sample_aoi_indices[first_sample_assignment] = aoi_index
 
             fixation_count = len(inside)
             dwell_time_ms = float(
@@ -446,13 +553,29 @@ class AoiAnalyticsService:
                     2,
                 ),
                 "fixations_to_target": int(first_index + 1) if first_index is not None else None,
-                **cls._sample_metrics_for_shape(
+                **cls._sample_metrics_for_mask(
                     sample_df,
-                    aoi_def["shape"],
+                    sample_mask,
                     pupil_baseline,
                     distance_baseline,
                 ),
             })
+
+        unique_aoi_dwell_time_ms = float(
+            sum(
+                float(fix.get("duration_s", 0.0)) * 1000.0
+                for fix, is_inside_any in zip(fixations, any_aoi_mask)
+                if is_inside_any
+            )
+        )
+
+        assigned_sequence: list[tuple[Optional[str], Optional[str]]] = [
+            (
+                fix.get("segment_id"),
+                aoi_defs[int(aoi_index)]["name"] if aoi_index >= 0 else None,
+            )
+            for fix, aoi_index in zip(fixations, fixation_aoi_indices)
+        ]
 
         aoi_names = [aoi_def["name"] for aoi_def in aoi_defs]
         transition_counts = {
@@ -483,7 +606,9 @@ class AoiAnalyticsService:
         return {
             "aois": metrics,
             "transitions": transitions,
-            "events": cls._key_events(sample_df, aoi_defs),
+            "events": cls._key_events(
+                sample_df, aoi_defs, sample_aoi_indices
+            ),
             "total_fixations": int(total_fixations),
             "total_dwell_time_ms": round(total_dwell_time_ms, 2),
             "observed_aoi_dwell_time_ms": round(unique_aoi_dwell_time_ms, 2),

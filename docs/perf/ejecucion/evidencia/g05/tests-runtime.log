@@ -1,0 +1,430 @@
+...........................................F..........F................. [ 49%]
+........................................................................ [ 98%]
+..                                                                       [100%]
+================================== FAILURES ===================================
+_________ test_empty_aoi_response_still_exposes_transform_provenance __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001F746B86060>
+
+    @pytest.mark.asyncio
+    async def test_empty_aoi_response_still_exposes_transform_provenance(monkeypatch):
+        project_id = uuid4()
+    
+        async def allow(*_args, **_kwargs):
+            return SimpleNamespace(id=project_id)
+    
+        async def resolve(*_args, **_kwargs):
+            return SimpleNamespace(name="A", file_id=None, aois=[])
+    
+        class Reader:
+            def __init__(self, _db):
+                pass
+    
+            async def read(self, _project_id, _participant_code, generation=None):
+                return _applied_gaze_frame()
+    
+        monkeypatch.setattr(routes, "_verify_ownership", allow)
+        monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", resolve)
+        monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+    
+>       response = await routes.aoi_metrics(
+            project_id,
+            participant_code="P-01",
+            scenario="A",
+            db=object(),
+            reader=routes.AnalyticsFrameReader(object()),
+            current_user=str(uuid4()),
+        )
+
+tests\unit\test_stimulus_coordinate_analytics.py:298: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\neurodatics\modules\analytics\api\routes.py:1570: in aoi_metrics
+    return await cached_frame_endpoint(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def cached_frame_endpoint(
+        *,
+        reader: AnalyticsFrameReader,
+        project: Project,
+        participant_code: str,
+        scenario: str,
+        endpoint: str | Callable[[str], str],
+        compute: Callable[[pd.DataFrame], dict],
+        response_model: type[ResponseModel],
+        ttl: Optional[int] = None,
+        computation_error_status: Optional[int] = None,
+        enrich: Optional[Callable[[dict], Awaitable[dict]]] = None,
+        cached_fields: Optional[dict] = None,
+        projection: Optional[ParquetProjection] = None,
+    ) -> ResponseModel:
+        """Resolve provenance, check Redis, then read/compute only on a miss.
+    
+        A callable endpoint requests a transform token. Legacy rows may need one
+        read to discover that token; its frame is reused on a response-cache miss.
+        Read failures and computation failures intentionally have separate scopes.
+        """
+        generation = _cache_generation(project)
+        df = None
+        if callable(endpoint):
+            token, df = await _resolve_transform_token(
+                reader.db, project, participant_code, generation, reader=reader,
+            )
+            endpoint = endpoint(token)
+        cache_key = _redis.build_key(
+            project.id, participant_code, endpoint, scenario, generation=generation,
+        )
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return response_model(**{**cached, **(cached_fields or {})})
+        async def calculate():
+            # Redis may have been filled since initial lookup/admission.
+            existing = await settled_thread(lambda: _redis.get_json(cache_key))
+            if existing:
+                return {**existing, **(cached_fields or {})}
+            frame = df
+            if frame is None:
+                frame = await reader.read(project.id, participant_code, generation, projection=projection)
+            try:
+                response_data = await settled_thread(lambda: compute(frame))
+            except ValueError as exc:
+                if computation_error_status is None:
+                    raise
+                raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
+            if enrich is not None:
+                response_data = await enrich(response_data)
+            await settled_thread(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
+            return response_data
+    
+        # Authorized project comes from each caller's ownership query. Include
+        # owner and projection even when HTTP output/Redis identity is equivalent.
+>       key = (str(project.owner_id), cache_key, projection, response_model)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:322: AttributeError
+---------------------------- Captured stdout setup ----------------------------
+2026-10-02 06:47:16,975 - asyncio - DEBUG - Using proactor: IocpProactor
+----------------------------- Captured log setup ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+---------------------------- Captured stdout call -----------------------------
+2026-10-02 06:47:19,695 - neurodatics.modules.analytics.infrastructure.redis_cache - WARNING - Redis read failed for key analytics:screen-stimulus-v2:eb247451-a79a-43b6-b70c-bca3e2b5cc61:g0:P-01:aois:v1:stimulus-v1:09ec1353fb0241987a92:cc66024647636ff5b76b:min-duration-200ms:A
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 378, in connect
+    sock = self.retry.call_with_retry(
+        lambda: self._connect(), lambda error: self.disconnect(error)
+    )
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\retry.py", line 62, in call_with_retry
+    return do()
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 379, in <lambda>
+    lambda: self._connect(), lambda error: self.disconnect(error)
+            ~~~~~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 732, in _connect
+    for res in socket.getaddrinfo(
+               ~~~~~~~~~~~~~~~~~~^
+        self.host, self.port, self.socket_type, socket.SOCK_STREAM
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ):
+    ^
+  File "C:\Program Files\Python314\Lib\socket.py", line 983, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\redis_cache.py", line 77, in get_json
+    raw = self.client.get(key)
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\commands\core.py", line 1822, in get
+    return self.execute_command("GET", name, keys=[name])
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\client.py", line 605, in execute_command
+    return self._execute_command(*args, **options)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\client.py", line 611, in _execute_command
+    conn = self.connection or pool.get_connection()
+                              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\utils.py", line 183, in wrapper
+    return func(*args, **kwargs)
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 1483, in get_connection
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 384, in connect
+    raise ConnectionError(self._error_message(e))
+redis.exceptions.ConnectionError: Error 11001 connecting to redis:6379. getaddrinfo failed.
+------------------------------ Captured log call ------------------------------
+WARNING  neurodatics.modules.analytics.infrastructure.redis_cache:redis_cache.py:82 Redis read failed for key analytics:screen-stimulus-v2:eb247451-a79a-43b6-b70c-bca3e2b5cc61:g0:P-01:aois:v1:stimulus-v1:09ec1353fb0241987a92:cc66024647636ff5b76b:min-duration-200ms:A
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 378, in connect
+    sock = self.retry.call_with_retry(
+        lambda: self._connect(), lambda error: self.disconnect(error)
+    )
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\retry.py", line 62, in call_with_retry
+    return do()
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 379, in <lambda>
+    lambda: self._connect(), lambda error: self.disconnect(error)
+            ~~~~~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 732, in _connect
+    for res in socket.getaddrinfo(
+               ~~~~~~~~~~~~~~~~~~^
+        self.host, self.port, self.socket_type, socket.SOCK_STREAM
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ):
+    ^
+  File "C:\Program Files\Python314\Lib\socket.py", line 983, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\redis_cache.py", line 77, in get_json
+    raw = self.client.get(key)
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\commands\core.py", line 1822, in get
+    return self.execute_command("GET", name, keys=[name])
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\client.py", line 605, in execute_command
+    return self._execute_command(*args, **options)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\client.py", line 611, in _execute_command
+    conn = self.connection or pool.get_connection()
+                              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\utils.py", line 183, in wrapper
+    return func(*args, **kwargs)
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 1483, in get_connection
+    connection.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\redis\connection.py", line 384, in connect
+    raise ConnectionError(self._error_message(e))
+redis.exceptions.ConnectionError: Error 11001 connecting to redis:6379. getaddrinfo failed.
+-------------------------- Captured stdout teardown ---------------------------
+2026-10-02 06:47:19,975 - asyncio - DEBUG - Using proactor: IocpProactor
+---------------------------- Captured log teardown ----------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+_________________ test_scanpath_route_uses_v4_cache_namespace _________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001F744320180>
+
+    @pytest.mark.asyncio
+    async def test_scanpath_route_uses_v4_cache_namespace(monkeypatch):
+        project_id = uuid4()
+        current_user = str(uuid4())
+        frame = _v2_frame()
+        cache = _CacheSpy()
+    
+        async def allow_ownership(*args, **kwargs):
+            return SimpleNamespace(id=project_id, ingestion_generation=7)
+    
+        async def no_scenary(*args, **kwargs):
+            return None
+    
+        class Reader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None):
+                return frame
+    
+        monkeypatch.setattr(routes, "_verify_ownership", allow_ownership)
+        monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", no_scenary)
+        monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+        monkeypatch.setattr(routes, "_redis", cache)
+    
+>       response = await routes.scanpath(
+            project_id,
+            participant_code="P-01",
+            scenario="A",
+            min_fixation_duration_ms=200,
+            db=object(),
+            reader=routes.AnalyticsFrameReader(object()),
+            current_user=current_user,
+        )
+
+tests\unit\test_scanpath_radius_scale.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\neurodatics\modules\analytics\api\routes.py:1241: in scanpath
+    return await cached_frame_endpoint(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def cached_frame_endpoint(
+        *,
+        reader: AnalyticsFrameReader,
+        project: Project,
+        participant_code: str,
+        scenario: str,
+        endpoint: str | Callable[[str], str],
+        compute: Callable[[pd.DataFrame], dict],
+        response_model: type[ResponseModel],
+        ttl: Optional[int] = None,
+        computation_error_status: Optional[int] = None,
+        enrich: Optional[Callable[[dict], Awaitable[dict]]] = None,
+        cached_fields: Optional[dict] = None,
+        projection: Optional[ParquetProjection] = None,
+    ) -> ResponseModel:
+        """Resolve provenance, check Redis, then read/compute only on a miss.
+    
+        A callable endpoint requests a transform token. Legacy rows may need one
+        read to discover that token; its frame is reused on a response-cache miss.
+        Read failures and computation failures intentionally have separate scopes.
+        """
+        generation = _cache_generation(project)
+        df = None
+        if callable(endpoint):
+            token, df = await _resolve_transform_token(
+                reader.db, project, participant_code, generation, reader=reader,
+            )
+            endpoint = endpoint(token)
+        cache_key = _redis.build_key(
+            project.id, participant_code, endpoint, scenario, generation=generation,
+        )
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return response_model(**{**cached, **(cached_fields or {})})
+        async def calculate():
+            # Redis may have been filled since initial lookup/admission.
+            existing = await settled_thread(lambda: _redis.get_json(cache_key))
+            if existing:
+                return {**existing, **(cached_fields or {})}
+            frame = df
+            if frame is None:
+                frame = await reader.read(project.id, participant_code, generation, projection=projection)
+            try:
+                response_data = await settled_thread(lambda: compute(frame))
+            except ValueError as exc:
+                if computation_error_status is None:
+                    raise
+                raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
+            if enrich is not None:
+                response_data = await enrich(response_data)
+            await settled_thread(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
+            return response_data
+    
+        # Authorized project comes from each caller's ownership query. Include
+        # owner and projection even when HTTP output/Redis identity is equivalent.
+>       key = (str(project.owner_id), cache_key, projection, response_model)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:322: AttributeError
+---------------------------- Captured stdout setup ----------------------------
+2026-10-02 06:47:19,985 - asyncio - DEBUG - Using proactor: IocpProactor
+----------------------------- Captured log setup ------------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+-------------------------- Captured stdout teardown ---------------------------
+2026-10-02 06:47:20,009 - asyncio - DEBUG - Using proactor: IocpProactor
+---------------------------- Captured log teardown ----------------------------
+DEBUG    asyncio:proactor_events.py:633 Using proactor: IocpProactor
+============================== warnings summary ===============================
+src\neurodatics\infra\db\base.py:4
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\infra\db\base.py:4: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+src\neurodatics\modules\scenaries\api\schemas.py:105
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:105: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class AOIResponse(BaseModel):
+
+src\neurodatics\modules\scenaries\api\schemas.py:117
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\scenaries\api\schemas.py:117: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class scenariesResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:50: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectFileResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:182
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:182: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectSensorResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:190
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:190: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:200
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:200: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectResponse(BaseModel):
+
+src\neurodatics\modules\projects\api\schemas.py:219
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\projects\api\schemas.py:219: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ProjectDetailResponse(BaseModel):
+
+..\.venv\Lib\site-packages\fastapi\routing.py:211: 94 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\routing.py:211: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+
+..\.venv\Lib\site-packages\starlette\_utils.py:17: 98 warnings
+tests/characterization/test_sensor_reports.py: 4 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:17: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj) or (
+
+src\neurodatics\modules\participants\api\schemas.py:22
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\api\schemas.py:22: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+src\neurodatics\main.py:50
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\main.py:50: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+..\.venv\Lib\site-packages\fastapi\applications.py:4547
+..\.venv\Lib\site-packages\fastapi\applications.py:4547
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\fastapi\applications.py:4547: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+src\neurodatics\main.py:55
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\main.py:55: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+..\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: 3608 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj)
+
+tests/unit/test_stimulus_coordinate_analytics.py::test_scanpath_route_requires_one_concrete_scenario
+tests/unit/test_stimulus_coordinate_analytics.py::test_empty_aoi_response_still_exposes_transform_provenance
+tests/unit/test_scanpath_radius_scale.py::test_scanpath_route_uses_v4_cache_namespace
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:564: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+
+tests/unit/test_stimulus_coordinate_analytics.py::test_scanpath_route_requires_one_concrete_scenario
+tests/unit/test_stimulus_coordinate_analytics.py::test_empty_aoi_response_still_exposes_transform_provenance
+tests/unit/test_scanpath_radius_scale.py::test_scanpath_route_uses_v4_cache_namespace
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:395: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_stimulus_coordinate_analytics.py::test_scanpath_route_requires_one_concrete_scenario
+tests/unit/test_stimulus_coordinate_analytics.py::test_empty_aoi_response_still_exposes_transform_provenance
+tests/unit/test_scanpath_radius_scale.py::test_scanpath_route_uses_v4_cache_namespace
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:441: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_stimulus_coordinate_analytics.py::test_scanpath_route_requires_one_concrete_scenario
+tests/unit/test_stimulus_coordinate_analytics.py::test_empty_aoi_response_still_exposes_transform_provenance
+tests/unit/test_scanpath_radius_scale.py::test_scanpath_route_uses_v4_cache_namespace
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:462: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/characterization/test_sensor_reports.py::test_report_route_returns_one_pdf_for_one_device
+tests/characterization/test_sensor_reports.py::test_report_route_packages_every_device_for_all_participants
+tests/characterization/test_sensor_reports.py::test_report_route_rejects_a_device_the_project_lacks
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\starlette\_utils.py:18: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    callable(obj) and asyncio.iscoroutinefunction(obj.__call__)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+--------------------------- snapshot report summary ---------------------------
+1 snapshot passed.
+=========================== short test summary info ===========================
+FAILED tests/unit/test_stimulus_coordinate_analytics.py::test_empty_aoi_response_still_exposes_transform_provenance
+FAILED tests/unit/test_scanpath_radius_scale.py::test_scanpath_route_uses_v4_cache_namespace
+2 failed, 144 passed, 3832 warnings in 21.70s

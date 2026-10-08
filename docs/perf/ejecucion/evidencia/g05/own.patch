@@ -1,0 +1,751 @@
+--- a/backend/src/neurodatics/modules/analytics/application/services/analytics_service.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/analytics_service.py
+@@ -58,6 +58,7 @@
+ from .fixation_analytics_service import (
+     FixationDurationVariantService as FixationDurationVariantService,
+     FixationEventService as FixationEventService,
++    FixationEventResult as FixationEventResult,
+ )
+ from .scanpath_analytics_service import (
+     ScanpathAnalyticsService as ScanpathAnalyticsService,
+--- a/backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py
+@@ -15,6 +15,7 @@
+ from .numeric_helpers import scope_to_scenario as scope_to_scenario
+ from .pupil_analytics_service import PupilAnalyticsService as PupilAnalyticsService
+ from .fixation_summaries import FixationDataService
++from .fixation_analytics_service import FixationEventResult, FixationEventService
+ 
+ 
+ class AoiAnalyticsService:
+@@ -359,12 +360,19 @@
+         aois: list,
+         min_fixation_duration_ms: Optional[int] = None,
+     ) -> dict:
+-        ordered_aois = sorted(aois, key=lambda item: str(getattr(item, "name", "")).lower())
+-        fixation_data = FixationDataService.compute_fixation_data(
+-            df,
+-            scenario,
++        result = FixationEventService.build_result(
++            df, scenario=scenario,
+             min_fixation_duration_ms=min_fixation_duration_ms,
+         )
++        return cls.compute_metrics_from_events(df, scenario, aois, result)
++
++    @classmethod
++    def compute_metrics_from_events(
++        cls, df: pd.DataFrame, scenario: str, aois: list, result: FixationEventResult,
++    ) -> dict:
++        result.require_source(df, scenario)
++        ordered_aois = sorted(aois, key=lambda item: str(getattr(item, "name", "")).lower())
++        fixation_data = FixationDataService.compute_fixation_data_from_events(result)
+         fixations = fixation_data.get("fixations", [])
+         sample_df, pupil_baseline, distance_baseline = cls._sample_frame(df, scenario)
+ 
+--- a/backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py
+@@ -1,6 +1,7 @@
+ """Duration selection and canonical events share one fixation contract."""
+ 
+ from copy import deepcopy
++from dataclasses import dataclass, field
+ import json
+ from typing import Optional
+ import numpy as np
+@@ -13,10 +14,48 @@
+     SUPPORTED_FIXATION_MIN_DURATIONS_MS,
+     fixation_duration_column,
+ )
+-from ...domain.coordinate_transform import attach_transform_provenance
++from ...domain.coordinate_transform import attach_transform_provenance, displayed_stimulus_size
+ from .numeric_helpers import _infer_fs as _infer_fs
+ from .numeric_helpers import scope_to_scenario as scope_to_scenario
+ from .fixation_event_reconstruction import _event_from_run, _from_v2, _legacy_events
++
++
++@dataclass(frozen=True, eq=False)
++class FixationEventResult:
++    """Operation-local owner of events, provenance and acquisition geometry.
++
++    Source samples/attrs must remain unchanged for the operation's lifetime.
++    Private storage is never a consumer's working frame: every public snapshot
++    owns its buffers and nested metadata. Do not retain this as a global cache.
++    ``None`` duration means stored canonical columns, not an explicit variant.
++    """
++
++    _events: pd.DataFrame = field(repr=False)
++    _metadata: dict = field(repr=False)
++    _source: pd.DataFrame = field(repr=False)
++    scenario: Optional[str]
++    proximity_threshold: float
++    min_fixation_duration_ms: Optional[int]
++    display_size: Optional[tuple[float, float]]
++
++    def __post_init__(self):
++        object.__setattr__(self, "_events", self._events.copy(deep=True))
++        object.__setattr__(self, "_metadata", deepcopy(self._metadata))
++
++    @property
++    def events(self) -> pd.DataFrame:
++        """Return a consumer-owned mutable event table."""
++        return self._events.copy(deep=True)
++
++    @property
++    def metadata(self) -> dict:
++        """Return consumer-owned provenance, including nested warning lists."""
++        return deepcopy(self._metadata)
++
++    def require_source(self, df: pd.DataFrame, scenario: Optional[str]) -> None:
++        """AOI sample metrics must use the exact source and scenario."""
++        if df is not self._source or scenario != self.scenario:
++            raise ValueError("Fixation result and sample metrics require the same source and scenario")
+ 
+ 
+ class FixationDurationVariantService:
+@@ -606,3 +645,25 @@
+         else:
+             events, metadata = cls._legacy_events(scoped, proximity_threshold)
+         return events, attach_transform_provenance(metadata, scoped)
++
++    @classmethod
++    def build_result(
++        cls,
++        df: pd.DataFrame,
++        scenario: Optional[str] = None,
++        proximity_threshold: float = 0.03,
++        min_fixation_duration_ms: Optional[int] = None,
++    ) -> FixationEventResult:
++        """Construct once for one unchanged source/scope/variant/proximity.
++
++        Events already include transformation, gaps, quality and detector
++        provenance. Geometry follows the original scanpath's source scope.
++        """
++        events, metadata = cls.build_events(
++            df, scenario=scenario, proximity_threshold=proximity_threshold,
++            min_fixation_duration_ms=min_fixation_duration_ms,
++        )
++        return FixationEventResult(
++            events, metadata, df, scenario, proximity_threshold,
++            min_fixation_duration_ms, displayed_stimulus_size(scope_to_scenario(df, scenario)),
++        )
+--- a/backend/src/neurodatics/modules/analytics/application/services/fixation_summaries.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/fixation_summaries.py
+@@ -3,7 +3,7 @@
+ from typing import Optional
+ import numpy as np
+ import pandas as pd
+-from .fixation_analytics_service import FixationEventService as FixationEventService
++from .fixation_analytics_service import FixationEventResult, FixationEventService
+ 
+ 
+ class FixationDataService:
+@@ -26,11 +26,16 @@
+           - fixations: list of {x_norm, y_norm, time_s, duration_s}
+           - stats: {n_fixations, max_duration_s, avg_duration_s}
+         """
+-        events, metadata = FixationEventService.build_events(
++        result = FixationEventService.build_result(
+             df,
+             scenario=scenario,
+             min_fixation_duration_ms=min_fixation_duration_ms,
+         )
++        return cls.compute_fixation_data_from_events(result)
++
++    @classmethod
++    def compute_fixation_data_from_events(cls, result: FixationEventResult) -> dict:
++        events, metadata = result.events, result.metadata
+         if events.empty:
+             return {
+                 "fixations": [],
+@@ -66,11 +71,16 @@
+         min_fixation_duration_ms: Optional[int] = None,
+     ) -> dict:
+         """Compute a Sturges-binned histogram of fixation durations in milliseconds."""
+-        events, metadata = FixationEventService.build_events(
++        result = FixationEventService.build_result(
+             df,
+             scenario=scenario,
+             min_fixation_duration_ms=min_fixation_duration_ms,
+         )
++        return cls.compute_histogram_from_events(result)
++
++    @classmethod
++    def compute_histogram_from_events(cls, result: FixationEventResult) -> dict:
++        events, metadata = result.events, result.metadata
+         _empty = {
+             "bins": [],
+             "n_fixations": 0,
+--- a/backend/src/neurodatics/modules/analytics/application/services/heatmap_analytics_service.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/heatmap_analytics_service.py
+@@ -4,7 +4,7 @@
+ import numpy as np
+ import pandas as pd
+ from ...domain.stimulus_geometry import resolve_output_size
+-from .fixation_analytics_service import FixationEventService as FixationEventService
++from .fixation_analytics_service import FixationEventResult, FixationEventService
+ 
+ 
+ class HeatmapAnalyticsService:
+@@ -73,11 +73,22 @@
+         proportionally, so it still overlays exactly. Returns the RGBA PNG
+         bytes plus the canonical fixation provenance used to build it.
+         """
+-        events, metadata = FixationEventService.build_events(
++        result = FixationEventService.build_result(
+             df,
+             scenario=scenario,
+             min_fixation_duration_ms=min_fixation_duration_ms,
+         )
++        return cls.compute_heatmap_overlay_from_events(
++            result, gamma=gamma, threshold=threshold, alpha=alpha, width=width, height=height,
++        )
++
++    @classmethod
++    def compute_heatmap_overlay_from_events(
++        cls, result: FixationEventResult, gamma: float = 0.7,
++        threshold: float = 0.10, alpha: float = 0.75,
++        width: Optional[int] = None, height: Optional[int] = None,
++    ) -> tuple[Optional[bytes], dict]:
++        events, metadata = result.events, result.metadata
+         png_bytes = cls.render_overlay(
+             events,
+             gamma=gamma,
+--- a/backend/src/neurodatics/modules/analytics/application/services/scanpath_analytics_service.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/scanpath_analytics_service.py
+@@ -3,9 +3,9 @@
+ from typing import Optional
+ import numpy as np
+ import pandas as pd
+-from ...domain.coordinate_transform import APPLIED_STATUS, displayed_stimulus_size
++from ...domain.coordinate_transform import APPLIED_STATUS
+ from .numeric_helpers import scope_to_scenario as scope_to_scenario
+-from .fixation_analytics_service import FixationEventService as FixationEventService
++from .fixation_analytics_service import FixationEventResult, FixationEventService
+ 
+ 
+ class ScanpathAnalyticsService:
+@@ -188,12 +188,17 @@
+         - total_duration_s: float (summed valid fixation dwell)
+         - radius_scale: absolute area-encoding metadata
+         """
+-        events, metadata = FixationEventService.build_events(
++        result = FixationEventService.build_result(
+             df,
+             scenario=scenario,
+             proximity_threshold=proximity_threshold,
+             min_fixation_duration_ms=min_fixation_duration_ms,
+         )
++        return cls.compute_scanpath_from_events(result)
++
++    @classmethod
++    def compute_scanpath_from_events(cls, result: FixationEventResult) -> dict:
++        events, metadata = result.events, result.metadata
+         _empty = {
+             "objectives": [],
+             "n_objectives": 0,
+@@ -227,8 +232,7 @@
+                 "n_points": int(event["detector_sample_count"]),
+             })
+ 
+-        scoped = scope_to_scenario(df, scenario)
+-        display_size = displayed_stimulus_size(scoped)
++        display_size = result.display_size
+         transform = metadata.get("coordinate_transform") or {}
+         if display_size is not None:
+             distance_width, distance_height = display_size
+--- a/backend/src/neurodatics/modules/reports/application/sensor_reports/eye_tracking.py
++++ b/backend/src/neurodatics/modules/reports/application/sensor_reports/eye_tracking.py
+@@ -96,11 +96,12 @@
+         return None
+     name = scenario.name
+ 
+-    events = _best_effort(
++    fixation_result = _best_effort(
+         "fixation events",
+-        lambda: FixationEventService.build_events(frame, scenario=name)[0],
+-        FixationEventService.empty_events(),
+-    )
++        lambda: FixationEventService.build_result(frame, scenario=name),
++        None,
++    )
++    events = fixation_result.events if fixation_result is not None else FixationEventService.empty_events()
+     durations = _array(events["duration_s"]) * 1000.0 if not events.empty else np.asarray([], dtype=float)
+     durations = durations[np.isfinite(durations) & (durations > 0)]
+     first_fixation = None
+@@ -110,11 +111,14 @@
+         if times.size:
+             first_fixation = max(0.0, float(times.min()) - start)
+ 
+-    histogram = _best_effort("histogram", lambda: FixationHistogramService.compute_histogram(frame, name), {"bins": []})
+-    scanpath = _best_effort("scanpath", lambda: ScanpathAnalyticsService.compute_scanpath(frame, name), {"objectives": []})
++    histogram = {"bins": []}
++    scanpath = {"objectives": []}
+     aoi = None
+-    if scenario.aois:
+-        aoi = _best_effort("AOI metrics", lambda: AoiAnalyticsService.compute_metrics(frame, name, list(scenario.aois)), None)
++    if fixation_result is not None:
++        histogram = _best_effort("histogram", lambda: FixationHistogramService.compute_histogram_from_events(fixation_result), histogram)
++        scanpath = _best_effort("scanpath", lambda: ScanpathAnalyticsService.compute_scanpath_from_events(fixation_result), scanpath)
++        if scenario.aois:
++            aoi = _best_effort("AOI metrics", lambda: AoiAnalyticsService.compute_metrics_from_events(frame, name, list(scenario.aois), fixation_result), None)
+ 
+     pupil = _best_effort("pupil", lambda: PupilAnalyticsService.compute_timeseries(frame, name), {})
+     pupil_time = _array(pupil.get("time")) - start
+--- /dev/null
++++ b/backend/tests/characterization/test_shared_fixation_report.py
+@@ -0,0 +1,53 @@
++"""One construction per source/scenario in EyeTracker, no persistent cache."""
++import pandas as pd
++import pytest
++
++from neurodatics.modules.reports.application.sensor_reports import eye_tracking
++from test_sensor_reports import _context
++
++
++def test_collect_shares_one_result_and_preserves_direct_service_outputs(corpus, aois, monkeypatch):
++    context = _context(corpus.frames, aois, "EyeTracker", group=True)
++    original = eye_tracking.FixationEventService.build_events
++    calls = []
++    def counted(frame, *a, **kw):
++        calls.append((id(frame), kw.get("scenario"), kw.get("proximity_threshold"), kw.get("min_fixation_duration_ms")))
++        return original(frame, *a, **kw)
++    monkeypatch.setattr(eye_tracking.FixationEventService, "build_events", counted)
++    recordings = [eye_tracking.collect(p, s) for p in context.participants for s in context.scenarios]
++    assert len(calls) == 4
++    assert len(set(calls)) == 4
++    assert all(call[2:] == (.03, None) for call in calls)
++    monkeypatch.setattr(eye_tracking.FixationEventService, "build_events", original)
++    for recording, (participant, scenario) in zip(recordings, [(p, s) for p in context.participants for s in context.scenarios]):
++        events, _ = original(participant.frame, scenario.name)
++        pd.testing.assert_frame_equal(recording.events, events)
++        assert recording.histogram == eye_tracking.FixationHistogramService.compute_histogram(participant.frame, scenario.name)
++        assert recording.scanpath == eye_tracking.ScanpathAnalyticsService.compute_scanpath(participant.frame, scenario.name)
++        assert recording.aoi == eye_tracking.AoiAnalyticsService.compute_metrics(participant.frame, scenario.name, list(scenario.aois))
++    # Consumer mutations cannot reach sibling outputs or a later operation.
++    recording = recordings[0]
++    recording.events.loc[:, "duration_s"] = 999
++    recording.scanpath["warnings"].append("mutated")
++    assert "mutated" not in recording.histogram["warnings"]
++    assert "mutated" not in recording.aoi["warnings"]
++    again = eye_tracking.collect(context.participants[0], context.scenarios[0])
++    assert "mutated" not in again.scanpath["warnings"]
++    assert again.events["duration_s"].max() < 999
++
++
++@pytest.mark.parametrize("has_aois", [False, True])
++def test_collect_failure_is_attempted_once_and_keeps_partial_report(corpus, aois, monkeypatch, has_aois):
++    context = _context(corpus.frames, aois if has_aois else [], "EyeTracker", group=False)
++    calls = []
++    def fail(*a, **kw):
++        calls.append(kw)
++        raise ValueError("synthetic corrupt fixation variant")
++    monkeypatch.setattr(eye_tracking.FixationEventService, "build_events", fail)
++    recording = eye_tracking.collect(context.participants[0], context.scenarios[0])
++    assert len(calls) == 1
++    assert recording.events.empty and recording.fixation_count == 0
++    assert recording.histogram == {"bins": []}
++    assert recording.scanpath == {"objectives": []}
++    assert recording.aoi is None
++    assert recording.pupil_time.size > 0
+--- a/backend/tests/unit/test_scanpath_radius_scale.py
++++ b/backend/tests/unit/test_scanpath_radius_scale.py
+@@ -125,7 +125,7 @@
+     cache = _CacheSpy()
+ 
+     async def allow_ownership(*args, **kwargs):
+-        return SimpleNamespace(id=project_id, ingestion_generation=7)
++        return SimpleNamespace(id=project_id, owner_id=current_user, ingestion_generation=7)
+ 
+     async def no_scenary(*args, **kwargs):
+         return None
+--- /dev/null
++++ b/backend/tests/unit/test_shared_fixation_result.py
+@@ -0,0 +1,98 @@
++"""G05 ownership and scientific boundaries; independent legacy/v2 oracles."""
++from dataclasses import FrozenInstanceError
++from types import SimpleNamespace
++
++import numpy as np
++import pandas as pd
++import pytest
++
++from neurodatics.modules.analytics.application.services.analytics_service import (
++    AoiAnalyticsService,
++    FixationDataService,
++    FixationEventService,
++    FixationHistogramService,
++    HeatmapAnalyticsService,
++    ScanpathAnalyticsService,
++)
++from test_fixation_duration_variants import _variant_frame
++from test_fixation_event_analytics import _v2_frame
++from test_stimulus_coordinate_analytics import _v2_frame_with_off_stimulus_boundary
++
++
++def _aoi():
++    return SimpleNamespace(id="a", name="A", color="#3B82F6", shape_type="rect",
++                           shape={"x": 0, "y": 0, "width": 100, "height": 100})
++
++
++@pytest.mark.parametrize("factory", [_v2_frame, _v2_frame_with_off_stimulus_boundary,
++    lambda: pd.DataFrame({"time": [0, .01, .02, .03, .04, .05],
++                          "fix_x": [10, 10, np.nan, 40, 40, 40],
++                          "fix_y": [20, 20, np.nan, 50, 50, 50], "scenario": ["A"] * 6}),
++    lambda: pd.DataFrame({"time": [], "scenario": []})])
++def test_consumers_match_dataframe_wrappers_and_canonical_events(factory):
++    frame = factory()
++    result = FixationEventService.build_result(frame, "A")
++    events, metadata = FixationEventService.build_events(frame, "A")
++    pd.testing.assert_frame_equal(result.events, events)
++    assert result.metadata == metadata
++    assert FixationDataService.compute_fixation_data_from_events(result) == FixationDataService.compute_fixation_data(frame, "A")
++    assert FixationHistogramService.compute_histogram_from_events(result) == FixationHistogramService.compute_histogram(frame, "A")
++    assert ScanpathAnalyticsService.compute_scanpath_from_events(result) == ScanpathAnalyticsService.compute_scanpath(frame, "A")
++    assert AoiAnalyticsService.compute_metrics_from_events(frame, "A", [_aoi()], result) == AoiAnalyticsService.compute_metrics(frame, "A", [_aoi()])
++    assert HeatmapAnalyticsService.compute_heatmap_overlay_from_events(result, width=80, height=40) == HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(frame, "A", width=80, height=40)
++
++
++@pytest.mark.parametrize("duration", [100, 150, 200, 250, 300])
++def test_each_persisted_variant_keeps_its_own_events_metadata_and_consumers(duration):
++    frame = _variant_frame()
++    result = FixationEventService.build_result(frame, "A", min_fixation_duration_ms=duration)
++    expected, metadata = FixationEventService.build_events(frame, "A", min_fixation_duration_ms=duration)
++    pd.testing.assert_frame_equal(result.events, expected)
++    assert result.metadata == metadata
++    assert result.min_fixation_duration_ms == duration
++    assert result.metadata["min_fixation_duration_ms"] == duration
++    assert FixationHistogramService.compute_histogram_from_events(result) == FixationHistogramService.compute_histogram(frame, "A", duration)
++    assert ScanpathAnalyticsService.compute_scanpath_from_events(result) == ScanpathAnalyticsService.compute_scanpath(frame, "A", min_fixation_duration_ms=duration)
++    assert AoiAnalyticsService.compute_metrics_from_events(frame, "A", [_aoi()], result) == AoiAnalyticsService.compute_metrics(frame, "A", [_aoi()], duration)
++
++
++def test_scenario_proximity_variant_and_source_boundaries_are_explicit():
++    frame = pd.DataFrame({"time": [0., .01, .02, .03], "scenario": ["A"] * 4,
++                          "fix_x": [10., 10., 12., 12.], "fix_y": [20.] * 4})
++    close = FixationEventService.build_result(frame, "A", proximity_threshold=.03)
++    separate = FixationEventService.build_result(frame, "A", proximity_threshold=.001)
++    absent = FixationEventService.build_result(frame, "B")
++    assert len(close.events) == 1
++    assert len(separate.events) == 2
++    assert absent.events.empty
++    assert close.proximity_threshold != separate.proximity_threshold
++    assert close.min_fixation_duration_ms is None
++    with pytest.raises(ValueError, match="same source and scenario"):
++        AoiAnalyticsService.compute_metrics_from_events(frame, "B", [_aoi()], close)
++    with pytest.raises(ValueError, match="same source and scenario"):
++        AoiAnalyticsService.compute_metrics_from_events(frame.copy(), "A", [_aoi()], close)
++
++
++def test_result_and_consumer_outputs_do_not_share_mutable_events_or_provenance():
++    frame = _v2_frame()
++    source_before = frame.copy(deep=True)
++    result = FixationEventService.build_result(frame, "A")
++    original_events, original_metadata = result.events, result.metadata
++    snapshot = result.events
++    snapshot.loc[:, "duration_s"] = 999
++    snapshot.attrs["consumer"] = ["changed"]
++    metadata = result.metadata
++    metadata["warnings"].append("changed")
++    metadata["coordinate_transform"]["status"] = "changed"
++    scanpath = ScanpathAnalyticsService.compute_scanpath_from_events(result)
++    assert scanpath["warnings"] != result.metadata["warnings"]  # geometry warning is private
++    for payload in (scanpath, FixationDataService.compute_fixation_data_from_events(result),
++                    FixationHistogramService.compute_histogram_from_events(result),
++                    AoiAnalyticsService.compute_metrics_from_events(frame, "A", [_aoi()], result)):
++        payload["warnings"].append("consumer edit")
++        payload["coordinate_transform"]["status"] = "consumer edit"
++    with pytest.raises(FrozenInstanceError):
++        result.scenario = "B"
++    pd.testing.assert_frame_equal(result.events, original_events)
++    pd.testing.assert_frame_equal(frame, source_before)
++    assert result.metadata == original_metadata
+--- a/backend/tests/unit/test_stimulus_coordinate_analytics.py
++++ b/backend/tests/unit/test_stimulus_coordinate_analytics.py
+@@ -277,9 +277,10 @@
+ @pytest.mark.asyncio
+ async def test_empty_aoi_response_still_exposes_transform_provenance(monkeypatch):
+     project_id = uuid4()
++    current_user = str(uuid4())
+ 
+     async def allow(*_args, **_kwargs):
+-        return SimpleNamespace(id=project_id)
++        return SimpleNamespace(id=project_id, owner_id=current_user)
+ 
+     async def resolve(*_args, **_kwargs):
+         return SimpleNamespace(name="A", file_id=None, aois=[])
+@@ -294,6 +295,11 @@
+     monkeypatch.setattr(routes, "_verify_ownership", allow)
+     monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", resolve)
+     monkeypatch.setattr(routes, "ParquetReaderService", Reader)
++    monkeypatch.setattr(routes, "_redis", SimpleNamespace(
++        build_key=lambda *a, **kw: "synthetic-aoi-cache-key",
++        get_json=lambda *a: None,
++        set_json=lambda *a, **kw: None,
++    ))
+ 
+     response = await routes.aoi_metrics(
+         project_id,
+@@ -301,7 +307,7 @@
+         scenario="A",
+         db=object(),
+         reader=routes.AnalyticsFrameReader(object()),
+-        current_user=str(uuid4()),
++        current_user=current_user,
+     )
+ 
+     assert response.aois == []
+--- /dev/null
++++ b/docs/perf/bench/g05_fixations.py
+@@ -0,0 +1,124 @@
++"""Offline G05 comparison: exact G00 corpus, collect and EyeTracker PDF."""
++import argparse
++import hashlib
++import importlib.util
++import json
++import platform
++import tempfile
++from dataclasses import fields, is_dataclass
++from pathlib import Path
++
++import g00_backend as baseline
++import numpy as np
++import pandas as pd
++import pyarrow
++import pytest
++from neurodatics.modules.reports.application.sensor_reports import eye_tracking
++from neurodatics.modules.reports.infrastructure.pdf_adapter import PDFAdapter
++
++
++def normalize(value):
++    if isinstance(value, pd.DataFrame):
++        return json.loads(value.to_json(orient="split", double_precision=15))
++    if isinstance(value, np.ndarray):
++        return normalize(value.tolist())
++    if isinstance(value, dict):
++        return {key: normalize(item) for key, item in value.items()}
++    if isinstance(value, (list, tuple)):
++        return [normalize(item) for item in value]
++    if is_dataclass(value):
++        return {f.name: normalize(getattr(value, f.name)) for f in fields(value) if f.name != "participant"}
++    if isinstance(value, (float, np.floating)) and not np.isfinite(value):
++        return str(value)
++    return value
++
++
++def compact_equivalence(values):
++    """Persist checksums rather than millions of synthetic waveform numbers."""
++    compact = {}
++    for key, value in values.items():
++        if key == "asset_hashes":
++            compact[key] = value
++            continue
++        encoded = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
++        compact[key] = {"sha256": hashlib.sha256(encoded).hexdigest(), "serialized_bytes": len(encoded)}
++    return compact
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--phase", choices=("before", "after"), required=True)
++    args = parser.parse_args()
++    root = baseline.ROOT
++    output = root / "docs/perf/ejecucion/evidencia/g05"
++    runtime = root / "output/perf-g05"
++    runtime.mkdir(parents=True, exist_ok=True)
++    fixture = baseline.load_fixture_module()
++    spec = importlib.util.spec_from_file_location("g05_report_fixture", root / "backend/tests/characterization/test_sensor_reports.py")
++    report_fixture = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(report_fixture)
++    result = {"phase": args.phase, "runtime": {"python": platform.python_version(), "pandas": pd.__version__,
++              "numpy": np.__version__, "pyarrow": pyarrow.__version__}, "measurements": [], "equivalence": {}}
++    with tempfile.TemporaryDirectory(prefix="corpus-", dir=runtime) as temporary:
++        class Factory:
++            def mktemp(self, name):
++                target = Path(temporary) / name
++                target.mkdir()
++                return target
++        corpus = fixture.corpus.__wrapped__(Factory())
++        aois = fixture.aois.__wrapped__()
++        base = corpus.frames["SYN-01"]
++        pieces = []
++        for block in range(64):
++            part = base.copy(deep=True)
++            part["time"] += block * 16
++            for column in ("segment_id", "fixation_segment_id"):
++                if column in part:
++                    part[column] = part[column].astype(str) + f"-block-{block}"
++            for column in part.columns:
++                if column == "fixation_id" or column.startswith("fixation_id__"):
++                    part[column] = part[column] + block * 10000
++            pieces.append(part)
++        large = pd.concat(pieces, ignore_index=True)
++        large.attrs = dict(base.attrs)
++        for index in range(16):
++            large[f"g00_unused_{index:02d}"] = np.sin(np.arange(len(large), dtype=float) / (index + 5))
++        corpora = {"small": corpus.frames, "large": {f"SYN-L{index:02d}": large.copy(deep=True) for index in range(4)}}
++        original = eye_tracking.FixationEventService.build_events
++        def counted(*a, **kw):
++            baseline.COUNTERS["event_builds"] += 1
++            return original(*a, **kw)
++        with pytest.MonkeyPatch.context() as patch:
++            patch.setattr(eye_tracking.FixationEventService, "build_events", staticmethod(counted))
++            for label, frames in corpora.items():
++                context = report_fixture._context(frames, aois, "EyeTracker", group=True)
++                def collect(context=context, label=label):
++                    recordings = [eye_tracking.collect(p, s) for s in context.scenarios for p in context.participants]
++                    result["equivalence"][label] = normalize(recordings)
++                    return recordings
++                result["measurements"].append(baseline.measure(f"{label}/group_collect", collect, 5))
++                if label == "small":
++                    def pdf(context=context):
++                        document = eye_tracking.build(context)
++                        result["equivalence"]["render_inputs"] = document.as_json()
++                        result["equivalence"]["asset_hashes"] = {key: hashlib.sha256(value).hexdigest() for key, value in document.assets.items()}
++                        rendered = PDFAdapter().render(document.as_json(), document.assets, timestamp=context.generated_at)
++                        assert rendered.startswith(b"%PDF")
++                        baseline.COUNTERS["report_assets"] += len(document.assets)
++                        baseline.COUNTERS["pdf_bytes"] += len(rendered)
++                        return rendered
++                    result["measurements"].append(baseline.measure("small/build_figures_pdf", pdf, 5))
++    # Outside the timed operations: normalize persisted evidence size only.
++    result["equivalence"] = compact_equivalence(result["equivalence"])
++    if args.phase == "after":
++        before = json.loads((output / "before.json").read_text(encoding="utf-8"))
++        assert result["runtime"] == before["runtime"]
++        assert result["equivalence"] == before["equivalence"], "Scientific/render inputs changed"
++        result["equivalent_to_before"] = True
++    (output / f"{args.phase}.json").write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
++    print(json.dumps({"phase": args.phase, "equivalent": result.get("equivalent_to_before"),
++                      "measurements": [{k: row[k] for k in ("name", "n", "median_ms", "min_ms", "max_ms")} for row in result["measurements"]]}, indent=2))
++
++
++if __name__ == "__main__":
++    main()
+--- a/docs/perf/ejecucion/ESTADO.md
++++ b/docs/perf/ejecucion/ESTADO.md
+@@ -1,6 +1,6 @@
+ # Estado de ejecución
+ 
+-G00–G03 cerrados; G04 implementación completa, pendiente revisión final coordinador, 2026-10-02. Coordinador y un ejecutor secuencial; sin otros agentes de bloque ni cambios de producto por G00.
++G00–G04 cerrados; G05 implementación completa, aguardando revisión final coordinador, 2026-10-02. Coordinador y un ejecutor secuencial; sin otros agentes de bloque ni cambios de producto por G00.
+ 
+ | Bloque | Estado | Entrega |
+ |---|---|---|
+@@ -8,8 +8,9 @@
+ | G01 | completa; lazy dashboard descartado con evidencia | [G01.md](G01.md), [evidencia](evidencia/g01/) |
+ | G02 | completa (caché compartida, admisión acotada y contexto espacial vigente) | [G02.md](G02.md), [evidencia](evidencia/g02/) |
+ | G03 | completa; revisión coordinador aprobada | [G03.md](G03.md), [evidencia](evidencia/g03/) |
+-| G04 | completa; pendiente revisión final coordinador | [G04.md](G04.md), [evidencia](evidencia/g04/) |
+-| G05–G12 | pendiente | no iniciados |
++| G04 | completa; revisión coordinador aprobada | [G04.md](G04.md), [evidencia](evidencia/g04/) |
++| G05 | completa; aguardando revisión final coordinador | [G05.md](G05.md), [evidencia](evidencia/g05/) |
++| G06–G12 | pendiente | no iniciados |
+ 
+ Base: HEAD `f310003bd734203a41268f40a4627bd99d5a3233` más cambios locales iniciales, registrados con SHA-256 en `evidencia/g00/inventario-inicial.json`. No se copian secretos ni datos privados. El inventario incluye archivos nuevos previos y los documentos del plan/coordinación. Las huellas no reemplazan una copia de recuperación: los cambios permanecen en este checkout.
+ 
+@@ -23,4 +24,6 @@
+ 
+ G03 cerrado: perfiles GSR/pupila/distancia/timing/EEG en 11 endpoints; matriz completa 24 = 11 proyección +11 full +2 SQL. Full default y mismo helper frío/cache/cache-only, attrs/índice/orden/precisión preservados, opcionales intencionales para sensores ausentes legacy, identidad/generación/auth intactos. Category descartado por fillna/groupby/concat incompatibles. 285 pruebas/24 snapshots en runtime recibido y aislado Python3.12/PyArrow16.1; ajuste índice vacío25 pruebas ambos y EEG procesamiento12 ambos, Ruff/import boundaries aprobados. Medida n=5: large GSR temporal139,59→39,16ms; pupil101,64→29,41ms; frames161.056.772→13.705.732–18.620.932B. 44 casos HTTP sin caché full/proyección byte-equivalentes; cold siempre archivo entero +I/O simulado20ms. No peak de operación RSS, Redis/Drive/PostgreSQL ni equivalencia deployment inferidos. Preservación792/792 ajenos y236/236 frontend; own.patch contra base recibida, .venv/deps intactas. API/matriz/evidencia en G03.md. G04 ejecutado posteriormente; detalle siguiente y G04.md.
+ 
+-G04 implementación/checks/medidas completos:22 respuestas coordinadas (20 helper+gaze+PNG) y obtención archivo por identidad/generación, por proceso/loop. Auth cada solicitante; reconsulta cache; frames/proyecciones/modelos independientes. Líder conserva lease request/DB hasta settlement incluso cancelaciones reiteradas; follower superviviente/último/timeout y worker físico probados.4running/32queued/256consumers por nivel, deadline120s solicita cancelación; worker no preemptible prolonga lease. Redis opcional/oversize8MiB live; legacy token conserva lectura previa.313 pruebas/24snapshots ambos runtimes inicialmente,163/24 finales afectados; Ruff/3 import contracts aprobados. n5 burstdisk small65,80→10,33ms/large179,71→44,60,10reads/calculations→1; coldlarge10downloads→1. Secuencial+0,83/+1,92ms visible. Baseline coldsmall49/50 WinError publicación, after50/50; tiempos fallidos no comparables. Preservación837/837 ajenos, frontend intacto; patch contra snapshot propio, sin deps/deploy/DB/Drive/Redis real/global gate. API/medidas/logs en G04.md. Aguarda revisión coordinador; G05 no iniciado.
++G04 implementación/checks/medidas completos:22 respuestas coordinadas (20 helper+gaze+PNG) y obtención archivo por identidad/generación, por proceso/loop. Auth cada solicitante; reconsulta cache; frames/proyecciones/modelos independientes. Líder conserva lease request/DB hasta settlement incluso cancelaciones reiteradas; follower superviviente/último/timeout y worker físico probados.4running/32queued/256consumers por nivel, deadline120s solicita cancelación; worker no preemptible prolonga lease. Redis opcional/oversize8MiB live; legacy token conserva lectura previa.313 pruebas/24snapshots ambos runtimes inicialmente,163/24 finales afectados; Ruff/3 import contracts aprobados. n5 burstdisk small65,80→10,33ms/large179,71→44,60,10reads/calculations→1; coldlarge10downloads→1. Secuencial+0,83/+1,92ms visible. Baseline coldsmall49/50 WinError publicación, after50/50; tiempos fallidos no comparables. Preservación837/837 ajenos, frontend intacto; patch contra snapshot propio, sin deps/deploy/DB/Drive/Redis real/global gate. API/medidas/logs en G04.md. Revisión coordinador aprobada según ORQUESTACION; G05 ejecutado, ver entrega siguiente.
++
++G05 implementación/checks/medidas cerrados: resultado FixationEventResult con snapshots independientes de eventos/metadatos y geometría scoped; source/attrs estables por operación, AOIs valida source/scenario. Derivados y wrappers preservados; collect1construcción/participante/escenario, builds16→4small/32→8large; sin caché global, optimización AOIs/cadencia, nuevos I/O/concurrencia ni cambios G03/G04.193 pruebas/25snapshots por runtime (recibido146+47, aislado3.12/PyArrow16.1=193), Ruff/3import contracts aprobados. Dos fakes ownership incompatibles con keyG04 corregidos y Redis test aislado; sin cambiar producción ni goldens. n5same-corpus/runtime collect361,89→211,39ms/24.371,75→12.198,25ms; recordings normalizados/renderJSON/17assets iguales, CPU/RSS/dispersion en G05.md. Sin inferir speedup global/PDF/deploy, ni gate frontend/global (G12). Patch contra snapshot recibido y preservación/manifiesto en evidencia/g05. Aguarda revisión; G06 no iniciado.
+--- /dev/null
++++ b/docs/perf/ejecucion/G05.md
+@@ -0,0 +1,17 @@
++# G05 — Reutilización de fijaciones
++
++**Estado: completa, aguardando revisión del coordinador.** Codex GPT-6.1 Sol/high; Claude Sonnet/alto recomendado por contratos científicos/mutabilidad con los mismos checks. Selecciones vigentes intactas. Sólo G05, sin agentes recursivos ni G06.
++
++Base HEAD `f310003bd734203a41268f40a4627bd99d5a3233` + cambios previos/G00–G04; G04 aprobado según ORQUESTACION. [Inventario recibido](evidencia/g05/inventario-inicial.json):882 archivos. Snapshot sólo10 existentes propios en ignored `output/perf-g05/base`; [own.patch](evidencia/g05/own.patch) contra **esa base**, nunca HEAD. [Preservación](evidencia/g05/preservacion.json): **872/872 ajenos y236/236frontend intactos**, ORQUESTACION sin cambios; [manifiesto](evidencia/g05/manifiesto-final.json) identifican alcance/evidencia. Sin reset/stash/commit ni modificar ORQUESTACION, frontend, dependencias/.venv, distribución/migración/deploy.
++
++Resultado: `FixationEventResult` dueño privado de eventos/metadatos; snapshots mutable propios por consumidor y geometría capturada del mismo scope. Wrappers DataFrame y tuple `build_events` siguen funcionales; derivados `*_from_events` para data/histograma/scanpath/AOIs/heatmap. `collect()` construye una vez y comparte entre histograma, scanpath y AOIs; heatmap de grupo ya usa eventos de esas grabaciones. Sin AOIs también una; fallo mantiene defaults parciales y señales disponibles sin reconstruir otra vez. Sensibilidad conserva una construcción por variante diferente. No caché global ni optimización AOIs/cadencia de G06.
++
++Contrato [API/handoff](evidencia/g05/API.md): misma fuente/attrs **sin cambios durante operación**, escenario exacto, duración (`None` = canónicas guardadas, no equivalente automático200), proximidad, transformación y cualquier parámetro relevante. Resultado conserva source sólo durante operación; AOI rechaza otro objeto/source/escenario para sus métricas de muestras. Metadatos anidados y buffers no mutan otros consumidores. Detector/calidad/gaps/NaN/orden/coordenadas/precisión originales intactos. Rutas espaciales/informes siguen full G03. Auth/lifecycle/SingleFlight de G04 y4running/32cola/256consumers por nivel/proceso/loop intactos; sin AsyncSession ni Matplotlib concurrentes.
++
++Verificación [comandos/logs](evidencia/g05/comandos.md), [resumen](evidencia/g05/verificacion.json): **193 pruebas/25snapshots en cada runtime**: recibido146/1+47/24; soportado193/25 en entorno aislado G03 Python3.12/PyArrow16.1. Fijaciones legacy/v2/5variantes, transform/off-stimulus, histogramas/heatmap/scanpath/AOI, reportes numéricos/render/PDF y HTTP;14 nuevos contratos de snapshots/ownership/failure/conteos. Ruff y3import contracts aprobados. Dos fakes de tests HTTP carecían owner_id desde keyG04 y no habían sido cubiertos por su suite dirigida: corregidos sólo fakes; AOI ahora cache sintética (diagnóstico inicial intentó DNS Redis default, sin conexión real). No cambió producción para encubrir pruebas. Goldens no actualizados.
++
++Medidas propias [detalle](evidencia/g05/medidas.md), [before](evidencia/g05/before.json)/[after](evidencia/g05/after.json): mismo corpusG00/runtime recibido, warmup1+n5, sin probes/tests simultáneos. **Builds16→4small/32→8large (−75%)**; collect361,89[356,73–390,19]→211,39[209,34–217,07]ms y24.371,75[23.793,59–24.469,48]→12.198,25[12.145,82–12.956,78]ms. Beneficio observable collect −41,6%/−50,0% aquí; CPU/RSS en detalle, sin incremento material. Small build/figuras/PDF observado1464,25→1301,95ms; no atribuir factor global/PDF por extrapolación. Records normalizados completos, renderJSON y17assets SHA256 iguales antes/después; evidencia grande compactada a hashes fuera de medición. PDF válido17assets330.652B aquí, sin exigir byte exact con timestamps.
++
++Archivos propios:7servicios/producto (6analytics+eye_tracking),2tests nuevos,2ajustes de fakes, probe, G05/ESTADO/evidencia. [Patch](evidencia/g05/own.patch) incluye fuente/docs principales; logs/JSON identificados por manifiesto. Reversión: retirar sólo cambios de own.patch contra snapshot recibido; conservar cambios anteriores/entregas y no limpiar globalmente.
++
++Límites: no DB/Drive/Redis reales/datos usuarios, nube ni paquete congelado; gate global/frontend reservados G12. RSS snapshot/peak acumulado no es pico operación; corpus/evidencia ya enRAM, no latencia I/O. Próximo **G06 sólo tras revisión**: ficha, esta entrega/API y caracterizaciones; optimizar algoritmos manteniendo contrato/ownership. Implementación/checks/medición cerrados; aguardando revisión.
+--- /dev/null
++++ b/docs/perf/ejecucion/evidencia/g05/API.md
+@@ -0,0 +1,24 @@
++# API G05 — eventos de fijación por operación
++
++`FixationEventService.build_result(df, scenario=None, proximity_threshold=0.03, min_fixation_duration_ms=None)` devuelve `FixationEventResult`, exportado también por `analytics_service`. `build_events` conserva su firma y tuple `(DataFrame, dict)`; todos los wrappers DataFrame anteriores siguen disponibles. No caché global, I/O, proyección ni coordinación nuevos.
++
++El resultado es dueño privado de una copia de eventos y de metadatos anidados. `.events` entrega un DataFrame mutable propio por acceso; `.metadata` un deepcopy propio. Cada consumidor toma una vez sus snapshots. La dataclass frozen impide sustituir parámetros; sus campos privados no son API para mutación. Las salidas derivadas y `EyeRecording.events` pertenecen a sus consumidores, sin aliases de warnings/coordinate_transform/buffers entre consumidores. La reconstrucción mantiene float64, NaN, orden, gaps, segmentos y el detector original.
++
++**Vida y condiciones:** sólo compartir dentro de una operación con **el mismo objeto fuente y attrs sin cambios**, escenario exacto, proximidad exacta y variante exacta. `min_fixation_duration_ms=None` significa columnas canónicas guardadas; no se equipara por clave a petición explícita 200. Los eventos incorporan transformación/provenance/quality; `display_size` captura la geometría del escenario del mismo source como hacía scanpath. El resultado conserva referencia al source para comprobar AOIs: termina su vida con la operación, no se retiene en caché. No copia ni valida por hash toda la grabación; el productor garantiza fuente estable. Cambiar transformación, identidad/generación, segmento, parámetros del detector o cualquier columna/attr relevante requiere construir un nuevo resultado.
++
++```python
++result = FixationEventService.build_result(frame, scenario="A")
++histogram = FixationHistogramService.compute_histogram_from_events(result)
++scanpath = ScanpathAnalyticsService.compute_scanpath_from_events(result)
++fixation_data = FixationDataService.compute_fixation_data_from_events(result)
++aoi = AoiAnalyticsService.compute_metrics_from_events(frame, "A", aois, result)
++png, metadata = HeatmapAnalyticsService.compute_heatmap_overlay_from_events(
++    result, width=1280, height=720,
++)
++```
++
++AOIs necesita las muestras originales para pupila/distancia/teclas; `require_source` rechaza otro objeto fuente u otro escenario antes de mezclarlos con los eventos. AOI usa la variante/proximidad del resultado suministrado; el método derivado no admite overrides que aparenten cambiar sus eventos. Las formas/lista AOI son entradas del derivado, no de reconstrucción de eventos; las métricas se recalculan para la lista recibida. Sin optimizar pertenencia/cadencia (G06).
++
++`collect()` construye exactamente una vez con `(source identity, scenario.name, .03, None)` por participante/escenario, y suministra ese resultado al histograma, scanpath y AOIs. Con fallo de construcción mantiene eventos vacíos/defaults parciales y sigue con pupila/mirada/distancia sin reintentar la misma combinación. Sin AOIs también construye una vez. El heatmap de grupo ya concatena `EyeRecording.events`; no reconstruye eventos. Sensibilidad conserva una construcción por cada variante persistida diferente; no cruza variantes ni agrega caché.
++
++G06 puede optimizar reconstrucción/algoritmos AOI sin cambiar eventos/resultados, ownership ni este contrato. G07 puede continuar consumiendo collect secuencial, respetando la fuente/generación consistente, G04 y Matplotlib sin paralelismo. Wrappers y rutas siguen full de G03; response/file SingleFlight y sus presupuestos/auth/lifecycle permanecen intactos.
+--- /dev/null
++++ b/docs/perf/ejecucion/evidencia/g05/comandos.md
+@@ -0,0 +1,28 @@
++# Comandos G05
++
++Fixtures sintéticas G00; sin golden updates ni backend/frontend gate global. Runtime recibido .venv intacto; supported-env de G03 reutilizado sin instalar.
++
++Desde backend:
++
++```powershell
++../.venv/Scripts/python.exe -m pytest tests/unit/test_shared_fixation_result.py tests/unit/test_fixation_event_analytics.py tests/unit/test_fixation_duration_variants.py tests/unit/test_stimulus_coordinate_analytics.py tests/unit/test_scanpath_radius_scale.py tests/unit/test_heatmap_orientation.py tests/unit/test_executive_report_heatmap_geometry.py tests/unit/test_executive_report_service.py tests/characterization/test_shared_fixation_report.py tests/characterization/test_numeric_characterization.py tests/characterization/test_sensor_reports.py -q
++../.venv/Scripts/python.exe -m pytest tests/characterization/test_analytics_http_contracts.py -q
++# Supported: mismo conjunto combinado, sustituyendo Python por:
++../output/perf-g03/supported-env/Scripts/python.exe -m pytest tests/unit/test_shared_fixation_result.py tests/unit/test_fixation_event_analytics.py tests/unit/test_fixation_duration_variants.py tests/unit/test_stimulus_coordinate_analytics.py tests/unit/test_scanpath_radius_scale.py tests/unit/test_heatmap_orientation.py tests/unit/test_executive_report_heatmap_geometry.py tests/unit/test_executive_report_service.py tests/characterization/test_shared_fixation_report.py tests/characterization/test_numeric_characterization.py tests/characterization/test_sensor_reports.py tests/characterization/test_analytics_http_contracts.py -q
++$env:PYTHONPATH='src'
++../.venv/Scripts/lint-imports.exe --no-cache
++Remove-Item Env:PYTHONPATH
++```
++
++Desde raíz, antes de modificar producto y al finalizar, n5+warmup mismos parámetros/corpus/runtime, sin tests/probes simultáneos:
++
++```powershell
++.venv/Scripts/python.exe docs/perf/bench/g05_fixations.py --phase before
++.venv/Scripts/python.exe docs/perf/bench/g05_fixations.py --phase after
++.venv/Scripts/python.exe -m ruff check backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py backend/src/neurodatics/modules/analytics/application/services/fixation_summaries.py backend/src/neurodatics/modules/analytics/application/services/scanpath_analytics_service.py backend/src/neurodatics/modules/analytics/application/services/heatmap_analytics_service.py backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py backend/src/neurodatics/modules/analytics/application/services/analytics_service.py backend/src/neurodatics/modules/reports/application/sensor_reports/eye_tracking.py backend/tests/unit/test_shared_fixation_result.py backend/tests/characterization/test_shared_fixation_report.py backend/tests/unit/test_scanpath_radius_scale.py backend/tests/unit/test_stimulus_coordinate_analytics.py docs/perf/bench/g05_fixations.py
++git apply --reverse --check --ignore-space-change docs/perf/ejecucion/evidencia/g05/own.patch
++```
++
++El probe compara recordings (todos los números/arrays/metadata), documento JSON de render y SHA256 de assets, no bytes PDF con timestamps. El collect medido incluye captura/normalización de evidencia idéntica antes/después; PDF incluye capture/hashes además de figuras/Typst. Datos e imágenes ya en RAM; no I/O del informe. RSS snapshot y peak acumulado del proceso no son peak por operación. Misma semilla/ZIP small2×1600 y large4×102400 filas G00.
++
++Logs iniciales diagnósticos: tests-runtime.log=144 passed/2 failed, sólo fakes ownership sin owner_id desde key G04 (no fallo G00). Esa suite G04 dirigida no los cubrió. Se agregó owner_id a ambos fakes y caché sintética al caso AOI; primer intento de ese test usó default Redis y falló DNS antes de resolver conexión, sin Redis real. Routes/auth/lifecycle no se alteraron. tests-runtime-final.log=146/1snapshot; tests-http-runtime.log=47/24snapshots; tests-supported.log=193/25snapshots; import-boundaries=3 kept. Primera corrida probe diagnosticó as_json ya era dict y se corrigió antes de medir; n5 before/after finales contienen corrida completa válida.
+--- /dev/null
++++ b/docs/perf/ejecucion/evidencia/g05/medidas.md
+@@ -0,0 +1,17 @@
++# Medidas G05
++
++Base recibida exacta → final G05, mismo Python3.14.3/pandas2.3.3/NumPy2.4.4/PyArrow25, ZIP sintético G00 y expansión exacta de64 bloques. Small2 participantes×1600 filas×2 escenarios; large4×102400×2. Datos/imágenes en RAM, sin cache global/respuesta ni I/O/DB/red en operación. Cada caso warmup1+n5, probes/tests no simultáneos. Colector incluye captura normalizada de evidencia, idéntica en ambos; PDF incluye figuras/Typst/hash de assets. No p95.
++
++| Caso | Antes mediana [mín–máx], ms | Después, ms | Event builds por muestra |
++|---|---:|---:|---:|
++| small group collect | 361,89 [356,73–390,19] | 211,39 [209,34–217,07] | 16→4 |
++| large group collect | 24.371,75 [23.793,59–24.469,48] | 12.198,25 [12.145,82–12.956,78] | 32→8 |
++| small build+figuras+PDF | 1.464,25 [1.445,92–1.514,26] | 1.301,95 [1.298,19–1.344,67] | 16→4 |
++
++Reconstrucciones deterministas **−75%**, una por participante/escenario en collect, con/sin AOIs; no variantes cruzadas. Mejora collect observada −41,6% small/−50,0% large en este corpus, superior a dispersión; no extrapolar a aplicación, red ni nube. PDF se registra descriptivamente: 17 assets y330.652B por muestra en ambas fases, sin afirmar aceleración general de render/PDF ni bytes PDF contractuales.
++
++CPU mediana ms collect small359,38→218,75; large24.328,13→12.156,25; build/PDF1.421,88→1.234,38. Mayor RSS snapshot por caso MiB small687,6→688,9, PDF767,9→768,4, large2144,1→1952,1. Peak **acumulado proceso** large2343,4→2079,7MiB; incluye corpus/copies/evidencia previa, no pico de operación y no certificado deployment. Dentro presupuesto probe G00≤5GiB sin aumento material. Las copias de eventos/metadatos para ownership siguen siendo trabajo deliberado.
++
++`before.json`/`after.json` guardan cada muestra, CPU/RSS, conteos y checksums canónicos de equivalencia. La corrida final comparó **objetos completos** de recordings normalizados (arrays, eventos, parámetros/salidas y metadata), JSON de render y SHA256 de17 assets: iguales. Luego compactó85MB de valores sintéticos por fase a~7,4KB de resumen SHA256 **fuera** de tiempos; el probe final hace esa misma compactación fuera de medición. Los futuros checks comparan hashes canónicos y tamaños, no PDF/timestamps. Eventos DataFrame normalizados con precisión decimal15 para captura; tests/goldens independientes protegen precisión científica y metadatos con sus tolerancias originales; no se cambió reconstrucción.
++
++Todos los samples before/after completaron. Logs/JSON finales enlazados en G05.md; primera corrida diagnóstica del probe corrigió `as_json` ya dict antes de n5 completo. No se descartan muestras por variabilidad ni se comparan contra G00 histórico como si fuese base G05.

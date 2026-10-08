@@ -4,7 +4,7 @@ import { EegChannelSelector } from "./EegChannelSelector"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { type Dispatch, type SetStateAction } from "react"
+import { type Dispatch, type SetStateAction, type ReactNode } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts"
@@ -83,9 +83,9 @@ interface EegPsdViewProps {
   setPsdWindowDraft: Dispatch<SetStateAction<TimeWindowDraft>>
   setPsdWindowError: Dispatch<SetStateAction<string | null>>
   view: EegView
+  /** "Comparar participantes" for this chart, built by EegTab. */
+  compareAction?: ReactNode
   visiblePsdChannels: string[]
-  /** Points at the quality card that closes the tab; absent on a clean export. */
-  qualityNote: AnalyticsChartNote | null
 }
 
 export function EegPsdView({
@@ -113,8 +113,8 @@ export function EegPsdView({
   setPsdWindowDraft,
   setPsdWindowError,
   view,
+  compareAction,
   visiblePsdChannels,
-  qualityNote,
 }: EegPsdViewProps) {
   const dragZoom = useChartDragZoom(handleZoomPsdFrequency)
   // One reason per channel: the backend also names a channel whose every
@@ -143,7 +143,7 @@ export function EegPsdView({
           ),
         }
       : null
-  const chartNotes = [psdWindowFlagNote(psdData), incompleteNote, qualityNote].filter(
+  const chartNotes = [psdWindowFlagNote(psdData), incompleteNote].filter(
     (note): note is AnalyticsChartNote => note != null
   )
   return <>
@@ -200,6 +200,7 @@ export function EegPsdView({
               Excluir ventanas con artefacto
             </Label>
           </div>
+          {compareAction}
         </CardHeader>
         <CardContent>
               <div className="analytics-kpi-grid">

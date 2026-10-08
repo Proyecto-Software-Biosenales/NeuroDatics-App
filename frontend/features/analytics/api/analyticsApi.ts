@@ -24,7 +24,16 @@ import type {
   PupilStatistics,
   PupilTimeseriesData,
   ScanpathData,
+  ScenarioTimingData,
 } from "../types"
+
+interface DisplayTimeseriesData {
+  pupil: PupilTimeseriesData
+  gaze: GazeTimeseriesData
+  distance: DistanceTimeseriesData
+  gsr: GsrTimeseriesData
+}
+export type DisplayTimeseriesKind = keyof DisplayTimeseriesData
 
 function appendTimeWindowParams(
   params: URLSearchParams,
@@ -68,7 +77,7 @@ export const AnalyticsApi = {
     )
   },
 
-  getComparisonCharts: (
+  getComparisonCharts: async (
     projectId: string,
     participantCode: string,
     scenario: string = "all",
@@ -84,10 +93,18 @@ export const AnalyticsApi = {
     if (visualizations.length > 0) {
       params.set("visualizations", visualizations.join(","))
     }
-    return apiFetch<ComparisonChartsResponse>(
+    const response = await apiFetch<ComparisonChartsResponse>(
       `/api/projects/${projectId}/analytics/comparison/charts?${params}`,
       { signal }
     )
+    if (
+      response.contract_version !== "comparison-charts-v3" ||
+      response.statistics_schema_version !== "comparison-statistics-v1" ||
+      !Array.isArray(response.statistics)
+    ) {
+      throw new Error("Versión incompatible de la respuesta de comparativas")
+    }
+    return response
   },
 
   getPupilTimeseries: (
@@ -355,6 +372,8 @@ export const AnalyticsApi = {
       max_time_bins: String(maxTimeBins),
       max_frequency_bins: String(maxFrequencyBins),
       per_channel_color_domain: String(perChannelColorDomain),
+      // A short scenario otherwise returns ~10 windows, drawn as wide blocks.
+      min_time_bins: String(Math.min(120, maxTimeBins)),
     })
     if (channels.length > 0) {
       params.set("channels", channels.join(","))
@@ -406,6 +425,53 @@ export const AnalyticsApi = {
     }
     return apiFetch<EegTopographyData>(
       `/api/projects/${projectId}/analytics/topography/eeg?${params}`,
+      { signal }
+    )
+  },
+
+  /** Where a scenario starts in one recording (seconds of that recording). */
+  getScenarioTiming: (
+    projectId: string,
+    participantCode: string,
+    scenario: string = "all",
+    signal?: AbortSignal
+  ) => {
+    const params = new URLSearchParams({
+      participant_code: participantCode,
+      scenario,
+    })
+    return apiFetch<ScenarioTimingData>(
+      `/api/projects/${projectId}/analytics/scenario-timing?${params}`,
+      { signal }
+    )
+  },
+
+  /**
+   * Pupil, gaze, distance or GSR trace with an explicit point budget and
+   * display reduction; "minmax_envelope" keeps every bucket's extremes.
+   */
+  getDisplayTimeseries: <Kind extends DisplayTimeseriesKind>(
+    kind: Kind,
+    projectId: string,
+    participantCode: string,
+    scenario: string,
+    options: {
+      startTimeS?: number | null
+      endTimeS?: number | null
+      maxPoints: number
+      decimation?: "linspace" | "minmax_envelope"
+    },
+    signal?: AbortSignal
+  ) => {
+    const params = new URLSearchParams({
+      participant_code: participantCode,
+      scenario,
+      max_points: String(options.maxPoints),
+      decimation: options.decimation ?? "linspace",
+    })
+    appendTimeWindowParams(params, options.startTimeS ?? null, options.endTimeS ?? null)
+    return apiFetch<DisplayTimeseriesData[Kind]>(
+      `/api/projects/${projectId}/analytics/timeseries/${kind}?${params}`,
       { signal }
     )
   },
@@ -469,7 +535,7 @@ export const AnalyticsApi = {
     }
     return apiFetchBlobWithHeaders(
       `/api/projects/${projectId}/analytics/heatmap?${params}`,
-      { signal }
+      { signal, cache: "no-store" }
     )
   },
 

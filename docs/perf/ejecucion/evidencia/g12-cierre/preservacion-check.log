@@ -1,0 +1,7 @@
+received_protected=1100
+expected_differences=8
+unchanged_foreign=1092
+missing=0
+unexpected_drift=0
+baseline_intact=True
+result=True

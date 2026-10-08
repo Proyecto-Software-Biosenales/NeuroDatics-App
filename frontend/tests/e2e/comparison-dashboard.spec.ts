@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test"
+import type { ComparisonChartsResponse, ComparisonStatisticsBlock } from "@/features/analytics/types"
 
 const TEST_USER_ID = "e2e-comparison-user"
 const STORAGE_KEY_PREFIX = "neurodatics-comparison-views-v1"
@@ -154,7 +155,36 @@ const distanceTimeseries = {
   distance_cm: time.map((value) => 61 + Math.sin(value / 4) * 3),
 }
 
-const comparisonCharts = {
+function summary(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b)
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length
+  const middle = Math.floor(values.length / 2)
+  const median = values.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+  const std = values.length > 1
+    ? Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1))
+    : 0
+  const start = Math.floor(values.length * 0.05)
+  const end = Math.max(start + 1, Math.ceil(values.length * 0.2))
+  const baselineValues = sorted.slice(start, end)
+  const baseline = baselineValues.reduce((sum, value) => sum + value, 0) / baselineValues.length
+  return { count: values.length, mean, median, std, min: sorted[0], max: sorted.at(-1)!, baseline, peak: baseline === 0 ? null : ((sorted.at(-1)! - baseline) / Math.abs(baseline)) * 100 }
+}
+
+function statisticsSource(endpoint: string): ComparisonStatisticsBlock["source"] {
+  return {
+    endpoint,
+    resolution: "legacy_timeseries_display_samples",
+    source_samples: time.length,
+    selected_samples: time.length,
+    parameters: { scenario: "request", max_points: 5000, decimation: "linspace", start_time_s: null, end_time_s: null },
+    chart_resolution: "comparison_chart_display_samples",
+    relationship: "same transformed signal; statistics preserve legacy endpoint selection/precision and are not computed from chart rows",
+  }
+}
+
+const comparisonCharts: ComparisonChartsResponse = {
+  contract_version: "comparison-charts-v3",
+  statistics_schema_version: "comparison-statistics-v1",
   charts: [
     {
       id: "pupil",
@@ -263,6 +293,39 @@ const comparisonCharts = {
       height: 320,
     },
   ],
+  statistics: [
+    {
+      visualization_id: "pupil", status: "ok", error: null,
+      source: statisticsSource("/timeseries/pupil"),
+      series: [
+        { key: "left", label: "Izquierda suavizada", unit: "mm", summary: summary(pupilLeft) },
+        { key: "right", label: "Derecha suavizada", unit: "mm", summary: summary(pupilRight) },
+      ],
+    },
+    {
+      visualization_id: "gaze", status: "ok", error: null,
+      source: statisticsSource("/timeseries/gaze"),
+      series: [
+        { key: "x", label: "Posición X", unit: "%", summary: summary(gazeTimeseries.gx_clean) },
+        { key: "y", label: "Posición Y", unit: "%", summary: summary(gazeTimeseries.gy_clean) },
+      ],
+    },
+    {
+      visualization_id: "distance", status: "ok", error: null,
+      source: statisticsSource("/timeseries/distance"),
+      series: [{ key: "distance", label: "Distancia", unit: "cm", summary: summary(distanceTimeseries.distance_cm) }],
+    },
+    {
+      visualization_id: "gsr", status: "ok", error: null,
+      source: statisticsSource("/timeseries/gsr"),
+      series: [{ key: "gsr", label: "Señal suavizada", unit: "µS", summary: summary(time.map((value) => 2 + Math.sin(value))) }],
+    },
+    {
+      visualization_id: "eeg_timeseries", status: "ok", error: null,
+      source: statisticsSource("/timeseries/eeg"),
+      series: [{ key: "f3", label: "F3", unit: "µV", summary: summary(time.map((value) => Math.sin(value) * 20)) }],
+    },
+  ],
 }
 
 const correlationSignals = [
@@ -361,7 +424,11 @@ async function installAuthenticatedSession(page: Page) {
   )
 }
 
-async function mockDashboardApi(page: Page, gazeAtResponse = instructionGaze) {
+async function mockDashboardApi(
+  page: Page,
+  gazeAtResponse = instructionGaze,
+  comparisonResponse = comparisonCharts
+) {
   const unhandledRequests: string[] = []
 
   await page.route("**/api/**", async (route) => {
@@ -372,6 +439,8 @@ async function mockDashboardApi(page: Page, gazeAtResponse = instructionGaze) {
       await route.fulfill({ json: projects })
       return
     }
+    const detail = projects.find((project) => path === `/api/projects/${project.id}`)
+    if (detail) { await route.fulfill({ json: detail }); return }
     if (/\/analytics\/participants$/.test(path)) {
       await route.fulfill({ json: participants })
       return
@@ -381,7 +450,7 @@ async function mockDashboardApi(page: Page, gazeAtResponse = instructionGaze) {
       return
     }
     if (/\/analytics\/comparison\/charts$/.test(path)) {
-      await route.fulfill({ json: comparisonCharts })
+      await route.fulfill({ json: comparisonResponse })
       return
     }
     if (/\/analytics\/timeseries\/pupil$/.test(path)) {
@@ -498,6 +567,87 @@ test.beforeEach(async ({ page }) => {
   await installAuthenticatedSession(page)
 })
 
+test("uses the versioned chart response for all five temporal summaries", async ({
+  page,
+}) => {
+  const analyticsRequests: URL[] = []
+  const observedComparisonBodies: Array<{ views: number; bytes: number }> = []
+  page.on("request", (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.includes("/analytics/")) analyticsRequests.push(url)
+  })
+  page.on("response", async (response) => {
+    const url = new URL(response.url())
+    if (!url.pathname.endsWith("/analytics/comparison/charts")) return
+    const views = url.searchParams.get("visualizations")?.split(",").filter(Boolean).length ?? 0
+    observedComparisonBodies.push({ views, bytes: (await response.body()).byteLength })
+  })
+  const unhandledRequests = await mockDashboardApi(page)
+  await openComparisonDashboard(page)
+  const temporalEndpointRequests = () => analyticsRequests.filter((url) =>
+    /\/analytics\/timeseries\/(pupil|gaze|distance|gsr|eeg)$/.test(url.pathname)
+  ).length
+  const legitimateRequestsBeforeSelection = temporalEndpointRequests()
+
+  await page.getByRole("button", { name: /Gráficas a comparar/ }).click()
+  await page.getByRole("checkbox", { name: "Respuesta galvánica" }).click()
+  await page.getByRole("checkbox", { name: "EEG por canal" }).click()
+  await page.getByRole("button", { name: "Aplicar selección" }).click()
+
+  await expect(page.getByRole("cell", { name: "Señal suavizada" })).toBeVisible()
+  await expect(page.getByRole("cell", { name: "F3", exact: true })).toBeVisible()
+  await expect.poll(() => analyticsRequests.filter((url) =>
+    url.pathname.endsWith("/analytics/comparison/charts") &&
+    url.searchParams.get("visualizations")?.split(",").length === 5
+  ).length).toBe(1)
+  await expect.poll(() => observedComparisonBodies.filter((item) => item.views === 5).length).toBe(1)
+  expect(temporalEndpointRequests()).toBe(legitimateRequestsBeforeSelection)
+  const finalBody = observedComparisonBodies.find((item) => item.views === 5)!
+  console.log(`G10 observed E2E: 1 comparison response, ${finalBody.bytes} decoded JSON bytes, 0 added summary timeseries requests.`)
+  expect(unhandledRequests).toEqual([])
+})
+
+test("keeps valid statistics visible beside failed and empty temporal signals", async ({
+  page,
+}) => {
+  const partialResponse = {
+    ...comparisonCharts,
+    statistics: comparisonCharts.statistics.map((block): ComparisonStatisticsBlock => {
+      if (block.visualization_id === "gaze") {
+        return { ...block, status: "error", error: "computation_failed", series: [] }
+      }
+      if (block.visualization_id === "distance") {
+        return { ...block, status: "empty", error: null, series: [] }
+      }
+      return block
+    }),
+  }
+  const unhandledRequests = await mockDashboardApi(
+    page,
+    instructionGaze,
+    partialResponse
+  )
+  await openComparisonDashboard(page)
+
+  await expect(page.getByRole("cell", { name: "Izquierda suavizada" })).toBeVisible()
+  const numericStatistics = page.getByRole("table").filter({
+    has: page.getByRole("columnheader", { name: "Serie", exact: true }),
+  })
+  await expect(
+    numericStatistics.getByRole("row", {
+      name: "Eye Tracker Gaze point Estado No disponible: No se pudo calcular esta señal",
+      exact: true,
+    })
+  ).toBeVisible()
+  await expect(
+    numericStatistics.getByRole("row", {
+      name: "Eye Tracker Distancia al dispositivo Estado Sin datos",
+      exact: true,
+    })
+  ).toBeVisible()
+  expect(unhandledRequests).toEqual([])
+})
+
 test("uses comparable absolute fixation sizes across participants", async ({
   page,
 }) => {
@@ -531,13 +681,18 @@ test("uses comparable absolute fixation sizes across participants", async ({
   const participantOneRadius = Number(
     await participantOneHalfSecond.getAttribute("data-radius")
   )
-  expect(participantOneRadius).toBeLessThan(28)
+  expect(participantOneRadius).toBeLessThan(40)
+  // Same look as the "Mapa de recorridos" tab.
+  await expect(participantOneHalfSecond.locator("circle")).toHaveAttribute(
+    "fill",
+    "rgba(26, 115, 232, 0.9)"
+  )
 
   const participantTrigger = page
     .locator('[data-slot="select-trigger"]')
     .nth(1)
   await participantTrigger.click()
-  await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()
+  await page.getByRole("option", { name: "Participante P02", exact: true }).click()
 
   await expect(panel).toContainText("2.50 s")
   const participantTwoHalfSecond = panel.getByTestId("scanpath-fixation-1")
@@ -551,7 +706,7 @@ test("uses comparable absolute fixation sizes across participants", async ({
   expect(participantTwoRadius).toBeCloseTo(participantOneRadius, 10)
   await expect(panel.getByTestId("scanpath-fixation-2")).toHaveAttribute(
     "data-radius",
-    "28"
+    "40"
   )
   expect(unhandledRequests).toEqual([])
 })
@@ -831,7 +986,7 @@ test("restores applied views per user and project across filters, navigation, an
     .locator('[data-slot="select-trigger"]')
     .nth(1)
   await participantTrigger.click()
-  await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()
+  await page.getByRole("option", { name: "Participante P02", exact: true }).click()
   await expect(
     page.locator('button[aria-controls="comparison-panel-distance"]')
   ).toHaveCount(0)

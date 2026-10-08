@@ -77,7 +77,7 @@ test("sensor cards toggle once and participant disclosures preserve demographics
 test("report scope, device radios and export options keep independent selections", async t => {
   const page = await fixture(t, "reports")
   await page.getByRole("combobox").click()
-  await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()
+  await page.getByRole("option", { name: "Participante P02", exact: true }).click()
   await page.getByRole("radio", { name: /Resumen de todos/ }).click()
   assert.equal((await state(page)).scope, "all-participants")
   await expect(page.getByRole("combobox")).toHaveCount(0)

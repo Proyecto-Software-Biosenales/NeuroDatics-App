@@ -1,0 +1,14 @@
+{
+  "correction": "G04/G07 mechanical test fixture and backend env template correction",
+  "base": "output/perf-g12-correccion/base",
+  "patch": "docs/perf/ejecucion/evidencia/g12-correccion/own.patch",
+  "checks": {
+    "directed_normal": "docs/perf/ejecucion/evidencia/g12-correccion/directed-normal.log",
+    "directed_supported_env": "docs/perf/ejecucion/evidencia/g12-correccion/directed-supported-env.log",
+    "ruff": "docs/perf/ejecucion/evidencia/g12-correccion/ruff-directed.log",
+    "global_postfix": "docs/perf/ejecucion/evidencia/g12-correccion/verify-postfix.log",
+    "reverse_check": "docs/perf/ejecucion/evidencia/g12-correccion/reverse-check.log"
+  },
+  "global_gate": "failed outside scope at frontend/tests/e2e/comparison-dashboard.spec.ts:627",
+  "contract": "G12pendiente; root review pending"
+}

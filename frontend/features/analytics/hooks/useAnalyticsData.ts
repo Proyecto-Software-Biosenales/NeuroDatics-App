@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { AnalyticsApi } from "../api/analyticsApi"
+import { requestAnalytics } from "../analyticsCache"
+import { useAnalyticsRevision } from "./useAnalyticsContext"
 import { DEFAULT_FIXATION_DURATION_MS } from "../types"
 import type {
   AnalyticsParticipant,
@@ -77,16 +79,21 @@ function makeAnalyticsHook<
   Result,
   HookArgs extends unknown[],
 >(
+  operation: string,
   apiMethod: (...args: [...Args, signal?: AbortSignal]) => Promise<Result>,
   prepare: (...args: HookArgs) => Args | null,
   errorMessage = "Error loading analytics"
 ) {
   return function useGeneratedAnalytics(...args: HookArgs) {
+    const revision = useAnalyticsRevision()
     const requestKey = JSON.stringify(prepare(...args))
     const load = useCallback(
-      (signal: AbortSignal) =>
-        apiMethod(...(JSON.parse(requestKey) as Args), signal),
-      [requestKey]
+      (signal: AbortSignal) => {
+        const prepared = JSON.parse(requestKey) as Args
+        return requestAnalytics(String(prepared[0]), operation, prepared,
+          (sharedSignal) => apiMethod(...prepared, sharedSignal), signal, revision)
+      },
+      [requestKey, revision]
     )
     return useAnalyticsRequest(
       requestKey === "null" ? null : load,
@@ -94,6 +101,7 @@ function makeAnalyticsHook<
     )
   }
 }
+
 
 type ApiArgs<Method extends (...args: never[]) => unknown> =
   Parameters<Method> extends [...infer Args, signal?: AbortSignal] ? Args : never
@@ -145,10 +153,11 @@ function spatialArgs(
 }
 
 const useParticipants = makeAnalyticsHook(
-  AnalyticsApi.getParticipants,
+  "getParticipants", AnalyticsApi.getParticipants,
   projectArgs
 )
-const useScenarios = makeAnalyticsHook(AnalyticsApi.getScenarios, projectArgs)
+const useScenarios = makeAnalyticsHook(
+  "getScenarios", AnalyticsApi.getScenarios, projectArgs)
 
 export function useAnalyticsParticipants(projectId: string | null) {
   const { data, loading } = useParticipants(projectId)
@@ -161,69 +170,69 @@ export function useAnalyticsScenarios(projectId: string | null) {
 }
 
 export const usePupilTimeseries = makeAnalyticsHook(
-  AnalyticsApi.getPupilTimeseries,
+  "getPupilTimeseries", AnalyticsApi.getPupilTimeseries,
   windowArgs,
   "Error loading timeseries"
 )
 export const usePupilStatistics = makeAnalyticsHook(
-  AnalyticsApi.getPupilStatistics,
+  "getPupilStatistics", AnalyticsApi.getPupilStatistics,
   windowArgs
 )
 export const useGazeTimeseries = makeAnalyticsHook(
-  AnalyticsApi.getGazeTimeseries,
+  "getGazeTimeseries", AnalyticsApi.getGazeTimeseries,
   windowArgs,
   "Error loading gaze timeseries"
 )
 export const useGazeStatistics = makeAnalyticsHook(
-  AnalyticsApi.getGazeStatistics,
+  "getGazeStatistics", AnalyticsApi.getGazeStatistics,
   windowArgs
 )
 export const useDistanceTimeseries = makeAnalyticsHook(
-  AnalyticsApi.getDistanceTimeseries,
+  "getDistanceTimeseries", AnalyticsApi.getDistanceTimeseries,
   windowArgs,
   "Error loading distance timeseries"
 )
 export const useDistanceStatistics = makeAnalyticsHook(
-  AnalyticsApi.getDistanceStatistics,
+  "getDistanceStatistics", AnalyticsApi.getDistanceStatistics,
   windowArgs
 )
 export const useGsrTimeseries = makeAnalyticsHook(
-  AnalyticsApi.getGsrTimeseries,
+  "getGsrTimeseries", AnalyticsApi.getGsrTimeseries,
   windowArgs,
   "Error loading GSR timeseries"
 )
 export const useGsrStatistics = makeAnalyticsHook(
-  AnalyticsApi.getGsrStatistics,
+  "getGsrStatistics", AnalyticsApi.getGsrStatistics,
   windowArgs
 )
 export const useScanpathData = makeAnalyticsHook(
-  AnalyticsApi.getScanpath,
+  "getScanpath", AnalyticsApi.getScanpath,
   spatialArgs,
   "Error loading scanpath data"
 )
 export const useFixationData = makeAnalyticsHook(
-  AnalyticsApi.getFixationData,
+  "getFixationData", AnalyticsApi.getFixationData,
   spatialArgs,
   "Error loading fixation data"
 )
 export const useAoiMetrics = makeAnalyticsHook(
-  AnalyticsApi.getAoiMetrics,
+  "getAoiMetrics", AnalyticsApi.getAoiMetrics,
   spatialArgs,
   "Error loading AOI metrics"
 )
 export const useFixationHistogram = makeAnalyticsHook(
-  AnalyticsApi.getFixationHistogram,
+  "getFixationHistogram", AnalyticsApi.getFixationHistogram,
   fixationArgs,
   "Error loading histogram"
 )
 export const useFixationSensitivity = makeAnalyticsHook(
-  AnalyticsApi.getFixationSensitivity,
+  "getFixationSensitivity", AnalyticsApi.getFixationSensitivity,
   selectionArgs,
   "Error loading fixation sensitivity"
 )
 
 export const useComparisonCharts = makeAnalyticsHook(
-  AnalyticsApi.getComparisonCharts,
+  "getComparisonCharts:v3", AnalyticsApi.getComparisonCharts,
   (
     projectId: string | null,
     participantCode: string | null,
@@ -244,7 +253,7 @@ export const useComparisonCharts = makeAnalyticsHook(
 )
 
 export const useEegTimeseries = makeAnalyticsHook(
-  AnalyticsApi.getEegTimeseries,
+  "getEegTimeseries", AnalyticsApi.getEegTimeseries,
   (
     projectId: string | null,
     participantCode: string | null,
@@ -273,7 +282,7 @@ export const useEegTimeseries = makeAnalyticsHook(
 )
 
 export const useEegPsd = makeAnalyticsHook(
-  AnalyticsApi.getEegPsd,
+  "getEegPsd", AnalyticsApi.getEegPsd,
   (
     projectId: string | null,
     participantCode: string | null,
@@ -304,7 +313,7 @@ export const useEegPsd = makeAnalyticsHook(
 )
 
 export const useEegSpectrogram = makeAnalyticsHook(
-  AnalyticsApi.getEegSpectrogram,
+  "getEegSpectrogram", AnalyticsApi.getEegSpectrogram,
   (
     projectId: string | null,
     participantCode: string | null,
@@ -339,7 +348,7 @@ export const useEegSpectrogram = makeAnalyticsHook(
 )
 
 export const useEegTopography = makeAnalyticsHook(
-  AnalyticsApi.getEegTopography,
+  "getEegTopography", AnalyticsApi.getEegTopography,
   (
     projectId: string | null,
     participantCode: string | null,
@@ -373,10 +382,11 @@ export function useGazeAt(
   projectId: string | null,
   participantCode: string | null
 ) {
+  const revision = useAnalyticsRevision()
   const [data, setData] = useState<GazeAtData | null>(null)
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
-  const selectionKey = JSON.stringify([projectId, participantCode])
+  const selectionKey = JSON.stringify([projectId, participantCode, revision])
   const [previousSelection, setPreviousSelection] = useState(selectionKey)
   if (selectionKey !== previousSelection) {
     setPreviousSelection(selectionKey)
@@ -393,13 +403,8 @@ export function useGazeAt(
 
       setLoading(true)
       try {
-        const result = await AnalyticsApi.getGazeAt(
-          projectId,
-          participantCode,
-          timeS,
-          undefined,
-          controller.signal
-        )
+        const result = await requestAnalytics(projectId, "gaze-at", [participantCode, timeS, null],
+          (signal) => AnalyticsApi.getGazeAt(projectId, participantCode, timeS, undefined, signal), controller.signal, revision)
         if (!controller.signal.aborted) setData(result)
       } catch {
         if (!controller.signal.aborted) setData(null)
@@ -407,14 +412,14 @@ export function useGazeAt(
         if (!controller.signal.aborted) setLoading(false)
       }
     },
-    [projectId, participantCode]
+    [projectId, participantCode, revision]
   )
 
   useEffect(
     () => () => {
       abortRef.current?.abort()
     },
-    [projectId, participantCode]
+    [projectId, participantCode, revision]
   )
 
   const clear = useCallback(() => {
@@ -434,17 +439,18 @@ export function useHeatmapOverlay(
   cacheGeneration: number | null = null,
   minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS
 ) {
+  const revision = useAnalyticsRevision()
   const load = useCallback(
     (signal: AbortSignal) =>
-      AnalyticsApi.getHeatmapOverlay(
+      requestAnalytics(projectId!, "heatmap-overlay", [participantCode, scenario, transformToken, cacheGeneration, minFixationDurationMs], (sharedSignal) => AnalyticsApi.getHeatmapOverlay(
         projectId!,
         participantCode!,
         scenario,
         transformToken,
         cacheGeneration,
         minFixationDurationMs,
-        signal
-      ),
+        sharedSignal
+      ), signal, revision),
     [
       projectId,
       participantCode,
@@ -452,6 +458,7 @@ export function useHeatmapOverlay(
       transformToken,
       cacheGeneration,
       minFixationDurationMs,
+      revision,
     ]
   )
   const request =

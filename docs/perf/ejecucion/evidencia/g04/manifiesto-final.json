@@ -1,0 +1,224 @@
+{
+  "files": [
+    {
+      "path": "backend/src/neurodatics/modules/analytics/api/routes.py",
+      "sha256": "11a21695172cdc5905b6393c8d0900698eb491cd9ed3f6b77234e17779697559",
+      "bytes": 63667
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py",
+      "sha256": "9406e0229cfbb7ae8f92f25d8aa95ebefb000d0282ccd94278ddf3296e9c7982",
+      "bytes": 16037
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/infrastructure/singleflight.py",
+      "sha256": "8ed46285fcac73809a57cb9d02da3eb7f92869dbd27a00abb3f9e97fe2983a84",
+      "bytes": 5562
+    },
+    {
+      "path": "backend/tests/characterization/test_backend_singleflight.py",
+      "sha256": "f8bc2485857e965b44654d80cf9080d5a484a125c8f2cfab943e2f845eb760f3",
+      "bytes": 21419
+    },
+    {
+      "path": "backend/tests/unit/test_analytics_singleflight.py",
+      "sha256": "2d4602a49545498f3c7c2e6972df7958253aab4290a8f28bc980623534d3a5dc",
+      "bytes": 5509
+    },
+    {
+      "path": "backend/tests/unit/test_parquet_participant_identity.py",
+      "sha256": "9ba06fff13c2a8ba54c7c39bfd6578b016b486d87939d33bd6be999f0b414f5d",
+      "bytes": 33300
+    },
+    {
+      "path": "docs/perf/bench/g04_singleflight.py",
+      "sha256": "b92e135b90491e21c1d42065f3818ce5f45f189c6610d791631795364343d635",
+      "bytes": 11003
+    },
+    {
+      "path": "docs/perf/ejecucion/ESTADO.md",
+      "sha256": "5a0cdcc4f4fcf9fde48ad96b882a9ff0bc1d4c41edf010b7258fd42aac89ab71",
+      "bytes": 6075
+    },
+    {
+      "path": "docs/perf/ejecucion/G04.md",
+      "sha256": "545562e39b42532f3fcbdbec84153cad22fae189ea01c8d171eff5f6bfa78fef",
+      "bytes": 5795
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/API.md",
+      "sha256": "f23a2621437ebfc2d5c7af933fe4660b4cd064de576fb1285ad4fc300c1c668b",
+      "bytes": 6684
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/benchmark-deepcopy.log",
+      "sha256": "aeac050aff4c4890f4cdeb4961b1db07db9238fa85320798786d3868ed88515e",
+      "bytes": 711
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/benchmark-preliminary.log",
+      "sha256": "0031f1e40dbc660aa9a4d355d2d7053e4bb3df4c9a845fea7f842ba429580573",
+      "bytes": 5682
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/benchmark-stdlib-json.log",
+      "sha256": "3a0c9631186eea27d30c15d3c436d435e64a49946652950905ef7b1ba0214ae9",
+      "bytes": 711
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/benchmark.log",
+      "sha256": "b910a51bb55203a5d7923af388157ffca93e03c0ceb1ea0ed45e22d296fada62",
+      "bytes": 711
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/comandos.md",
+      "sha256": "6eb9c25f57b49d234eee3e6bb70fa34e2b0770b52cecfcb4eb29c92be2cfb20b",
+      "bytes": 3392
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/import-boundaries.log",
+      "sha256": "05c3dd15578a3a0d0c2ec89d19571a476cd4548efc03c4115abc118a449a5d66",
+      "bytes": 630
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/inventario-inicial.json",
+      "sha256": "42f807d39b69032e3b5e7bc6f32994c6b95875647666c7f2d1b08b0cff3852e7",
+      "bytes": 161257
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/medidas-deepcopy.json",
+      "sha256": "5ec86122ee5422e5ebdb27a37f67a5bda023a44dcc2a626441c74023a9bf83ac",
+      "bytes": 57394
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/medidas-preliminary.json",
+      "sha256": "2f4f0a5bfc07caaa09630aac63951b17b151cfaa9eac24696f8316f91dab7424",
+      "bytes": 15262
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/medidas-stdlib-json.json",
+      "sha256": "585f964f910e8314cbb8c56c78a56c9a38a614bfea939199fd8d981ce7cca0c2",
+      "bytes": 58001
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/medidas.json",
+      "sha256": "63a61392ea2d2c38eeba04859f51fce19b660464102b442c4bcc47ad602fc273",
+      "bytes": 57359
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/medidas.md",
+      "sha256": "7db8aa0da7b4f6b409ece0984a5bdcfccb338bb44ee299273f1f9965666a6e05",
+      "bytes": 3949
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/own.patch",
+      "sha256": "1aafcacc590c01b98352ea500cb45c38e1ed9618fc2a78bbb5855e8662da673a",
+      "bytes": 91878
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/patch-reverse-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/preservacion.json",
+      "sha256": "5c53f99740a05a4998116c61aa9900aa1ddaba0ad6286fe3fccb7a605340058c",
+      "bytes": 995
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/ruff-final.log",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "bytes": 20
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/ruff-probe-final.log",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "bytes": 20
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/ruff-probe.log",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "bytes": 20
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/ruff.log",
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "bytes": 20
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-final-model-runtime.log",
+      "sha256": "ba2c380ca5de9f2d163af3c97cfca34e4c7045c7891d203ebdf120a9e8bafd3f",
+      "bytes": 9548
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-final-model-supported.log",
+      "sha256": "305a99a9f52bfa8b037c53427d6017f57607388c3e9798deb49ad7253a314062",
+      "bytes": 6021
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-final-runtime.log",
+      "sha256": "aeb6ab18144f811dfba30b19ba322747769c0999a02ec04ba93ca47c712a9987",
+      "bytes": 9548
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-final-supported.log",
+      "sha256": "bd9cc97640917835004bb8684aca4dd0b1b73517a5943a1808f90210d0be8411",
+      "bytes": 6021
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-first.log",
+      "sha256": "9356739158fb4ce6432b35a2d9a585126a968e18ebfc2e0b62d21e6516ad454c",
+      "bytes": 15607
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-http-first.log",
+      "sha256": "9b93378874c6ac8f0f507da379d11f418644a44ceff47f73c3b2a97f4470740b",
+      "bytes": 82092
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-http-repair.log",
+      "sha256": "6efd4be24009bdd2e9b2b8faaff4959d0c4d5e2defff72c8309b8b83c64acf41",
+      "bytes": 13791
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-http.log",
+      "sha256": "ea1fbd345e1ab4ee51dc15d0b5a0c66e51473d2134d97a3d97ce9619e5490c33",
+      "bytes": 9913
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-model-runtime.log",
+      "sha256": "9b78a68ecb2eb4faf486b3e0ccf1912dde1b166687992b61573dd7a835a4f695",
+      "bytes": 9547
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-model-supported.log",
+      "sha256": "b09011dc02be134657339130d9f8bf5de72451d217fc19c11fb6f81f04a43fc6",
+      "bytes": 6021
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-runtime.log",
+      "sha256": "fa117f48e8097f5542750c604aaab8c9cd1195a9e033c185a388bf05f6c85de3",
+      "bytes": 10378
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-singleflight-first.log",
+      "sha256": "60cf5505183a8d92f1e42415ebc4c3a140015f1d59d37b56cdc64a33bee13b99",
+      "bytes": 13678
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-singleflight.log",
+      "sha256": "a750ba573d6d0f0729b8509dd07167c5ad01ae40b2442806c612a3492d09f9e6",
+      "bytes": 5022
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/tests-supported.log",
+      "sha256": "4f807973a026b7cd74646e8949124fa54beb50ffdf560909873568b43c72da53",
+      "bytes": 6183
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g04/verificacion.json",
+      "sha256": "26af8b534383a63f0f9488de9bf9922f7312d659f8d47be93a3dd7ae05d36a6d",
+      "bytes": 1053
+    }
+  ]
+}

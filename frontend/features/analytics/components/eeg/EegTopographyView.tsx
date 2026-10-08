@@ -5,14 +5,13 @@ import { EegChannelSelector } from "./EegChannelSelector"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { Slider } from "@/components/ui/slider"
-import { type Dispatch, type SetStateAction } from "react"
+import { type Dispatch, type SetStateAction, type ReactNode } from "react"
 import { Activity, Brain, Clock, Info, TrendingUp } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
 
 import { TimeWindowControls, type TimeWindow, type TimeWindowDraft } from "../TimeWindowControls"
 import { InfoChip } from "../InfoChip"
-import type { AnalyticsChartNote } from "../AnalyticsChartShell"
 import { type EegTopographyData } from "../../types"
 import { formatChannel, formatNumber, VIRIDIS_GRADIENT, type TopographyFrameRow } from "../../eegPresentation"
 import { TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, type EegView } from "./eegViewShared"
@@ -39,8 +38,8 @@ interface EegTopographyViewProps {
   handleApplyTopographyWindow: () => void
   handleResetTopographyWindow: () => void
   view: EegView
-  /** Points at the quality card that closes the tab; absent on a clean export. */
-  qualityNote: AnalyticsChartNote | null
+  /** "Comparar participantes" for this chart, built by EegTab. */
+  compareAction?: ReactNode
 }
 
 export function EegTopographyView({
@@ -64,7 +63,7 @@ export function EegTopographyView({
   handleApplyTopographyWindow,
   handleResetTopographyWindow,
   view,
-  qualityNote,
+  compareAction,
 }: EegTopographyViewProps) {
   return <>
 {view === "topography" ? (
@@ -112,6 +111,7 @@ export function EegTopographyView({
                 <span className="font-semibold text-foreground">{(topographyData?.window_s ?? 0.33).toFixed(2)}s</span>
               </div>
             </div>
+            {compareAction}
           </CardHeader>
           <CardContent>
             <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -184,7 +184,6 @@ export function EegTopographyView({
                       label="Montaje esquemático"
                       detail="Potencia por sensor con DC retirado en cada ventana. Montaje esquemático e interpolación visual; no localiza fuentes cerebrales."
                     />
-                    {qualityNote ? <InfoChip {...qualityNote} /> : null}
                   </div>
 
                   <TopographyScene

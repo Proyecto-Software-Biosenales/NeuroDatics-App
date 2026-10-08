@@ -1,0 +1,14 @@
+G08 quedó completo, sin agentes, automatizaciones ni G09.
+
+- Cachés acotadas de onset y duración, sin registro adicional no acotado.
+- Semántica preview corregida según `REVISION-G08`; no se unificó con `ScenarioTimingService`.
+- Lock por video seguro durante handoff y cancelación física.
+- 304 antes de leer JPEG.
+- 125/125 pruebas en runtime normal y Python 3.12.13/PyArrow 16.1.0.
+- Ruff y 3 contratos de importación aprobados.
+- Benchmark n=5: Parquet 20→5, ffprobe 20→5; video 555,58→374,81 ms.
+- Preservación 965/965, snapshot original 8/8, manifest sin drift y reverse patch exit 0.
+
+Entregas: [G08.md](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/G08.md), [API.md](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g08/API.md) y [evidencia](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g08).
+
+Queda esperando aprobación del coordinador para cualquier avance posterior.

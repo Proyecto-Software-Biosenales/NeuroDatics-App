@@ -1,0 +1,10 @@
+version = 1
+id = "neurodatics-plan-de-rendimiento-por-agentes"
+kind = "heartbeat"
+name = "NeuroDatics: plan de rendimiento por agentes"
+prompt = "Continúa como agente orquestador la ejecución autorizada de G00–G12 del plan C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/PLAN-IMPLEMENTACION-RENDIMIENTO.md. Lee primero docs/perf/ejecucion/ORQUESTACION.md y ESTADO.md en ese proyecto, y las instrucciones del repositorio. Reconcilia cambios externos y agentes todavía activos antes de editar o asignar trabajo; no dupliques un bloque en curso. Ejecuta un bloque a la vez mediante un subagente nuevo con contexto mínimo, configuración explícita proporcional a su tarea (GPT-6.1 Sol/high por defecto para contratos, ciencia y concurrencia; Luna o esfuerzo menor solo para tareas demostrablemente mecánicas). El coordinador revisa entrega, cambios propios, pruebas y medidas antes de asignar el bloque siguiente; no implementa él mismo la aplicación ni crea chats nuevos. Conserva los cambios locales previos y contratos científicos, autorización, invalidación y compatibilidad local/servidor. Registra cada continuación realmente ejecutada y la evidencia en los archivos del proyecto. Completa la secuencia hasta G12, con revisión límite el 9 de octubre de 2026 a las 23:59 de America/Bogota. No despliegues, publiques, migres datos de usuarios ni generes distribuciones. Conserva configuración de esta sesión, permisos, herramientas y autenticación. No crees otros autorepeat. Permanece en silencio cuando el estado no cambie de forma accionable; notifica avances significativos, finalización, fallo o intervención requerida. Al terminar, quedar bloqueado por intervención humana, recibir orden de detener o alcanzar la fecha límite, consulta y pausa esta misma automatización conservando sus demás campos; registra id y motivo en ORQUESTACION.md. La recuperación después de agotar cuota no está verificada: no prometas continuación a la hora exacta del restablecimiento."
+status = "PAUSED"
+rrule = "FREQ=HOURLY;INTERVAL=1"
+target_thread_id = "01a0fafd-f9ae-7f80-a9b4-c8a7a8874de1"
+created_at = 1790917547141
+updated_at = 1791073276241

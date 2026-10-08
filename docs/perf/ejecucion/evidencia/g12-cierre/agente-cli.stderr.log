@@ -1,0 +1,7 @@
+2026-10-04T00:10:33.719175Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-04T00:10:33.719208Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-04T00:10:33.727862Z  WARN codex_core::shell_snapshot: Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell
+2026-10-04T00:10:33.951779Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
+2026-10-04T00:10:33.951800Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
+2026-10-04T00:11:59.343033Z ERROR codex_core::tools::router: error=apply_patch verification failed: Failed to find expected lines in C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\docs\perf\ejecucion\ESTADO.md:
+| G12 | Parcial; gate rojo, devuelto a root | `G12.md` |

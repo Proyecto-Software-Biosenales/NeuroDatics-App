@@ -3,7 +3,7 @@
 from typing import Optional
 import numpy as np
 import pandas as pd
-from .numeric_helpers import _decimation_indices
+from .numeric_helpers import _display_indices
 from .numeric_helpers import _filter_time_window
 from .numeric_helpers import _infer_fs
 from .numeric_helpers import _moving_average
@@ -50,6 +50,25 @@ class GsrAnalyticsService:
         return clean
 
     @staticmethod
+    def time_origin(df: pd.DataFrame, scenario: Optional[str] = None) -> Optional[float]:
+        """Absolute time that the relative GSR axis counts from.
+
+        ``_clean_signal`` re-bases time on the first row with both a valid time
+        and a valid GSR sample; this returns that same instant, so a client can
+        convert the relative axis back to recording time.
+        """
+        df = scope_to_scenario(df, scenario)
+        if "time" not in df.columns or "gsr" not in df.columns:
+            return None
+        time = pd.to_numeric(df["time"], errors="coerce")
+        gsr = pd.to_numeric(df["gsr"], errors="coerce")
+        valid = time[time.notna() & gsr.notna()]
+        if valid.empty:
+            return None
+        origin = float(valid.min())
+        return origin if np.isfinite(origin) else None
+
+    @staticmethod
     def compute_timeseries(
         df: pd.DataFrame,
         scenario: Optional[str] = None,
@@ -57,6 +76,7 @@ class GsrAnalyticsService:
         end_time_s: Optional[float] = None,
         absolute_time: bool = False,
         max_points: int = 0,
+        decimation: str = "linspace",
     ) -> dict:
         """Compute raw and 1-second smoothed GSR timeseries."""
         _empty: dict = {"time": [], "gsr": [], "gsr_smooth": []}
@@ -78,7 +98,12 @@ class GsrAnalyticsService:
             ]
 
         # The smoothed trace was built at full rate in _clean_signal.
-        indices = _decimation_indices(len(clean), max_points)
+        # The envelope reads the values as drawn: non-finite samples become 0.
+        displayed = tuple(
+            np.nan_to_num(clean[column].to_numpy(dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
+            for column in ("gsr_smooth", "gsr")
+        )
+        indices = _display_indices(len(clean), displayed, max_points, decimation)
         return {
             "time": _safe_list(clean["time"].to_numpy(dtype=float)[indices]),
             "gsr": _safe_list(clean["gsr"].to_numpy(dtype=float)[indices]),

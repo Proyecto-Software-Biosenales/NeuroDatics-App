@@ -1,0 +1,22 @@
+2026-10-03 18:28:00,072 - neurodatics.config.logging - INFO - Logging configured successfully
+2026-10-03 18:28:00,182 - neurodatics.modules.projects.application.services.csv_processing_service - INFO - Starting CSV processing: csv_path=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g12\backend\g12-integrated-4366krq0\synthetic-experiment\experiment.csv, output_dir=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g12\backend\g12-integrated-4366krq0\synthetic-experiment\parquet, users=2, encoding=utf-8
+2026-10-03 18:28:00,736 - asyncio - DEBUG - Using proactor: IocpProactor
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\ejecucion\evidencia\g12\probes\g12_integrated_composition.py", line 519, in <module>
+    main()
+    ~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\ejecucion\evidencia\g12\probes\g12_integrated_composition.py", line 500, in main
+    result = asyncio.run(exercise(payloads, directory / "cache"))
+  File "C:\Program Files\Python314\Lib\asyncio\runners.py", line 204, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Program Files\Python314\Lib\asyncio\runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Program Files\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\ejecucion\evidencia\g12\probes\g12_integrated_composition.py", line 369, in exercise
+    assert not query_tasks[0].done()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

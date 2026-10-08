@@ -1,6 +1,6 @@
 """Numeric helpers extracted without changing computations."""
 
-from typing import Optional
+from typing import Optional, Sequence
 import numpy as np
 import pandas as pd
 from neurodatics.shared.scenario_identity import ScenarioResolution, is_all_scenarios, resolve_scenario
@@ -54,6 +54,69 @@ def _decimation_indices(size: int, max_points: int) -> np.ndarray:
     if max_points > 0 and size > max_points:
         return np.linspace(0, size - 1, int(max_points), dtype=int)
     return np.arange(size, dtype=int)
+
+
+DISPLAY_DECIMATIONS = ("linspace", "minmax_envelope")
+
+
+def _envelope_display_indices(
+    size: int,
+    series: Sequence[np.ndarray],
+    max_points: int,
+) -> np.ndarray:
+    """Real sample indices that keep every bucket's first, last, minimum and maximum.
+
+    ``_decimation_indices`` keeps one sample in every ``size / max_points``, so a
+    short excursion (a one-sample peak, a run of zero-filled samples) survives
+    only by luck. This selection splits the samples into contiguous buckets and,
+    for every displayed ``series``, keeps the index of the bucket's minimum and
+    maximum plus the first non-finite sample, so a missing value still breaks
+    the line. Every returned index is a real sample: values are never averaged
+    or moved in time, and all series stay aligned on one time axis.
+
+    The output never exceeds ``max_points``: the bucket count is derived from
+    the worst case of ``2 + 3 * len(series)`` indices per bucket.
+    """
+
+    if size <= 0:
+        return np.asarray([], dtype=int)
+    if max_points <= 0 or size <= max_points:
+        return np.arange(size, dtype=int)
+    arrays = [np.asarray(values, dtype=float) for values in series]
+    arrays = [values for values in arrays if values.size == size]
+    has_missing = any((~np.isfinite(values)).any() for values in arrays)
+    per_bucket = 2 + (3 if has_missing else 2) * len(arrays)
+    buckets = max(1, min(size, int(max_points) // max(1, per_bucket)))
+    edges = np.linspace(0, size, buckets + 1, dtype=int)
+    starts = edges[:-1]
+    ends = edges[1:]
+    bucket_of = np.repeat(np.arange(buckets), ends - starts)
+    selected = [starts, ends - 1]
+    positions = np.arange(size)
+    for values in arrays:
+        finite = np.isfinite(values)
+        # lexsort orders by bucket first, so each bucket's winner sits at its start.
+        low_key = np.where(finite, values, np.inf)
+        high_key = np.where(finite, -values, np.inf)
+        selected.append(np.lexsort((low_key, bucket_of))[starts])
+        selected.append(np.lexsort((high_key, bucket_of))[starts])
+        if has_missing:
+            first_missing = np.minimum.reduceat(np.where(finite, size, positions), starts)
+            selected.append(first_missing[first_missing < ends])
+    return np.unique(np.concatenate(selected)).astype(int)
+
+
+def _display_indices(
+    size: int,
+    series: Sequence[np.ndarray],
+    max_points: int,
+    decimation: str = "linspace",
+) -> np.ndarray:
+    """Index selection for a displayed trace; ``linspace`` is the historical one."""
+
+    if decimation == "minmax_envelope":
+        return _envelope_display_indices(size, series, max_points)
+    return _decimation_indices(size, max_points)
 
 
 def _envelope_bucket_edges(size: int, max_points: int) -> Optional[np.ndarray]:

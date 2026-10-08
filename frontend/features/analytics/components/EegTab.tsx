@@ -6,23 +6,26 @@ import { EegSpectrogramView } from "./eeg/EegSpectrogramView"
 import { EegTopographyView } from "./eeg/EegTopographyView"
 
 import { useMemo, useState } from "react"
-import { AlertTriangle } from "lucide-react"
-import type { AnalyticsChartNote } from "./AnalyticsChartShell"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { useEegPsd, useEegSpectrogram, useEegTimeseries, useEegTopography } from "../hooks/useAnalyticsData"
 import { useTimeWindow, useZoomHistory } from "../hooks/useZoomHistory"
 import { normalizeZoomRange, sameZoomRange, zoomSpan, sliceEegPsd, sliceEegSpectrogram, type ZoomRange } from "../chartZoom"
-import { EEG_CHANNELS, EEG_QUALITY_NOTES_ID, EEG_TIMESERIES_CHART_ID, TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, scrollToSection, type SignalMode, type ChartLayout, type EegTabProps, type EegChartPoint, type EegPsdChartPoint, type PsdStats, type SpectrogramStats } from "./eeg/eegViewShared"
-import { buildStats, finiteValues, fullResolutionStats, montageLanes, nearestTimeIndex, formatChannel, mean, median, readClickedTime, robustDomain, rotateTopographyPositionClockwise, std, visibleArtifactSpans, type ChannelStats, type TopographyFrameRow } from "../eegPresentation"
-import { EegArtifactSpanList, EegChannelQualityTable, EegQualityNotes, eegQualityLines } from "./eeg/EegQualityPanel"
+import { EEG_CHANNELS, EEG_TIMESERIES_CHART_ID, TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, scrollToSection, type SignalMode, type ChartLayout, type EegTabProps, type EegChartPoint, type EegPsdChartPoint, type PsdStats, type SpectrogramStats } from "./eeg/eegViewShared"
+import { buildStats, finiteValues, fullResolutionStats, montageLanes, nearestTimeIndex, formatChannel, mean, median, readClickedTime, robustDomain, rotateTopographyPositionClockwise, spectrogramGaps, std, visibleArtifactSpans, type ChannelStats, type TopographyFrameRow } from "../eegPresentation"
+import { EegArtifactSpanList, EegChannelQualityTable, EegQualityNotes } from "./eeg/EegQualityPanel"
 const EMPTY_CHANNELS: string[] = []
+
+type EegComparisonKind = Extract<ParticipantComparisonSpec["kind"], `eeg_${string}`>
 
 export function EegTab({ projectId, participantCode, scenario, view }: EegTabProps) {
   const [selectedChannels, setSelectedChannels] = useState<string[]>(EEG_CHANNELS)
-  const [signalMode, setSignalMode] = useState<SignalMode>("raw")
+  const [signalMode, setSignalMode] = useState<SignalMode>("smooth")
   const [chartLayout, setChartLayout] = useState<ChartLayout>("overlay")
   const [focusChannel, setFocusChannel] = useState<string | null>(null)
   const [excludeArtifactWindows, setExcludeArtifactWindows] = useState(false)
   const [perChannelSpectrogramColor, setPerChannelSpectrogramColor] = useState(false)
+  const [interpolateSpectrogram, setInterpolateSpectrogram] = useState(false)
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [selectedTopographyFrame, setSelectedTopographyFrame] = useState(0)
   const timeseriesWindowState = useTimeWindow(() => setSelectedTime(null))
@@ -37,12 +40,12 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   const spectrogramTimeZoom = useZoomHistory<ZoomRange>(sameZoomRange)
 
   const {
-    data: timeseriesData,
+    data: timeseriesResponse,
     loading: timeseriesLoading,
     error: timeseriesError,
   } = useEegTimeseries(
     projectId,
-    participantCode,
+    view === "timeseries" ? participantCode : null,
     scenario,
     selectedChannels,
     0.2,
@@ -54,12 +57,12 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     "minmax_envelope"
   )
   const {
-    data: fullPsdData,
+    data: psdResponse,
     loading: psdLoading,
     error: psdError,
   } = useEegPsd(
     projectId,
-    participantCode,
+    view === "psd" ? participantCode : null,
     scenario,
     selectedChannels,
     null,
@@ -70,7 +73,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     excludeArtifactWindows
   )
   const {
-    data: fullSpectrogramData,
+    data: spectrogramResponse,
     loading: spectrogramLoading,
     error: spectrogramError,
   } = useEegSpectrogram(
@@ -88,7 +91,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     perChannelSpectrogramColor
   )
   const {
-    data: topographyData,
+    data: topographyResponse,
     loading: topographyLoading,
     error: topographyError,
   } = useEegTopography(
@@ -103,6 +106,13 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     topographyWindow.start,
     topographyWindow.end
   )
+
+  // Keep selection/window state here while only the active view requests data.
+  // Explicitly gate derived inputs too: a future loader may retain cached responses.
+  const timeseriesData = view === "timeseries" ? timeseriesResponse : null
+  const fullPsdData = view === "psd" ? psdResponse : null
+  const fullSpectrogramData = view === "spectrogram" ? spectrogramResponse : null
+  const topographyData = view === "topography" ? topographyResponse : null
 
   // Drag zoom narrows what PSD and spectrogram show; every derived statistic follows it.
   const psdData = useMemo(
@@ -414,11 +424,8 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     })
   }, [chartData, chartLayout, montage, channelDomains])
 
-  const availableChannels =
-    timeseriesData?.available_channels ??
-    psdData?.available_channels ??
-    spectrogramData?.available_channels ??
-    EEG_CHANNELS
+  const currentData = view === "timeseries" ? timeseriesData : view === "psd" ? psdData : view === "spectrogram" ? spectrogramData : topographyData
+  const availableChannels = currentData?.available_channels ?? EEG_CHANNELS
   const visibleChannels = timeseriesData?.channels ?? EMPTY_CHANNELS
   const visiblePsdChannels = psdData?.channels ?? EMPTY_CHANNELS
   const visibleSpectrogramChannels = spectrogramData?.channels ?? EMPTY_CHANNELS
@@ -484,6 +491,17 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     return values.length > 0 ? Math.max(...values) : null
   }, [selectedTime, spectrogramData, visibleSpectrogramChannels])
 
+  // The panels draw the black bands; nothing said what they were.
+  const spectrogramGapSummary = useMemo(() => {
+    if (!spectrogramData || spectrogramData.time.length === 0) return null
+    return spectrogramGaps(
+      spectrogramData.time,
+      spectrogramData.power,
+      visibleSpectrogramChannels,
+      Number(spectrogramData.metadata?.display_hop_s ?? spectrogramData.metadata?.hop_s)
+    )
+  }, [spectrogramData, visibleSpectrogramChannels])
+
   const handleChannelToggle = (channel: string) => {
     if (!availableChannels.includes(channel)) return
     setSelectedChannels((current) => {
@@ -532,82 +550,124 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     setSelectedTopographyFrame(value)
   }
 
-  const currentData = view === "timeseries" ? timeseriesData : view === "psd" ? psdData : view === "spectrogram" ? spectrogramData : topographyData
-  // Warnings and unit caveats close the tab; each chart carries one chip that
-  // counts them, previews the first few on hover and jumps to the full card.
-  const qualityLines = eegQualityLines(currentData?.metadata)
-  const qualityNote: AnalyticsChartNote | null =
-    qualityLines.length > 0
-      ? {
-          id: "quality-notes",
-          tone: "warning",
-          Icon: AlertTriangle,
-          label: `${qualityLines.length} ${qualityLines.length === 1 ? "aviso" : "avisos"} de calidad`,
-          detail: (
-            <>
-              <ul className="list-disc space-y-0.5 pl-4">
-                {qualityLines.slice(0, 3).map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-              <p className="text-muted-foreground">
-                {qualityLines.length > 3 ? `Y ${qualityLines.length - 3} más. ` : ""}Clic para verlos al final de la página.
-              </p>
-            </>
-          ),
-          onClick: () => scrollToSection(EEG_QUALITY_NOTES_ID),
-        }
-      : null
+  // Warnings and unit caveats appear only in the card that closes the tab.
   // A span chip marks the instant and brings the chart back into view.
+  // Specs are built at click time, so each carries the view's live filters.
+  const compareSpec = (kind: EegComparisonKind): ParticipantComparisonSpec => {
+    const base = { scenario, sourceParticipant: participantCode, origin: "individual" as const }
+    switch (kind) {
+      case "eeg_timeseries":
+        return {
+          ...base,
+          kind,
+          title: "EEG por canal",
+          params: { channels: selectedChannels, signalMode, smoothWindowS: 0.2, layout: chartLayout, window: timeseriesWindow },
+        }
+      case "eeg_psd":
+        return {
+          ...base,
+          kind,
+          title: "Densidad espectral de potencia",
+          params: {
+            channels: selectedChannels,
+            maxFreqHz: null,
+            useDb: true,
+            maxPoints: 5000,
+            excludeArtifactWindows,
+            window: psdWindow,
+            frequencyZoom: psdZoomed ? psdFrequencyZoom.range : null,
+          },
+        }
+      case "eeg_spectrogram":
+        return {
+          ...base,
+          kind,
+          title: "Espectrograma de frecuencias",
+          params: {
+            channels: selectedChannels,
+            maxFreqHz: 25,
+            useDb: true,
+            normalize: "none",
+            maxTimeBins: 600,
+            maxFrequencyBins: 256,
+            perChannelColorDomain: perChannelSpectrogramColor,
+            interpolate: interpolateSpectrogram,
+            window: spectrogramWindow,
+            timeZoom: spectrogramZoomed ? spectrogramTimeZoom.range : null,
+          },
+        }
+      case "eeg_topography":
+        return {
+          ...base,
+          kind,
+          title: "Topografía EEG",
+          params: {
+            channels: selectedChannels,
+            windowS: 2.0,
+            overlapRatio: 0.5,
+            removeDc: true,
+            maxFrames: 600,
+            window: topographyWindow,
+            frameTimeS: topographyData?.time[topographyFrameIndex] ?? null,
+          },
+        }
+    }
+  }
+  const compareButton = (kind: EegComparisonKind) => (
+    <CompareParticipantsButton className="order-first self-end xl:order-last xl:self-start" spec={() => compareSpec(kind)} />
+  )
+
   const showArtifactOnChart = (time: number) => {
     setSelectedTime(time)
     scrollToSection(EEG_TIMESERIES_CHART_ID)
   }
   return (
     <div className="analytics-stack">
-      <EegTimeseriesView
-        availableChannels={availableChannels}
-        artifactSpans={artifactSpans}
-        chartLayout={chartLayout}
-        setChartLayout={setChartLayout}
-        focusChannel={activeFocusChannel}
-        setFocusChannel={setFocusChannel}
-        montage={montage}
-        yDomain={yDomain}
-        channelStats={channelStats}
-        chartData={chartLayout === "stacked" ? laneChartData : chartData}
-        chartDomain={chartDomain}
-        eegChartLegend={eegChartLegend}
-        handleApplyTimeseriesWindow={timeseriesWindowState.apply}
-        handleBackTimeseriesWindow={timeseriesWindowState.canGoBack ? timeseriesWindowState.back : undefined}
-        handleChannelToggle={handleChannelToggle}
-        handleChartClick={handleChartClick}
-        handleResetTimeseriesWindow={timeseriesWindowState.reset}
-        handleZoomTimeseriesWindow={timeseriesWindowState.zoomTo}
-        participantCode={participantCode}
-        projectId={projectId}
-        scenario={scenario}
-        selectedChannels={selectedChannels}
-        selectedEegValue={selectedEegValue}
-        selectedPoint={selectedPoint}
-        selectedTime={selectedTime}
-        setSelectedTime={setSelectedTime}
-        setSignalMode={setSignalMode}
-        setTimeseriesWindowDraft={timeseriesWindowState.setDraft}
-        setTimeseriesWindowError={timeseriesWindowState.setError}
-        signalMode={signalMode}
-        timeExtremePoints={timeExtremePoints}
-        timeRepresentativeStats={timeRepresentativeStats}
-        timeseriesData={timeseriesData}
-        timeseriesError={timeseriesError}
-        timeseriesLoading={timeseriesLoading}
-        timeseriesWindow={timeseriesWindow}
-        timeseriesWindowDraft={timeseriesWindowState.draft}
-        timeseriesWindowError={timeseriesWindowState.error}
-        view={view}
-        visibleChannels={visibleChannels}
-        qualityNote={qualityNote}
-      />
+      {view === "timeseries" ? (
+        <EegTimeseriesView
+          availableChannels={availableChannels}
+          artifactSpans={artifactSpans}
+          chartLayout={chartLayout}
+          setChartLayout={setChartLayout}
+          focusChannel={activeFocusChannel}
+          setFocusChannel={setFocusChannel}
+          montage={montage}
+          yDomain={yDomain}
+          channelStats={channelStats}
+          chartData={chartLayout === "stacked" ? laneChartData : chartData}
+          chartDomain={chartDomain}
+          eegChartLegend={eegChartLegend}
+          handleApplyTimeseriesWindow={timeseriesWindowState.apply}
+          handleBackTimeseriesWindow={timeseriesWindowState.canGoBack ? timeseriesWindowState.back : undefined}
+          handleChannelToggle={handleChannelToggle}
+          handleChartClick={handleChartClick}
+          handleResetTimeseriesWindow={timeseriesWindowState.reset}
+          handleZoomTimeseriesWindow={timeseriesWindowState.zoomTo}
+          participantCode={participantCode}
+          projectId={projectId}
+          scenario={scenario}
+          selectedChannels={selectedChannels}
+          selectedEegValue={selectedEegValue}
+          selectedPoint={selectedPoint}
+          selectedTime={selectedTime}
+          setSelectedTime={setSelectedTime}
+          setSignalMode={setSignalMode}
+          setTimeseriesWindowDraft={timeseriesWindowState.setDraft}
+          setTimeseriesWindowError={timeseriesWindowState.setError}
+          signalMode={signalMode}
+          timeExtremePoints={timeExtremePoints}
+          timeRepresentativeStats={timeRepresentativeStats}
+          timeseriesData={timeseriesData}
+          timeseriesError={timeseriesError}
+          timeseriesLoading={timeseriesLoading}
+          timeseriesWindow={timeseriesWindow}
+          timeseriesWindowDraft={timeseriesWindowState.draft}
+          timeseriesWindowError={timeseriesWindowState.error}
+          view={view}
+          visibleChannels={visibleChannels}
+          compareAction={compareButton("eeg_timeseries")}
+        />
+      ) : null}
 
       {view === "timeseries" ? (
         <EegArtifactSpanList
@@ -623,97 +683,106 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
       ) : null}
 
 
-      <EegPsdView
-        availableChannels={availableChannels}
-        handleApplyPsdWindow={psdWindowState.apply}
-        handleChannelToggle={handleChannelToggle}
-        handleResetPsdWindow={psdWindowState.reset}
-        handleZoomPsdFrequency={handleZoomPsdFrequency}
-        handleResetPsdFrequencyZoom={psdZoomed ? psdFrequencyZoom.reset : undefined}
-        handleBackPsdFrequencyZoom={psdZoomed && psdFrequencyZoom.canGoBack ? psdFrequencyZoom.back : undefined}
-        psdChartData={psdChartData}
-        psdChartLegend={psdChartLegend}
-        psdData={psdData}
-        psdDomain={psdDomain}
-        psdError={psdError}
-        psdLoading={psdLoading}
-        psdRepresentativeStats={psdRepresentativeStats}
-        psdStats={psdStats}
-        psdWindow={psdWindow}
-        psdWindowDraft={psdWindowState.draft}
-        psdWindowError={psdWindowState.error}
-        excludeArtifactWindows={excludeArtifactWindows}
-        setExcludeArtifactWindows={setExcludeArtifactWindows}
-        selectedChannels={selectedChannels}
-        setPsdWindowDraft={psdWindowState.setDraft}
-        setPsdWindowError={psdWindowState.setError}
-        view={view}
-        visiblePsdChannels={visiblePsdChannels}
-        qualityNote={qualityNote}
-      />
+      {view === "psd" ? (
+        <EegPsdView
+          availableChannels={availableChannels}
+          handleApplyPsdWindow={psdWindowState.apply}
+          handleChannelToggle={handleChannelToggle}
+          handleResetPsdWindow={psdWindowState.reset}
+          handleZoomPsdFrequency={handleZoomPsdFrequency}
+          handleResetPsdFrequencyZoom={psdZoomed ? psdFrequencyZoom.reset : undefined}
+          handleBackPsdFrequencyZoom={psdZoomed && psdFrequencyZoom.canGoBack ? psdFrequencyZoom.back : undefined}
+          psdChartData={psdChartData}
+          psdChartLegend={psdChartLegend}
+          psdData={psdData}
+          psdDomain={psdDomain}
+          psdError={psdError}
+          psdLoading={psdLoading}
+          psdRepresentativeStats={psdRepresentativeStats}
+          psdStats={psdStats}
+          psdWindow={psdWindow}
+          psdWindowDraft={psdWindowState.draft}
+          psdWindowError={psdWindowState.error}
+          excludeArtifactWindows={excludeArtifactWindows}
+          setExcludeArtifactWindows={setExcludeArtifactWindows}
+          selectedChannels={selectedChannels}
+          setPsdWindowDraft={psdWindowState.setDraft}
+          setPsdWindowError={psdWindowState.setError}
+          view={view}
+          visiblePsdChannels={visiblePsdChannels}
+          compareAction={compareButton("eeg_psd")}
+        />
+      ) : null}
 
 
 
-      <EegSpectrogramView
-        availableChannels={availableChannels}
-        handleChannelToggle={handleChannelToggle}
-        handleZoomSpectrogramTime={handleZoomSpectrogramTime}
-        handleResetSpectrogramZoom={spectrogramZoomed ? spectrogramTimeZoom.reset : undefined}
-        handleBackSpectrogramZoom={spectrogramZoomed && spectrogramTimeZoom.canGoBack ? spectrogramTimeZoom.back : undefined}
-        participantCode={participantCode}
-        projectId={projectId}
-        scenario={scenario}
-        selectedChannels={selectedChannels}
-        selectedTime={selectedTime}
-        setSelectedTime={setSelectedTime}
-        spectrogramData={spectrogramData}
-        spectrogramError={spectrogramError}
-        spectrogramLoading={spectrogramLoading}
-        spectrogramPeak={spectrogramPeak}
-        spectrogramRepresentativeStats={spectrogramRepresentativeStats}
-        spectrogramSelectedValue={spectrogramSelectedValue}
-        spectrogramStats={spectrogramStats}
-        spectrogramWindow={spectrogramWindow}
-        spectrogramWindowDraft={spectrogramWindowState.draft}
-        spectrogramWindowError={spectrogramWindowState.error}
-        setSpectrogramWindowDraft={spectrogramWindowState.setDraft}
-        setSpectrogramWindowError={spectrogramWindowState.setError}
-        handleApplySpectrogramWindow={spectrogramWindowState.apply}
-        handleResetSpectrogramWindow={spectrogramWindowState.reset}
-        perChannelColorDomain={perChannelSpectrogramColor}
-        setPerChannelColorDomain={setPerChannelSpectrogramColor}
-        view={view}
-        visibleSpectrogramChannels={visibleSpectrogramChannels}
-        qualityNote={qualityNote}
-      />
+      {view === "spectrogram" ? (
+        <EegSpectrogramView
+          availableChannels={availableChannels}
+          handleChannelToggle={handleChannelToggle}
+          handleZoomSpectrogramTime={handleZoomSpectrogramTime}
+          handleResetSpectrogramZoom={spectrogramZoomed ? spectrogramTimeZoom.reset : undefined}
+          handleBackSpectrogramZoom={spectrogramZoomed && spectrogramTimeZoom.canGoBack ? spectrogramTimeZoom.back : undefined}
+          participantCode={participantCode}
+          projectId={projectId}
+          scenario={scenario}
+          selectedChannels={selectedChannels}
+          selectedTime={selectedTime}
+          setSelectedTime={setSelectedTime}
+          spectrogramData={spectrogramData}
+          spectrogramError={spectrogramError}
+          spectrogramLoading={spectrogramLoading}
+          spectrogramPeak={spectrogramPeak}
+          spectrogramRepresentativeStats={spectrogramRepresentativeStats}
+          spectrogramSelectedValue={spectrogramSelectedValue}
+          spectrogramStats={spectrogramStats}
+          spectrogramWindow={spectrogramWindow}
+          spectrogramWindowDraft={spectrogramWindowState.draft}
+          spectrogramWindowError={spectrogramWindowState.error}
+          setSpectrogramWindowDraft={spectrogramWindowState.setDraft}
+          setSpectrogramWindowError={spectrogramWindowState.setError}
+          handleApplySpectrogramWindow={spectrogramWindowState.apply}
+          handleResetSpectrogramWindow={spectrogramWindowState.reset}
+          perChannelColorDomain={perChannelSpectrogramColor}
+          setPerChannelColorDomain={setPerChannelSpectrogramColor}
+          interpolateSpectrogram={interpolateSpectrogram}
+          setInterpolateSpectrogram={setInterpolateSpectrogram}
+          spectrogramGaps={spectrogramGapSummary}
+          view={view}
+          visibleSpectrogramChannels={visibleSpectrogramChannels}
+          compareAction={compareButton("eeg_spectrogram")}
+        />
+      ) : null}
 
 
 
 
 
-      <EegTopographyView
-        availableTopographyChannels={availableTopographyChannels}
-        handleTopographyChannelToggle={handleTopographyChannelToggle}
-        handleTopographyFrameChange={handleTopographyFrameChange}
-        participantCode={participantCode}
-        projectId={projectId}
-        selectedChannels={selectedChannels}
-        topographyData={topographyData}
-        topographyError={topographyError}
-        topographyFrameIndex={topographyFrameIndex}
-        topographyLoading={topographyLoading}
-        topographyRows={topographyRows}
-        topographyStats={topographyStats}
-        topographyWindow={topographyWindow}
-        topographyWindowDraft={topographyWindowState.draft}
-        topographyWindowError={topographyWindowState.error}
-        setTopographyWindowDraft={topographyWindowState.setDraft}
-        setTopographyWindowError={topographyWindowState.setError}
-        handleApplyTopographyWindow={topographyWindowState.apply}
-        handleResetTopographyWindow={topographyWindowState.reset}
-        view={view}
-        qualityNote={qualityNote}
-      />
+      {view === "topography" ? (
+        <EegTopographyView
+          availableTopographyChannels={availableTopographyChannels}
+          handleTopographyChannelToggle={handleTopographyChannelToggle}
+          handleTopographyFrameChange={handleTopographyFrameChange}
+          participantCode={participantCode}
+          projectId={projectId}
+          selectedChannels={selectedChannels}
+          topographyData={topographyData}
+          topographyError={topographyError}
+          topographyFrameIndex={topographyFrameIndex}
+          topographyLoading={topographyLoading}
+          topographyRows={topographyRows}
+          topographyStats={topographyStats}
+          topographyWindow={topographyWindow}
+          topographyWindowDraft={topographyWindowState.draft}
+          topographyWindowError={topographyWindowState.error}
+          setTopographyWindowDraft={topographyWindowState.setDraft}
+          setTopographyWindowError={topographyWindowState.setError}
+          handleApplyTopographyWindow={topographyWindowState.apply}
+          handleResetTopographyWindow={topographyWindowState.reset}
+          view={view}
+          compareAction={compareButton("eeg_topography")}
+        />
+      ) : null}
 
       <EegQualityNotes metadata={currentData?.metadata} />
     </div>

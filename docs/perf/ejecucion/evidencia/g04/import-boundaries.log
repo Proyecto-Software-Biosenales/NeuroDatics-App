@@ -1,0 +1,16 @@
+[1m=============[0m
+[1mImport Linter[0m
+[1m=============[0m
+[22m[0m
+[1m---------[0m
+[1mContracts[0m
+[1m---------[0m
+[22m[0m
+[1mAnalyzed 193 files, 300 dependencies.[0m
+[1m-------------------------------------[0m
+[22m[0m
+[22mAnalytics must not depend on project application code [0m[32m[22mKEPT[0m[33m[22m[0m[22m[0m
+[22mProject processing services must not depend on analytics [0m[32m[22mKEPT[0m[33m[22m[0m[22m[0m
+[22mShared contracts must remain independent of feature modules [0m[32m[22mKEPT[0m[33m[22m[0m[22m[0m
+[22m[0m
+[22mContracts: 3 kept, 0 broken.[0m

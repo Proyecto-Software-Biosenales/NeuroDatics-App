@@ -26,7 +26,9 @@ import {
   TemporalLineChart,
   type TemporalChartPoint,
 } from "./ComparisonCharts"
-import type { ComparisonChartConfig } from "../types"
+import { DEFAULT_FIXATION_DURATION_MS, type ComparisonChartConfig } from "../types"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { ComparisonStatistics } from "./ComparisonStatistics"
 import { CorrelationMatrixSection } from "./CorrelationMatrixSection"
 import {
@@ -138,23 +140,27 @@ function ComparisonPanel({
   id,
   collapsed,
   onToggle,
+  action,
   children,
 }: {
   id: VisualizationId
   collapsed: boolean
   onToggle: () => void
+  /** Kept outside the collapse trigger: a button cannot contain a button. */
+  action?: ReactNode
   children: ReactNode
 }) {
   const definition = VISUALIZATION_BY_ID[id]
   const contentId = `comparison-panel-${id}`
   return (
     <Collapsible open={!collapsed} onOpenChange={onToggle} asChild><Card>
-      <CardHeader className="p-0 xl:p-0">
+      {/* The header, not the trigger, carries the hover/open fill so the action sits inside it. */}
+      <CardHeader className="flex flex-row items-start gap-0 rounded-xl p-0 transition-colors hover:bg-muted has-[[aria-controls][aria-expanded=true]]:bg-muted xl:p-0 dark:hover:bg-muted/50">
         <CollapsibleTrigger asChild><Button variant="ghost"
           type="button"
           aria-expanded={!collapsed}
           aria-controls={contentId}
-          className="h-auto w-full items-start gap-3 whitespace-normal rounded-xl p-4 text-left focus-visible:ring-inset xl:p-6"
+          className="h-auto min-w-0 flex-1 items-start gap-3 whitespace-normal rounded-xl p-4 text-left hover:bg-transparent focus-visible:ring-inset aria-expanded:bg-transparent xl:p-6 dark:hover:bg-transparent"
         >
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
             <definition.Icon className="h-4 w-4" />
@@ -170,18 +176,84 @@ function ComparisonPanel({
               {definition.description}
             </CardDescription>
           </span>
-          {collapsed ? (
-            <ChevronDown className="mt-1 h-5 w-5 text-muted-foreground" />
-          ) : (
-            <ChevronUp className="mt-1 h-5 w-5 text-muted-foreground" />
-          )}
         </Button></CollapsibleTrigger>
+        {action ? <div className="shrink-0 pt-4 xl:pt-6">{action}</div> : null}
+        {/* Last in the row so it reads as the panel's edge; the trigger stays the accessible control. */}
+        <span
+          aria-hidden="true"
+          onClick={onToggle}
+          className="shrink-0 cursor-pointer pt-4 pr-4 pl-3 text-muted-foreground xl:pt-6 xl:pr-6"
+        >
+          {collapsed ? (
+            <ChevronDown className="mt-0.5 h-5 w-5" />
+          ) : (
+            <ChevronUp className="mt-0.5 h-5 w-5" />
+          )}
+        </span>
       </CardHeader>
         <CollapsibleContent id={contentId}>
           <CardContent>{children}</CardContent>
         </CollapsibleContent>
     </Card></Collapsible>
   )
+}
+
+/** The parameters each Comparativas panel requests, for the participant grid. */
+function comparisonPanelSpec(
+  id: VisualizationId,
+  scenario: string,
+  participantCode: string | null
+): ParticipantComparisonSpec {
+  const base = {
+    title: VISUALIZATION_BY_ID[id].label,
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "comparativa" as const,
+  }
+  const fullRange = { start: null, end: null }
+  switch (id) {
+    case "pupil":
+      return { ...base, kind: id, params: { eyes: "both", window: fullRange } }
+    case "gaze":
+      return { ...base, kind: id, params: { axes: "both", window: fullRange } }
+    case "distance":
+      return { ...base, kind: id, params: { window: fullRange } }
+    case "gsr":
+      return { ...base, kind: id, params: { signalMode: "smooth", window: fullRange } }
+    case "eeg_timeseries":
+      // Same trace as this panel: raw amplitude of every channel, no smoothing.
+      return { ...base, kind: id, params: { channels: [], signalMode: "raw", smoothWindowS: 0, layout: "overlay", window: fullRange } }
+    case "fixation_histogram":
+      return { ...base, kind: id, params: { minFixationDurationMs: DEFAULT_FIXATION_DURATION_MS } }
+    case "eeg_psd":
+      return {
+        ...base,
+        kind: id,
+        params: { channels: [], maxFreqHz: 45, useDb: true, maxPoints: 5000, excludeArtifactWindows: false, window: fullRange, frequencyZoom: null },
+      }
+    case "eeg_spectrogram":
+      return {
+        ...base,
+        kind: id,
+        params: {
+          channels: [],
+          maxFreqHz: 45,
+          useDb: true,
+          normalize: "none",
+          maxTimeBins: 360,
+          maxFrequencyBins: 160,
+          perChannelColorDomain: false,
+          interpolate: false,
+          window: fullRange,
+          timeZoom: null,
+        },
+      }
+    case "heatmap":
+    case "scanpath":
+      return { ...base, kind: id, params: { minFixationDurationMs: DEFAULT_FIXATION_DURATION_MS, showAois: true } }
+    case "aoi":
+      return { ...base, kind: id, params: { minFixationDurationMs: DEFAULT_FIXATION_DURATION_MS } }
+  }
 }
 
 export function ComparisonTab(props: ComparisonTabProps) {
@@ -505,6 +577,11 @@ function ComparisonWorkspace({
               id={id}
               collapsed={collapsedIds.has(id)}
               onToggle={() => toggleCollapsed(id)}
+              action={
+                <CompareParticipantsButton
+                  spec={() => comparisonPanelSpec(id, scenario, participantCode)}
+                />
+              }
             >
               {renderPanel(id)}
               {pointActive && pinned?.ownerId === id ? (

@@ -84,7 +84,11 @@ def wired(monkeypatch):
     state = SimpleNamespace(cache=cache, generation=5)
 
     async def owned_project(*args, **kwargs):
-        return SimpleNamespace(id=PROJECT_ID, ingestion_generation=state.generation)
+        return SimpleNamespace(
+            id=PROJECT_ID,
+            owner_id=CURRENT_USER,
+            ingestion_generation=state.generation,
+        )
 
     async def resolve(*args, **kwargs):
         return SimpleNamespace(name=SCENARIO, file_id=None, width=800, height=800)

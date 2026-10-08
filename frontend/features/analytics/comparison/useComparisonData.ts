@@ -3,20 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
 import { getStimulusImageUrl, getStimulusPreviewUrl } from "@/features/projects/api/stimulusUrls"
+import { requestAnalytics } from "../analyticsCache"
+import { useAnalyticsRevision } from "../hooks/useAnalyticsContext"
 import { AnalyticsApi } from "../api/analyticsApi"
 import {
   useAoiMetrics,
   useComparisonCharts,
-  useDistanceTimeseries,
   useEegPsd,
   useEegSpectrogram,
-  useEegTimeseries,
   useFixationData,
   useFixationHistogram,
-  useGazeTimeseries,
-  useGsrTimeseries,
   useHeatmapOverlay,
-  usePupilTimeseries,
   useScanpathData,
 } from "../hooks/useAnalyticsData"
 import type { GazeAtData } from "../types"
@@ -51,15 +48,16 @@ function useComparisonGazeAt(
   scenario: string | null,
   activeTimeS: number | null
 ) {
+  const revision = useAnalyticsRevision()
   const [data, setData] = useState<GazeAtData | null>(null)
   const [loading, setLoading] = useState(false)
   const [requestedKey, setRequestedKey] = useState<string | null>(null)
   const requestId = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
-  useEffect(() => () => { abortRef.current?.abort() }, [projectId, participantCode, scenario])
+  useEffect(() => () => { abortRef.current?.abort() }, [projectId, participantCode, scenario, revision])
   const activeRequestKey =
     projectId && participantCode && scenario && activeTimeS != null
-      ? JSON.stringify([projectId, participantCode, scenario, activeTimeS])
+      ? JSON.stringify([projectId, participantCode, scenario, activeTimeS, revision])
       : null
 
   const clear = useCallback(() => {
@@ -78,18 +76,13 @@ function useComparisonGazeAt(
       abortRef.current = controller
       const currentRequest = ++requestId.current
       setRequestedKey(
-        JSON.stringify([projectId, participantCode, scenario, timeS])
+        JSON.stringify([projectId, participantCode, scenario, timeS, revision])
       )
       setData(null)
       setLoading(true)
       try {
-        const result = await AnalyticsApi.getGazeAt(
-          projectId,
-          participantCode,
-          timeS,
-          scenario,
-          controller.signal
-        )
+        const result = await requestAnalytics(projectId, "gaze-at", [participantCode, timeS, scenario],
+          (signal) => AnalyticsApi.getGazeAt(projectId, participantCode, timeS, scenario, signal), controller.signal)
         if (!controller.signal.aborted && requestId.current === currentRequest) setData(result)
       } catch {
         if (!controller.signal.aborted && requestId.current === currentRequest) setData(null)
@@ -97,7 +90,7 @@ function useComparisonGazeAt(
         if (!controller.signal.aborted && requestId.current === currentRequest) setLoading(false)
       }
     },
-    [participantCode, projectId, scenario]
+    [participantCode, projectId, scenario, revision]
   )
 
   const matchesActiveRequest =
@@ -111,12 +104,15 @@ function useComparisonGazeAt(
   }
 }
 
-function useObjectUrl(url: string | null, enabled: boolean): ObjectUrlState {
+function useObjectUrl(url: string | null, enabled: boolean, projectId: string, retain = false): ObjectUrlState {
+  const revision = useAnalyticsRevision()
+  const identity = JSON.stringify([url, projectId, revision])
   const [state, setState] = useState<ObjectUrlState>(EMPTY_OBJECT_URL_STATE)
 
   useEffect(() => {
     let cancelled = false
     let objectUrl: string | null = null
+    const controller = new AbortController()
 
     if (!enabled || !url) {
       Promise.resolve().then(() => {
@@ -129,16 +125,18 @@ function useObjectUrl(url: string | null, enabled: boolean): ObjectUrlState {
 
     Promise.resolve().then(() => {
       if (!cancelled) {
-        setState({ sourceUrl: url, url: null, loading: true, error: null })
+        setState({ sourceUrl: identity, url: null, loading: true, error: null })
       }
     })
 
-    apiFetchBlob(url)
+    const fetchBlob = (signal: AbortSignal) => apiFetchBlob(url, { signal, cache: "no-store" })
+    const pending = retain ? requestAnalytics(projectId, "stimulus-image", [url], fetchBlob, controller.signal) : fetchBlob(controller.signal)
+    pending
       .then((blob) => {
         if (cancelled) return
         objectUrl = URL.createObjectURL(blob)
         setState({
-          sourceUrl: url,
+          sourceUrl: identity,
           url: objectUrl,
           loading: false,
           error: null,
@@ -147,7 +145,7 @@ function useObjectUrl(url: string | null, enabled: boolean): ObjectUrlState {
       .catch((error: unknown) => {
         if (cancelled) return
         setState({
-          sourceUrl: url,
+          sourceUrl: identity,
           url: null,
           loading: false,
           error:
@@ -159,13 +157,14 @@ function useObjectUrl(url: string | null, enabled: boolean): ObjectUrlState {
 
     return () => {
       cancelled = true
+      controller.abort()
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [enabled, url])
+  }, [enabled, url, identity, projectId, retain])
 
   if (!enabled || !url) return EMPTY_OBJECT_URL_STATE
-  if (state.sourceUrl !== url) {
-    return { sourceUrl: url, url: null, loading: true, error: null }
+  if (state.sourceUrl !== identity) {
+    return { sourceUrl: identity, url: null, loading: true, error: null }
   }
   return state
 }
@@ -206,36 +205,6 @@ export function useComparisonData({
     participantCode,
     scenario,
     temporalChartIds,
-    5000
-  )
-
-  // Temporal signals.
-  const pupil = usePupilTimeseries(
-    enabledProject(selected.has("pupil")),
-    participantCode,
-    scenario
-  )
-  const distance = useDistanceTimeseries(
-    enabledProject(selected.has("distance")),
-    participantCode,
-    scenario
-  )
-  const gaze = useGazeTimeseries(
-    enabledProject(selected.has("gaze")),
-    participantCode,
-    scenario
-  )
-  const gsr = useGsrTimeseries(
-    enabledProject(selected.has("gsr")),
-    participantCode,
-    scenario
-  )
-  const eegTimeseries = useEegTimeseries(
-    enabledProject(selected.has("eeg_timeseries")),
-    participantCode,
-    scenario,
-    [],
-    0,
     5000
   )
 
@@ -359,7 +328,8 @@ export function useComparisonData({
       : null,
     concreteScenario &&
       Boolean(staticFileId) &&
-      (heatmapEnabled || scanpathEnabled || selected.has("aoi"))
+      (heatmapEnabled || scanpathEnabled || selected.has("aoi")),
+    projectId, true
   )
 
   const pointPreviewParams = useMemo(() => {
@@ -372,15 +342,11 @@ export function useComparisonData({
   }, [gazeAt.data, participantCode, projectId])
   const pointPreview = useObjectUrl(
     pointPreviewParams,
-    pointActive && Boolean(pointPreviewParams)
+    pointActive && Boolean(pointPreviewParams),
+    projectId
   )
 
   return {
-    pupil,
-    distance,
-    gaze,
-    gsr,
-    eegTimeseries,
     fixationHistogram,
     eegPsd,
     eegSpectrogram,

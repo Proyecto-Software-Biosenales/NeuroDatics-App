@@ -1,0 +1,3 @@
+2026-10-02 06:24:00,816 - neurodatics.config.logging - INFO - Logging configured successfully
+2026-10-02 06:24:00,921 - neurodatics.modules.projects.application.services.csv_processing_service - INFO - Starting CSV processing: csv_path=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g04\runtime\tmpo7ss_wrh\synthetic-experiment\experiment.csv, output_dir=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g04\runtime\tmpo7ss_wrh\synthetic-experiment\parquet, users=2, encoding=utf-8
+{"output": "C:\\AAMisArchivos\\AAprogramming\\AAAWebDeb\\Biose\u00f1ales\\NeuroDatics-App\\docs\\perf\\ejecucion\\evidencia\\g04\\medidas.json", "cases": 10}

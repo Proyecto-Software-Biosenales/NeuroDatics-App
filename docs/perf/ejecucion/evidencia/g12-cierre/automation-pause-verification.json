@@ -1,0 +1,15 @@
+{
+  "id": "neurodatics-plan-de-rendimiento-por-agentes",
+  "status": "PAUSED",
+  "changed_fields": {
+    "status": [
+      "ACTIVE",
+      "PAUSED"
+    ],
+    "updated_at": [
+      1790917547141,
+      1791073276241
+    ]
+  },
+  "configuration_preserved": true
+}

@@ -1,0 +1,1874 @@
+{
+  "python": "3.14.3",
+  "pandas": "2.3.3",
+  "numpy": "2.4.4",
+  "pyarrow": "25.0.0",
+  "scope": "same received G03/G04 code, helper+file IO; no Redis/DB/Drive",
+  "fixtures": [
+    {
+      "name": "small",
+      "rows": 1600,
+      "parquet_bytes": 98844,
+      "sha256": "b313c426c9314623d5834f48e818fb226cba3d77f8d0634d9654b02046acda52"
+    },
+    {
+      "name": "large",
+      "rows": 102400,
+      "parquet_bytes": 17366952,
+      "sha256": "0dc04b8956c06df29d0a73d4542595a00b690578e2b52a8b3de2fb0ac6bfabf1"
+    }
+  ],
+  "cases": [
+    {
+      "fixture": "small",
+      "level": "response",
+      "state": "disk",
+      "requests": 1,
+      "equivalent": true,
+      "timings_comparable": true,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 5.876900046132505,
+        "failures": 0,
+        "min_ms": 5.745000031311065,
+        "max_ms": 6.249599973671138,
+        "samples": [
+          {
+            "ms": 6.249599973671138,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 439652352,
+            "process_lifetime_peak_bytes": 439652352,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 6.117699958849698,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 439787520,
+            "process_lifetime_peak_bytes": 439787520,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 5.745000031311065,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 439930880,
+            "process_lifetime_peak_bytes": 439930880,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 5.7972000213339925,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 439885824,
+            "process_lifetime_peak_bytes": 439963648,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 5.876900046132505,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 439971840,
+            "process_lifetime_peak_bytes": 439971840,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 6.711200054269284,
+        "failures": 0,
+        "min_ms": 6.340199965052307,
+        "max_ms": 6.95320003433153,
+        "samples": [
+          {
+            "ms": 6.340199965052307,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 439697408,
+            "process_lifetime_peak_bytes": 439697408,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 6.711200054269284,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 439877632,
+            "process_lifetime_peak_bytes": 439877632,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 6.95320003433153,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 439848960,
+            "process_lifetime_peak_bytes": 439963648,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 6.762300035916269,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 439926784,
+            "process_lifetime_peak_bytes": 439963648,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 6.669199967291206,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 440012800,
+            "process_lifetime_peak_bytes": 440012800,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "small",
+      "level": "response",
+      "state": "cold",
+      "requests": 1,
+      "equivalent": true,
+      "timings_comparable": true,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 32.493899983819574,
+        "failures": 0,
+        "min_ms": 31.63639997364953,
+        "max_ms": 35.71660001762211,
+        "samples": [
+          {
+            "ms": 35.3445999789983,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440102912,
+            "process_lifetime_peak_bytes": 440102912,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 31.904099974781275,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440143872,
+            "process_lifetime_peak_bytes": 440143872,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 31.63639997364953,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440188928,
+            "process_lifetime_peak_bytes": 440188928,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 35.71660001762211,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440193024,
+            "process_lifetime_peak_bytes": 440193024,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 32.493899983819574,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440246272,
+            "process_lifetime_peak_bytes": 440246272,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 32.95200003776699,
+        "failures": 0,
+        "min_ms": 32.92700002202764,
+        "max_ms": 33.441999985370785,
+        "samples": [
+          {
+            "ms": 32.936700037680566,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440115200,
+            "process_lifetime_peak_bytes": 440115200,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 33.37790002115071,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440143872,
+            "process_lifetime_peak_bytes": 440143872,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 32.92700002202764,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440188928,
+            "process_lifetime_peak_bytes": 440188928,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 33.441999985370785,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440193024,
+            "process_lifetime_peak_bytes": 440193024,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 32.95200003776699,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 440246272,
+            "process_lifetime_peak_bytes": 440246272,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "small",
+      "level": "response",
+      "state": "disk",
+      "requests": 10,
+      "equivalent": true,
+      "timings_comparable": true,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 65.79889997374266,
+        "failures": 0,
+        "min_ms": 64.32119995588437,
+        "max_ms": 67.22060003085062,
+        "samples": [
+          {
+            "ms": 64.32119995588437,
+            "cpu_ms": 140.625,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 453488640,
+            "process_lifetime_peak_bytes": 453488640,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 64.9766999995336,
+            "cpu_ms": 62.5,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 454643712,
+            "process_lifetime_peak_bytes": 454643712,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 67.22060003085062,
+            "cpu_ms": 62.5,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 455442432,
+            "process_lifetime_peak_bytes": 455442432,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 65.79889997374266,
+            "cpu_ms": 93.75,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 456056832,
+            "process_lifetime_peak_bytes": 456056832,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 66.40770001104102,
+            "cpu_ms": 109.375,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 456286208,
+            "process_lifetime_peak_bytes": 456286208,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 10.334799997508526,
+        "failures": 0,
+        "min_ms": 9.743699978571385,
+        "max_ms": 10.665000008884817,
+        "samples": [
+          {
+            "ms": 10.002100025303662,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 453533696,
+            "process_lifetime_peak_bytes": 453533696,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 10.665000008884817,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 454660096,
+            "process_lifetime_peak_bytes": 454660096,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 10.41720004286617,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 455446528,
+            "process_lifetime_peak_bytes": 455446528,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 9.743699978571385,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 456060928,
+            "process_lifetime_peak_bytes": 456060928,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 10.334799997508526,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 456294400,
+            "process_lifetime_peak_bytes": 456294400,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "small",
+      "level": "response",
+      "state": "cold",
+      "requests": 10,
+      "equivalent": true,
+      "timings_comparable": false,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 97.57540002465248,
+        "failures": 1,
+        "min_ms": 96.20520001044497,
+        "max_ms": 100.04220000701025,
+        "samples": [
+          {
+            "ms": 97.57540002465248,
+            "cpu_ms": 109.375,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10
+            },
+            "rss_bytes": 456441856,
+            "process_lifetime_peak_bytes": 456441856,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 97.32729999814183,
+            "cpu_ms": 93.75,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10
+            },
+            "rss_bytes": 456642560,
+            "process_lifetime_peak_bytes": 456642560,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 98.422400013078,
+            "cpu_ms": 93.75,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10
+            },
+            "rss_bytes": 457035776,
+            "process_lifetime_peak_bytes": 457035776,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 96.20520001044497,
+            "cpu_ms": 78.125,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 9,
+              "computations": 9,
+              "response_write_attempts": 9
+            },
+            "rss_bytes": 457383936,
+            "process_lifetime_peak_bytes": 457383936,
+            "failures": 1,
+            "errors": [
+              "PermissionError: [WinError 5] Access is denied: 'C:\\\\AAMisArchivos\\\\AAprogramming\\\\AAAWebDeb\\\\Biose\u00f1ales\\\\NeuroDatics-App\\\\output\\\\perf-g04\\\\runtime\\\\tmpmusa3q8l\\\\before\\\\small\\\\00000000-0000-0000-0000-000000000101\\\\g55\\\\.SYN-01-a3b4b0eee71a6b64.parquet.07f3674bdb6744908f028faa46f98147.tmp' -> 'C:\\\\AAMisArchivos\\\\AAprogramming\\\\AAAWebDeb\\\\Biose\u00f1ales\\\\NeuroDatics-App\\\\output\\\\perf-g04\\\\runtime\\\\tmpmusa3q8l\\\\before\\\\small\\\\00000000-0000-0000-0000-000000000101\\\\g55\\\\SYN-01-a3b4b0eee71a6b64.parquet'"
+            ]
+          },
+          {
+            "ms": 100.04220000701025,
+            "cpu_ms": 125.0,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10
+            },
+            "rss_bytes": 457662464,
+            "process_lifetime_peak_bytes": 457662464,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 37.45679999701679,
+        "failures": 0,
+        "min_ms": 36.33339999942109,
+        "max_ms": 38.35029999027029,
+        "samples": [
+          {
+            "ms": 37.37939998973161,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 456441856,
+            "process_lifetime_peak_bytes": 456441856,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 38.35029999027029,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 456642560,
+            "process_lifetime_peak_bytes": 456642560,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 37.45679999701679,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 457035776,
+            "process_lifetime_peak_bytes": 457035776,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 38.147599960211664,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 457420800,
+            "process_lifetime_peak_bytes": 457420800,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 36.33339999942109,
+            "cpu_ms": 0.0,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 457662464,
+            "process_lifetime_peak_bytes": 457662464,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "small",
+      "level": "file",
+      "state": "cold",
+      "requests": 10,
+      "equivalent": true,
+      "timings_comparable": true,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 54.96340000536293,
+        "failures": 0,
+        "min_ms": 52.84999997820705,
+        "max_ms": 57.08020000020042,
+        "samples": [
+          {
+            "ms": 52.84999997820705,
+            "cpu_ms": 46.875,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 459350016,
+            "process_lifetime_peak_bytes": 459350016,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 56.79539998527616,
+            "cpu_ms": 187.5,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 459591680,
+            "process_lifetime_peak_bytes": 459591680,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 54.96340000536293,
+            "cpu_ms": 62.5,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 459960320,
+            "process_lifetime_peak_bytes": 459960320,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 57.08020000020042,
+            "cpu_ms": 62.5,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 460824576,
+            "process_lifetime_peak_bytes": 460824576,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 54.452800017315894,
+            "cpu_ms": 78.125,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 988440,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 461127680,
+            "process_lifetime_peak_bytes": 461127680,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 47.59219998959452,
+        "failures": 0,
+        "min_ms": 45.48670002259314,
+        "max_ms": 48.05290000513196,
+        "samples": [
+          {
+            "ms": 47.77569998987019,
+            "cpu_ms": 31.25,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 459501568,
+            "process_lifetime_peak_bytes": 459501568,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 47.59219998959452,
+            "cpu_ms": 15.625,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 459751424,
+            "process_lifetime_peak_bytes": 459751424,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 48.05290000513196,
+            "cpu_ms": 31.25,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 460775424,
+            "process_lifetime_peak_bytes": 460775424,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 46.9493999844417,
+            "cpu_ms": 46.875,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 460963840,
+            "process_lifetime_peak_bytes": 460963840,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 45.48670002259314,
+            "cpu_ms": 46.875,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 98844,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 461127680,
+            "process_lifetime_peak_bytes": 461127680,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "large",
+      "level": "response",
+      "state": "disk",
+      "requests": 1,
+      "equivalent": true,
+      "timings_comparable": true,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 22.112400038167834,
+        "failures": 0,
+        "min_ms": 20.49059997079894,
+        "max_ms": 23.78879999741912,
+        "samples": [
+          {
+            "ms": 20.49059997079894,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 579366912,
+            "process_lifetime_peak_bytes": 586981376,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 23.78879999741912,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 582201344,
+            "process_lifetime_peak_bytes": 589598720,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 21.16640005260706,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 577937408,
+            "process_lifetime_peak_bytes": 589598720,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 22.112400038167834,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 589086720,
+            "process_lifetime_peak_bytes": 596701184,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 22.32180000282824,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 1,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 593043456,
+            "process_lifetime_peak_bytes": 601210880,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 24.03299999423325,
+        "failures": 0,
+        "min_ms": 22.88469998165965,
+        "max_ms": 26.794200006406754,
+        "samples": [
+          {
+            "ms": 26.794200006406754,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 581058560,
+            "process_lifetime_peak_bytes": 588046336,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 22.88469998165965,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 581685248,
+            "process_lifetime_peak_bytes": 589598720,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 24.03299999423325,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 585076736,
+            "process_lifetime_peak_bytes": 592842752,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 25.63589997589588,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 594227200,
+            "process_lifetime_peak_bytes": 601210880,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 23.711099987849593,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 2,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 593625088,
+            "process_lifetime_peak_bytes": 601423872,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "large",
+      "level": "response",
+      "state": "cold",
+      "requests": 1,
+      "equivalent": true,
+      "timings_comparable": true,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 52.142700005788356,
+        "failures": 0,
+        "min_ms": 50.662599969655275,
+        "max_ms": 53.75459999777377,
+        "samples": [
+          {
+            "ms": 51.03540001437068,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 593408000,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 52.142700005788356,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 593235968,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 50.662599969655275,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 593522688,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 52.484899992123246,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 593539072,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 53.75459999777377,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 1,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 593092608,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 55.67569995764643,
+        "failures": 0,
+        "min_ms": 53.68750001071021,
+        "max_ms": 62.469600001350045,
+        "samples": [
+          {
+            "ms": 53.68750001071021,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 593190912,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 55.361000006087124,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 594341888,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 62.469600001350045,
+            "cpu_ms": 15.625,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 594341888,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 55.67569995764643,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 594362368,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 57.626099966000766,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 2,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 594182144,
+            "process_lifetime_peak_bytes": 601645056,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "large",
+      "level": "response",
+      "state": "disk",
+      "requests": 10,
+      "equivalent": true,
+      "timings_comparable": true,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 179.7072000335902,
+        "failures": 0,
+        "min_ms": 177.02219996135682,
+        "max_ms": 184.27849997533485,
+        "samples": [
+          {
+            "ms": 184.27849997533485,
+            "cpu_ms": 437.5,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 688603136,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 183.04770003305748,
+            "cpu_ms": 312.5,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 675790848,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 177.02219996135682,
+            "cpu_ms": 343.75,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 686551040,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 177.61889996472746,
+            "cpu_ms": 296.875,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 688480256,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 179.7072000335902,
+            "cpu_ms": 453.125,
+            "counts": {
+              "response_lookups": 10,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10,
+              "download_bytes": 0
+            },
+            "rss_bytes": 678420480,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 44.60059996927157,
+        "failures": 0,
+        "min_ms": 41.19429999263957,
+        "max_ms": 45.745200011879206,
+        "samples": [
+          {
+            "ms": 44.998399971518666,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 690536448,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 44.60059996927157,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 684326912,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 41.19429999263957,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 684883968,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 45.745200011879206,
+            "cpu_ms": 31.25,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 608362496,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 42.27360000368208,
+            "cpu_ms": 62.5,
+            "counts": {
+              "response_lookups": 11,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1,
+              "download_bytes": 0
+            },
+            "rss_bytes": 677810176,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "large",
+      "level": "response",
+      "state": "cold",
+      "requests": 10,
+      "equivalent": true,
+      "timings_comparable": true,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 258.32700001774356,
+        "failures": 0,
+        "min_ms": 255.64290001057088,
+        "max_ms": 267.64799997908995,
+        "samples": [
+          {
+            "ms": 267.64799997908995,
+            "cpu_ms": 437.5,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10
+            },
+            "rss_bytes": 673464320,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 255.64290001057088,
+            "cpu_ms": 468.75,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10
+            },
+            "rss_bytes": 680939520,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 257.42879998870194,
+            "cpu_ms": 390.625,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10
+            },
+            "rss_bytes": 687726592,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 260.049499978777,
+            "cpu_ms": 390.625,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10
+            },
+            "rss_bytes": 698068992,
+            "process_lifetime_peak_bytes": 772308992,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 258.32700001774356,
+            "cpu_ms": 265.625,
+            "counts": {
+              "response_lookups": 10,
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10,
+              "computations": 10,
+              "response_write_attempts": 10
+            },
+            "rss_bytes": 669802496,
+            "process_lifetime_peak_bytes": 772308992,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 73.94460000796244,
+        "failures": 0,
+        "min_ms": 73.33849999122322,
+        "max_ms": 79.13189998362213,
+        "samples": [
+          {
+            "ms": 73.33849999122322,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 679727104,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 73.68949998635799,
+            "cpu_ms": 62.5,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 688869376,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 73.94460000796244,
+            "cpu_ms": 46.875,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 686632960,
+            "process_lifetime_peak_bytes": 764657664,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 75.5757000297308,
+            "cpu_ms": 62.5,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 699760640,
+            "process_lifetime_peak_bytes": 772308992,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 79.13189998362213,
+            "cpu_ms": 62.5,
+            "counts": {
+              "response_lookups": 11,
+              "resolve_files": 1,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 1,
+              "computations": 1,
+              "response_write_attempts": 1
+            },
+            "rss_bytes": 676368384,
+            "process_lifetime_peak_bytes": 772308992,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    },
+    {
+      "fixture": "large",
+      "level": "file",
+      "state": "cold",
+      "requests": 10,
+      "equivalent": true,
+      "timings_comparable": true,
+      "before": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 526.9694000016898,
+        "failures": 0,
+        "min_ms": 517.4906000029296,
+        "max_ms": 533.3325000246987,
+        "samples": [
+          {
+            "ms": 517.4906000029296,
+            "cpu_ms": 718.75,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 838324224,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 533.3325000246987,
+            "cpu_ms": 515.625,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 824115200,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 526.9694000016898,
+            "cpu_ms": 562.5,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 816492544,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 523.2483999570832,
+            "cpu_ms": 562.5,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 821506048,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 528.695700049866,
+            "cpu_ms": 750.0,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 10,
+              "download_bytes": 173669520,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 818192384,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      },
+      "after": {
+        "n": 5,
+        "warmup": 1,
+        "median_ms": 473.77880004933104,
+        "failures": 0,
+        "min_ms": 472.301299974788,
+        "max_ms": 516.749800008256,
+        "samples": [
+          {
+            "ms": 472.301299974788,
+            "cpu_ms": 734.375,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 813150208,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 473.5690000234172,
+            "cpu_ms": 703.125,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 811536384,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 475.5603999947198,
+            "cpu_ms": 687.5,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 814608384,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 516.749800008256,
+            "cpu_ms": 687.5,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 815345664,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          },
+          {
+            "ms": 473.77880004933104,
+            "cpu_ms": 687.5,
+            "counts": {
+              "resolve_files": 10,
+              "downloads": 1,
+              "download_bytes": 17366952,
+              "parquet_reads": 10
+            },
+            "rss_bytes": 806408192,
+            "process_lifetime_peak_bytes": 946282496,
+            "failures": 0,
+            "errors": []
+          }
+        ]
+      }
+    }
+  ],
+  "limits": [
+    "n=5 median/range, no p95",
+    "20ms synthetic storage, complete bytes each download",
+    "OS file cache not cleared",
+    "RSS snapshot/lifetime peak, not operation peak",
+    "request auth checked in tests, benchmark measures helper+reader rather than network/DB latency",
+    "received Windows baseline concurrent publication errors are recorded; failed timings do not prove acceleration",
+    "sequential misses intentionally bypass response cache to expose coordination overhead"
+  ]
+}

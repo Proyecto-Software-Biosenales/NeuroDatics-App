@@ -148,6 +148,14 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
       statisticsDescription="Resumen numérico de la respuesta galvánica suavizada: tendencia, variabilidad y extremos."
       signal={signal}
       legend={chartLegend}
+      compareSpec={() => ({
+        kind: "gsr",
+        title: "Respuesta galvánica",
+        scenario,
+        sourceParticipant: participantCode,
+        origin: "individual",
+        params: { signalMode, window: signal.timeWindowControls.appliedWindow },
+      })}
       headerActions={
         <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
           { key: "smooth", label: "Suavizada" },

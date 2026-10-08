@@ -1,0 +1,47 @@
+{
+  "created_at": "2026-10-03T18:56:00-05:00",
+  "scope": "G12 mechanical correction before edits",
+  "base_snapshot": "output/perf-g12-correccion/base",
+  "files": [
+    {
+      "path": "backend/tests/unit/test_correlation_analytics_routes.py",
+      "sha256": "4cb5c2cb4097ba9a8f425c738a9cf78bed1e9c7f22110782e0e5c429b8ee6c33"
+    },
+    {
+      "path": "backend/tests/unit/test_gaze_at_scenario.py",
+      "sha256": "94d4f2d24e354aaf9236742f80f60a57d53db9a13d6f02ecb8e4b4c4e95a2980"
+    },
+    {
+      "path": "backend/tests/unit/test_heatmap_cache_headers.py",
+      "sha256": "0429bc229f8483915c1ddc5faca2188de2026a7ac0e03c4b7bf75d6e4db4ac32"
+    },
+    {
+      "path": "backend/tests/unit/test_heatmap_route_dimensions.py",
+      "sha256": "b970e53c29cfba5f93dd650c922ac3fe9fc0493b907f2a040eb90f68caa7079"
+    },
+    {
+      "path": "backend/.env.example",
+      "sha256": "e167ea0ab57921bea140abe68fa951bf79b99f5f5c33be91b499c7bcf10bedc2"
+    }
+  ],
+  "documents_snapshot": [
+    {
+      "path": "docs/perf/ejecucion/G12.md",
+      "sha256": "67dcf9aa3a2e92bd375d61dde01c3a497e691ce345bd5195f7246f3af7988d51"
+    },
+    {
+      "path": "docs/perf/ejecucion/RESULTADOS.md",
+      "sha256": "3342e2919b937234a4ca75073b30edb58cd1119a1c0fec3fda0b91ffa05d10f7"
+    },
+    {
+      "path": "docs/perf/ejecucion/ESTADO.md",
+      "sha256": "c2d77fcd0f0d1f4cc696660f4d767d817375dddba56097becc1a1f9543744fa7"
+    },
+    {
+      "path": "docs/CHANGELOG.md",
+      "sha256": "e8adeb7f668299c6a8bda2cf4a0fba2071dd084dbe6f1aabaf36e4744f835815"
+    }
+  ],
+  "received_worktree_preserved": true,
+  "g12_original_inventory_and_snapshot_untouched": true
+}

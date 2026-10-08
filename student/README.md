@@ -11,7 +11,7 @@ builds and checks the package.
 | `requirements-frozen.txt` | `pip freeze` of the build venv that produced the tested package. |
 | `check-pins.py` | Fails when a pin differs from the tested environment (`.venv`) or from the build venv. |
 | `build.ps1` | Builds the web app (`NEXT_PUBLIC_APP_MODE=local`, output in `frontend/.next-local`, copied to `<Work>/frontend`) and freezes `src/student_entry.py` into `<Work>/dist/neurodatics-estudiantes`. |
-| `run-frozen.ps1` | Assembles the package folder, then runs the gates below against it. |
+| `run-frozen.ps1` | Assembles the package folder (dropping test suites, headers, link libraries and PostgreSQL's GUI and test programs), then runs the gates below against it. |
 | `package.ps1` | Adds the guide and notices, zips the assembled package to `<Work>/release/`, writes `SHA256.txt` and `package-report.json`, and starts the app from the extracted zip (accented path, empty profile). |
 | `LEEME.txt` | The student guide (Spanish), shipped inside the package. Edit it here, not in the package. |
 | `make-notices.py` | Writes `THIRD-PARTY-NOTICES.txt` from the build venv, `frontend/package.json` and the ffmpeg actually in `tools\`. |

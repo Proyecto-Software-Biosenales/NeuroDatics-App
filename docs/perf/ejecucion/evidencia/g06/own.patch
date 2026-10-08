@@ -1,0 +1,1043 @@
+warning: in the working copy of 'output/perf-g06/base/docs/perf/ejecucion/ESTADO.md', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/perf/ejecucion/ESTADO.md', CRLF will be replaced by LF the next time Git touches it
+diff --git a/docs/perf/ejecucion/ESTADO.md b/docs/perf/ejecucion/ESTADO.md
+index 1d4b4f9e6756cc45e8dc6823a5487db9d75a4605..9430ea00ad459f3c421eada194a4b55e5dcb05b4 100644
+--- a/docs/perf/ejecucion/ESTADO.md
++++ b/docs/perf/ejecucion/ESTADO.md
+@@ -1,6 +1,6 @@
+ # Estado de ejecución
+ 
+-G00–G04 cerrados; G05 implementación completa, aguardando revisión final coordinador, 2026-10-02. Coordinador y un ejecutor secuencial; sin otros agentes de bloque ni cambios de producto por G00.
++G00–G05 cerrados; G06 implementación completa, pendiente de revisión del coordinador, 2026-10-02. Coordinador y un ejecutor secuencial; sin otros agentes de bloque ni cambios de producto por G00.
+ 
+ | Bloque | Estado | Entrega |
+ |---|---|---|
+@@ -9,8 +9,9 @@ G00–G04 cerrados; G05 implementación completa, aguardando revisión final coo
+ | G02 | completa (caché compartida, admisión acotada y contexto espacial vigente) | [G02.md](G02.md), [evidencia](evidencia/g02/) |
+ | G03 | completa; revisión coordinador aprobada | [G03.md](G03.md), [evidencia](evidencia/g03/) |
+ | G04 | completa; revisión coordinador aprobada | [G04.md](G04.md), [evidencia](evidencia/g04/) |
+-| G05 | completa; aguardando revisión final coordinador | [G05.md](G05.md), [evidencia](evidencia/g05/) |
+-| G06–G12 | pendiente | no iniciados |
++| G05 | completa; revisión coordinador aprobada según ORQUESTACION | [G05.md](G05.md), [evidencia](evidencia/g05/) |
++| G06 | completa; pendiente de revisión coordinador | [G06.md](G06.md), [evidencia](evidencia/g06/) |
++| G07–G12 | pendiente | no iniciados |
+ 
+ Base: HEAD `f310003bd734203a41268f40a4627bd99d5a3233` más cambios locales iniciales, registrados con SHA-256 en `evidencia/g00/inventario-inicial.json`. No se copian secretos ni datos privados. El inventario incluye archivos nuevos previos y los documentos del plan/coordinación. Las huellas no reemplazan una copia de recuperación: los cambios permanecen en este checkout.
+ 
+@@ -27,3 +28,5 @@ G03 cerrado: perfiles GSR/pupila/distancia/timing/EEG en 11 endpoints; matriz co
+ G04 implementación/checks/medidas completos:22 respuestas coordinadas (20 helper+gaze+PNG) y obtención archivo por identidad/generación, por proceso/loop. Auth cada solicitante; reconsulta cache; frames/proyecciones/modelos independientes. Líder conserva lease request/DB hasta settlement incluso cancelaciones reiteradas; follower superviviente/último/timeout y worker físico probados.4running/32queued/256consumers por nivel, deadline120s solicita cancelación; worker no preemptible prolonga lease. Redis opcional/oversize8MiB live; legacy token conserva lectura previa.313 pruebas/24snapshots ambos runtimes inicialmente,163/24 finales afectados; Ruff/3 import contracts aprobados. n5 burstdisk small65,80→10,33ms/large179,71→44,60,10reads/calculations→1; coldlarge10downloads→1. Secuencial+0,83/+1,92ms visible. Baseline coldsmall49/50 WinError publicación, after50/50; tiempos fallidos no comparables. Preservación837/837 ajenos, frontend intacto; patch contra snapshot propio, sin deps/deploy/DB/Drive/Redis real/global gate. API/medidas/logs en G04.md. Revisión coordinador aprobada según ORQUESTACION; G05 ejecutado, ver entrega siguiente.
+ 
+ G05 implementación/checks/medidas cerrados: resultado FixationEventResult con snapshots independientes de eventos/metadatos y geometría scoped; source/attrs estables por operación, AOIs valida source/scenario. Derivados y wrappers preservados; collect1construcción/participante/escenario, builds16→4small/32→8large; sin caché global, optimización AOIs/cadencia, nuevos I/O/concurrencia ni cambios G03/G04.193 pruebas/25snapshots por runtime (recibido146+47, aislado3.12/PyArrow16.1=193), Ruff/3import contracts aprobados. Dos fakes ownership incompatibles con keyG04 corregidos y Redis test aislado; sin cambiar producción ni goldens. n5same-corpus/runtime collect361,89→211,39ms/24.371,75→12.198,25ms; recordings normalizados/renderJSON/17assets iguales, CPU/RSS/dispersion en G05.md. Sin inferir speedup global/PDF/deploy, ni gate frontend/global (G12). Patch contra snapshot recibido y preservación/manifiesto en evidencia/g05. Aguarda revisión; G06 no iniciado.
++
++G06 completo: rectángulos/elipses vectorizados float64 con semántica de bordes/degenerados intacta; polígono conserva ray-cast con bounds prefiltrados. Una máscara temporal por AOI/dominio, sin matriz muestras×AOIs; prioridad/solapamientos y key events reutilizan asignación. Cadencia agrupa una vez, no ordena relojes y conserva fast path de un segmento/fallback.207pruebas/25snapshots por runtime (3.14/PyArrow25 y3.12/PyArrow16.1), Ruff/import3 y equivalencia completa máscaras/métricas/informe/HTTP aprobados. n5 large AOI786,09→558,63ms; informe14.228,23→12.155,41; HTTP908,93→691,95; small informe/HTTP dentro de ruido. Sin DB/Redis/Drive real ni gate frontend/global. Patch contra snapshot recibido, preservación/manifiesto en evidencia/g06; G07 no iniciado. G05 se trata como aprobado por instrucción explícita del coordinador aunque su entrega conserve el texto anterior.
+diff --git a/backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py b/backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py
+index c7fa3656ff60be12eaca2dc84051a881659bd079..d436b81a54cb8cb44196521baaf6b05918f1f31e 100644
+--- a/backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py
+@@ -133,6 +133,66 @@ class AoiAnalyticsService:
+ 
+         return inside
+ 
++    @classmethod
++    def _mask_for_shape(
++        cls,
++        shape: dict,
++        x_norm: np.ndarray,
++        y_norm: np.ndarray,
++    ) -> np.ndarray:
++        """Return one bounded membership mask without an AOI-by-sample matrix.
++
++        Rectangles and ellipses use NumPy over float64 coordinates. Polygons
++        deliberately retain the scalar ray-casting implementation so their
++        boundary semantics do not change.
++        """
++        x_values = np.asarray(x_norm, dtype=float)
++        y_values = np.asarray(y_norm, dtype=float)
++        if x_values.shape != y_values.shape:
++            raise ValueError("AOI coordinate arrays must have the same shape")
++
++        x0 = shape["x"] / 100.0
++        y0 = shape["y"] / 100.0
++        x1 = (shape["x"] + shape["width"]) / 100.0
++        y1 = (shape["y"] + shape["height"]) / 100.0
++        in_bounds = (
++            np.isfinite(x_values)
++            & np.isfinite(y_values)
++            & (x_values >= x0)
++            & (x_values <= x1)
++            & (y_values >= y0)
++            & (y_values <= y1)
++        )
++
++        if shape.get("type") == "circle":
++            rx = (x1 - x0) / 2.0
++            ry = (y1 - y0) / 2.0
++            if rx <= 0.0 or ry <= 0.0:
++                return np.zeros(x_values.shape, dtype=bool)
++            cx = x0 + rx
++            cy = y0 + ry
++            return in_bounds & (
++                ((x_values - cx) ** 2) / (rx ** 2)
++                + ((y_values - cy) ** 2) / (ry ** 2)
++                <= 1.0
++            )
++
++        points = shape.get("points")
++        if not isinstance(points, list) or len(points) < 3:
++            return in_bounds
++
++        # Polygon fallback: keep the existing scalar algorithm exactly. The
++        # bounds test inside _contains is intentional and part of its contract.
++        return np.asarray(
++            [
++                bool(valid) and cls._contains(shape, x_value, y_value)
++                for x_value, y_value, valid in zip(
++                    x_values, y_values, in_bounds
++                )
++            ],
++            dtype=bool,
++        )
++
+     @staticmethod
+     def _nanmean_pair(left: pd.Series, right: pd.Series) -> np.ndarray:
+         left_arr = left.to_numpy(dtype=float)
+@@ -211,6 +271,30 @@ class AoiAnalyticsService:
+         shape: dict,
+         pupil_baseline: Optional[float],
+         distance_baseline: Optional[float],
++    ) -> dict:
++        if sample_df.empty or "gx_clean" not in sample_df.columns or "gy_clean" not in sample_df.columns:
++            return cls._sample_metrics_for_mask(
++                sample_df,
++                np.zeros(len(sample_df), dtype=bool),
++                pupil_baseline,
++                distance_baseline,
++            )
++
++        gx = sample_df["gx_clean"].to_numpy(dtype=float)
++        gy = sample_df["gy_clean"].to_numpy(dtype=float)
++        return cls._sample_metrics_for_mask(
++            sample_df,
++            cls._mask_for_shape(shape, gx / 100.0, gy / 100.0),
++            pupil_baseline,
++            distance_baseline,
++        )
++
++    @staticmethod
++    def _sample_metrics_for_mask(
++        sample_df: pd.DataFrame,
++        in_shape: np.ndarray,
++        pupil_baseline: Optional[float],
++        distance_baseline: Optional[float],
+     ) -> dict:
+         empty = {
+             "pupil_sample_count": 0,
+@@ -225,17 +309,6 @@ class AoiAnalyticsService:
+         if sample_df.empty or "gx_clean" not in sample_df.columns or "gy_clean" not in sample_df.columns:
+             return empty
+ 
+-        gx = sample_df["gx_clean"].to_numpy(dtype=float)
+-        gy = sample_df["gy_clean"].to_numpy(dtype=float)
+-        valid_mask = np.isfinite(gx) & np.isfinite(gy)
+-        in_shape = np.array(
+-            [
+-                bool(valid) and cls._contains(shape, x / 100.0, y / 100.0)
+-                for x, y, valid in zip(gx, gy, valid_mask)
+-            ],
+-            dtype=bool,
+-        )
+-
+         metrics = dict(empty)
+ 
+         if "pupil_avg_mm" in sample_df.columns:
+@@ -296,7 +369,12 @@ class AoiAnalyticsService:
+         return None
+ 
+     @classmethod
+-    def _key_events(cls, sample_df: pd.DataFrame, aoi_defs: list[dict]) -> list[dict]:
++    def _key_events(
++        cls,
++        sample_df: pd.DataFrame,
++        aoi_defs: list[dict],
++        sample_aoi_indices: Optional[np.ndarray] = None,
++    ) -> list[dict]:
+         if sample_df.empty:
+             return []
+ 
+@@ -330,7 +408,11 @@ class AoiAnalyticsService:
+             row = sample_df.iloc[selected_position]
+             gx = float(row.get("gx_clean", np.nan))
+             gy = float(row.get("gy_clean", np.nan))
+-            aoi = cls._aoi_for_sample(aoi_defs, gx, gy)
++            if sample_aoi_indices is None:
++                aoi = cls._aoi_for_sample(aoi_defs, gx, gy)
++            else:
++                aoi_index = int(sample_aoi_indices[selected_position])
++                aoi = aoi_defs[aoi_index] if aoi_index >= 0 else None
+             time_s = float(row.get("time", np.nan))
+             value = float(row.get(column, np.nan))
+ 
+@@ -393,38 +475,55 @@ class AoiAnalyticsService:
+             })
+ 
+         metrics = []
+-        any_aoi_mask = [False] * total_fixations
+-        assigned_sequence: list[tuple[Optional[str], Optional[str]]] = []
+-
+-        for fixation_index, fix in enumerate(fixations):
+-            x_norm = float(fix.get("x_norm", np.nan))
+-            y_norm = float(fix.get("y_norm", np.nan))
+-            assigned = None
+-            for aoi_def in aoi_defs:
+-                if np.isfinite(x_norm) and np.isfinite(y_norm) and cls._contains(aoi_def["shape"], x_norm, y_norm):
+-                    any_aoi_mask[fixation_index] = True
+-                    if assigned is None:
+-                        assigned = aoi_def["name"]
+-            assigned_sequence.append((fix.get("segment_id"), assigned))
++        fixation_x = np.asarray(
++            [float(fix.get("x_norm", np.nan)) for fix in fixations], dtype=float
++        )
++        fixation_y = np.asarray(
++            [float(fix.get("y_norm", np.nan)) for fix in fixations], dtype=float
++        )
++        any_aoi_mask = np.zeros(total_fixations, dtype=bool)
++        fixation_aoi_indices = np.full(total_fixations, -1, dtype=np.intp)
+ 
+-        unique_aoi_dwell_time_ms = float(
+-            sum(
+-                float(fix.get("duration_s", 0.0)) * 1000.0
+-                for fix, is_inside_any in zip(fixations, any_aoi_mask)
+-                if is_inside_any
+-            )
++        has_sample_coordinates = (
++            not sample_df.empty
++            and "gx_clean" in sample_df.columns
++            and "gy_clean" in sample_df.columns
++        )
++        sample_x = (
++            sample_df["gx_clean"].to_numpy(dtype=float) / 100.0
++            if has_sample_coordinates
++            else np.empty(0, dtype=float)
+         )
++        sample_y = (
++            sample_df["gy_clean"].to_numpy(dtype=float) / 100.0
++            if has_sample_coordinates
++            else np.empty(0, dtype=float)
++        )
++        sample_aoi_indices = np.full(len(sample_df), -1, dtype=np.intp)
+ 
+-        for aoi_def in aoi_defs:
+-            inside = []
+-            first_index = None
+-            for fixation_index, fix in enumerate(fixations):
+-                x_norm = float(fix.get("x_norm", np.nan))
+-                y_norm = float(fix.get("y_norm", np.nan))
+-                if np.isfinite(x_norm) and np.isfinite(y_norm) and cls._contains(aoi_def["shape"], x_norm, y_norm):
+-                    inside.append(fix)
+-                    if first_index is None:
+-                        first_index = fixation_index
++        # At most one fixation mask and one sample mask exist per AOI. They are
++        # consumed immediately; no unbounded samples-by-AOIs matrix is built.
++        for aoi_index, aoi_def in enumerate(aoi_defs):
++            fixation_mask = cls._mask_for_shape(
++                aoi_def["shape"], fixation_x, fixation_y
++            )
++            any_aoi_mask |= fixation_mask
++            first_fixation_assignment = fixation_mask & (fixation_aoi_indices < 0)
++            fixation_aoi_indices[first_fixation_assignment] = aoi_index
++
++            inside_indices = np.flatnonzero(fixation_mask)
++            inside = [fixations[int(index)] for index in inside_indices]
++            first_index = (
++                int(inside_indices[0]) if inside_indices.size else None
++            )
++
++            sample_mask = (
++                cls._mask_for_shape(aoi_def["shape"], sample_x, sample_y)
++                if has_sample_coordinates
++                else np.zeros(len(sample_df), dtype=bool)
++            )
++            first_sample_assignment = sample_mask & (sample_aoi_indices < 0)
++            sample_aoi_indices[first_sample_assignment] = aoi_index
+ 
+             fixation_count = len(inside)
+             dwell_time_ms = float(
+@@ -454,14 +553,30 @@ class AoiAnalyticsService:
+                     2,
+                 ),
+                 "fixations_to_target": int(first_index + 1) if first_index is not None else None,
+-                **cls._sample_metrics_for_shape(
++                **cls._sample_metrics_for_mask(
+                     sample_df,
+-                    aoi_def["shape"],
++                    sample_mask,
+                     pupil_baseline,
+                     distance_baseline,
+                 ),
+             })
+ 
++        unique_aoi_dwell_time_ms = float(
++            sum(
++                float(fix.get("duration_s", 0.0)) * 1000.0
++                for fix, is_inside_any in zip(fixations, any_aoi_mask)
++                if is_inside_any
++            )
++        )
++
++        assigned_sequence: list[tuple[Optional[str], Optional[str]]] = [
++            (
++                fix.get("segment_id"),
++                aoi_defs[int(aoi_index)]["name"] if aoi_index >= 0 else None,
++            )
++            for fix, aoi_index in zip(fixations, fixation_aoi_indices)
++        ]
++
+         aoi_names = [aoi_def["name"] for aoi_def in aoi_defs]
+         transition_counts = {
+             source: {target: 0 for target in aoi_names}
+@@ -491,7 +606,9 @@ class AoiAnalyticsService:
+         return {
+             "aois": metrics,
+             "transitions": transitions,
+-            "events": cls._key_events(sample_df, aoi_defs),
++            "events": cls._key_events(
++                sample_df, aoi_defs, sample_aoi_indices
++            ),
+             "total_fixations": int(total_fixations),
+             "total_dwell_time_ms": round(total_dwell_time_ms, 2),
+             "observed_aoi_dwell_time_ms": round(unique_aoi_dwell_time_ms, 2),
+diff --git a/backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py b/backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py
+index 9f61ce6519bd827bef68b2b4e42b5907dc357ee9..9aecc8fa97838b6c31db9e44486c7d2e0b20395b 100644
+--- a/backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py
++++ b/backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py
+@@ -552,15 +552,39 @@ class FixationEventService:
+         effective_rate: Optional[float],
+     ) -> dict[Optional[str], float]:
+         fallback = 1.0 / effective_rate if effective_rate and effective_rate > 0 else 0.0
++        ordered_segments = list(dict.fromkeys(segments))
++        if not ordered_segments:
++            return {}
++
++        # A single detector segment is the common case. Keep its vectorized
++        # path separate instead of paying for the general grouping structure.
++        if len(ordered_segments) == 1:
++            segment = ordered_segments[0]
++            segment_times = np.asarray(times[:len(segments)], dtype=float)
++            segment_times = segment_times[np.isfinite(segment_times)]
++            diffs = np.diff(segment_times)
++            diffs = diffs[(diffs > 0) & np.isfinite(diffs)]
++            return {
++                segment: float(np.median(diffs)) if diffs.size else fallback
++            }
++
++        # Preserve first-seen segment order and each segment's original clock
++        # order. In particular, do not sort decreasing or interleaved clocks.
++        grouped_times: dict[Optional[str], list[float]] = {
++            segment: [] for segment in ordered_segments
++        }
++        for time_value, segment in zip(times, segments):
++            if np.isfinite(time_value):
++                grouped_times[segment].append(time_value)
++
+         cadence: dict[Optional[str], float] = {}
+-        for segment in dict.fromkeys(segments):
+-            segment_times = np.asarray(
+-                [time for time, key in zip(times, segments) if key == segment and np.isfinite(time)],
+-                dtype=float,
+-            )
++        for segment, values in grouped_times.items():
++            segment_times = np.asarray(values, dtype=float)
+             diffs = np.diff(segment_times)
+             diffs = diffs[(diffs > 0) & np.isfinite(diffs)]
+-            cadence[segment] = float(np.median(diffs)) if diffs.size else fallback
++            cadence[segment] = (
++                float(np.median(diffs)) if diffs.size else fallback
++            )
+         return cadence
+ 
+     @staticmethod
+diff --git a/backend/tests/unit/test_g06_aoi_cadence_algorithms.py b/backend/tests/unit/test_g06_aoi_cadence_algorithms.py
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..1d03d405a8d91911cf1fb72f9f1ca36f7131bff3 100644
+--- a/backend/tests/unit/test_g06_aoi_cadence_algorithms.py
++++ b/backend/tests/unit/test_g06_aoi_cadence_algorithms.py
+@@ -0,0 +1,199 @@
++from types import SimpleNamespace
++
++import numpy as np
++import pandas as pd
++import pytest
++
++from neurodatics.modules.analytics.application.services.aoi_analytics_service import (
++    AoiAnalyticsService,
++)
++from neurodatics.modules.analytics.application.services.fixation_analytics_service import (
++    FixationEventService,
++)
++
++
++def _scalar_mask(shape: dict, x_values: np.ndarray, y_values: np.ndarray) -> np.ndarray:
++    return np.asarray(
++        [
++            AoiAnalyticsService._contains(shape, float(x_value), float(y_value))
++            for x_value, y_value in zip(x_values, y_values)
++        ],
++        dtype=bool,
++    )
++
++
++@pytest.mark.parametrize(
++    "shape",
++    [
++        {"x": 20.0, "y": 15.0, "width": 50.0, "height": 60.0, "type": "rect"},
++        {"x": 20.0, "y": 15.0, "width": 0.0, "height": 60.0, "type": "rect"},
++        {"x": 20.0, "y": 15.0, "width": 0.0, "height": 0.0, "type": "rect"},
++        {"x": 20.0, "y": 15.0, "width": 50.0, "height": 60.0, "type": "circle"},
++        {"x": 20.0, "y": 15.0, "width": 0.0, "height": 60.0, "type": "circle"},
++        {
++            "x": 20.0,
++            "y": 15.0,
++            "width": 50.0,
++            "height": 60.0,
++            "type": "polygon",
++            "points": [
++                {"x": 20.0, "y": 15.0},
++                {"x": 70.0, "y": 15.0},
++                {"x": 45.0, "y": 75.0},
++            ],
++        },
++    ],
++)
++def test_shape_mask_matches_scalar_edges_degenerates_and_non_finite(shape):
++    x_values = np.asarray(
++        [
++            0.2,
++            0.7,
++            0.2,
++            0.7,
++            0.45,
++            0.19999,
++            0.70001,
++            np.nan,
++            np.inf,
++            -np.inf,
++        ],
++        dtype=np.float64,
++    )
++    y_values = np.asarray(
++        [0.15, 0.15, 0.75, 0.75, 0.45, 0.15, 0.15, 0.45, 0.45, 0.45],
++        dtype=np.float64,
++    )
++
++    actual = AoiAnalyticsService._mask_for_shape(shape, x_values, y_values)
++
++    assert actual.dtype == np.bool_
++    assert np.array_equal(actual, _scalar_mask(shape, x_values, y_values))
++
++
++def test_shape_mask_rejects_coordinate_shape_mismatch():
++    shape = {"x": 0.0, "y": 0.0, "width": 100.0, "height": 100.0, "type": "rect"}
++
++    with pytest.raises(ValueError, match="same shape"):
++        AoiAnalyticsService._mask_for_shape(
++            shape, np.asarray([0.1, 0.2]), np.asarray([0.1])
++        )
++
++
++def test_metrics_reuse_one_mask_per_aoi_and_preserve_overlap_priority(monkeypatch):
++    frame = pd.DataFrame(
++        {
++            "time": [0.0, 0.1, 0.2, 0.3],
++            "gx": [50.0, 50.0, 80.0, 80.0],
++            "gy": [50.0, 50.0, 50.0, 50.0],
++            "lx_pupil": [3.0, 3.1, 3.2, 3.3],
++            "rx_pupil": [3.2, 3.3, 3.4, 3.5],
++            "distance": [600.0, 600.0, 610.0, 610.0],
++            "fix_x": [50.0, 50.0, 80.0, 80.0],
++            "fix_y": [50.0, 50.0, 50.0, 50.0],
++            "fixation_id": [1, 1, 2, 2],
++            "fixation_segment_id": ["segment-a"] * 4,
++            "fixation_method": ["idt"] * 4,
++            "fixation_detector_version": ["fixation-v2.0"] * 4,
++            "scenario": ["A"] * 4,
++        }
++    )
++    # Deliberately reverse the input. The established contract sorts by name,
++    # so the overlapping first fixation belongs to A and then transitions to B.
++    aois = [
++        SimpleNamespace(
++            id="b",
++            name="B",
++            color="#00ff00",
++            shape_type="rect",
++            shape={"x": 40, "y": 0, "width": 60, "height": 100},
++        ),
++        SimpleNamespace(
++            id="a",
++            name="A",
++            color="#ff0000",
++            shape_type="rect",
++            shape={"x": 0, "y": 0, "width": 60, "height": 100},
++        ),
++    ]
++    calls = []
++    original = AoiAnalyticsService._mask_for_shape
++
++    def counted(cls, shape, x_values, y_values):
++        calls.append(len(x_values))
++        return original(shape, x_values, y_values)
++
++    monkeypatch.setattr(
++        AoiAnalyticsService, "_mask_for_shape", classmethod(counted)
++    )
++
++    result = AoiAnalyticsService.compute_metrics(frame, "A", aois)
++
++    assert calls == [2, 4, 2, 4]
++    assert [row["name"] for row in result["aois"]] == ["A", "B"]
++    assert [row["fixation_count"] for row in result["aois"]] == [1, 2]
++    assert result["observed_aoi_dwell_time_ms"] == result["total_dwell_time_ms"]
++    assert result["transitions"] == [
++        {"from_aoi": "A", "counts": {"A": 0, "B": 1}, "total": 1},
++        {"from_aoi": "B", "counts": {"A": 0, "B": 0}, "total": 0},
++    ]
++    gaze_x_max = next(event for event in result["events"] if event["id"] == "gaze_x_max")
++    assert gaze_x_max["aoi_name"] == "B"
++
++
++def _legacy_cadence(times, segments, effective_rate):
++    fallback = 1.0 / effective_rate if effective_rate and effective_rate > 0 else 0.0
++    result = {}
++    for segment in dict.fromkeys(segments):
++        segment_times = np.asarray(
++            [
++                time_value
++                for time_value, key in zip(times, segments)
++                if key == segment and np.isfinite(time_value)
++            ],
++            dtype=float,
++        )
++        differences = np.diff(segment_times)
++        differences = differences[
++            (differences > 0) & np.isfinite(differences)
++        ]
++        result[segment] = (
++            float(np.median(differences)) if differences.size else fallback
++        )
++    return result
++
++
++@pytest.mark.parametrize("effective_rate", [60.0, None, 0.0])
++def test_cadence_groups_interleaved_null_segments_once_in_original_order(
++    effective_rate,
++):
++    times = np.asarray(
++        [0.0, 5.0, 0.0, np.nan, 2.0, 4.0, 1.0, np.inf, 3.0, 8.0],
++        dtype=np.float64,
++    )
++    segments = ["a", "b", "a", None, "a", "b", "a", "missing", "a", "b"]
++
++    actual = FixationEventService._cadence_by_segment(
++        times, segments, effective_rate
++    )
++
++    assert list(actual) == ["a", "b", None, "missing"]
++    assert actual == _legacy_cadence(times, segments, effective_rate)
++
++
++@pytest.mark.parametrize("effective_rate", [120.0, None])
++def test_single_segment_fast_path_preserves_repeated_and_decreasing_clocks(
++    effective_rate,
++):
++    times = np.asarray([2.0, 2.0, 1.0, np.nan, 4.0, np.inf, 5.0])
++    segments = ["only"] * len(times)
++
++    assert FixationEventService._cadence_by_segment(
++        times, segments, effective_rate
++    ) == _legacy_cadence(times, segments, effective_rate)
++
++
++def test_empty_cadence_has_no_synthetic_segment():
++    assert FixationEventService._cadence_by_segment(
++        np.asarray([], dtype=np.float64), [], 60.0
++    ) == {}
+diff --git a/docs/perf/bench/g06_algorithms.py b/docs/perf/bench/g06_algorithms.py
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..07f5d03ac270fddd892809905d8f97d6f425162f 100644
+--- a/docs/perf/bench/g06_algorithms.py
++++ b/docs/perf/bench/g06_algorithms.py
+@@ -0,0 +1,341 @@
++"""Offline G06 comparison over the G00 corpus and affected flows.
++
++Run from the repository root. One warm-up plus five retained samples are used.
++No database, Redis, Drive, user data, dependency, or deployment is touched.
++"""
++
++import argparse
++import hashlib
++import json
++import platform
++import tempfile
++from dataclasses import fields, is_dataclass
++from pathlib import Path
++from types import SimpleNamespace
++
++import g00_backend as baseline
++import numpy as np
++import pandas as pd
++import pyarrow
++import pytest
++from neurodatics.modules.analytics.api import routes as analytics_routes
++from neurodatics.modules.analytics.application.services.aoi_analytics_service import (
++    AoiAnalyticsService,
++)
++from neurodatics.modules.analytics.application.services.fixation_analytics_service import (
++    FixationEventService,
++)
++from neurodatics.modules.reports.application.sensor_reports import common, eye_tracking
++
++
++def normalize(value):
++    if isinstance(value, pd.DataFrame):
++        return json.loads(value.to_json(orient="split", double_precision=15))
++    if isinstance(value, np.ndarray):
++        return normalize(value.tolist())
++    if isinstance(value, dict):
++        return {str(key): normalize(item) for key, item in value.items()}
++    if isinstance(value, (list, tuple)):
++        return [normalize(item) for item in value]
++    if is_dataclass(value):
++        return {
++            field.name: normalize(getattr(value, field.name))
++            for field in fields(value)
++            if field.name != "participant"
++        }
++    if isinstance(value, (float, np.floating)) and not np.isfinite(value):
++        return str(value)
++    return value
++
++
++def compact(values):
++    output = {}
++    for key, value in values.items():
++        encoded = json.dumps(
++            value, sort_keys=True, ensure_ascii=False, separators=(",", ":")
++        ).encode("utf-8")
++        output[key] = {
++            "sha256": hashlib.sha256(encoded).hexdigest(),
++            "serialized_bytes": len(encoded),
++        }
++    return output
++
++
++def aois():
++    return [
++        SimpleNamespace(
++            id="left",
++            name="01 Left",
++            color="#2563EB",
++            shape_type="rect",
++            shape={"x": 0, "y": 0, "width": 55, "height": 100},
++        ),
++        SimpleNamespace(
++            id="right",
++            name="02 Right",
++            color="#16A34A",
++            shape_type="rect",
++            shape={"x": 45, "y": 0, "width": 55, "height": 100},
++        ),
++        SimpleNamespace(
++            id="ellipse",
++            name="03 Ellipse",
++            color="#F59E0B",
++            shape_type="circle",
++            shape={"x": 20, "y": 15, "width": 60, "height": 70},
++        ),
++        SimpleNamespace(
++            id="point",
++            name="04 Degenerate rect",
++            color="#8B5CF6",
++            shape_type="rect",
++            shape={"x": 50, "y": 50, "width": 0, "height": 0},
++        ),
++        SimpleNamespace(
++            id="degenerate-ellipse",
++            name="05 Degenerate ellipse",
++            color="#EC4899",
++            shape_type="circle",
++            shape={"x": 50, "y": 50, "width": 0, "height": 20},
++        ),
++        SimpleNamespace(
++            id="polygon",
++            name="06 Polygon",
++            color="#0F766E",
++            shape_type="polygon",
++            shape={
++                "points": [
++                    {"x": 10, "y": 10},
++                    {"x": 40, "y": 15},
++                    {"x": 35, "y": 45},
++                    {"x": 12, "y": 40},
++                ]
++            },
++        ),
++    ]
++
++
++def shape_mask(shape, x, y):
++    helper = getattr(AoiAnalyticsService, "_mask_for_shape", None)
++    if helper is not None:
++        return helper(shape, x, y)
++    finite = np.isfinite(x) & np.isfinite(y)
++    return np.asarray(
++        [
++            bool(valid) and AoiAnalyticsService._contains(shape, x_value, y_value)
++            for x_value, y_value, valid in zip(x, y, finite)
++        ],
++        dtype=bool,
++    )
++
++
++def build_large(base):
++    pieces = []
++    for block in range(64):
++        part = base.copy(deep=True)
++        part["time"] += block * 16
++        for column in ("segment_id", "fixation_segment_id"):
++            if column in part:
++                part[column] = part[column].astype(str) + f"-block-{block}"
++        for column in part.columns:
++            if column == "fixation_id" or column.startswith("fixation_id__"):
++                part[column] = part[column] + block * 10000
++        pieces.append(part)
++    result = pd.concat(pieces, ignore_index=True)
++    result.attrs = dict(base.attrs)
++    for index in range(16):
++        result[f"g00_unused_{index:02d}"] = np.sin(
++            np.arange(len(result), dtype=float) / (index + 5)
++        )
++    return result
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--phase", choices=("before", "after"), required=True)
++    args = parser.parse_args()
++    root = baseline.ROOT
++    output = root / "docs/perf/ejecucion/evidencia/g06"
++    runtime = root / "output/perf-g06"
++    runtime.mkdir(parents=True, exist_ok=True)
++    fixture = baseline.load_fixture_module()
++    result = {
++        "phase": args.phase,
++        "runtime": {
++            "python": platform.python_version(),
++            "pandas": pd.__version__,
++            "numpy": np.__version__,
++            "pyarrow": pyarrow.__version__,
++        },
++        "protocol": {"warmup": 1, "retained_samples": 5},
++        "measurements": [],
++        "equivalence": {},
++        "limits": [
++            "synthetic G00 corpus; no real DB/Redis/Drive or user data",
++            "RSS is a process snapshot and lifetime peak, not per-operation peak",
++            "HTTP uses the in-process characterized route fixture without response cache",
++            "polygon membership retains the scalar fallback",
++        ],
++    }
++
++    rng = np.random.default_rng(20261002)
++    x = rng.uniform(-0.1, 1.1, 300_000).astype(np.float64)
++    y = rng.uniform(-0.1, 1.1, 300_000).astype(np.float64)
++    x[::997] = np.nan
++    y[::991] = np.inf
++    shapes = {
++        "rectangle": {"x": 20.0, "y": 15.0, "width": 50.0, "height": 60.0, "type": "rect"},
++        "ellipse": {"x": 20.0, "y": 15.0, "width": 50.0, "height": 60.0, "type": "circle"},
++        "polygon": {
++            "x": 10.0,
++            "y": 10.0,
++            "width": 40.0,
++            "height": 45.0,
++            "type": "polygon",
++            "points": [
++                {"x": 10.0, "y": 10.0},
++                {"x": 50.0, "y": 20.0},
++                {"x": 40.0, "y": 55.0},
++                {"x": 15.0, "y": 45.0},
++            ],
++        },
++    }
++    for name, shape in shapes.items():
++        def membership(shape=shape, name=name):
++            mask = shape_mask(shape, x, y)
++            result["equivalence"][f"mask/{name}"] = normalize(mask)
++            return mask
++
++        result["measurements"].append(
++            baseline.measure(f"mask/{name}/300000", membership, 5)
++        )
++
++    cadence_times = np.arange(100_000, dtype=np.float64) / 60.0
++    for count in (1, 20, 100):
++        segments = [f"segment-{index % count}" for index in range(len(cadence_times))]
++
++        def cadence(segments=segments, count=count):
++            values = FixationEventService._cadence_by_segment(
++                cadence_times, segments, 60.0
++            )
++            result["equivalence"][f"cadence/{count}"] = normalize(values)
++            return values
++
++        result["measurements"].append(
++            baseline.measure(f"cadence/{count}/100000", cadence, 5)
++        )
++
++    with tempfile.TemporaryDirectory(prefix="corpus-", dir=runtime) as temporary:
++        class Factory:
++            def mktemp(self, name):
++                target = Path(temporary) / name
++                target.mkdir()
++                return target
++
++        corpus = fixture.corpus.__wrapped__(Factory())
++        aoi_values = aois()
++        large = build_large(corpus.frames["SYN-01"])
++        corpora = {
++            "small": corpus.frames,
++            "large": {
++                f"SYN-L{index:02d}": large.copy(deep=True) for index in range(4)
++            },
++        }
++        with pytest.MonkeyPatch.context() as patch:
++            for label, frames in corpora.items():
++                code = next(iter(frames))
++                frame = frames[code]
++
++                def metrics(frame=frame, label=label):
++                    value = AoiAnalyticsService.compute_metrics(
++                        frame, "stimulus-a", aoi_values
++                    )
++                    result["equivalence"][f"metrics/{label}"] = normalize(value)
++                    return value
++
++                result["measurements"].append(
++                    baseline.measure(f"{label}/aoi_metrics", metrics, 5)
++                )
++
++                def report(frames=frames, label=label):
++                    recordings = []
++                    for participant_code, participant_frame in frames.items():
++                        participant = common.ReportParticipant(
++                            participant_code,
++                            participant_code,
++                            "#2563EB",
++                            participant_frame,
++                        )
++                        for scenario in ("stimulus-a", "stimulus-b"):
++                            recording = eye_tracking.collect(
++                                participant,
++                                common.ReportScenario(
++                                    scenario, scenario, 1, aoi_values
++                                ),
++                            )
++                            assert recording is not None and recording.aoi is not None
++                            recordings.append(recording)
++                    result["equivalence"][f"report/{label}"] = normalize(recordings)
++                    return recordings
++
++                result["measurements"].append(
++                    baseline.measure(f"{label}/report_group_collect", report, 5)
++                )
++
++                corpus.frames = frames
++                client_generator = fixture.http_client.__wrapped__(
++                    corpus, aoi_values, patch
++                )
++                client = next(client_generator)
++                prefix = f"/api/projects/{baseline.PROJECT}/analytics/aois"
++
++                def request(
++                    code=code, label=label, client=client, prefix=prefix
++                ):
++                    analytics_routes._redis.values.clear()
++                    response = client.get(
++                        prefix,
++                        params={
++                            "participant_code": code,
++                            "scenario": "stimulus-a",
++                        },
++                    )
++                    assert response.status_code == 200, response.text
++                    result["equivalence"][f"http/{label}"] = response.json()
++                    return response
++
++                result["measurements"].append(
++                    baseline.measure(f"{label}/http_no_response_cache/aois", request, 5)
++                )
++                client_generator.close()
++
++    result["equivalence"] = compact(result["equivalence"])
++    if args.phase == "after":
++        before = json.loads((output / "before.json").read_text(encoding="utf-8"))
++        assert result["runtime"] == before["runtime"]
++        assert result["equivalence"] == before["equivalence"]
++        result["equivalent_to_before"] = True
++    target = output / f"{args.phase}.json"
++    target.write_text(
++        json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
++    )
++    print(
++        json.dumps(
++            {
++                "phase": args.phase,
++                "equivalent": result.get("equivalent_to_before"),
++                "measurements": [
++                    {
++                        key: row[key]
++                        for key in ("name", "n", "median_ms", "min_ms", "max_ms")
++                    }
++                    for row in result["measurements"]
++                ],
++            },
++            indent=2,
++        )
++    )
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/docs/perf/ejecucion/G06.md b/docs/perf/ejecucion/G06.md
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..fb037c7fb5cb42bf8ca39479b683cfc91cfd7ff9 100644
+--- a/docs/perf/ejecucion/G06.md
++++ b/docs/perf/ejecucion/G06.md
+@@ -0,0 +1,17 @@
++# G06 — Algoritmos de AOIs y cadencia
++
++**Estado: completa, pendiente de revisión del coordinador.** Sólo G06; sin agentes, deploy, migraciones, dependencias ni cambios en ORQUESTACION. Codex GPT-5.6 Sol/high real (GPT-6.1 rechazado por el servidor CLI, sin cambio de autenticación); Claude Sonnet/alto equivalente por equivalencia científica, con los mismos checks. `REVISION-G06.md` apareció durante el cierre, fue leído y sus correcciones documentales se incorporaron sin requerir repetir producto.
++
++Base: HEAD `f310003bd734203a41268f40a4627bd99d5a3233` + trabajo local G00–G05; G05 aprobado por coordinación. [Inventario](evidencia/g06/inventario-inicial.json): 395 archivos cambiados/nuevos recibidos, excluyendo salida propia/JSONL de la CLI. Snapshot de 3 archivos existentes propios en ignored `output/perf-g06/base`; [own.patch](evidencia/g06/own.patch) se genera contra esa base, nunca HEAD. Sin reset/stash/commit; G03 espacial/full, G04 auth/lifecycle/SingleFlight y G05 `FixationEventResult`/ownership permanecen intactos.
++
++Resultado: rectángulos y elipses usan pertenencia NumPy float64 con bordes inclusivos; rectángulos degenerados conservan punto/línea y elipses degeneradas siguen vacías. NaN/inf quedan fuera. Polígonos conservan ray-casting escalar exacto, sólo con prefiltro vectorizado de bounds medido/equivalente. Cada AOI produce una máscara de fijaciones y una de muestras, consumidas enseguida para métricas, unión, primera asignación y eventos; no existe matriz muestras×AOIs. Solapamientos mantienen la primera AOI según el orden establecido por nombre.
++
++Cadencia: segmentos se agrupan una vez en orden de primera aparición, sin ordenar relojes; `diff` conserva el orden original y filtra sólo diferencias positivas/finitas como antes. El caso de un segmento usa el fast path vectorizado. Nulos, intercalados, tiempos repetidos/decrecientes y fallback de frecuencia son equivalentes al algoritmo anterior. Complejidades/presupuesto y handoff G07 están en [API.md](evidencia/g06/API.md).
++
++Verificación: **207 pruebas/25 snapshots en cada runtime**: recibido Python 3.14.3/PyArrow25 y aislado reutilizado Python 3.12.13/PyArrow16.1. Incluye 14 contratos G06, fijaciones legacy/v2/variantes, transformación, source/attrs/ownership, histogramas/heatmap/scanpath/AOI, informes numéricos/render/PDF y 46 contratos HTTP. Ruff y 3 import boundaries aprobados; probes de 1/20/100 segmentos equivalentes en ambos runtimes. No se cambiaron goldens. [Comandos/logs](evidencia/g06/comandos.md), [verificación](evidencia/g06/verificacion.json).
++
++Medida: mismo runtime/corpus G00, base fresca vs final, warmup1+n5. Los hashes de máscaras, métricas completas, recordings de informe y JSON HTTP coinciden. Medianas [rango] ms: large AOI **786,09 [783,53–792,88] → 558,63 [553,71–561,02] (-28,9%)**; informe **14.228,23 [13.582,28–14.543,09] → 12.155,41 [11.740,70–12.476,21] (-14,6%)**; HTTP sin caché de respuesta **908,93 [903,77–917,78] → 691,95 [686,52–700,14] (-23,9%)**. Cadencia100k: 1 segmento 51,52→0,96ms;20 109,26→55,95;100 353,51→57,67. Small AOI 23,96→21,07ms, pero informe/HTTP small solapan ruido y no prueban aceleración. CPU acompaña; RSS máximo 2,053→2,048GB y peak acumulado 2,442→2,444GB no son picos por operación. [Detalle](evidencia/g06/medidas.md), [JSON](evidencia/g06/comparacion.json).
++
++Archivos propios: 2 servicios, 1 test, 1 probe, G06/ESTADO y evidencia G06. [Preservación](evidencia/g06/preservacion.json), [manifiesto](evidencia/g06/manifiesto-final.json) y patch identifican el alcance. Los JSONL/logs de lanzamiento/respuesta del runner son operativos, se conservan pero no reciben huella final porque pueden seguir cambiando hasta salir. ORQUESTACION, ASIGNACION y REVISION-G06 son del coordinador e intactos. Reversión: retirar sólo own.patch contra `output/perf-g06/base`; conservar todo lo recibido.
++
++Límites: fixtures sintéticas, sin DB/Redis/Drive reales, nube, datos de usuarios, paquete congelado ni gate frontend/global (G12). El informe medido tiene datos en RAM y Matplotlib secuencial; no se infiere mejora global ni de I/O. Memoria es snapshot de proceso. G07 puede comenzar sólo tras revisión; no se inició aquí.
+diff --git a/docs/perf/ejecucion/evidencia/g06/API.md b/docs/perf/ejecucion/evidencia/g06/API.md
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..9f13076228dcfbdb0d63e937874225a1e207566a 100644
+--- a/docs/perf/ejecucion/evidencia/g06/API.md
++++ b/docs/perf/ejecucion/evidencia/g06/API.md
+@@ -0,0 +1,24 @@
++# API y algoritmos G06 → G07
++
++No cambia ningún endpoint ni contrato público. `AoiAnalyticsService.compute_metrics(...)`, `compute_metrics_from_events(...)`, `FixationEventService.build_result(...)` y `FixationEventResult` mantienen firma/ownership G05. Source y attrs deben permanecer estables durante la operación; escenario, variante, proximidad, transformación, calidad, gaps, orden y float64 no cambian.
++
++## Pertenencia y reutilización
++
++`AoiAnalyticsService._mask_for_shape(shape, x_norm, y_norm)` es helper interno:
++
++- rectángulo: bounds inclusivos vectorizados; ancho/alto cero conservan punto o línea;
++- `circle`: semántica de elipse inscrita en el rectángulo, inclusiva; radio cero devuelve todo falso;
++- polígono: prefiltro vectorizado finito/bounds y ray-casting escalar `_contains` sin alterar bordes;
++- arrays float64, forma igual; NaN/±inf falsos.
++
++En una métrica con `A` AOIs, `F` fijaciones y `S` muestras se conserva una máscara bool de `F` y otra de `S` por AOI sólo mientras se procesa esa AOI. Actualizan unión, primera asignación, métricas y key events; luego se reemplazan. No se retiene `A×F` ni `A×S`. El presupuesto algorítmico es O(F+S): buffers principales de coordenadas float64, asignación intp, unión y máscaras; también hay temporales lineales de primera asignación, índices/lista `inside`, filtrados y aritmética de elipse. No se declara una cota de bytes/RSS no medida. El presupuesto crece con filas, nunca multiplicado por AOIs.
++
++La prioridad en solapamientos sigue siendo la primera AOI tras el sort case-insensitive por nombre. El dwell observado cuenta cada fijación una sola vez. Transiciones se reinician por `segment_id`. Complejidad temporal sigue O(A·(F+S)); se elimina el segundo recorrido de pertenencia de fijaciones y las reasignaciones de eventos. Memoria adicional O(F+S), independiente de A. Polígonos siguen O(P) por punto dentro de bounds, con P vértices.
++
++## Cadencia
++
++`_cadence_by_segment(times, segments, effective_rate)` conserva su dict y orden de primera aparición. Un segmento: arrays finitos + `np.diff` en orden original, O(N) tiempo/O(N) temporal. Varios: un agrupado O(N), luego diferencias totales O(N), memoria O(N+K). Antes era O(N·K) por refiltrar todas las filas para cada segmento. No se ordenan tiempos; repetidos/decrecientes no contribuyen, NaN/inf se omiten, y un segmento sin diferencia positiva usa `1/effective_rate` si es positivo o `0.0`.
++
++## Handoff
++
++G07 debe continuar llamando `eye_tracking.collect()` secuencialmente por recording hasta introducir su propia carga I/O acotada. Puede reutilizar estas métricas sin copiar máscaras ni retener resultados globalmente. No compartir `AsyncSession`, no paralelizar Matplotlib y conservar G04 SingleFlight/auth/lifecycle. Rutas AOI/informe siguen lectura full intencional de G03; G06 no proyecta columnas ni cambia cachés.
+diff --git a/docs/perf/ejecucion/evidencia/g06/comandos.md b/docs/perf/ejecucion/evidencia/g06/comandos.md
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..d2970c53542a98bca4ba9195e4c0afe92250b27d 100644
+--- a/docs/perf/ejecucion/evidencia/g06/comandos.md
++++ b/docs/perf/ejecucion/evidencia/g06/comandos.md
+@@ -0,0 +1,26 @@
++# Comandos G06
++
++Desde raíz, base fresca/final, warmup1+n5:
++
++```powershell
++.venv/Scripts/python.exe docs/perf/bench/g06_algorithms.py --phase before
++.venv/Scripts/python.exe docs/perf/bench/g06_algorithms.py --phase after
++.venv/Scripts/python.exe docs/perf/bench/bench_runtime_algorithms.py
++output/perf-g03/supported-env/Scripts/python.exe docs/perf/bench/bench_runtime_algorithms.py
++```
++
++Desde `backend`, con Python recibido y luego sustituyendo por `../output/perf-g03/supported-env/Scripts/python.exe`:
++
++```powershell
++../.venv/Scripts/python.exe -m pytest tests/unit/test_g06_aoi_cadence_algorithms.py tests/unit/test_shared_fixation_result.py tests/unit/test_fixation_event_analytics.py tests/unit/test_fixation_duration_variants.py tests/unit/test_stimulus_coordinate_analytics.py tests/unit/test_scanpath_radius_scale.py tests/unit/test_heatmap_orientation.py tests/unit/test_executive_report_heatmap_geometry.py tests/unit/test_executive_report_service.py tests/characterization/test_shared_fixation_report.py tests/characterization/test_numeric_characterization.py tests/characterization/test_sensor_reports.py tests/characterization/test_analytics_http_contracts.py -q
++```
++
++Checks estáticos desde raíz:
++
++```powershell
++.venv/Scripts/python.exe -m ruff check backend/src/neurodatics/modules/analytics/application/services/aoi_analytics_service.py backend/src/neurodatics/modules/analytics/application/services/fixation_analytics_service.py backend/tests/unit/test_g06_aoi_cadence_algorithms.py docs/perf/bench/g06_algorithms.py
++$env:PYTHONPATH='src'; Push-Location backend; ../.venv/Scripts/lint-imports.exe --no-cache; Pop-Location; Remove-Item Env:PYTHONPATH
++git apply --reverse --check --ignore-space-change docs/perf/ejecucion/evidencia/g06/own.patch
++```
++
++No gate frontend/global, DB/Redis/Drive real, install, build de distribución ni golden update.
+diff --git a/docs/perf/ejecucion/evidencia/g06/medidas.md b/docs/perf/ejecucion/evidencia/g06/medidas.md
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..020f6fee68ab6057384d4666c8e3379d9473a6b5 100644
+--- a/docs/perf/ejecucion/evidencia/g06/medidas.md
++++ b/docs/perf/ejecucion/evidencia/g06/medidas.md
+@@ -0,0 +1,22 @@
++# Medidas G06
++
++Protocolo: `.venv` recibido Python3.14.3/Pandas2.3.3/NumPy2.4.4/PyArrow25; corpus sintético G00, mismas semillas/filas/AOIs; una corrida fresca antes de producto y otra final; warmup1+n5; probes aislados. `before.json` y `after.json` guardan muestras, CPU y RSS; `comparacion.json` resume. Los hashes completos de máscaras (rect/elipse/polígono), métricas AOI, recordings de informe y JSON HTTP son idénticos.
++
++| Caso | Antes ms mediana [min–max] | Después | Delta |
++|---|---:|---:|---:|
++| rect 300k | 144,37 [141,12–146,10] | 67,10 [63,10–69,07] | -53,5% |
++| elipse 300k | 166,62 [164,64–169,12] | 70,81 [65,88–72,89] | -57,5% |
++| polígono 300k | 250,51 [246,88–253,52] | 209,07 [205,96–221,82] | -16,5%; mismo ray-cast, bounds prefiltrados |
++| cadencia 100k / 1 segmento | 51,52 [50,34–54,16] | 0,96 [0,92–1,00] | -98,1% |
++| cadencia / 20 | 109,26 [107,87–114,46] | 55,95 [52,55–61,50] | -48,8% |
++| cadencia / 100 | 353,51 [350,81–356,58] | 57,67 [55,12–59,51] | -83,7% |
++| small AOI | 23,96 [23,04–47,74] | 21,07 [20,43–31,99] | -12,1%; rango solapado |
++| small informe | 227,55 [223,53–230,09] | 222,80 [214,89–240,39] | -2,1%; ruido |
++| small HTTP AOI | 34,94 [34,34–36,78] | 32,99 [32,38–35,36] | -5,6%; solapado |
++| large AOI | 786,09 [783,53–792,88] | 558,63 [553,71–561,02] | -28,9% |
++| large informe | 14.228,23 [13.582,28–14.543,09] | 12.155,41 [11.740,70–12.476,21] | -14,6% |
++| large HTTP AOI | 908,93 [903,77–917,78] | 691,95 [686,52–700,14] | -23,9% |
++
++CPU mediana acompaña los casos grandes (AOI 781,25→562,50ms; informe 14.187,50→12.109,38; HTTP 906,25→687,50). RSS máximo observado 2.053.156.864→2.047.680.512B; peak acumulado 2.441.777.152→2.443.812.864B. Incluyen corpus/operaciones anteriores y no son pico por operación ni certifican un contenedor. La normalización de resultados forma parte de ambos tiempos, por lo que el microtiempo puro de máscara queda subestimado; no se extrapola a toda la aplicación.
++
++`bench_runtime_algorithms.py` confirma en ambos runtimes que el fast path de un segmento (~1,16ms) evita la regresión de la variante general (~55–59ms); se conserva. Es probe complementario, no base del cierre.
+diff --git a/docs/perf/ejecucion/evidencia/g06/verificacion.json b/docs/perf/ejecucion/evidencia/g06/verificacion.json
+index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..d0951a85f583df1905536bc3798d8766254c9885 100644
+--- a/docs/perf/ejecucion/evidencia/g06/verificacion.json
++++ b/docs/perf/ejecucion/evidencia/g06/verificacion.json
+@@ -0,0 +1,21 @@
++{
++  "status": "passed",
++  "runtime_received": {
++    "python": "3.14.3",
++    "pyarrow": "25.0.0",
++    "tests_passed": 207,
++    "snapshots_passed": 25
++  },
++  "runtime_supported": {
++    "python": "3.12.13",
++    "pyarrow": "16.1.0",
++    "tests_passed": 207,
++    "snapshots_passed": 25
++  },
++  "new_g06_contracts": 14,
++  "ruff": "passed",
++  "import_contracts": "3 kept, 0 broken",
++  "benchmark_equivalent_to_before": true,
++  "goldens_updated": false,
++  "external_services_used": false
++}

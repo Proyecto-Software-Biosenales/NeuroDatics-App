@@ -95,6 +95,20 @@ def test_one_complete_spectrogram_window_is_sufficient():
     assert result["metadata"]["smooth_sigma_bins"] == 0
 
 
+def test_short_spectrogram_denser_hop_keeps_the_window():
+    default = EEG.compute_spectrogram(sine(seconds=5))
+    dense = EEG.compute_spectrogram(sine(seconds=5), min_time_bins=60)
+    assert len(default["time"]) == 10
+    assert len(dense["time"]) >= 60
+    assert dense["frequency"] == default["frequency"]
+    assert dense["metadata"]["window_s"] == default["metadata"]["window_s"]
+    assert dense["metadata"]["hop_s"] < default["metadata"]["hop_s"]
+    assert dense["time"][0] == pytest.approx(default["time"][0])
+    assert np.array(dense["power"]["f3"])[:, 0] == pytest.approx(np.array(default["power"]["f3"])[:, 0])
+    long = EEG.compute_spectrogram(sine(seconds=16), min_time_bins=10)
+    assert long["time"] == EEG.compute_spectrogram(sine(seconds=16))["time"]
+
+
 def test_spectrogram_density_matches_analytic_hann_bin_and_mean_square():
     result = EEG.compute_spectrogram(sine(seconds=2), window_s=1, overlap_ratio=0, use_db=False, max_freq_hz=None)
     matrix = np.array(result["power"]["f3"])
@@ -182,6 +196,64 @@ def test_eeg_unit_normalization_survives_parquet(tmp_path, unit, factor):
     assert EEG.compute_psd(loaded)["total_power"]["f3"] == pytest.approx(
         2 * factor**2
     )
+
+
+@pytest.mark.parametrize("empty_unit_line", ["Unidad Tobii : ", ""])
+def test_eeg_scale_is_scoped_to_each_recording_and_channel(tmp_path, empty_unit_line):
+    """Mixed participant scales must survive full ingestion and scenario storage."""
+    source_frame = sine(seconds=2)
+    f3_source = source_frame.f3.to_numpy() / 1000
+    units = ["kilo", None, "uV", "kilo"]
+    factors = [1000, 1, 1, 1000]
+    lines = []
+    for index, unit in enumerate(units, start=1):
+        lines += [
+            f"Grabacion : SYN-SCALE-{index} | Rec {index}",
+            "Nombre : EEG / F3", "Frecuencia : 128 Hz",
+            f"Unidad Tobii : {unit}" if unit else empty_unit_line,
+            "Nombre : EEG / F4", "Frecuencia : 128 Hz", "Unidad Tobii : uV",
+            "Frecuencia del archivo : 128 Hz",
+            "Time;EEG / F3;EEG / F4;Scenario 1",
+        ]
+        lines += [
+            f"{t};{f3};{f4};{'a' if row < 128 else 'b'}"
+            for row, (t, f3, f4) in enumerate(
+                zip(source_frame.time, f3_source, source_frame.f4)
+            )
+        ]
+    csv_path = tmp_path / "mixed-eeg-scales.csv"
+    csv_path.write_text("\n".join(lines), encoding="utf-8")
+    original_bytes = csv_path.read_bytes()
+    result = CSV.process(str(csv_path), str(tmp_path / "parquet"))
+    assert len(result.user_parquet_paths) == 4
+    assert len(result.scenario_parquet_paths) == 8
+    for index, path in result.user_parquet_paths:
+        frame = pd.read_parquet(path)
+        factor, unit = factors[index - 1], units[index - 1]
+        np.testing.assert_allclose(frame.f3, f3_source * factor, atol=1e-12)
+        np.testing.assert_allclose(frame.f4, source_frame.f4, atol=1e-12)
+        acquisition = frame.attrs["eeg_acquisition"]
+        assert acquisition["source_units"]["f3"] == (unit.lower() if unit else None)
+        assert acquisition["scale_to_uV"] == {"f3": factor, "f4": 1}
+        assert acquisition["assumed_uV_channels"] == (["f3"] if unit in (None, "kilo") else [])
+        assert acquisition["excluded_channels"] == []
+        assert next(c for c in result.block_metadata[index - 1].channels if c.canonical_name == "f3").unit == unit
+        first_psd = EEG.compute_psd(frame)
+        assert first_psd["total_power"]["f3"] == pytest.approx(2e-6 * factor**2)
+        assert first_psd["total_power"]["f4"] == pytest.approx(2)
+        warnings = prepare_eeg(frame, None, ["f3", "f4"]).metadata["warnings"]
+        assert any("Escala kilo" in warning for warning in warnings) == (unit == "kilo")
+        assert any("Unidad EEG no declarada" in warning for warning in warnings) == (unit in (None, "kilo"))
+        # Repeated analytics must not reapply the import multiplier.
+        assert EEG.compute_psd(frame)["total_power"] == first_psd["total_power"]
+        np.testing.assert_allclose(frame.f3, f3_source * factor, atol=1e-12)
+    for index, scenario, path in result.scenario_parquet_paths:
+        frame = pd.read_parquet(path)
+        source_slice = slice(0, 128) if scenario == "a" else slice(128, 256)
+        np.testing.assert_allclose(frame.f3, f3_source[source_slice] * factors[index - 1], atol=1e-12)
+        np.testing.assert_allclose(frame.f4, source_frame.f4.iloc[source_slice], atol=1e-12)
+        assert frame.attrs["eeg_acquisition"]["scale_to_uV"] == {"f3": factors[index - 1], "f4": 1}
+    assert csv_path.read_bytes() == original_bytes
 
 
 def quality(frame, channel="f3"):

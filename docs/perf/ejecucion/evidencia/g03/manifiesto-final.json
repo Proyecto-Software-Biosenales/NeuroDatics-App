@@ -1,0 +1,137 @@
+{
+  "sources_and_handoff": [
+    {
+      "path": "backend/src/neurodatics/modules/analytics/api/routes.py",
+      "sha256_final": "0b2bfd72d84792cb1feccd80834d670728651453afa0145e3458175b1df7cb0b",
+      "sha256_received": "39b97f18b8da4a76588a034bf3c5ffce4c75c97a495f66555f6bc40983bdcaa8",
+      "bytes": 60692
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py",
+      "sha256_final": "ca5923c45d1feedc3a011c658e3776f96fea4a8ce2b756b3aca381bfad3ccc46",
+      "sha256_received": "03865597d753f7bac152c39384c2996d5211395f72c03ebc49a024914dc24f21",
+      "bytes": 14743
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/infrastructure/parquet_cache.py",
+      "sha256_final": "ddf17ec7edfb7ab89c7b9b1dc68c8068032f7647501cd3def56b25a8cfd8d1bb",
+      "sha256_received": "6eb82c8da2b634c6c6146c13c6f06dc318672b9c5956f116f84a695ca63e06cd",
+      "bytes": 10566
+    },
+    {
+      "path": "backend/tests/characterization/conftest.py",
+      "sha256_final": "259aca7b8fec8f4c17e8e6047ccfacc304e5b8d2177f79395208e3a005d4a9d1",
+      "sha256_received": "24479204b9e814712f1bb5450bfcb5b170b01c658a33b3d06fee88c91de248e0",
+      "bytes": 5449
+    },
+    {
+      "path": "backend/tests/unit/test_parquet_participant_identity.py",
+      "sha256_final": "5eb9b6953a12762e29129c515564a0d3844f6b25b9e8068a7629ed329f4446c6",
+      "sha256_received": "2540c55f15936c7d6b6b3381e59ad677431188bd57320bf5e6039ec289523ccc",
+      "bytes": 33101
+    },
+    {
+      "path": "docs/perf/ejecucion/ESTADO.md",
+      "sha256_final": "425cabcc6f47eccc52d795ff61eaf5dc0b7b0e6e6514a0f065ddd99e0319f0d1",
+      "sha256_received": "3e996507b9a893b18565d73093c1e1f96d2cd4ee09a46f73f8f423de953e504c",
+      "bytes": 4773
+    },
+    {
+      "path": "backend/src/neurodatics/modules/analytics/domain/parquet_projection.py",
+      "sha256_final": "ef9b34977cd9c7abd6d0ea873e242eba350c9031ba05b483929a80ae27785b79",
+      "sha256_received": null,
+      "bytes": 1943
+    },
+    {
+      "path": "backend/tests/unit/test_parquet_projection.py",
+      "sha256_final": "a8f58375a1b3a798216dd601b3b975cd1f3ca4ccf728ebbe0c390c17076f6df3",
+      "sha256_received": null,
+      "bytes": 5193
+    },
+    {
+      "path": "backend/tests/characterization/test_projected_frame_endpoints.py",
+      "sha256_final": "321f1b3c9caaabedc36fef2f324f2be35d7693eec514f60b5fd1447320e90894",
+      "sha256_received": null,
+      "bytes": 3151
+    },
+    {
+      "path": "docs/perf/bench/g03_projection.py",
+      "sha256_final": "f68885c2ccbceae6984012a5c2b426ffe96ae50175c81ae74336d00f8513b076",
+      "sha256_received": null,
+      "bytes": 11691
+    },
+    {
+      "path": "docs/perf/ejecucion/G03.md",
+      "sha256_final": "612f9055d8ae288f70db0533dc3b8829ab2c31dbe0d40bf90b9557c2f3c20988",
+      "sha256_received": null,
+      "bytes": 5942
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g03/API.md",
+      "sha256_final": "7606f9d2e63cb31bd0b159475413de016bfe48732bb4e903af311c391fba3907",
+      "sha256_received": null,
+      "bytes": 3862
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g03/matriz-endpoints.md",
+      "sha256_final": "83e67ecb9c73c59e2c719902e1ea617123dca4679b6e2420cb07a141345c6159",
+      "sha256_received": null,
+      "bytes": 4080
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g03/comandos.md",
+      "sha256_final": "99107c496b355744d3ee8a582b65b4191ba13a93b8c3c36fec335c00f0cbe26e",
+      "sha256_received": null,
+      "bytes": 3206
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g03/medidas.md",
+      "sha256_final": "236b95a1502fe5fa3505ff470a6a3d56f0e06ab0e2774784e1c1f0796f36f57b",
+      "sha256_received": null,
+      "bytes": 5543
+    }
+  ],
+  "generated_evidence_files": [
+    "API.md",
+    "base-vs-g00.json",
+    "benchmark-final.log",
+    "benchmark.log",
+    "comandos.md",
+    "encoding-documental.json",
+    "import-boundaries-final.log",
+    "import-boundaries.log",
+    "inventario-inicial.json",
+    "matriz-endpoints.json",
+    "matriz-endpoints.md",
+    "medidas-preliminares.json",
+    "medidas.json",
+    "medidas.md",
+    "own.patch",
+    "patch-reverse-check.log",
+    "preservacion.json",
+    "ruff-final.log",
+    "ruff-probe-final.log",
+    "ruff-probe.log",
+    "ruff.log",
+    "supported-env.log",
+    "supported-install.log",
+    "supported-pin.log",
+    "tests-eeg-processing-runtime.log",
+    "tests-eeg-processing-supported.log",
+    "tests-empty-index-runtime.log",
+    "tests-empty-index-supported.log",
+    "tests-final-runtime.log",
+    "tests-projection-repair.log",
+    "tests-runtime.log",
+    "tests-supported-final.log",
+    "tests-supported.log",
+    "verificacion.json",
+    "versions-runtime.json",
+    "versions-supported.json"
+  ],
+  "snapshot": "output/perf-g03/base",
+  "own_patch": "docs/perf/ejecucion/evidencia/g03/own.patch",
+  "patch_against": "received working tree; newline-normalized source diff; never HEAD",
+  "recovery": "restore only owned files from snapshot or reverse own.patch; delete only specifically enumerated new owned files/evidence, preserve all unrelated work",
+  "isolated_test_environment": "output/perf-g03/supported-env; no .venv mutations"
+}

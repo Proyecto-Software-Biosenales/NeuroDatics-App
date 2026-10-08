@@ -277,9 +277,10 @@ async def test_scanpath_route_requires_one_concrete_scenario():
 @pytest.mark.asyncio
 async def test_empty_aoi_response_still_exposes_transform_provenance(monkeypatch):
     project_id = uuid4()
+    current_user = str(uuid4())
 
     async def allow(*_args, **_kwargs):
-        return SimpleNamespace(id=project_id)
+        return SimpleNamespace(id=project_id, owner_id=current_user)
 
     async def resolve(*_args, **_kwargs):
         return SimpleNamespace(name="A", file_id=None, aois=[])
@@ -294,6 +295,11 @@ async def test_empty_aoi_response_still_exposes_transform_provenance(monkeypatch
     monkeypatch.setattr(routes, "_verify_ownership", allow)
     monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", resolve)
     monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+    monkeypatch.setattr(routes, "_redis", SimpleNamespace(
+        build_key=lambda *a, **kw: "synthetic-aoi-cache-key",
+        get_json=lambda *a: None,
+        set_json=lambda *a, **kw: None,
+    ))
 
     response = await routes.aoi_metrics(
         project_id,
@@ -301,7 +307,7 @@ async def test_empty_aoi_response_still_exposes_transform_provenance(monkeypatch
         scenario="A",
         db=object(),
         reader=routes.AnalyticsFrameReader(object()),
-        current_user=str(uuid4()),
+        current_user=current_user,
     )
 
     assert response.aois == []

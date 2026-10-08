@@ -1,0 +1,12 @@
+G11 completo y listo para revisión root.
+
+- Candidato geométrico descartado: mediana −1,80%, 12 regresiones, peor +19,29%; frames fríos y máscaras cambiantes empeoraron.
+- Producto restaurado byte a byte contra la base recibida.
+- Preservación: 1.067 archivos intactos; solo `ESTADO` y `CHANGELOG` cambiaron intencionalmente.
+- Equivalencia candidata: 20/20 pruebas.
+- `own.patch` generado; reverse-check readonly exit 0.
+- G07/G09/G10 marcados aprobados. G12 no iniciado.
+
+Entrega: [G11.md](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/G11.md)  
+Medidas: [measurement-summary.json](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g11/measurement-summary.json)  
+Manifiesto: [manifiesto-final.json](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g11/manifiesto-final.json)

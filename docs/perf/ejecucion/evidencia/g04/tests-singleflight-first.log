@@ -1,0 +1,142 @@
+.....F..                                                                 [100%]
+================================== FAILURES ===================================
+______ test_last_consumer_or_timeout_retains_physical_worker_slot[True] _______
+
+timeout = True
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("timeout", [False, True])
+    async def test_last_consumer_or_timeout_retains_physical_worker_slot(timeout):
+        flight = SingleFlight(max_running=1, max_queued=1, timeout=0.03 if timeout else 2)
+        started, release, finished = threading.Event(), threading.Event(), threading.Event()
+    
+        def worker():
+            started.set()
+            assert release.wait(2)
+            finished.set()
+    
+        owner = asyncio.create_task(flight.run("a", lambda: settled_thread(worker)))
+        await asyncio.to_thread(started.wait, 1)
+        queued = asyncio.create_task(flight.run("b", lambda: asyncio.sleep(0, result=8)))
+        await tick()
+        if timeout:
+            await asyncio.sleep(0.05)
+        else:
+            owner.cancel()
+            await tick()
+            owner.cancel()
+>       assert not finished.is_set() and not owner.done() and not queued.done()
+E       AssertionError: assert (not False and not False and not True)
+E        +  where False = <bound method Event.is_set of <threading.Event at 0x22007cfb450: unset>>()
+E        +    where <bound method Event.is_set of <threading.Event at 0x22007cfb450: unset>> = <threading.Event at 0x22007cfb450: unset>.is_set
+E        +  and   False = <built-in method done of _asyncio.Task object at 0x0000022007CD3E70>()
+E        +    where <built-in method done of _asyncio.Task object at 0x0000022007CD3E70> = <Task pending name='Task-35' coro=<SingleFlight.run() running at C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\N...b=[shield.<locals>._outer_done_callback() at C:\Program Files\Python314\Lib\asyncio\tasks.py:991, Task.task_wakeup()]>>.done
+E        +  and   True = <built-in method done of _asyncio.Task object at 0x0000022007DC4670>()
+E        +    where <built-in method done of _asyncio.Task object at 0x0000022007DC4670> = <Task finished name='Task-37' coro=<SingleFlight.run() done, defined at C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose...alytics\infrastructure\singleflight.py:83> exception=SingleFlightTimeout('Analytics operation timed out; retry later')>.done
+
+backend\tests\unit\test_analytics_singleflight.py:119: AssertionError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: 222 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj)
+
+tests/unit/test_analytics_singleflight.py::test_ten_identical_one_operation_and_distinct_keys_advance
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[False]
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[True]
+tests/unit/test_analytics_singleflight.py::test_error_and_timeout_allow_retry
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[False]
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[True]
+tests/unit/test_analytics_singleflight.py::test_consumer_budget_and_queued_cancellation
+tests/unit/test_analytics_singleflight.py::test_anyio_level_cancellation_drains_worker_without_busy_loop
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:564: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+
+tests/unit/test_analytics_singleflight.py::test_ten_identical_one_operation_and_distinct_keys_advance
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[False]
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[True]
+tests/unit/test_analytics_singleflight.py::test_error_and_timeout_allow_retry
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[False]
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[True]
+tests/unit/test_analytics_singleflight.py::test_consumer_budget_and_queued_cancellation
+tests/unit/test_analytics_singleflight.py::test_anyio_level_cancellation_drains_worker_without_busy_loop
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:395: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_analytics_singleflight.py::test_ten_identical_one_operation_and_distinct_keys_advance
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[False]
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[True]
+tests/unit/test_analytics_singleflight.py::test_error_and_timeout_allow_retry
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[False]
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[True]
+tests/unit/test_analytics_singleflight.py::test_consumer_budget_and_queued_cancellation
+tests/unit/test_analytics_singleflight.py::test_anyio_level_cancellation_drains_worker_without_busy_loop
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:441: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_analytics_singleflight.py::test_ten_identical_one_operation_and_distinct_keys_advance
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[False]
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[True]
+tests/unit/test_analytics_singleflight.py::test_error_and_timeout_allow_retry
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[False]
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[True]
+tests/unit/test_analytics_singleflight.py::test_consumer_budget_and_queued_cancellation
+tests/unit/test_analytics_singleflight.py::test_anyio_level_cancellation_drains_worker_without_busy_loop
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:462: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED backend\tests\unit\test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[True]
+1 failed, 7 passed, 254 warnings in 0.17s
+Task was destroyed but it is pending!
+task: <Task pending name='Task-36' coro=<run_sync() running at C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\anyio\to_thread.py:33> wait_for=<Future pending cb=[Task.task_wakeup()]> cb=[shield.<locals>._clear_awaited_by_callback() at C:\Program Files\Python314\Lib\asyncio\tasks.py:975, <2 more>, shield.<locals>._inner_done_callback() at C:\Program Files\Python314\Lib\asyncio\tasks.py:978]>
+Exception ignored while closing generator <coroutine object run_sync at 0x0000022007CFB840>:
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\anyio\to_thread.py", line 33, in run_sync
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 852, in run_sync_in_worker_thread
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1805, in __aexit__
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1882, in release
+RuntimeError: no running event loop
+Task was destroyed but it is pending!
+task: <Task cancelling name='analytics-singleflight' coro=<SingleFlight.run.<locals>.execute() running at C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py:113> wait_for=<Future pending cb=[shield.<locals>._outer_done_callback() at C:\Program Files\Python314\Lib\asyncio\tasks.py:991, Task.task_wakeup()]> cb=[shield.<locals>._clear_awaited_by_callback() at C:\Program Files\Python314\Lib\asyncio\tasks.py:975, shield.<locals>._inner_done_callback() at C:\Program Files\Python314\Lib\asyncio\tasks.py:978]>
+Exception ignored while closing generator <coroutine object SingleFlight.run.<locals>.execute at 0x0000022007D85250>:
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 113, in execute
+  File "C:\Program Files\Python314\Lib\asyncio\tasks.py", line 488, in wait_for
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 105, in operation
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 48, in settled_thread
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 31, in _drain
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 275, in __exit__
+RuntimeError: no running event loop
+Task was destroyed but it is pending!
+task: <Task pending name='Task-35' coro=<SingleFlight.run() running at C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py:142> wait_for=<Future pending cb=[shield.<locals>._outer_done_callback() at C:\Program Files\Python314\Lib\asyncio\tasks.py:991, Task.task_wakeup()]>>
+Exception ignored while closing generator <coroutine object SingleFlight.run at 0x0000022007C33BA0>:
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 151, in run
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 137, in leave
+  File "C:\Program Files\Python314\Lib\asyncio\base_events.py", line 827, in call_soon
+  File "C:\Program Files\Python314\Lib\asyncio\base_events.py", line 550, in _check_closed
+RuntimeError: Event loop is closed
+Task exception was never retrieved
+future: <Task finished name='Task-37' coro=<SingleFlight.run() done, defined at C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py:83> exception=SingleFlightTimeout('Analytics operation timed out; retry later')>
+Traceback (most recent call last):
+  File "C:\Program Files\Python314\Lib\asyncio\tasks.py", line 488, in wait_for
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 102, in operation
+  File "C:\Program Files\Python314\Lib\asyncio\locks.py", line 14, in __aenter__
+  File "C:\Program Files\Python314\Lib\asyncio\locks.py", line 407, in acquire
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 113, in execute
+  File "C:\Program Files\Python314\Lib\asyncio\tasks.py", line 487, in wait_for
+  File "C:\Program Files\Python314\Lib\asyncio\timeouts.py", line 114, in __aexit__
+TimeoutError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 142, in run
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\singleflight.py", line 115, in execute
+neurodatics.modules.analytics.infrastructure.singleflight.SingleFlightTimeout: Analytics operation timed out; retry later

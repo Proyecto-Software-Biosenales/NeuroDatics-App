@@ -113,7 +113,7 @@ async def test_gaze_at_route_uses_canonical_scenario_for_filter_and_cache(monkey
     scenario_file_id = uuid4()
 
     async def allow_ownership(*args, **kwargs):
-        return SimpleNamespace(id=PROJECT_ID)
+        return SimpleNamespace(id=PROJECT_ID, owner_id=CURRENT_USER)
 
     async def resolve_scenario(*args, **kwargs):
         return SimpleNamespace(
@@ -164,7 +164,7 @@ async def test_gaze_at_without_scenario_preserves_unscoped_cache_contract(monkey
     cache = FakeCache()
 
     async def allow_ownership(*args, **kwargs):
-        return SimpleNamespace(id=PROJECT_ID)
+        return SimpleNamespace(id=PROJECT_ID, owner_id=CURRENT_USER)
 
     async def should_not_resolve(*args, **kwargs):
         raise AssertionError("omitting scenario must preserve the standalone lookup")
@@ -218,7 +218,7 @@ async def test_gaze_at_without_scenario_resolves_stimulus_for_global_time(
     resolved_for = []
 
     async def allow_ownership(*args, **kwargs):
-        return SimpleNamespace(id=PROJECT_ID)
+        return SimpleNamespace(id=PROJECT_ID, owner_id=CURRENT_USER)
 
     async def resolve_derived_scenario(db, project_id, scenario, **kwargs):
         # The stimulus is looked up for the name the samples carry, never for a
@@ -286,7 +286,7 @@ async def test_gaze_at_without_scenario_resolves_stimulus_for_global_time(
 @pytest.mark.asyncio
 async def test_gaze_at_rejects_non_concrete_scenario(monkeypatch):
     async def allow_ownership(*args, **kwargs):
-        return SimpleNamespace(id=PROJECT_ID)
+        return SimpleNamespace(id=PROJECT_ID, owner_id=CURRENT_USER)
 
     monkeypatch.setattr(routes, "_verify_ownership", allow_ownership)
 

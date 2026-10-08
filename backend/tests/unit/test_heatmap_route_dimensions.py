@@ -75,7 +75,7 @@ def wired(monkeypatch):
     cache = FakeCache()
 
     async def allow(*args, **kwargs):
-        return SimpleNamespace(id=PROJECT_ID)
+        return SimpleNamespace(id=PROJECT_ID, owner_id=CURRENT_USER)
 
     monkeypatch.setattr(routes, "_verify_ownership", allow)
     monkeypatch.setattr(routes, "_redis", cache)

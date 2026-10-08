@@ -1,0 +1,52 @@
+........                                                                 [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: 222 warnings
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    return asyncio.iscoroutinefunction(obj)
+
+tests/unit/test_analytics_singleflight.py::test_ten_identical_one_operation_and_distinct_keys_advance
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[False]
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[True]
+tests/unit/test_analytics_singleflight.py::test_error_and_timeout_allow_retry
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[False]
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[True]
+tests/unit/test_analytics_singleflight.py::test_consumer_budget_and_queued_cancellation
+tests/unit/test_analytics_singleflight.py::test_anyio_level_cancellation_drains_worker_without_busy_loop
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:564: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+
+tests/unit/test_analytics_singleflight.py::test_ten_identical_one_operation_and_distinct_keys_advance
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[False]
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[True]
+tests/unit/test_analytics_singleflight.py::test_error_and_timeout_allow_retry
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[False]
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[True]
+tests/unit/test_analytics_singleflight.py::test_consumer_budget_and_queued_cancellation
+tests/unit/test_analytics_singleflight.py::test_anyio_level_cancellation_drains_worker_without_busy_loop
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:395: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_analytics_singleflight.py::test_ten_identical_one_operation_and_distinct_keys_advance
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[False]
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[True]
+tests/unit/test_analytics_singleflight.py::test_error_and_timeout_allow_retry
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[False]
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[True]
+tests/unit/test_analytics_singleflight.py::test_consumer_budget_and_queued_cancellation
+tests/unit/test_analytics_singleflight.py::test_anyio_level_cancellation_drains_worker_without_busy_loop
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:441: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+tests/unit/test_analytics_singleflight.py::test_ten_identical_one_operation_and_distinct_keys_advance
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[False]
+tests/unit/test_analytics_singleflight.py::test_cancel_one_consumer_keeps_survivor_and_owner_lease[True]
+tests/unit/test_analytics_singleflight.py::test_error_and_timeout_allow_retry
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[False]
+tests/unit/test_analytics_singleflight.py::test_last_consumer_or_timeout_retains_physical_worker_slot[True]
+tests/unit/test_analytics_singleflight.py::test_consumer_budget_and_queued_cancellation
+tests/unit/test_analytics_singleflight.py::test_anyio_level_cancellation_drains_worker_without_busy_loop
+  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:462: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    policy = asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+8 passed, 254 warnings in 0.12s

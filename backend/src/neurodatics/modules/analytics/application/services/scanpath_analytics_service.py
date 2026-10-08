@@ -3,9 +3,9 @@
 from typing import Optional
 import numpy as np
 import pandas as pd
-from ...domain.coordinate_transform import APPLIED_STATUS, displayed_stimulus_size
+from ...domain.coordinate_transform import APPLIED_STATUS
 from .numeric_helpers import scope_to_scenario as scope_to_scenario
-from .fixation_analytics_service import FixationEventService as FixationEventService
+from .fixation_analytics_service import FixationEventResult, FixationEventService
 
 
 class ScanpathAnalyticsService:
@@ -188,12 +188,17 @@ class ScanpathAnalyticsService:
         - total_duration_s: float (summed valid fixation dwell)
         - radius_scale: absolute area-encoding metadata
         """
-        events, metadata = FixationEventService.build_events(
+        result = FixationEventService.build_result(
             df,
             scenario=scenario,
             proximity_threshold=proximity_threshold,
             min_fixation_duration_ms=min_fixation_duration_ms,
         )
+        return cls.compute_scanpath_from_events(result)
+
+    @classmethod
+    def compute_scanpath_from_events(cls, result: FixationEventResult) -> dict:
+        events, metadata = result.events, result.metadata
         _empty = {
             "objectives": [],
             "n_objectives": 0,
@@ -227,8 +232,7 @@ class ScanpathAnalyticsService:
                 "n_points": int(event["detector_sample_count"]),
             })
 
-        scoped = scope_to_scenario(df, scenario)
-        display_size = displayed_stimulus_size(scoped)
+        display_size = result.display_size
         transform = metadata.get("coordinate_transform") or {}
         if display_size is not None:
             distance_width, distance_height = display_size

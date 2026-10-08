@@ -1,0 +1,2750 @@
+........................................................................ [  6%]
+........................................................................ [ 12%]
+........................................................................ [ 18%]
+........................................................................ [ 24%]
+.....................F.FFF.............................................. [ 30%]
+........................................................................ [ 36%]
+........................................................................ [ 42%]
+........................................................................ [ 48%]
+...............................FFF...................................... [ 54%]
+................FFFFF...................FFFFFFF......................... [ 60%]
+........................................................................ [ 66%]
+........................................................................ [ 73%]
+........................................................................ [ 79%]
+.....................................F.................................. [ 85%]
+........................................................................ [ 91%]
+........................................................................ [ 97%]
+...............................                                          [100%]
+================================== FAILURES ===================================
+_ test_correlations_uses_canonical_scenario_and_writes_versioned_15_minute_cache _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB545C050>
+
+    @pytest.mark.asyncio
+    async def test_correlations_uses_canonical_scenario_and_writes_versioned_15_minute_cache(
+        monkeypatch,
+    ):
+        cache = FakeCache()
+    
+        class Reader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None):
+                return _partial_df()
+    
+        monkeypatch.setattr(routes, "_verify_ownership", _allow_ownership)
+        monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", _canonical_scenario)
+        monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+        monkeypatch.setattr(routes, "_redis", cache)
+    
+>       response = await routes.correlations(
+            PROJECT_ID,
+            participant_code="P-01",
+            scenario="scenario canonical",
+            db=object(),
+            reader=routes.AnalyticsFrameReader(object()),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_correlation_analytics_routes.py:228: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\neurodatics\modules\analytics\api\routes.py:496: in correlations
+    return await cached_frame_endpoint(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def cached_frame_endpoint(
+        *,
+        reader: AnalyticsFrameReader,
+        project: Project,
+        participant_code: str,
+        scenario: str,
+        endpoint: str | Callable[[str], str],
+        compute: Callable[[pd.DataFrame], dict],
+        response_model: type[ResponseModel],
+        ttl: Optional[int] = None,
+        computation_error_status: Optional[int] = None,
+        enrich: Optional[Callable[[dict], Awaitable[dict]]] = None,
+        cached_fields: Optional[dict] = None,
+        projection: Optional[ParquetProjection] = None,
+    ) -> ResponseModel:
+        """Resolve provenance, check Redis, then read/compute only on a miss.
+    
+        A callable endpoint requests a transform token. Legacy rows may need one
+        read to discover that token; its frame is reused on a response-cache miss.
+        Read failures and computation failures intentionally have separate scopes.
+        """
+        generation = _cache_generation(project)
+        df = None
+        if callable(endpoint):
+            token, df = await _resolve_transform_token(
+                reader.db, project, participant_code, generation, reader=reader,
+            )
+            endpoint = endpoint(token)
+        cache_key = _redis.build_key(
+            project.id, participant_code, endpoint, scenario, generation=generation,
+        )
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return response_model(**{**cached, **(cached_fields or {})})
+        async def calculate():
+            # Redis may have been filled since initial lookup/admission.
+            existing = await settled_thread(lambda: _redis.get_json(cache_key))
+            if existing:
+                return {**existing, **(cached_fields or {})}
+            frame = df
+            if frame is None:
+                frame = await reader.read(project.id, participant_code, generation, projection=projection)
+            try:
+                response_data = await settled_thread(lambda: compute(frame))
+            except ValueError as exc:
+                if computation_error_status is None:
+                    raise
+                raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
+            if enrich is not None:
+                response_data = await enrich(response_data)
+            await settled_thread(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
+            return response_data
+    
+        # Authorized project comes from each caller's ownership query. Include
+        # owner and projection even when HTTP output/Redis identity is equivalent.
+>       key = (str(project.owner_id), cache_key, projection, response_model)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:322: AttributeError
+__________ test_correlations_maps_parquet_errors[reader_error0-404] ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB4FA8D00>
+reader_error = ValueError('participant missing'), expected_status = 404
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("reader_error", "expected_status"),
+        [
+            (ValueError("participant missing"), 404),
+            (FileNotFoundError("parquet missing"), 404),
+            (RuntimeError("drive unavailable"), 503),
+        ],
+    )
+    async def test_correlations_maps_parquet_errors(
+        monkeypatch, reader_error, expected_status
+    ):
+        class Reader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None):
+                raise reader_error
+    
+        monkeypatch.setattr(routes, "_verify_ownership", _allow_ownership)
+        monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", _canonical_scenario)
+        monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+        monkeypatch.setattr(routes, "_redis", FakeCache())
+    
+        with pytest.raises(HTTPException) as exc_info:
+>           await routes.correlations(
+                PROJECT_ID,
+                participant_code="P-01",
+                scenario="Scenario canonical",
+                db=object(),
+                reader=routes.AnalyticsFrameReader(object()),
+                current_user=CURRENT_USER,
+            )
+
+tests\unit\test_correlation_analytics_routes.py:303: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\neurodatics\modules\analytics\api\routes.py:496: in correlations
+    return await cached_frame_endpoint(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def cached_frame_endpoint(
+        *,
+        reader: AnalyticsFrameReader,
+        project: Project,
+        participant_code: str,
+        scenario: str,
+        endpoint: str | Callable[[str], str],
+        compute: Callable[[pd.DataFrame], dict],
+        response_model: type[ResponseModel],
+        ttl: Optional[int] = None,
+        computation_error_status: Optional[int] = None,
+        enrich: Optional[Callable[[dict], Awaitable[dict]]] = None,
+        cached_fields: Optional[dict] = None,
+        projection: Optional[ParquetProjection] = None,
+    ) -> ResponseModel:
+        """Resolve provenance, check Redis, then read/compute only on a miss.
+    
+        A callable endpoint requests a transform token. Legacy rows may need one
+        read to discover that token; its frame is reused on a response-cache miss.
+        Read failures and computation failures intentionally have separate scopes.
+        """
+        generation = _cache_generation(project)
+        df = None
+        if callable(endpoint):
+            token, df = await _resolve_transform_token(
+                reader.db, project, participant_code, generation, reader=reader,
+            )
+            endpoint = endpoint(token)
+        cache_key = _redis.build_key(
+            project.id, participant_code, endpoint, scenario, generation=generation,
+        )
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return response_model(**{**cached, **(cached_fields or {})})
+        async def calculate():
+            # Redis may have been filled since initial lookup/admission.
+            existing = await settled_thread(lambda: _redis.get_json(cache_key))
+            if existing:
+                return {**existing, **(cached_fields or {})}
+            frame = df
+            if frame is None:
+                frame = await reader.read(project.id, participant_code, generation, projection=projection)
+            try:
+                response_data = await settled_thread(lambda: compute(frame))
+            except ValueError as exc:
+                if computation_error_status is None:
+                    raise
+                raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
+            if enrich is not None:
+                response_data = await enrich(response_data)
+            await settled_thread(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
+            return response_data
+    
+        # Authorized project comes from each caller's ownership query. Include
+        # owner and projection even when HTTP output/Redis identity is equivalent.
+>       key = (str(project.owner_id), cache_key, projection, response_model)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:322: AttributeError
+__________ test_correlations_maps_parquet_errors[reader_error1-404] ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB4F0A2E0>
+reader_error = FileNotFoundError('parquet missing'), expected_status = 404
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("reader_error", "expected_status"),
+        [
+            (ValueError("participant missing"), 404),
+            (FileNotFoundError("parquet missing"), 404),
+            (RuntimeError("drive unavailable"), 503),
+        ],
+    )
+    async def test_correlations_maps_parquet_errors(
+        monkeypatch, reader_error, expected_status
+    ):
+        class Reader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None):
+                raise reader_error
+    
+        monkeypatch.setattr(routes, "_verify_ownership", _allow_ownership)
+        monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", _canonical_scenario)
+        monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+        monkeypatch.setattr(routes, "_redis", FakeCache())
+    
+        with pytest.raises(HTTPException) as exc_info:
+>           await routes.correlations(
+                PROJECT_ID,
+                participant_code="P-01",
+                scenario="Scenario canonical",
+                db=object(),
+                reader=routes.AnalyticsFrameReader(object()),
+                current_user=CURRENT_USER,
+            )
+
+tests\unit\test_correlation_analytics_routes.py:303: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\neurodatics\modules\analytics\api\routes.py:496: in correlations
+    return await cached_frame_endpoint(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def cached_frame_endpoint(
+        *,
+        reader: AnalyticsFrameReader,
+        project: Project,
+        participant_code: str,
+        scenario: str,
+        endpoint: str | Callable[[str], str],
+        compute: Callable[[pd.DataFrame], dict],
+        response_model: type[ResponseModel],
+        ttl: Optional[int] = None,
+        computation_error_status: Optional[int] = None,
+        enrich: Optional[Callable[[dict], Awaitable[dict]]] = None,
+        cached_fields: Optional[dict] = None,
+        projection: Optional[ParquetProjection] = None,
+    ) -> ResponseModel:
+        """Resolve provenance, check Redis, then read/compute only on a miss.
+    
+        A callable endpoint requests a transform token. Legacy rows may need one
+        read to discover that token; its frame is reused on a response-cache miss.
+        Read failures and computation failures intentionally have separate scopes.
+        """
+        generation = _cache_generation(project)
+        df = None
+        if callable(endpoint):
+            token, df = await _resolve_transform_token(
+                reader.db, project, participant_code, generation, reader=reader,
+            )
+            endpoint = endpoint(token)
+        cache_key = _redis.build_key(
+            project.id, participant_code, endpoint, scenario, generation=generation,
+        )
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return response_model(**{**cached, **(cached_fields or {})})
+        async def calculate():
+            # Redis may have been filled since initial lookup/admission.
+            existing = await settled_thread(lambda: _redis.get_json(cache_key))
+            if existing:
+                return {**existing, **(cached_fields or {})}
+            frame = df
+            if frame is None:
+                frame = await reader.read(project.id, participant_code, generation, projection=projection)
+            try:
+                response_data = await settled_thread(lambda: compute(frame))
+            except ValueError as exc:
+                if computation_error_status is None:
+                    raise
+                raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
+            if enrich is not None:
+                response_data = await enrich(response_data)
+            await settled_thread(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
+            return response_data
+    
+        # Authorized project comes from each caller's ownership query. Include
+        # owner and projection even when HTTP output/Redis identity is equivalent.
+>       key = (str(project.owner_id), cache_key, projection, response_model)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:322: AttributeError
+__________ test_correlations_maps_parquet_errors[reader_error2-503] ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB4F08A60>
+reader_error = RuntimeError('drive unavailable'), expected_status = 503
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("reader_error", "expected_status"),
+        [
+            (ValueError("participant missing"), 404),
+            (FileNotFoundError("parquet missing"), 404),
+            (RuntimeError("drive unavailable"), 503),
+        ],
+    )
+    async def test_correlations_maps_parquet_errors(
+        monkeypatch, reader_error, expected_status
+    ):
+        class Reader:
+            def __init__(self, db):
+                pass
+    
+            async def read(self, project_id, participant_code, generation=None):
+                raise reader_error
+    
+        monkeypatch.setattr(routes, "_verify_ownership", _allow_ownership)
+        monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", _canonical_scenario)
+        monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+        monkeypatch.setattr(routes, "_redis", FakeCache())
+    
+        with pytest.raises(HTTPException) as exc_info:
+>           await routes.correlations(
+                PROJECT_ID,
+                participant_code="P-01",
+                scenario="Scenario canonical",
+                db=object(),
+                reader=routes.AnalyticsFrameReader(object()),
+                current_user=CURRENT_USER,
+            )
+
+tests\unit\test_correlation_analytics_routes.py:303: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\neurodatics\modules\analytics\api\routes.py:496: in correlations
+    return await cached_frame_endpoint(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def cached_frame_endpoint(
+        *,
+        reader: AnalyticsFrameReader,
+        project: Project,
+        participant_code: str,
+        scenario: str,
+        endpoint: str | Callable[[str], str],
+        compute: Callable[[pd.DataFrame], dict],
+        response_model: type[ResponseModel],
+        ttl: Optional[int] = None,
+        computation_error_status: Optional[int] = None,
+        enrich: Optional[Callable[[dict], Awaitable[dict]]] = None,
+        cached_fields: Optional[dict] = None,
+        projection: Optional[ParquetProjection] = None,
+    ) -> ResponseModel:
+        """Resolve provenance, check Redis, then read/compute only on a miss.
+    
+        A callable endpoint requests a transform token. Legacy rows may need one
+        read to discover that token; its frame is reused on a response-cache miss.
+        Read failures and computation failures intentionally have separate scopes.
+        """
+        generation = _cache_generation(project)
+        df = None
+        if callable(endpoint):
+            token, df = await _resolve_transform_token(
+                reader.db, project, participant_code, generation, reader=reader,
+            )
+            endpoint = endpoint(token)
+        cache_key = _redis.build_key(
+            project.id, participant_code, endpoint, scenario, generation=generation,
+        )
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return response_model(**{**cached, **(cached_fields or {})})
+        async def calculate():
+            # Redis may have been filled since initial lookup/admission.
+            existing = await settled_thread(lambda: _redis.get_json(cache_key))
+            if existing:
+                return {**existing, **(cached_fields or {})}
+            frame = df
+            if frame is None:
+                frame = await reader.read(project.id, participant_code, generation, projection=projection)
+            try:
+                response_data = await settled_thread(lambda: compute(frame))
+            except ValueError as exc:
+                if computation_error_status is None:
+                    raise
+                raise HTTPException(status_code=computation_error_status, detail=str(exc)) from exc
+            if enrich is not None:
+                response_data = await enrich(response_data)
+            await settled_thread(lambda: _redis.set_json(cache_key, response_data, ttl=ttl))
+            return response_data
+    
+        # Authorized project comes from each caller's ownership query. Include
+        # owner and projection even when HTTP output/Redis identity is equivalent.
+>       key = (str(project.owner_id), cache_key, projection, response_model)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:322: AttributeError
+_______ test_gaze_at_route_uses_canonical_scenario_for_filter_and_cache _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EABE28C830>
+
+    @pytest.mark.asyncio
+    async def test_gaze_at_route_uses_canonical_scenario_for_filter_and_cache(monkeypatch):
+        cache = FakeCache()
+        scenario_file_id = uuid4()
+    
+        async def allow_ownership(*args, **kwargs):
+            return SimpleNamespace(id=PROJECT_ID)
+    
+        async def resolve_scenario(*args, **kwargs):
+            return SimpleNamespace(
+                name="Scenario B",
+                type="video",
+                file_id=scenario_file_id,
+            )
+    
+        class Reader:
+            def __init__(self, db):
+                pass
+    
+            async def read_from_cache_only(self, project_id, participant_code, generation=None):
+                return _overlapping_time_df()
+    
+        monkeypatch.setattr(routes, "_verify_ownership", allow_ownership)
+        monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", resolve_scenario)
+        monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+        monkeypatch.setattr(routes, "_redis", cache)
+    
+>       response = await routes.gaze_at(
+            PROJECT_ID,
+            participant_code="P-01",
+            t_s=0.5,
+            scenario="scenario-b",
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_gaze_at_scenario.py:137: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+project_id = UUID('b658aef9-47aa-48ee-b0d3-1f0aa3894080')
+participant_code = 'P-01', t_s = 0.5, scenario = 'scenario-b'
+db = <object object at 0x000001EABE224D40>
+current_user = '1085f50c-c897-4f0c-8d95-09f852299e69'
+
+    @router.get("/gaze-at", response_model=GazeAtResponse)
+    async def gaze_at(
+        project_id: UUID,
+        participant_code: str = Query(...),
+        t_s: float = Query(...),
+        scenario: Optional[str] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        project = await _verify_ownership(db, project_id, current_user)
+        generation = _cache_generation(project)
+    
+        requested_scenary = None
+        canonical_scenario = None
+        if scenario is not None:
+            requested_scenario = scenario.strip()
+            if is_all_scenarios(requested_scenario):
+                raise HTTPException(
+                    status_code=400,
+                    detail="gaze-at requires a concrete scenario when scenario is provided",
+                )
+            requested_scenary = await _resolve_scenary_for_analytics(
+                db,
+                project_id,
+                requested_scenario,
+            )
+            if requested_scenary is None:
+                raise HTTPException(status_code=404, detail="Scenario not found")
+            canonical_scenario = str(requested_scenary.name).strip()
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, generation, cache_only=True,
+        )
+        rounded_t = round(t_s, 4)
+        if canonical_scenario is None:
+            cache_key = _redis.build_key(
+                project_id,
+                participant_code,
+                f"gaze_at_v5:stimulus-v1:{transform_token}",
+                str(rounded_t),
+                generation=generation,
+            )
+        else:
+            cache_key = _redis.build_key(
+                project_id,
+                participant_code,
+                f"gaze_at_v5:stimulus-v1:{transform_token}:{rounded_t}",
+                canonical_scenario,
+                generation=generation,
+            )
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return GazeAtResponse(**cached)
+    
+        async def calculate():
+            cached = await settled_thread(lambda: _redis.get_json(cache_key))
+            if cached:
+                return cached
+            frame = df
+            scenary_request = requested_scenary
+            if frame is None:
+                reader = ParquetReaderService(db)
+                frame = await reader.read_from_cache_only(
+                    project_id,
+                    participant_code,
+                    generation=generation,
+                )
+    
+                if frame is None:
+                    try:
+                        frame = await reader.read(project_id, participant_code, generation=generation)
+                    except (ValueError, FileNotFoundError) as exc:
+                        raise HTTPException(status_code=404, detail=str(exc)) from exc
+                    except RuntimeError as exc:
+                        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            gaze_data = await settled_thread(
+                lambda: PupilAnalyticsService.find_gaze_at(
+                    frame,
+                    t_s,
+                    scenario=canonical_scenario,
+                )
+            )
+    
+            if requested_scenary is not None and gaze_data.get("scenario") is not None:
+                gaze_data["scenario"] = canonical_scenario
+    
+            scenario_name = gaze_data.get("scenario")
+            scenario_file_id = None
+            scenario_type = None
+            scenary = scenary_request
+            if scenario_name:
+                # An unscoped lookup reports whichever scenario the nearest sample
+                # belongs to, spelled the way the Parquet spells it; the stimulus it
+                # refers to still has to be found among the project's scenarios.
+                if scenary is None:
+                    scenary = await _resolve_scenary_for_analytics(db, project_id, scenario_name)
+    
+                if scenary:
+                    scenario_type = scenary.type
+                    if scenary.file_id:
+                        scenario_file_id = str(scenary.file_id)
+                else:
+                    logger.warning(
+                        "No scenario found for name=%r in project_id=%s",
+                        scenario_name,
+                        project_id,
+                    )
+    
+            scenario_time_s = await settled_thread(
+                lambda: PupilAnalyticsService.compute_scenario_relative_time(
+                    frame,
+                    scenario_name,
+                    gaze_data.get("nearest_time_s"),
+                )
+            )
+    
+            response_data = {
+                **gaze_data,
+                "scenario_file_id": scenario_file_id,
+                "scenario_type": scenario_type,
+                "scenario_time_s": scenario_time_s,
+            }
+    
+            await settled_thread(lambda: _redis.set_json(cache_key, response_data))
+            return response_data
+        return await _shared_model_response(
+>           (str(project.owner_id), cache_key, None, GazeAtResponse), calculate, GazeAtResponse,
+        )
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:743: AttributeError
+_______ test_gaze_at_without_scenario_preserves_unscoped_cache_contract _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EABE941390>
+
+    @pytest.mark.asyncio
+    async def test_gaze_at_without_scenario_preserves_unscoped_cache_contract(monkeypatch):
+        cache = FakeCache()
+    
+        async def allow_ownership(*args, **kwargs):
+            return SimpleNamespace(id=PROJECT_ID)
+    
+        async def should_not_resolve(*args, **kwargs):
+            raise AssertionError("omitting scenario must preserve the standalone lookup")
+    
+        class Reader:
+            def __init__(self, db):
+                pass
+    
+            async def read_from_cache_only(self, project_id, participant_code, generation=None):
+                return pd.DataFrame({"time": [0.5], "gx": [25.0], "gy": [75.0]})
+    
+        monkeypatch.setattr(routes, "_verify_ownership", allow_ownership)
+        monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", should_not_resolve)
+        monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+        monkeypatch.setattr(routes, "_redis", cache)
+    
+>       response = await routes.gaze_at(
+            PROJECT_ID,
+            participant_code="P-01",
+            t_s=0.5,
+            scenario=None,
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_gaze_at_scenario.py:184: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+project_id = UUID('b658aef9-47aa-48ee-b0d3-1f0aa3894080')
+participant_code = 'P-01', t_s = 0.5, scenario = None
+db = <object object at 0x000001EABA090360>
+current_user = '1085f50c-c897-4f0c-8d95-09f852299e69'
+
+    @router.get("/gaze-at", response_model=GazeAtResponse)
+    async def gaze_at(
+        project_id: UUID,
+        participant_code: str = Query(...),
+        t_s: float = Query(...),
+        scenario: Optional[str] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        project = await _verify_ownership(db, project_id, current_user)
+        generation = _cache_generation(project)
+    
+        requested_scenary = None
+        canonical_scenario = None
+        if scenario is not None:
+            requested_scenario = scenario.strip()
+            if is_all_scenarios(requested_scenario):
+                raise HTTPException(
+                    status_code=400,
+                    detail="gaze-at requires a concrete scenario when scenario is provided",
+                )
+            requested_scenary = await _resolve_scenary_for_analytics(
+                db,
+                project_id,
+                requested_scenario,
+            )
+            if requested_scenary is None:
+                raise HTTPException(status_code=404, detail="Scenario not found")
+            canonical_scenario = str(requested_scenary.name).strip()
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, generation, cache_only=True,
+        )
+        rounded_t = round(t_s, 4)
+        if canonical_scenario is None:
+            cache_key = _redis.build_key(
+                project_id,
+                participant_code,
+                f"gaze_at_v5:stimulus-v1:{transform_token}",
+                str(rounded_t),
+                generation=generation,
+            )
+        else:
+            cache_key = _redis.build_key(
+                project_id,
+                participant_code,
+                f"gaze_at_v5:stimulus-v1:{transform_token}:{rounded_t}",
+                canonical_scenario,
+                generation=generation,
+            )
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return GazeAtResponse(**cached)
+    
+        async def calculate():
+            cached = await settled_thread(lambda: _redis.get_json(cache_key))
+            if cached:
+                return cached
+            frame = df
+            scenary_request = requested_scenary
+            if frame is None:
+                reader = ParquetReaderService(db)
+                frame = await reader.read_from_cache_only(
+                    project_id,
+                    participant_code,
+                    generation=generation,
+                )
+    
+                if frame is None:
+                    try:
+                        frame = await reader.read(project_id, participant_code, generation=generation)
+                    except (ValueError, FileNotFoundError) as exc:
+                        raise HTTPException(status_code=404, detail=str(exc)) from exc
+                    except RuntimeError as exc:
+                        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            gaze_data = await settled_thread(
+                lambda: PupilAnalyticsService.find_gaze_at(
+                    frame,
+                    t_s,
+                    scenario=canonical_scenario,
+                )
+            )
+    
+            if requested_scenary is not None and gaze_data.get("scenario") is not None:
+                gaze_data["scenario"] = canonical_scenario
+    
+            scenario_name = gaze_data.get("scenario")
+            scenario_file_id = None
+            scenario_type = None
+            scenary = scenary_request
+            if scenario_name:
+                # An unscoped lookup reports whichever scenario the nearest sample
+                # belongs to, spelled the way the Parquet spells it; the stimulus it
+                # refers to still has to be found among the project's scenarios.
+                if scenary is None:
+                    scenary = await _resolve_scenary_for_analytics(db, project_id, scenario_name)
+    
+                if scenary:
+                    scenario_type = scenary.type
+                    if scenary.file_id:
+                        scenario_file_id = str(scenary.file_id)
+                else:
+                    logger.warning(
+                        "No scenario found for name=%r in project_id=%s",
+                        scenario_name,
+                        project_id,
+                    )
+    
+            scenario_time_s = await settled_thread(
+                lambda: PupilAnalyticsService.compute_scenario_relative_time(
+                    frame,
+                    scenario_name,
+                    gaze_data.get("nearest_time_s"),
+                )
+            )
+    
+            response_data = {
+                **gaze_data,
+                "scenario_file_id": scenario_file_id,
+                "scenario_type": scenario_type,
+                "scenario_time_s": scenario_time_s,
+            }
+    
+            await settled_thread(lambda: _redis.set_json(cache_key, response_data))
+            return response_data
+        return await _shared_model_response(
+>           (str(project.owner_id), cache_key, None, GazeAtResponse), calculate, GazeAtResponse,
+        )
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:743: AttributeError
+_______ test_gaze_at_without_scenario_resolves_stimulus_for_global_time _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EABE9424A0>
+
+    @pytest.mark.asyncio
+    async def test_gaze_at_without_scenario_resolves_stimulus_for_global_time(
+        monkeypatch,
+    ):
+        cache = FakeCache()
+        scenario_file_id = uuid4()
+        scenary = SimpleNamespace(
+            name="Scenario B",
+            type="video",
+            file_id=scenario_file_id,
+        )
+    
+        resolved_for = []
+    
+        async def allow_ownership(*args, **kwargs):
+            return SimpleNamespace(id=PROJECT_ID)
+    
+        async def resolve_derived_scenario(db, project_id, scenario, **kwargs):
+            # The stimulus is looked up for the name the samples carry, never for a
+            # scope the caller did not ask for.
+            resolved_for.append(scenario)
+            return scenary
+    
+        class Reader:
+            def __init__(self, db):
+                pass
+    
+            async def read_from_cache_only(self, project_id, participant_code, generation=None):
+                return pd.DataFrame(
+                    {
+                        "time": [3.0, 20.0, 25.0],
+                        "scenario": ["Scenario A", "Scenario B", "Scenario B"],
+                        "gx": [10.0, 82.0, 82.0],
+                        "gy": [20.0, 62.0, 62.0],
+                    }
+                )
+    
+        monkeypatch.setattr(routes, "_verify_ownership", allow_ownership)
+        monkeypatch.setattr(
+            routes,
+            "_resolve_scenary_for_analytics",
+            resolve_derived_scenario,
+        )
+        monkeypatch.setattr(routes, "ParquetReaderService", Reader)
+        monkeypatch.setattr(routes, "_redis", cache)
+    
+>       response = await routes.gaze_at(
+            PROJECT_ID,
+            participant_code="P-01",
+            t_s=24.9001,
+            scenario=None,
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_gaze_at_scenario.py:252: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+project_id = UUID('b658aef9-47aa-48ee-b0d3-1f0aa3894080')
+participant_code = 'P-01', t_s = 24.9001, scenario = None
+db = <object object at 0x000001EABE225920>
+current_user = '1085f50c-c897-4f0c-8d95-09f852299e69'
+
+    @router.get("/gaze-at", response_model=GazeAtResponse)
+    async def gaze_at(
+        project_id: UUID,
+        participant_code: str = Query(...),
+        t_s: float = Query(...),
+        scenario: Optional[str] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        project = await _verify_ownership(db, project_id, current_user)
+        generation = _cache_generation(project)
+    
+        requested_scenary = None
+        canonical_scenario = None
+        if scenario is not None:
+            requested_scenario = scenario.strip()
+            if is_all_scenarios(requested_scenario):
+                raise HTTPException(
+                    status_code=400,
+                    detail="gaze-at requires a concrete scenario when scenario is provided",
+                )
+            requested_scenary = await _resolve_scenary_for_analytics(
+                db,
+                project_id,
+                requested_scenario,
+            )
+            if requested_scenary is None:
+                raise HTTPException(status_code=404, detail="Scenario not found")
+            canonical_scenario = str(requested_scenary.name).strip()
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, generation, cache_only=True,
+        )
+        rounded_t = round(t_s, 4)
+        if canonical_scenario is None:
+            cache_key = _redis.build_key(
+                project_id,
+                participant_code,
+                f"gaze_at_v5:stimulus-v1:{transform_token}",
+                str(rounded_t),
+                generation=generation,
+            )
+        else:
+            cache_key = _redis.build_key(
+                project_id,
+                participant_code,
+                f"gaze_at_v5:stimulus-v1:{transform_token}:{rounded_t}",
+                canonical_scenario,
+                generation=generation,
+            )
+        cached = await settled_thread(lambda: _redis.get_json(cache_key))
+        if cached:
+            return GazeAtResponse(**cached)
+    
+        async def calculate():
+            cached = await settled_thread(lambda: _redis.get_json(cache_key))
+            if cached:
+                return cached
+            frame = df
+            scenary_request = requested_scenary
+            if frame is None:
+                reader = ParquetReaderService(db)
+                frame = await reader.read_from_cache_only(
+                    project_id,
+                    participant_code,
+                    generation=generation,
+                )
+    
+                if frame is None:
+                    try:
+                        frame = await reader.read(project_id, participant_code, generation=generation)
+                    except (ValueError, FileNotFoundError) as exc:
+                        raise HTTPException(status_code=404, detail=str(exc)) from exc
+                    except RuntimeError as exc:
+                        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            gaze_data = await settled_thread(
+                lambda: PupilAnalyticsService.find_gaze_at(
+                    frame,
+                    t_s,
+                    scenario=canonical_scenario,
+                )
+            )
+    
+            if requested_scenary is not None and gaze_data.get("scenario") is not None:
+                gaze_data["scenario"] = canonical_scenario
+    
+            scenario_name = gaze_data.get("scenario")
+            scenario_file_id = None
+            scenario_type = None
+            scenary = scenary_request
+            if scenario_name:
+                # An unscoped lookup reports whichever scenario the nearest sample
+                # belongs to, spelled the way the Parquet spells it; the stimulus it
+                # refers to still has to be found among the project's scenarios.
+                if scenary is None:
+                    scenary = await _resolve_scenary_for_analytics(db, project_id, scenario_name)
+    
+                if scenary:
+                    scenario_type = scenary.type
+                    if scenary.file_id:
+                        scenario_file_id = str(scenary.file_id)
+                else:
+                    logger.warning(
+                        "No scenario found for name=%r in project_id=%s",
+                        scenario_name,
+                        project_id,
+                    )
+    
+            scenario_time_s = await settled_thread(
+                lambda: PupilAnalyticsService.compute_scenario_relative_time(
+                    frame,
+                    scenario_name,
+                    gaze_data.get("nearest_time_s"),
+                )
+            )
+    
+            response_data = {
+                **gaze_data,
+                "scenario_file_id": scenario_file_id,
+                "scenario_type": scenario_type,
+                "scenario_time_s": scenario_time_s,
+            }
+    
+            await settled_thread(lambda: _redis.set_json(cache_key, response_data))
+            return response_data
+        return await _shared_model_response(
+>           (str(project.owner_id), cache_key, None, GazeAtResponse), calculate, GazeAtResponse,
+        )
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:743: AttributeError
+_____________ test_the_overlay_is_never_stored_by_a_shared_cache ______________
+
+wired = namespace(cache=<test_heatmap_cache_headers.FakeRedis object at 0x000001EAB5602BA0>, generation=5)
+
+    @pytest.mark.asyncio
+    async def test_the_overlay_is_never_stored_by_a_shared_cache(wired):
+>       response = await _overlay(_request())
+
+tests\unit\test_heatmap_cache_headers.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\unit\test_heatmap_cache_headers.py:100: in _overlay
+    return await routes.heatmap_overlay(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('2f8e120e-b9e2-43ce-a4ec-f78a35d553a3')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = None
+db = <object object at 0x000001EABA090690>
+current_user = '8eba5398-8576-4d34-bcec-ec0766d5eefb'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+_____________ test_a_matching_etag_is_answered_with_an_empty_304 ______________
+
+wired = namespace(cache=<test_heatmap_cache_headers.FakeRedis object at 0x000001EAB5616210>, generation=5)
+
+    @pytest.mark.asyncio
+    async def test_a_matching_etag_is_answered_with_an_empty_304(wired):
+>       etag = (await _overlay(_request())).headers["etag"]
+
+tests\unit\test_heatmap_cache_headers.py:124: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\unit\test_heatmap_cache_headers.py:100: in _overlay
+    return await routes.heatmap_overlay(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('2f8e120e-b9e2-43ce-a4ec-f78a35d553a3')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = None
+db = <object object at 0x000001EAAF7EB3C0>
+current_user = '8eba5398-8576-4d34-bcec-ec0766d5eefb'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+__________ test_a_re_ingested_project_invalidates_the_client_s_etag ___________
+
+wired = namespace(cache=<test_heatmap_cache_headers.FakeRedis object at 0x000001EAB5615F90>, generation=5)
+
+    @pytest.mark.asyncio
+    async def test_a_re_ingested_project_invalidates_the_client_s_etag(wired):
+>       stale_etag = (await _overlay(_request())).headers["etag"]
+
+tests\unit\test_heatmap_cache_headers.py:135: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\unit\test_heatmap_cache_headers.py:100: in _overlay
+    return await routes.heatmap_overlay(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('2f8e120e-b9e2-43ce-a4ec-f78a35d553a3')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = None
+db = <object object at 0x000001EABA091440>
+current_user = '8eba5398-8576-4d34-bcec-ec0766d5eefb'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+_________ test_a_client_supplied_generation_cannot_pin_the_cache_key __________
+
+wired = namespace(cache=<test_heatmap_cache_headers.FakeRedis object at 0x000001EAB576BE10>, generation=5)
+
+    @pytest.mark.asyncio
+    async def test_a_client_supplied_generation_cannot_pin_the_cache_key(wired):
+>       await _overlay(_request(), generation=1)
+
+tests\unit\test_heatmap_cache_headers.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\unit\test_heatmap_cache_headers.py:100: in _overlay
+    return await routes.heatmap_overlay(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('2f8e120e-b9e2-43ce-a4ec-f78a35d553a3')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = 1
+db = <object object at 0x000001EAAF7EB970>
+current_user = '8eba5398-8576-4d34-bcec-ec0766d5eefb'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+_____________ test_fixation_duration_changes_the_heatmap_identity _____________
+
+wired = namespace(cache=<test_heatmap_cache_headers.FakeRedis object at 0x000001EAB56102B0>, generation=5)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EABF0A48A0>
+
+    @pytest.mark.asyncio
+    async def test_fixation_duration_changes_the_heatmap_identity(wired, monkeypatch):
+        # This route-level test isolates cache identity; duration variant selection
+        # is covered with detector-v2 frames in test_fixation_duration_variants.py.
+        monkeypatch.setattr(
+            routes.HeatmapAnalyticsService,
+            "compute_heatmap_overlay_with_metadata",
+            lambda *args, **kwargs: (b"png", {}),
+        )
+    
+>       first = await _overlay(_request(), min_fixation_duration_ms=100)
+
+tests\unit\test_heatmap_cache_headers.py:165: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\unit\test_heatmap_cache_headers.py:100: in _overlay
+    return await routes.heatmap_overlay(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('2f8e120e-b9e2-43ce-a4ec-f78a35d553a3')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 100, generation = None
+db = <object object at 0x000001EABA093EF0>
+current_user = '8eba5398-8576-4d34-bcec-ec0766d5eefb'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+______ test_the_overlay_is_rendered_at_the_stored_stimulus_size[800-800] ______
+
+wired = <test_heatmap_route_dimensions.FakeCache object at 0x000001EAB50DCD70>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB6000360>
+width = 800, height = 800
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("width,height", [(800, 800), (1920, 1080), (3440, 1440)])
+    async def test_the_overlay_is_rendered_at_the_stored_stimulus_size(
+        wired, monkeypatch, width, height
+    ):
+        _with_scenary(monkeypatch, width, height)
+    
+>       response = await routes.heatmap_overlay(
+            _request(),
+            PROJECT_ID,
+            participant_code="P-01",
+            scenario=SCENARIO,
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_heatmap_route_dimensions.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('d977f078-2524-4f31-af35-32392cd84fc8')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = Query(None)
+db = <object object at 0x000001EAAF7EB920>
+current_user = 'f1d1af5b-482e-4094-b35e-b8b72f86748c'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+_____ test_the_overlay_is_rendered_at_the_stored_stimulus_size[1920-1080] _____
+
+wired = <test_heatmap_route_dimensions.FakeCache object at 0x000001EAB5614F50>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB60031C0>
+width = 1920, height = 1080
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("width,height", [(800, 800), (1920, 1080), (3440, 1440)])
+    async def test_the_overlay_is_rendered_at_the_stored_stimulus_size(
+        wired, monkeypatch, width, height
+    ):
+        _with_scenary(monkeypatch, width, height)
+    
+>       response = await routes.heatmap_overlay(
+            _request(),
+            PROJECT_ID,
+            participant_code="P-01",
+            scenario=SCENARIO,
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_heatmap_route_dimensions.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('d977f078-2524-4f31-af35-32392cd84fc8')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = Query(None)
+db = <object object at 0x000001EABE227E60>
+current_user = 'f1d1af5b-482e-4094-b35e-b8b72f86748c'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+_____ test_the_overlay_is_rendered_at_the_stored_stimulus_size[3440-1440] _____
+
+wired = <test_heatmap_route_dimensions.FakeCache object at 0x000001EAB5615450>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB6001080>
+width = 3440, height = 1440
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("width,height", [(800, 800), (1920, 1080), (3440, 1440)])
+    async def test_the_overlay_is_rendered_at_the_stored_stimulus_size(
+        wired, monkeypatch, width, height
+    ):
+        _with_scenary(monkeypatch, width, height)
+    
+>       response = await routes.heatmap_overlay(
+            _request(),
+            PROJECT_ID,
+            participant_code="P-01",
+            scenario=SCENARIO,
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_heatmap_route_dimensions.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('d977f078-2524-4f31-af35-32392cd84fc8')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = Query(None)
+db = <object object at 0x000001EAAF7EA070>
+current_user = 'f1d1af5b-482e-4094-b35e-b8b72f86748c'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+___________ test_a_scenario_without_stored_dimensions_still_renders ___________
+
+wired = <test_heatmap_route_dimensions.FakeCache object at 0x000001EAB5610640>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB6002D60>
+
+    @pytest.mark.asyncio
+    async def test_a_scenario_without_stored_dimensions_still_renders(wired, monkeypatch):
+        _with_scenary(monkeypatch, None, None)
+    
+>       response = await routes.heatmap_overlay(
+            _request(),
+            PROJECT_ID,
+            participant_code="P-01",
+            scenario=SCENARIO,
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_heatmap_route_dimensions.py:128: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('d977f078-2524-4f31-af35-32392cd84fc8')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = Query(None)
+db = <object object at 0x000001EABE226FB0>
+current_user = 'f1d1af5b-482e-4094-b35e-b8b72f86748c'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+__________ test_a_resized_stimulus_does_not_hit_the_old_cache_entry ___________
+
+wired = <test_heatmap_route_dimensions.FakeCache object at 0x000001EAB5611F30>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB6003A10>
+
+    @pytest.mark.asyncio
+    async def test_a_resized_stimulus_does_not_hit_the_old_cache_entry(wired, monkeypatch):
+        _with_scenary(monkeypatch, 1920, 1080)
+>       await routes.heatmap_overlay(
+            _request(),
+            PROJECT_ID,
+            participant_code="P-01",
+            scenario=SCENARIO,
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_heatmap_route_dimensions.py:143: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('d977f078-2524-4f31-af35-32392cd84fc8')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = Query(None)
+db = <object object at 0x000001EAAF7E8E10>
+current_user = 'f1d1af5b-482e-4094-b35e-b8b72f86748c'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+____ test_cached_and_uncached_heatmaps_expose_identical_transform_headers _____
+
+wired = <test_heatmap_route_dimensions.FakeCache object at 0x000001EAB5071EB0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB6003CB0>
+
+    @pytest.mark.asyncio
+    async def test_cached_and_uncached_heatmaps_expose_identical_transform_headers(
+        wired, monkeypatch
+    ):
+        _with_scenary(monkeypatch, 800, 800)
+    
+>       uncached = await routes.heatmap_overlay(
+            _request(),
+            PROJECT_ID,
+            participant_code="P-01",
+            scenario=SCENARIO,
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_heatmap_route_dimensions.py:171: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('d977f078-2524-4f31-af35-32392cd84fc8')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = Query(None)
+db = <object object at 0x000001EABE224DB0>
+current_user = 'f1d1af5b-482e-4094-b35e-b8b72f86748c'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+_________ test_applied_heatmap_headers_report_the_persisted_contract __________
+
+wired = <test_heatmap_route_dimensions.FakeCache object at 0x000001EAB5607BD0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EAB9FC0A60>
+
+    @pytest.mark.asyncio
+    async def test_applied_heatmap_headers_report_the_persisted_contract(wired, monkeypatch):
+        _with_scenary(monkeypatch, 800, 800)
+        fingerprint = "a" * 64
+    
+        class AppliedReader:
+            def __init__(self, _db):
+                pass
+    
+            async def read(self, _project_id, _participant_code, generation=None):
+                samples = 20
+                return pd.DataFrame(
+                    {
+                        "time": np.arange(samples, dtype=float) / 100.0,
+                        "scenario": [SCENARIO] * samples,
+                        "fix_x": [50.0] * samples,
+                        "fix_y": [20.0] * samples,
+                        "fixation_id": [1] * samples,
+                        "fixation_segment_id": [1] * samples,
+                        "fixation_method": ["idt"] * samples,
+                        "fixation_detector_version": ["fixation-v2"] * samples,
+                        "is_valid_gaze": [True] * samples,
+                        "gaze_x_stimulus_norm": [0.5] * samples,
+                        "gaze_y_stimulus_norm": [0.2] * samples,
+                        "gaze_invalid_reason": [None] * samples,
+                        "stimulus_transform_status": ["applied"] * samples,
+                        "stimulus_transform_version": ["screen-stimulus-v1"] * samples,
+                        "stimulus_transform_fingerprint": [fingerprint] * samples,
+                    }
+                )
+    
+        monkeypatch.setattr(routes, "ParquetReaderService", AppliedReader)
+    
+>       response = await routes.heatmap_overlay(
+            _request(),
+            PROJECT_ID,
+            participant_code="P-01",
+            scenario=SCENARIO,
+            db=object(),
+            current_user=CURRENT_USER,
+        )
+
+tests\unit\test_heatmap_route_dimensions.py:234: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = namespace(headers=Headers({}))
+project_id = UUID('d977f078-2524-4f31-af35-32392cd84fc8')
+participant_code = 'P-01', scenario = 'Scenario canonical'
+min_fixation_duration_ms = 200, generation = Query(None)
+db = <object object at 0x000001EAAF7E8B40>
+current_user = 'f1d1af5b-482e-4094-b35e-b8b72f86748c'
+
+    @router.get("/heatmap")
+    async def heatmap_overlay(
+        request: Request,
+        project_id: UUID,
+        participant_code: str = Query(...),
+        scenario: str = Query(...),
+        min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+        generation: Optional[int] = Query(default=None),
+        db: AsyncSession = Depends(get_db),
+        current_user: str = Depends(get_current_user),
+    ):
+        if is_all_scenarios(scenario):
+            raise HTTPException(status_code=400, detail="scenario must be specified")
+        min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+        project = await _verify_ownership(db, project_id, current_user)
+        # `generation` exists so the client's URL changes after a re-ingestion and its
+        # own HTTP cache misses. It is deliberately not part of the cache key: only the
+        # project's counter is, so a client holding a stale value cannot pin the
+        # previous upload's overlay.
+        cache_generation = _cache_generation(project)
+    
+        # The overlay is rendered at the stimulus' own dimensions, so re-ingesting a
+        # scenario at a different size has to miss the cache rather than serve a PNG
+        # that no longer matches the image it is laid over.
+        scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+        stimulus_width = getattr(scenary, "width", None) if scenary else None
+        stimulus_height = getattr(scenary, "height", None) if scenary else None
+        size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+    
+        transform_token, df = await _resolve_transform_token(
+            db, project, participant_code, cache_generation,
+        )
+        cache_key = _redis.build_key(
+            project_id,
+            participant_code,
+            (
+                f"heatmap_v4:stimulus-v1:{transform_token}:{size_key}:"
+                f"{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+            ),
+            scenario,
+            generation=cache_generation,
+        )
+        # The key already pins the generation, the transform snapshot and the stimulus
+        # size, so equal keys mean byte-identical PNGs and the ETag can be derived from
+        # it without rendering anything.
+        etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+        # `public, max-age=900` was wrong twice over: this PNG is authenticated and
+        # specific to one participant, so a shared proxy must never store it, and a
+        # freshness window meant a re-ingestion kept showing the old overlay for up to
+        # 15 minutes. Revalidating every time makes the ETag decide instead.
+        response_headers = {
+            "Cache-Control": "private, max-age=0, must-revalidate",
+            "ETag": etag,
+            "Vary": "Authorization",
+        }
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=response_headers)
+    
+        metadata_cache_key = f"{cache_key}:metadata"
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(
+            lambda: _redis.get_json(metadata_cache_key)
+        )
+        if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+            return StreamingResponse(
+                iter([cached_bytes]),
+                media_type="image/png",
+                headers={
+                    **response_headers,
+                    **_fixation_metadata_headers(cached_metadata),
+                    **_stimulus_transform_headers(cached_metadata),
+                },
+            )
+    
+        async def calculate():
+            cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+            cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+            if cached_bytes and cached_metadata and cached_metadata.get("coordinate_transform"):
+                return cached_bytes, cached_metadata
+            frame = df
+            if frame is None:
+                reader = ParquetReaderService(db)
+                try:
+                    frame = await reader.read(project_id, participant_code, generation=cache_generation)
+                except (ValueError, FileNotFoundError) as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except RuntimeError as exc:
+                    raise HTTPException(status_code=503, detail=str(exc)) from exc
+    
+            try:
+                png_bytes, fixation_metadata = await settled_thread(
+                    lambda: HeatmapAnalyticsService.compute_heatmap_overlay_with_metadata(
+                        frame,
+                        scenario,
+                        width=stimulus_width,
+                        height=stimulus_height,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            if not png_bytes:
+                raise HTTPException(status_code=404, detail="No gaze data for this scenario/participant")
+    
+            await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+            await settled_thread(
+                lambda: _redis.set_json(metadata_cache_key, fixation_metadata)
+            )
+            return png_bytes, fixation_metadata
+    
+>       png_bytes, metadata = await _shared_response((str(project.owner_id), cache_key, "png"), calculate)
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'owner_id'
+
+src\neurodatics\modules\analytics\api\routes.py:1415: AttributeError
+_________ test_environment_example_defines_every_setting_exactly_once _________
+
+    def test_environment_example_defines_every_setting_exactly_once():
+        keys = [
+            line.split("=", 1)[0].strip().lower()
+            for line in EXAMPLE_PATH.read_text(encoding="utf-8").splitlines()
+            if "=" in line and not line.lstrip().startswith("#")
+        ]
+    
+        assert len(keys) == len(set(keys)), "Duplicate setting in .env.example"
+>       assert set(keys) == set(Settings.model_fields)
+E       AssertionError: assert {'analytics_r...minutes', ...} == {'analytics_r...minutes', ...}
+E         Extra items in the right set:
+E         'report_io_max_concurrency'
+E         'report_io_max_waiting'
+E         Use -v to get more diff
+
+tests\unit\test_settings_example.py:20: AssertionError
+--------------------------- snapshot report summary ---------------------------
+25 snapshots passed.
+=========================== short test summary info ===========================
+FAILED tests/unit/test_correlation_analytics_routes.py::test_correlations_uses_canonical_scenario_and_writes_versioned_15_minute_cache
+FAILED tests/unit/test_correlation_analytics_routes.py::test_correlations_maps_parquet_errors[reader_error0-404]
+FAILED tests/unit/test_correlation_analytics_routes.py::test_correlations_maps_parquet_errors[reader_error1-404]
+FAILED tests/unit/test_correlation_analytics_routes.py::test_correlations_maps_parquet_errors[reader_error2-503]
+FAILED tests/unit/test_gaze_at_scenario.py::test_gaze_at_route_uses_canonical_scenario_for_filter_and_cache
+FAILED tests/unit/test_gaze_at_scenario.py::test_gaze_at_without_scenario_preserves_unscoped_cache_contract
+FAILED tests/unit/test_gaze_at_scenario.py::test_gaze_at_without_scenario_resolves_stimulus_for_global_time
+FAILED tests/unit/test_heatmap_cache_headers.py::test_the_overlay_is_never_stored_by_a_shared_cache
+FAILED tests/unit/test_heatmap_cache_headers.py::test_a_matching_etag_is_answered_with_an_empty_304
+FAILED tests/unit/test_heatmap_cache_headers.py::test_a_re_ingested_project_invalidates_the_client_s_etag
+FAILED tests/unit/test_heatmap_cache_headers.py::test_a_client_supplied_generation_cannot_pin_the_cache_key
+FAILED tests/unit/test_heatmap_cache_headers.py::test_fixation_duration_changes_the_heatmap_identity
+FAILED tests/unit/test_heatmap_route_dimensions.py::test_the_overlay_is_rendered_at_the_stored_stimulus_size[800-800]
+FAILED tests/unit/test_heatmap_route_dimensions.py::test_the_overlay_is_rendered_at_the_stored_stimulus_size[1920-1080]
+FAILED tests/unit/test_heatmap_route_dimensions.py::test_the_overlay_is_rendered_at_the_stored_stimulus_size[3440-1440]
+FAILED tests/unit/test_heatmap_route_dimensions.py::test_a_scenario_without_stored_dimensions_still_renders
+FAILED tests/unit/test_heatmap_route_dimensions.py::test_a_resized_stimulus_does_not_hit_the_old_cache_entry
+FAILED tests/unit/test_heatmap_route_dimensions.py::test_cached_and_uncached_heatmaps_expose_identical_transform_headers
+FAILED tests/unit/test_heatmap_route_dimensions.py::test_applied_heatmap_headers_report_the_persisted_contract
+FAILED tests/unit/test_settings_example.py::test_environment_example_defines_every_setting_exactly_once
+20 failed, 1163 passed, 39851 warnings in 66.76s (0:01:06)
+Exception: C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\verify.ps1:9
+Line |
+   9 |  … f ($LASTEXITCODE -ne 0) { throw "$Gate failed (exit $LASTEXITCODE)" }
+     |                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Backend tests failed (exit 1)
+
+
+EXIT_CODE=1

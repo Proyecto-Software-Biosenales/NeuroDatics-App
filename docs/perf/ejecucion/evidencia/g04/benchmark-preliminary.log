@@ -1,0 +1,70 @@
+2026-10-02 06:22:46,589 - neurodatics.config.logging - INFO - Logging configured successfully
+2026-10-02 06:22:46,732 - neurodatics.modules.projects.application.services.csv_processing_service - INFO - Starting CSV processing: csv_path=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g04\runtime\tmpafdz7ir0\synthetic-experiment\experiment.csv, output_dir=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g04\runtime\tmpafdz7ir0\synthetic-experiment\parquet, users=2, encoding=utf-8
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\bench\g04_singleflight.py", line 183, in main
+    values = await asyncio.gather(*(request() for _ in range(requests)))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\bench\g04_singleflight.py", line 164, in request
+    value = await route_module.cached_frame_endpoint(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g04\base\backend\src\neurodatics\modules\analytics\api\routes.py", line 300, in cached_frame_endpoint
+    df = await reader.read(project.id, participant_code, generation, projection=projection)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\bench\g04_singleflight.py", line 154, in read
+    return await reader.read(project_id, participant_code, generation, projection=projection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g04\base\backend\src\neurodatics\modules\analytics\application\services\parquet_reader_service.py", line 172, in read
+    path = self._cache.put(project_id, participant_code, content, generation)
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\analytics\infrastructure\parquet_cache.py", line 137, in put
+    os.replace(tmp_path, path)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^
+PermissionError: [WinError 5] Access is denied: 'C:\\AAMisArchivos\\AAprogramming\\AAAWebDeb\\Biose�ales\\NeuroDatics-App\\output\\perf-g04\\runtime\\tmpafdz7ir0\\before\\small\\00000000-0000-0000-0000-000000000101\\g49\\.SYN-01-a3b4b0eee71a6b64.parquet.b3a8bec8c32d4bdba2484c3857e55386.tmp' -> 'C:\\AAMisArchivos\\AAprogramming\\AAAWebDeb\\Biose�ales\\NeuroDatics-App\\output\\perf-g04\\runtime\\tmpafdz7ir0\\before\\small\\00000000-0000-0000-0000-000000000101\\g49\\SYN-01-a3b4b0eee71a6b64.parquet'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Program Files\Python314\Lib\shutil.py", line 701, in _rmtree_unsafe
+    os.unlink(fullname)
+    ~~~~~~~~~^^^^^^^^^^
+PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\AAMisArchivos\\AAprogramming\\AAAWebDeb\\Biose�ales\\NeuroDatics-App\\output\\perf-g04\\runtime\\tmpafdz7ir0\\before\\small\\00000000-0000-0000-0000-000000000101\\g49\\SYN-01-a3b4b0eee71a6b64.parquet'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\bench\g04_singleflight.py", line 207, in <module>
+    asyncio.run(main())
+    ~~~~~~~~~~~^^^^^^^^
+  File "C:\Program Files\Python314\Lib\asyncio\runners.py", line 204, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Program Files\Python314\Lib\asyncio\runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Program Files\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\bench\g04_singleflight.py", line 80, in main
+    with tempfile.TemporaryDirectory(dir=runtime) as temp:
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Program Files\Python314\Lib\tempfile.py", line 971, in __exit__
+    self.cleanup()
+    ~~~~~~~~~~~~^^
+  File "C:\Program Files\Python314\Lib\tempfile.py", line 975, in cleanup
+    self._rmtree(self.name, ignore_errors=self._ignore_cleanup_errors)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python314\Lib\tempfile.py", line 955, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python314\Lib\shutil.py", line 852, in rmtree
+    _rmtree_impl(path, dir_fd, onexc)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python314\Lib\shutil.py", line 705, in _rmtree_unsafe
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python314\Lib\tempfile.py", line 930, in onexc
+    _os.unlink(path)
+    ~~~~~~~~~~^^^^^^
+PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\AAMisArchivos\\AAprogramming\\AAAWebDeb\\Biose�ales\\NeuroDatics-App\\output\\perf-g04\\runtime\\tmpafdz7ir0\\before\\small\\00000000-0000-0000-0000-000000000101\\g49\\SYN-01-a3b4b0eee71a6b64.parquet'

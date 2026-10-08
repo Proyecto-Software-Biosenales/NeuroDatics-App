@@ -1,6 +1,8 @@
 "use client"
 
 import type { ComponentProps, ReactNode } from "react"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AnalyticsChartShell, type AnalyticsChartLegendItem } from "./AnalyticsChartShell"
@@ -26,6 +28,8 @@ interface SingleSignalTabProps {
     onZoomBack?: () => void
   }
   headerActions?: ReactNode
+  /** Opens the same chart for every participant with these parameters. */
+  compareSpec?: () => ParticipantComparisonSpec
   kpis: ReactNode
   legend: AnalyticsChartLegendItem[]
   chart: ReactNode
@@ -34,7 +38,7 @@ interface SingleSignalTabProps {
 
 export function SingleSignalTab({
   label, description, unit, emptyText, statisticsDescription, signal,
-  headerActions, kpis, legend, chart, children,
+  headerActions, compareSpec, kpis, legend, chart, children,
 }: SingleSignalTabProps) {
   return (
     <div className="analytics-stack">
@@ -47,6 +51,7 @@ export function SingleSignalTab({
           <div className="flex max-w-full flex-wrap items-center gap-2">
             {headerActions}
             <TimeWindowControls {...signal.timeWindowControls} />
+            {compareSpec ? <CompareParticipantsButton spec={compareSpec} /> : null}
           </div>
         </CardHeader>
         <CardContent>

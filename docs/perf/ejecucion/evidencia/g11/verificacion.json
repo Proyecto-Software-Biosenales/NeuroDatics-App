@@ -1,0 +1,87 @@
+{
+  "generated_at": "2026-10-03T15:21:37.3176179Z",
+  "decision": "candidate discarded; no product change",
+  "checks": [
+    {
+      "name": "base Chromium profile",
+      "command": "G11_VARIANT=base node benchmark_topography.mjs",
+      "exit_code": 0,
+      "cases": 45,
+      "warmup": 1,
+      "n": 5,
+      "evidence": "profile-base-fresh.json"
+    },
+    {
+      "name": "candidate Chromium profile including cold frames",
+      "command": "G11_VARIANT=candidate node benchmark_topography.mjs",
+      "exit_code": 0,
+      "cases": 45,
+      "warmup": 1,
+      "n": 5,
+      "evidence": "profile-candidate.json"
+    },
+    {
+      "name": "measurement reducer",
+      "command": "node summarize_topography.mjs",
+      "exit_code": 0,
+      "cases": 45,
+      "evidence": "measurement-summary.json"
+    },
+    {
+      "name": "candidate helper numerical/RGBA equivalence",
+      "command": "cd frontend; node --test features/analytics/eegPresentation.test.mjs",
+      "exit_code": 0,
+      "tests": 20,
+      "pass": 20,
+      "log_contains_pass20": true,
+      "evidence": "presentation-tests.log"
+    },
+    {
+      "name": "probe syntax",
+      "command": "node --check benchmark_topography.mjs; node --check summarize_topography.mjs",
+      "exit_code": 0,
+      "evidence": "probe-check.log"
+    },
+    {
+      "name": "received product restoration",
+      "exit_code": 0,
+      "files": 6,
+      "all_equal": true,
+      "evidence": "source-restoration.json"
+    },
+    {
+      "name": "checkout preservation",
+      "exit_code": 0,
+      "protected": 1069,
+      "unchanged": 1067,
+      "allowed_changed": [
+        "docs/CHANGELOG.md",
+        "docs/perf/ejecucion/ESTADO.md"
+      ],
+      "ok": true,
+      "evidence": "preservacion.json"
+    }
+  ],
+  "not_run": [
+    {
+      "checks": [
+        "frontend typecheck",
+        "ESLint",
+        "production build",
+        "EEG E2E"
+      ],
+      "reason": "Candidate was removed and all six frontend scope files are SHA-256 identical to the received snapshot; G11 instructions explicitly avoid unrelated suite repetition when there is no adoption."
+    },
+    {
+      "checks": [
+        "browser RSS",
+        "GPU/raster allocation peak",
+        "cloud/local frozen distribution"
+      ],
+      "reason": "Not observable/available in the isolated synthetic harness; no extrapolation made."
+    }
+  ],
+  "goldens_modified": false,
+  "product_files_modified": false,
+  "g12_started": false
+}

@@ -60,8 +60,9 @@ Two deliberate differences from the dashboard:
 - **Time is measured from the start of the scenario**, not from the start of the
   recording, in every chart and in TTFF. `AoiAnalyticsService` reports
   `ttff_ms` on the recording clock, so the report subtracts the scenario onset
-  (`eye_tracking._relative_ttff_s`); the dashboard's AOI table still shows the
-  recording-clock value.
+  (`eye_tracking._relative_ttff_s`). Since 2026-09-28 the dashboard's AOI tab
+  does the same (`features/analytics/aoiInsights.ts`); the other dashboard
+  charts still plot the recording clock.
 - **EEG summaries report the standard deviation, not RMS**, because the exported
   channels carry large DC offsets that make RMS read as amplitude when it is not.
 

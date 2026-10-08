@@ -1,0 +1,159 @@
+{
+  "generated_at": "2026-10-02T16:44:00.8639611-05:00",
+  "head": "f310003bd734203a41268f40a4627bd99d5a3233",
+  "entries": [
+    {
+      "path": ".env.example",
+      "bytes": 4935,
+      "sha256": "bbc6503f9af1fab5759f01085fed16a776ab2ff8b254e75103bc74904d9fbd71",
+      "role": "config"
+    },
+    {
+      "path": "backend/.env.example",
+      "bytes": 3653,
+      "sha256": "e167ea0ab57921bea140abe68fa951bf79b99f5f5c33be91b499c7bcf10bedc2",
+      "role": "config"
+    },
+    {
+      "path": "backend/src/neurodatics/config/settings.py",
+      "bytes": 10174,
+      "sha256": "e52a44f795b7eed8e3954cbd7278e96571f5797c71de1e79c6af55c70c5d8692",
+      "role": "source"
+    },
+    {
+      "path": "backend/src/neurodatics/modules/projects/api/routes.py",
+      "bytes": 51312,
+      "sha256": "3514c73a19a1d3cab888fb70716f792f2f36104c5013e3125d5de09ae341a65a",
+      "role": "source"
+    },
+    {
+      "path": "backend/src/neurodatics/modules/projects/infrastructure/media_cache_janitor.py",
+      "bytes": 6375,
+      "sha256": "1574513ece9ad146f43f18a8e10a7f15651150437deae50119013ee4dcfb86cd",
+      "role": "source"
+    },
+    {
+      "path": "backend/src/neurodatics/modules/projects/infrastructure/video_preview_metadata.py",
+      "bytes": 6644,
+      "sha256": "3ac182cc64052f14609ee2391ccf56faa6e0633aabe5e88c2ab7de0e9ab72804",
+      "role": "source"
+    },
+    {
+      "path": "backend/tests/unit/test_image_conditional_get.py",
+      "bytes": 7957,
+      "sha256": "ea8158b25ba7b80de31743b408164db9fd8c722b62ec557c2cd79de775a9e788",
+      "role": "test"
+    },
+    {
+      "path": "backend/tests/unit/test_media_cache_janitor.py",
+      "bytes": 6811,
+      "sha256": "3c426d3e6f885789a81be5dc7a2093ce9dd235d0de6f5ad1bbcd2fa3a6b9db3c",
+      "role": "test"
+    },
+    {
+      "path": "backend/tests/unit/test_video_preview_metadata.py",
+      "bytes": 8653,
+      "sha256": "4f239aeacdd80df159f053b54da8e7d3727d076f117608dccb0d00aedd840b09",
+      "role": "test"
+    },
+    {
+      "path": "docs/perf/ejecucion/G08.md",
+      "bytes": 4258,
+      "sha256": "83329a53005a3817989437016eb5000c4217b2b2fe5d33f0377fe32dcae6ad77",
+      "role": "delivery"
+    },
+    {
+      "path": "docs/perf/ejecucion/ESTADO.md",
+      "bytes": 10176,
+      "sha256": "14a41baba394f34252d5b7a92bc0a97481a1b01019b0bf07b45f4594c9215e71",
+      "role": "coordination-status"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/API.md",
+      "bytes": 4290,
+      "sha256": "42b32132def9ac9ee754ed21c71ca85b44f3d98de5b88a00e330d238701cb1b2",
+      "role": "contract"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/benchmark_video_preview.py",
+      "bytes": 5907,
+      "sha256": "9470736a90dda52fd68c58db820328fce2121f4682dfe1a0f0afdcbb257ff899",
+      "role": "benchmark"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/comandos.md",
+      "bytes": 1246,
+      "sha256": "f66ac8f78c8deb3809874c6980b67a02d091d0d9f2f8f8078d6c7bb9029f9f20",
+      "role": "evidence"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/logs/import-contracts.txt",
+      "bytes": 630,
+      "sha256": "d34b92cab777460d3205b493b337355cc0f8ce0bfa0b52f42f2e07c43a98f9a1",
+      "role": "check-log"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/logs/pytest-normal.txt",
+      "bytes": 198,
+      "sha256": "dcf8bea8166cf8bb34447e4b5bc55b03c7936b06dc188938b76103481f0d64f7",
+      "role": "check-log"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/logs/pytest-supported.txt",
+      "bytes": 195,
+      "sha256": "e957b6edb6a37ebf71e57c95f373ac6084e880e561cee3d3221669dcdec35d33",
+      "role": "check-log"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/logs/ruff.txt",
+      "bytes": 20,
+      "sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "role": "check-log"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/medidas/before.json",
+      "bytes": 1511,
+      "sha256": "21da81874c58dc73893366d5e90ab42bd8864721cb9ac717f6cc28dcd3698cef",
+      "role": "measurement"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/medidas/after.json",
+      "bytes": 1497,
+      "sha256": "5ba9487cad33a4b5f39f287a81bf0e7820c38bb19a8ab9943a72d274c914e605",
+      "role": "measurement"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/medidas/resumen.md",
+      "bytes": 1668,
+      "sha256": "bef445775237b57dbc87fb445e718e466aa416d60903c45f1ffaf0f6f1f92f1f",
+      "role": "measurement-summary"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/own.patch",
+      "bytes": 39999,
+      "sha256": "57cd07b9cd175fda4b3c1690efe55983190e4b6ecf5fadfba4a1f1a2a7781123",
+      "role": "recovery"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/preservacion.json",
+      "bytes": 948,
+      "sha256": "4d07a9e530dfb892dcbd957aa670b6f02113d358d72a3e9acd49958d23fa1b4f",
+      "role": "preservation"
+    },
+    {
+      "path": "docs/perf/ejecucion/evidencia/g08/verificacion.json",
+      "bytes": 970,
+      "sha256": "e8243bfec2704fa10d2b4511100dfdb48aa2c0358110fc68712ec4d1109c586c",
+      "role": "verification"
+    }
+  ],
+  "excludes": [
+    "manifiesto-final.json self",
+    "ORQUESTACION/ASIGNACION/REVISION coordinator-owned",
+    "inventario-inicial.json and reconciliacion-coordinador.json root-owned received evidence",
+    "agente-cli* and agente-continuacion* changing operational logs",
+    "output/perf-g08/base original ignored snapshot",
+    "output/perf-g08/after mechanical ignored patch staging",
+    "output/perf-g08/corpus and *-frames ignored synthetic runtime artifacts"
+  ]
+}

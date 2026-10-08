@@ -1,0 +1,2868 @@
+{
+  "scope": "synthetic offline; real services; simulated storage delay and DB control-flow counts",
+  "python": "3.14.3",
+  "versions": {
+    "pandas": "2.3.3",
+    "numpy": "2.4.4",
+    "pyarrow": "25.0.0",
+    "fastapi": "0.104.1",
+    "sqlalchemy": "2.0.48",
+    "pytest": "7.4.4",
+    "typst": "0.15.0"
+  },
+  "io_delay_ms_per_download": 20,
+  "fixtures": [
+    {
+      "fixture": "small",
+      "participants": 2,
+      "rows_each": 1600,
+      "columns": [
+        "time",
+        "gx",
+        "gy",
+        "distance",
+        "lx_pupil",
+        "rx_pupil",
+        "gsr",
+        "le",
+        "f4",
+        "c4",
+        "p4",
+        "p3",
+        "c3",
+        "f3",
+        "scenario",
+        "fix_x",
+        "fix_y",
+        "fixation_id",
+        "fixation_segment_id",
+        "segment_id",
+        "fixation_method",
+        "method",
+        "fixation_detector_version",
+        "version",
+        "is_valid_gaze",
+        "fixation_detector_sample_count",
+        "fixation_source_row_count",
+        "fixation_effective_rate_hz",
+        "fixation_coordinate_unit",
+        "fixation_coordinate_space",
+        "fixation_source",
+        "gaze_input_unit_resolved",
+        "gaze_x_screen_px",
+        "gaze_y_screen_px",
+        "gaze_x_stimulus_norm",
+        "gaze_y_stimulus_norm",
+        "is_in_viewport",
+        "is_in_stimulus",
+        "gaze_invalid_reason",
+        "stimulus_transform_status",
+        "stimulus_transform_version",
+        "stimulus_transform_fingerprint",
+        "screen_width_px",
+        "screen_height_px",
+        "stimulus_display_width_px",
+        "stimulus_display_height_px",
+        "fixation_min_duration_ms",
+        "fix_x__100ms",
+        "fix_y__100ms",
+        "fixation_id__100ms",
+        "fixation_detector_sample_count__100ms",
+        "fixation_source_row_count__100ms",
+        "fix_x__150ms",
+        "fix_y__150ms",
+        "fixation_id__150ms",
+        "fixation_detector_sample_count__150ms",
+        "fixation_source_row_count__150ms",
+        "fix_x__250ms",
+        "fix_y__250ms",
+        "fixation_id__250ms",
+        "fixation_detector_sample_count__250ms",
+        "fixation_source_row_count__250ms",
+        "fix_x__300ms",
+        "fix_y__300ms",
+        "fixation_id__300ms",
+        "fixation_detector_sample_count__300ms",
+        "fixation_source_row_count__300ms",
+        "fixation_warnings"
+      ],
+      "dataframe_bytes_each": 2152342,
+      "parquet_bytes_each": 98844,
+      "sha256_first_parquet": "b313c426c9314623d5834f48e818fb226cba3d77f8d0634d9654b02046acda52",
+      "scenarios": [
+        "stimulus-a",
+        "stimulus-b"
+      ],
+      "segments": 2
+    },
+    {
+      "fixture": "large",
+      "participants": 4,
+      "rows_each": 102400,
+      "columns": [
+        "time",
+        "gx",
+        "gy",
+        "distance",
+        "lx_pupil",
+        "rx_pupil",
+        "gsr",
+        "le",
+        "f4",
+        "c4",
+        "p4",
+        "p3",
+        "c3",
+        "f3",
+        "scenario",
+        "fix_x",
+        "fix_y",
+        "fixation_id",
+        "fixation_segment_id",
+        "segment_id",
+        "fixation_method",
+        "method",
+        "fixation_detector_version",
+        "version",
+        "is_valid_gaze",
+        "fixation_detector_sample_count",
+        "fixation_source_row_count",
+        "fixation_effective_rate_hz",
+        "fixation_coordinate_unit",
+        "fixation_coordinate_space",
+        "fixation_source",
+        "gaze_input_unit_resolved",
+        "gaze_x_screen_px",
+        "gaze_y_screen_px",
+        "gaze_x_stimulus_norm",
+        "gaze_y_stimulus_norm",
+        "is_in_viewport",
+        "is_in_stimulus",
+        "gaze_invalid_reason",
+        "stimulus_transform_status",
+        "stimulus_transform_version",
+        "stimulus_transform_fingerprint",
+        "screen_width_px",
+        "screen_height_px",
+        "stimulus_display_width_px",
+        "stimulus_display_height_px",
+        "fixation_min_duration_ms",
+        "fix_x__100ms",
+        "fix_y__100ms",
+        "fixation_id__100ms",
+        "fixation_detector_sample_count__100ms",
+        "fixation_source_row_count__100ms",
+        "fix_x__150ms",
+        "fix_y__150ms",
+        "fixation_id__150ms",
+        "fixation_detector_sample_count__150ms",
+        "fixation_source_row_count__150ms",
+        "fix_x__250ms",
+        "fix_y__250ms",
+        "fixation_id__250ms",
+        "fixation_detector_sample_count__250ms",
+        "fixation_source_row_count__250ms",
+        "fix_x__300ms",
+        "fix_y__300ms",
+        "fixation_id__300ms",
+        "fixation_detector_sample_count__300ms",
+        "fixation_source_row_count__300ms",
+        "fixation_warnings",
+        "g00_unused_00",
+        "g00_unused_01",
+        "g00_unused_02",
+        "g00_unused_03",
+        "g00_unused_04",
+        "g00_unused_05",
+        "g00_unused_06",
+        "g00_unused_07",
+        "g00_unused_08",
+        "g00_unused_09",
+        "g00_unused_10",
+        "g00_unused_11",
+        "g00_unused_12",
+        "g00_unused_13",
+        "g00_unused_14",
+        "g00_unused_15"
+      ],
+      "dataframe_bytes_each": 161056772,
+      "parquet_bytes_each": 17366952,
+      "sha256_first_parquet": "0dc04b8956c06df29d0a73d4542595a00b690578e2b52a8b3de2fb0ac6bfabf1",
+      "scenarios": [
+        "stimulus-a",
+        "stimulus-b"
+      ],
+      "segments": 128
+    }
+  ],
+  "results": [
+    {
+      "name": "small/parquet_cold_simulated",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 32.16750000137836,
+      "min_ms": 31.02950000175042,
+      "max_ms": 34.05899999779649,
+      "samples": [
+        {
+          "ms": 31.662800000049174,
+          "cpu_ms": 218.75,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 98844,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 739143680,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 32.16750000137836,
+          "cpu_ms": 15.625,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 98844,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 740315136,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 31.02950000175042,
+          "cpu_ms": 187.5,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 98844,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 741900288,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 32.557799997448456,
+          "cpu_ms": 15.625,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 98844,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 743464960,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 34.05899999779649,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 98844,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 744660992,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/parquet_disk_hit",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 4.412700000102632,
+      "min_ms": 4.276200001186226,
+      "max_ms": 6.14309999946272,
+      "samples": [
+        {
+          "ms": 6.14309999946272,
+          "cpu_ms": 0.0,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 747929600,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 4.547500000626314,
+          "cpu_ms": 0.0,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 749457408,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 4.276200001186226,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 750170112,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 4.357700003311038,
+          "cpu_ms": 0.0,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 751149056,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 4.412700000102632,
+          "cpu_ms": 0.0,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 752316416,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/aoi_metrics",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 17.894499993417412,
+      "min_ms": 17.412499997590203,
+      "max_ms": 23.317899998801295,
+      "samples": [
+        {
+          "ms": 23.317899998801295,
+          "cpu_ms": 15.625,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 752943104,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 17.5020000024233,
+          "cpu_ms": 15.625,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 752943104,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 17.412499997590203,
+          "cpu_ms": 31.25,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 752975872,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 17.894499993417412,
+          "cpu_ms": 15.625,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 753000448,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 19.790999998804182,
+          "cpu_ms": 15.625,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 753012736,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/report_group_collect",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 186.7779000021983,
+      "min_ms": 178.52019999554614,
+      "max_ms": 205.1731000028667,
+      "samples": [
+        {
+          "ms": 191.38160000147764,
+          "cpu_ms": 203.125,
+          "counts": {
+            "event_builds": 4
+          },
+          "rss_bytes": 735928320,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 178.52019999554614,
+          "cpu_ms": 171.875,
+          "counts": {
+            "event_builds": 4
+          },
+          "rss_bytes": 736190464,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 186.7779000021983,
+          "cpu_ms": 187.5,
+          "counts": {
+            "event_builds": 4
+          },
+          "rss_bytes": 736194560,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 179.76829999679467,
+          "cpu_ms": 171.875,
+          "counts": {
+            "event_builds": 4
+          },
+          "rss_bytes": 736194560,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 205.1731000028667,
+          "cpu_ms": 218.75,
+          "counts": {
+            "event_builds": 4
+          },
+          "rss_bytes": 736559104,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/video_onset_repeat_and_scrub",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 1.7614999960642308,
+      "min_ms": 1.6428000017185695,
+      "max_ms": 1.8195000011473894,
+      "samples": [
+        {
+          "ms": 1.8195000011473894,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 736706560,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 1.779400001396425,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 736706560,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 1.7004000037559308,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 736706560,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 1.7614999960642308,
+          "cpu_ms": 15.625,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 736706560,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 1.6428000017185695,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 736706560,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_no_response_cache/timeseries/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 21.191599997109734,
+      "min_ms": 20.494099997449666,
+      "max_ms": 22.194799996213987,
+      "samples": [
+        {
+          "ms": 21.706799998355564,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 738295808,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 20.494099997449666,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 738459648,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 22.194799996213987,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 738775040,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 21.191599997109734,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 738811904,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 21.12209999904735,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 739237888,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_response_cache_hit/timeseries/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 5.517700003110804,
+      "min_ms": 5.403499999374617,
+      "max_ms": 5.752799996116664,
+      "samples": [
+        {
+          "ms": 5.403499999374617,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 739364864,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 5.752799996116664,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 739368960,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 5.54299999930663,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 739368960,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 5.517700003110804,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 739368960,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 5.414999999629799,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 147477
+          },
+          "rss_bytes": 739565568,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_no_response_cache/psd/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 17.174900000100024,
+      "min_ms": 15.88919999630889,
+      "max_ms": 22.389300000213552,
+      "samples": [
+        {
+          "ms": 15.88919999630889,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 739921920,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 22.389300000213552,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 740028416,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 18.055699998512864,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 740134912,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 16.044699994381517,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 740134912,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 17.174900000100024,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 740134912,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_response_cache_hit/psd/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 3.285999999206979,
+      "min_ms": 3.2522999972570688,
+      "max_ms": 3.5253000023658387,
+      "samples": [
+        {
+          "ms": 3.5253000023658387,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 740143104,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 3.3053000006475486,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 740143104,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 3.2522999972570688,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 740179968,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 3.285999999206979,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 740179968,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 3.2685999976820312,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35052
+          },
+          "rss_bytes": 740188160,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_no_response_cache/spectrogram/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 22.826300002634525,
+      "min_ms": 22.071200000937097,
+      "max_ms": 34.36109999893233,
+      "samples": [
+        {
+          "ms": 22.071200000937097,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 740904960,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 22.109999998065177,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 741027840,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 22.826300002634525,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 741216256,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 26.73779999895487,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 741400576,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 34.36109999893233,
+          "cpu_ms": 46.875,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 741400576,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_response_cache_hit/spectrogram/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 5.353300002752803,
+      "min_ms": 4.9591000060900114,
+      "max_ms": 5.610000000160653,
+      "samples": [
+        {
+          "ms": 5.3960000004735775,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 741416960,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 5.610000000160653,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 741416960,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 4.9591000060900114,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 741490688,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 5.353300002752803,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 741543936,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 5.1191000020480715,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 98825
+          },
+          "rss_bytes": 741543936,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_no_response_cache/topography/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 11.062100005801767,
+      "min_ms": 10.532899999816436,
+      "max_ms": 11.24800000252435,
+      "samples": [
+        {
+          "ms": 11.182299997017253,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 11.062100005801767,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 10.596699998131953,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 10.532899999816436,
+          "cpu_ms": 0.0,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 11.24800000252435,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_response_cache_hit/topography/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 2.7977999998256564,
+      "min_ms": 2.7926999973715283,
+      "max_ms": 2.9193999944254756,
+      "samples": [
+        {
+          "ms": 2.8623000034713186,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 2.7964999972027726,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 2.7977999998256564,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 2.9193999944254756,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 2.7926999973715283,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 6174
+          },
+          "rss_bytes": 741658624,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_no_response_cache/timeseries/gsr",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 10.349600001063664,
+      "min_ms": 9.940900003130082,
+      "max_ms": 10.845900003914721,
+      "samples": [
+        {
+          "ms": 10.349600001063664,
+          "cpu_ms": 0.0,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741810176,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 10.845900003914721,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741810176,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 10.595899999316316,
+          "cpu_ms": 62.5,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741810176,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 9.954100001777988,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741810176,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 9.940900003130082,
+          "cpu_ms": 0.0,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741818368,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_response_cache_hit/timeseries/gsr",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 3.0750000005355105,
+      "min_ms": 2.9533999986597337,
+      "max_ms": 3.121300003840588,
+      "samples": [
+        {
+          "ms": 3.0750000005355105,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741818368,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 2.9533999986597337,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741818368,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 3.096499996900093,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741818368,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 2.9953000048408285,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741818368,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 3.121300003840588,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 14950
+          },
+          "rss_bytes": 741818368,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_no_response_cache/aois",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 33.32310000405414,
+      "min_ms": 32.47879999980796,
+      "max_ms": 40.77529999631224,
+      "samples": [
+        {
+          "ms": 38.5182000027271,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 743239680,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 40.77529999631224,
+          "cpu_ms": 46.875,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 744370176,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 33.32310000405414,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 745082880,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 33.24830000201473,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 745107456,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 32.47879999980796,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 746508288,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/http_response_cache_hit/aois",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 12.661500004469417,
+      "min_ms": 12.092800003301818,
+      "max_ms": 13.002699997741729,
+      "samples": [
+        {
+          "ms": 12.16279999789549,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 748240896,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 13.002699997741729,
+          "cpu_ms": 0.0,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 748707840,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 12.661500004469417,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 749223936,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 12.092800003301818,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 749973504,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 12.960799998836592,
+          "cpu_ms": 15.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3899
+          },
+          "rss_bytes": 750399488,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "small/report_group_load_cold_simulated",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 34.97880000213627,
+      "min_ms": 34.323400002904236,
+      "max_ms": 35.32409999752417,
+      "samples": [
+        {
+          "ms": 35.21470000123372,
+          "cpu_ms": 31.25,
+          "counts": {
+            "downloads": 2,
+            "download_bytes": 197588,
+            "parquet_reads": 2,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 753721344,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 34.7678000034648,
+          "cpu_ms": 0.0,
+          "counts": {
+            "downloads": 2,
+            "download_bytes": 197588,
+            "parquet_reads": 2,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 756330496,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 34.323400002904236,
+          "cpu_ms": 31.25,
+          "counts": {
+            "downloads": 2,
+            "download_bytes": 197588,
+            "parquet_reads": 2,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 757317632,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 34.97880000213627,
+          "cpu_ms": 0.0,
+          "counts": {
+            "downloads": 2,
+            "download_bytes": 197588,
+            "parquet_reads": 2,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 759410688,
+          "process_lifetime_peak_bytes": 810741760
+        },
+        {
+          "ms": 35.32409999752417,
+          "cpu_ms": 15.625,
+          "counts": {
+            "downloads": 2,
+            "download_bytes": 197588,
+            "parquet_reads": 2,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 762191872,
+          "process_lifetime_peak_bytes": 810741760
+        }
+      ]
+    },
+    {
+      "name": "large/parquet_cold_simulated",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 90.18720000312896,
+      "min_ms": 88.43590000469703,
+      "max_ms": 90.41340000112541,
+      "samples": [
+        {
+          "ms": 90.41340000112541,
+          "cpu_ms": 78.125,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 17366952,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1134329856,
+          "process_lifetime_peak_bytes": 1134379008
+        },
+        {
+          "ms": 89.07339999859687,
+          "cpu_ms": 46.875,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 17366952,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1212436480,
+          "process_lifetime_peak_bytes": 1212485632
+        },
+        {
+          "ms": 88.43590000469703,
+          "cpu_ms": 78.125,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 17366952,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1288409088,
+          "process_lifetime_peak_bytes": 1288458240
+        },
+        {
+          "ms": 90.18720000312896,
+          "cpu_ms": 250.0,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 17366952,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1349033984,
+          "process_lifetime_peak_bytes": 1349083136
+        },
+        {
+          "ms": 90.26830000220798,
+          "cpu_ms": 62.5,
+          "counts": {
+            "resolve_files": 1,
+            "downloads": 1,
+            "download_bytes": 17366952,
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1389027328,
+          "process_lifetime_peak_bytes": 1407307776
+        }
+      ]
+    },
+    {
+      "name": "large/parquet_disk_hit",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 55.465299999923445,
+      "min_ms": 53.253500002028886,
+      "max_ms": 59.348700000555255,
+      "samples": [
+        {
+          "ms": 57.03989999892656,
+          "cpu_ms": 46.875,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1561387008,
+          "process_lifetime_peak_bytes": 1561436160
+        },
+        {
+          "ms": 55.465299999923445,
+          "cpu_ms": 93.75,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1622114304,
+          "process_lifetime_peak_bytes": 1622163456
+        },
+        {
+          "ms": 54.28580000443617,
+          "cpu_ms": 296.875,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1692139520,
+          "process_lifetime_peak_bytes": 1692192768
+        },
+        {
+          "ms": 53.253500002028886,
+          "cpu_ms": 78.125,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1769725952,
+          "process_lifetime_peak_bytes": 1769775104
+        },
+        {
+          "ms": 59.348700000555255,
+          "cpu_ms": 93.75,
+          "counts": {
+            "parquet_reads": 1
+          },
+          "rss_bytes": 1845702656,
+          "process_lifetime_peak_bytes": 1845751808
+        }
+      ]
+    },
+    {
+      "name": "large/aoi_metrics",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 457.7057999995304,
+      "min_ms": 454.167799995048,
+      "max_ms": 551.7210000034538,
+      "samples": [
+        {
+          "ms": 454.167799995048,
+          "cpu_ms": 453.125,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 1893224448,
+          "process_lifetime_peak_bytes": 1982918656
+        },
+        {
+          "ms": 457.7057999995304,
+          "cpu_ms": 453.125,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 1907023872,
+          "process_lifetime_peak_bytes": 1996718080
+        },
+        {
+          "ms": 549.0130999969551,
+          "cpu_ms": 562.5,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 1918832640,
+          "process_lifetime_peak_bytes": 2008571904
+        },
+        {
+          "ms": 457.4131999979727,
+          "cpu_ms": 453.125,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 1931591680,
+          "process_lifetime_peak_bytes": 2021314560
+        },
+        {
+          "ms": 551.7210000034538,
+          "cpu_ms": 546.875,
+          "counts": {
+            "event_builds": 1
+          },
+          "rss_bytes": 1944014848,
+          "process_lifetime_peak_bytes": 2033520640
+        }
+      ]
+    },
+    {
+      "name": "large/report_group_collect",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 8494.716499997594,
+      "min_ms": 8405.380399999558,
+      "max_ms": 8693.415099995036,
+      "samples": [
+        {
+          "ms": 8693.415099995036,
+          "cpu_ms": 8687.5,
+          "counts": {
+            "event_builds": 8
+          },
+          "rss_bytes": 2498056192,
+          "process_lifetime_peak_bytes": 2633957376
+        },
+        {
+          "ms": 8405.380399999558,
+          "cpu_ms": 8343.75,
+          "counts": {
+            "event_builds": 8
+          },
+          "rss_bytes": 2794975232,
+          "process_lifetime_peak_bytes": 2926071808
+        },
+        {
+          "ms": 8494.716499997594,
+          "cpu_ms": 8453.125,
+          "counts": {
+            "event_builds": 8
+          },
+          "rss_bytes": 3051171840,
+          "process_lifetime_peak_bytes": 3185029120
+        },
+        {
+          "ms": 8667.742900004669,
+          "cpu_ms": 8656.25,
+          "counts": {
+            "event_builds": 8
+          },
+          "rss_bytes": 2009763840,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 8483.71980000229,
+          "cpu_ms": 8453.125,
+          "counts": {
+            "event_builds": 8
+          },
+          "rss_bytes": 1933053952,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/video_onset_repeat_and_scrub",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 1.7067000007955357,
+      "min_ms": 1.6162999963853508,
+      "max_ms": 1.9555999970179982,
+      "samples": [
+        {
+          "ms": 1.7067000007955357,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 1769132032,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 1.9555999970179982,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 1769132032,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 1.6650000034132972,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 1769132032,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 1.6162999963853508,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 1769132032,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 1.7631000009714626,
+          "cpu_ms": 0.0,
+          "counts": {
+            "resolve_generation": 4
+          },
+          "rss_bytes": 1769132032,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_no_response_cache/timeseries/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 184.79980000120122,
+      "min_ms": 170.5188999985694,
+      "max_ms": 195.18930000049295,
+      "samples": [
+        {
+          "ms": 184.79980000120122,
+          "cpu_ms": 187.5,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1795280896,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 179.25380000087898,
+          "cpu_ms": 187.5,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1795407872,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 170.5188999985694,
+          "cpu_ms": 171.875,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1798082560,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 191.08720000076573,
+          "cpu_ms": 187.5,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1798160384,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 195.18930000049295,
+          "cpu_ms": 187.5,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1779400704,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_response_cache_hit/timeseries/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 18.270399996254127,
+      "min_ms": 17.48720000614412,
+      "max_ms": 18.50249999552034,
+      "samples": [
+        {
+          "ms": 18.437200000334997,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1780449280,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 18.50249999552034,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1781350400,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 18.104100003256463,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1782231040,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 18.270399996254127,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1783152640,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 17.48720000614412,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 887158
+          },
+          "rss_bytes": 1784102912,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_no_response_cache/psd/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 198.25309999578167,
+      "min_ms": 167.65449999365956,
+      "max_ms": 248.38540000200737,
+      "samples": [
+        {
+          "ms": 198.97450000280514,
+          "cpu_ms": 187.5,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1803489280,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 248.38540000200737,
+          "cpu_ms": 250.0,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1804685312,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 198.25309999578167,
+          "cpu_ms": 203.125,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1805213696,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 171.5129000003799,
+          "cpu_ms": 187.5,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1784442880,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 167.65449999365956,
+          "cpu_ms": 171.875,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1802014720,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_response_cache_hit/psd/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 3.387100005056709,
+      "min_ms": 3.3054999948944896,
+      "max_ms": 3.9711999997962266,
+      "samples": [
+        {
+          "ms": 3.9711999997962266,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1802014720,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 3.387100005056709,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1802014720,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 3.3054999948944896,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1802014720,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 3.508299996610731,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1802014720,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 3.3104000031016767,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 35155
+          },
+          "rss_bytes": 1802014720,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_no_response_cache/spectrogram/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 653.1844999990426,
+      "min_ms": 630.5158000031952,
+      "max_ms": 658.7079000019003,
+      "samples": [
+        {
+          "ms": 653.1844999990426,
+          "cpu_ms": 640.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1792557056,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 658.7079000019003,
+          "cpu_ms": 671.875,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1812643840,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 654.7934000045643,
+          "cpu_ms": 656.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1742233600,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 640.1065999962157,
+          "cpu_ms": 609.375,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1770262528,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 630.5158000031952,
+          "cpu_ms": 656.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1755697152,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_response_cache_hit/spectrogram/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 44.902299996465445,
+      "min_ms": 42.97809999843594,
+      "max_ms": 46.17519999737851,
+      "samples": [
+        {
+          "ms": 44.902299996465445,
+          "cpu_ms": 31.25,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1761386496,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 44.52129999845056,
+          "cpu_ms": 46.875,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1764233216,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 46.17519999737851,
+          "cpu_ms": 46.875,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1752846336,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 42.97809999843594,
+          "cpu_ms": 46.875,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1755693056,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 45.6828999958816,
+          "cpu_ms": 46.875,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 2844387
+          },
+          "rss_bytes": 1758539776,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_no_response_cache/topography/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 115.76749999949243,
+      "min_ms": 112.96189999848139,
+      "max_ms": 123.56379999982892,
+      "samples": [
+        {
+          "ms": 123.56379999982892,
+          "cpu_ms": 140.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1778282496,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 113.1085000015446,
+          "cpu_ms": 125.0,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1778307072,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 112.96189999848139,
+          "cpu_ms": 156.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1778573312,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 122.30260000069393,
+          "cpu_ms": 109.375,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1778782208,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 115.76749999949243,
+          "cpu_ms": 125.0,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1779945472,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_response_cache_hit/topography/eeg",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 4.085000000486616,
+      "min_ms": 3.936499997507781,
+      "max_ms": 5.395000000135042,
+      "samples": [
+        {
+          "ms": 4.085000000486616,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1779945472,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 3.940199996577576,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1779945472,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 5.395000000135042,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1771413504,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 3.936499997507781,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1771413504,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 4.113799994229339,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 63184
+          },
+          "rss_bytes": 1771413504,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_no_response_cache/timeseries/gsr",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 36.2020999964443,
+      "min_ms": 35.43350000109058,
+      "max_ms": 38.63179999461863,
+      "samples": [
+        {
+          "ms": 38.2469999967725,
+          "cpu_ms": 46.875,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1764134912,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 36.2020999964443,
+          "cpu_ms": 46.875,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1764204544,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 36.05709999828832,
+          "cpu_ms": 31.25,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1764204544,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 35.43350000109058,
+          "cpu_ms": 62.5,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1765269504,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 38.63179999461863,
+          "cpu_ms": 62.5,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1765281792,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_response_cache_hit/timeseries/gsr",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 5.138799999258481,
+      "min_ms": 4.9112999986391515,
+      "max_ms": 5.791800002043601,
+      "samples": [
+        {
+          "ms": 5.126299998664763,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1765306368,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 5.791800002043601,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1765306368,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 4.9112999986391515,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1765306368,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 5.163299996638671,
+          "cpu_ms": 15.625,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1765306368,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 5.138799999258481,
+          "cpu_ms": 0.0,
+          "counts": {
+            "http_requests": 1,
+            "response_bytes": 102704
+          },
+          "rss_bytes": 1765306368,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_no_response_cache/aois",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 663.9871999941533,
+      "min_ms": 653.4320999999181,
+      "max_ms": 696.5449999988778,
+      "samples": [
+        {
+          "ms": 661.740200004715,
+          "cpu_ms": 734.375,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1739948032,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 653.4320999999181,
+          "cpu_ms": 906.25,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1904390144,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 664.1055000000051,
+          "cpu_ms": 890.625,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1740132352,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 663.9871999941533,
+          "cpu_ms": 687.5,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1941315584,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 696.5449999988778,
+          "cpu_ms": 906.25,
+          "counts": {
+            "parquet_reads": 1,
+            "event_builds": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1767432192,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/http_response_cache_hit/aois",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 184.65199999627657,
+      "min_ms": 178.99989999568788,
+      "max_ms": 228.2758000001195,
+      "samples": [
+        {
+          "ms": 181.00289999711094,
+          "cpu_ms": 390.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1978351616,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 188.2913000008557,
+          "cpu_ms": 390.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1964793856,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 178.99989999568788,
+          "cpu_ms": 375.0,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1975758848,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 184.65199999627657,
+          "cpu_ms": 203.125,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1990991872,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 228.2758000001195,
+          "cpu_ms": 265.625,
+          "counts": {
+            "parquet_reads": 1,
+            "http_requests": 1,
+            "response_bytes": 3929
+          },
+          "rss_bytes": 1777848320,
+          "process_lifetime_peak_bytes": 3333435392
+        }
+      ]
+    },
+    {
+      "name": "large/report_group_load_cold_simulated",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 273.9704999985406,
+      "min_ms": 268.00209999782965,
+      "max_ms": 276.67650000512367,
+      "samples": [
+        {
+          "ms": 271.23580000625225,
+          "cpu_ms": 859.375,
+          "counts": {
+            "downloads": 4,
+            "download_bytes": 69467808,
+            "parquet_reads": 4,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 2555379712,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 268.00209999782965,
+          "cpu_ms": 906.25,
+          "counts": {
+            "downloads": 4,
+            "download_bytes": 69467808,
+            "parquet_reads": 4,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 2846666752,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 276.67650000512367,
+          "cpu_ms": 656.25,
+          "counts": {
+            "downloads": 4,
+            "download_bytes": 69467808,
+            "parquet_reads": 4,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 3088474112,
+          "process_lifetime_peak_bytes": 3333435392
+        },
+        {
+          "ms": 273.9704999985406,
+          "cpu_ms": 796.875,
+          "counts": {
+            "downloads": 4,
+            "download_bytes": 69467808,
+            "parquet_reads": 4,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 3382935552,
+          "process_lifetime_peak_bytes": 3382988800
+        },
+        {
+          "ms": 274.336399997992,
+          "cpu_ms": 1031.25,
+          "counts": {
+            "downloads": 4,
+            "download_bytes": 69467808,
+            "parquet_reads": 4,
+            "report_batch_resolutions": 1
+          },
+          "rss_bytes": 3668779008,
+          "process_lifetime_peak_bytes": 3668832256
+        }
+      ]
+    },
+    {
+      "name": "save/participants/10",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 0.6950999959371984,
+      "min_ms": 0.6546000004163943,
+      "max_ms": 0.9577999953762628,
+      "samples": [
+        {
+          "ms": 0.9577999953762628,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 0.7120999944163486,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 0.6950999959371984,
+          "cpu_ms": 15.625,
+          "counts": {
+            "execute_select": 2,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 0.6587000025319867,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 0.6546000004163943,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        }
+      ]
+    },
+    {
+      "name": "save/aois/10",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 0.6640999999945052,
+      "min_ms": 0.6529999955091625,
+      "max_ms": 0.7585999992443249,
+      "samples": [
+        {
+          "ms": 0.6529999955091625,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 0.7585999992443249,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 0.6640999999945052,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 0.6539000023622066,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 0.6663000021944754,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 10,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        }
+      ]
+    },
+    {
+      "name": "save/participants/100",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 1.5379000033135526,
+      "min_ms": 1.1736999949789606,
+      "max_ms": 1.6173000039998442,
+      "samples": [
+        {
+          "ms": 1.2432000003173016,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 1.6173000039998442,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 1.1736999949789606,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 1.5870999995968305,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 1.5379000033135526,
+          "cpu_ms": 15.625,
+          "counts": {
+            "execute_select": 2,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668733952,
+          "process_lifetime_peak_bytes": 3668832256
+        }
+      ]
+    },
+    {
+      "name": "save/aois/100",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 1.6095000028144568,
+      "min_ms": 1.2637999971047975,
+      "max_ms": 1.676499996392522,
+      "samples": [
+        {
+          "ms": 1.3663999998243526,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668828160,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 1.6292000000248663,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668828160,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 1.2637999971047975,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668828160,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 1.676499996392522,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668828160,
+          "process_lifetime_peak_bytes": 3668832256
+        },
+        {
+          "ms": 1.6095000028144568,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 100,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668828160,
+          "process_lifetime_peak_bytes": 3668832256
+        }
+      ]
+    },
+    {
+      "name": "save/participants/1000",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 8.24109999666689,
+      "min_ms": 7.600600001751445,
+      "max_ms": 8.449599998129997,
+      "samples": [
+        {
+          "ms": 7.600600001751445,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668885504,
+          "process_lifetime_peak_bytes": 3668885504
+        },
+        {
+          "ms": 8.449599998129997,
+          "cpu_ms": 15.625,
+          "counts": {
+            "execute_select": 2,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668889600,
+          "process_lifetime_peak_bytes": 3668889600
+        },
+        {
+          "ms": 8.133700001053512,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668926464,
+          "process_lifetime_peak_bytes": 3668926464
+        },
+        {
+          "ms": 8.24109999666689,
+          "cpu_ms": 15.625,
+          "counts": {
+            "execute_select": 2,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668934656,
+          "process_lifetime_peak_bytes": 3668934656
+        },
+        {
+          "ms": 8.349399999133311,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 2,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668942848,
+          "process_lifetime_peak_bytes": 3668942848
+        }
+      ]
+    },
+    {
+      "name": "save/aois/1000",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 7.099399997969158,
+      "min_ms": 6.975999996939208,
+      "max_ms": 7.161599998653401,
+      "samples": [
+        {
+          "ms": 6.975999996939208,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668959232,
+          "process_lifetime_peak_bytes": 3668959232
+        },
+        {
+          "ms": 7.099399997969158,
+          "cpu_ms": 15.625,
+          "counts": {
+            "execute_select": 3,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668959232,
+          "process_lifetime_peak_bytes": 3668959232
+        },
+        {
+          "ms": 7.161599998653401,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668959232,
+          "process_lifetime_peak_bytes": 3668959232
+        },
+        {
+          "ms": 7.123400006094016,
+          "cpu_ms": 15.625,
+          "counts": {
+            "execute_select": 3,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668959232,
+          "process_lifetime_peak_bytes": 3668959232
+        },
+        {
+          "ms": 7.095399996615015,
+          "cpu_ms": 0.0,
+          "counts": {
+            "execute_select": 3,
+            "add": 1000,
+            "flush": 1,
+            "commit": 1
+          },
+          "rss_bytes": 3668959232,
+          "process_lifetime_peak_bytes": 3668959232
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "no real Drive/PostgreSQL/Redis",
+    "OS file cache warm, not OS cold",
+    "DB counters are execute/refresh calls, not actual SQL",
+    "report collect/load measured separately; no PDF rendering timing",
+    "video onset helper only; no FFmpeg timing",
+    "process lifetime peak RSS is cumulative"
+  ]
+}

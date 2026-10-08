@@ -18,8 +18,9 @@ import { CreateProjectStep1 } from "./CreateProjectStep1"
 import { CreateProjectStep2 } from "./CreateProjectStep2"
 import { CreateProjectStep3 } from "./CreateProjectStep3"
 import { CreateProjectStep4 } from "./CreateProjectStep4"
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import type { Project, SensorType } from "@/features/projects/types"
+import { PreExperimentCreateForm } from "../pre-experiment/PreExperimentCreateForm"
 
 interface CreateProjectDialogProps {
   trigger: ReactNode
@@ -36,6 +37,8 @@ export const CreateProjectDialog = ({
   resumeProject,
   onResumeHandled,
 }: CreateProjectDialogProps) => {
+  const [mode, setMode] = useState<"folder" | "pre">("folder")
+  const [preBusy, setPreBusy] = useState(false)
   const {
     currentStep,
     formData,
@@ -72,10 +75,12 @@ export const CreateProjectDialog = ({
     discardDraftProject,
     openForResume,
     isResumedDraft,
+    hasDraftProject,
   } = useCreateProjectWizard(onProjectCreated, onStep1Complete)
 
   useEffect(() => {
     if (!resumeProject) return
+    setMode("folder")
     void openForResume(resumeProject)
     onResumeHandled?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,6 +93,12 @@ export const CreateProjectDialog = ({
     formData.uploadedZip?.ingestion_status === "PROCESSING"
 
   const handleOpenChange = (open: boolean) => {
+    if (preBusy) return
+    if (mode === "pre") {
+      setIsOpen(open)
+      if (!open) { setMode("folder"); reset() }
+      return
+    }
     if (!open) {
       if (isZipUploadInProgress || step1Done) {
         // Upload running or step 1 already completed — keep the project alive
@@ -132,6 +143,7 @@ export const CreateProjectDialog = ({
           </DialogTitle>
           <DialogDescription asChild>
             <div>
+              {mode === "folder" && <>
               <span className="text-sm text-muted-foreground">
                 Paso {currentStep} de 4
               </span>
@@ -145,9 +157,17 @@ export const CreateProjectDialog = ({
                   />
                 ))}
               </div>
+              </>}
             </div>
           </DialogDescription>
         </DialogHeader>
+
+        {currentStep === 1 && !isResumedDraft && !hasDraftProject && !formData.uploadedZip && !saveError && <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de proyecto">
+          <Button type="button" variant={mode === "folder" ? "default" : "outline"} aria-pressed={mode === "folder"} disabled={preBusy || isSaving} onClick={() => setMode("folder")}>Con carpeta</Button>
+          <Button type="button" variant={mode === "pre" ? "default" : "outline"} aria-pressed={mode === "pre"} disabled={preBusy || isSaving} onClick={() => setMode("pre")}>Pre-experimento</Button>
+        </div>}
+
+        {mode === "pre" ? <PreExperimentCreateForm onBusyChange={setPreBusy} onCancel={() => handleOpenChange(false)} onCreated={project => { setIsOpen(false); setMode("folder"); reset(); onProjectCreated?.(project); onStep1Complete?.() }} /> : <>
 
         <div className="py-4 xl:py-6">
           {currentStep === 1 && (
@@ -272,6 +292,7 @@ export const CreateProjectDialog = ({
             )}
           </div>
         </DialogFooter>
+        </>}
       </DialogContent>
     </Dialog>
   )

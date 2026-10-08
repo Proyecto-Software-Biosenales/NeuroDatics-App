@@ -1,0 +1,26 @@
+
+> app@0.0.1 typecheck
+> tsc --noEmit
+
+tests/e2e/comparison-dashboard.spec.ts(299,7): error TS2322: Type '{ endpoint: string; resolution: string; source_samples: number; selected_samples: number; parameters: { scenario: string; max_points: number; decimation: string; start_time_s: null; end_time_s: null; }; chart_resolution: string; relationship: string; }' is not assignable to type '{ endpoint: string; resolution: "legacy_timeseries_display_samples"; source_samples: number; selected_samples: number; parameters: Record<string, unknown>; chart_resolution: "comparison_chart_display_samples"; relationship: string; }'.
+  Types of property 'resolution' are incompatible.
+    Type 'string' is not assignable to type '"legacy_timeseries_display_samples"'.
+tests/e2e/comparison-dashboard.spec.ts(307,7): error TS2322: Type '{ endpoint: string; resolution: string; source_samples: number; selected_samples: number; parameters: { scenario: string; max_points: number; decimation: string; start_time_s: null; end_time_s: null; }; chart_resolution: string; relationship: string; }' is not assignable to type '{ endpoint: string; resolution: "legacy_timeseries_display_samples"; source_samples: number; selected_samples: number; parameters: Record<string, unknown>; chart_resolution: "comparison_chart_display_samples"; relationship: string; }'.
+  Types of property 'resolution' are incompatible.
+    Type 'string' is not assignable to type '"legacy_timeseries_display_samples"'.
+tests/e2e/comparison-dashboard.spec.ts(315,7): error TS2322: Type '{ endpoint: string; resolution: string; source_samples: number; selected_samples: number; parameters: { scenario: string; max_points: number; decimation: string; start_time_s: null; end_time_s: null; }; chart_resolution: string; relationship: string; }' is not assignable to type '{ endpoint: string; resolution: "legacy_timeseries_display_samples"; source_samples: number; selected_samples: number; parameters: Record<string, unknown>; chart_resolution: "comparison_chart_display_samples"; relationship: string; }'.
+  Types of property 'resolution' are incompatible.
+    Type 'string' is not assignable to type '"legacy_timeseries_display_samples"'.
+tests/e2e/comparison-dashboard.spec.ts(320,7): error TS2322: Type '{ endpoint: string; resolution: string; source_samples: number; selected_samples: number; parameters: { scenario: string; max_points: number; decimation: string; start_time_s: null; end_time_s: null; }; chart_resolution: string; relationship: string; }' is not assignable to type '{ endpoint: string; resolution: "legacy_timeseries_display_samples"; source_samples: number; selected_samples: number; parameters: Record<string, unknown>; chart_resolution: "comparison_chart_display_samples"; relationship: string; }'.
+  Types of property 'resolution' are incompatible.
+    Type 'string' is not assignable to type '"legacy_timeseries_display_samples"'.
+tests/e2e/comparison-dashboard.spec.ts(325,7): error TS2322: Type '{ endpoint: string; resolution: string; source_samples: number; selected_samples: number; parameters: { scenario: string; max_points: number; decimation: string; start_time_s: null; end_time_s: null; }; chart_resolution: string; relationship: string; }' is not assignable to type '{ endpoint: string; resolution: "legacy_timeseries_display_samples"; source_samples: number; selected_samples: number; parameters: Record<string, unknown>; chart_resolution: "comparison_chart_display_samples"; relationship: string; }'.
+  Types of property 'resolution' are incompatible.
+    Type 'string' is not assignable to type '"legacy_timeseries_display_samples"'.
+tests/e2e/comparison-dashboard.spec.ts(628,5): error TS2345: Argument of type '{ statistics: (ComparisonStatisticsBlock | { status: string; error: string; series: never[]; visualization_id: string; source: { endpoint: string; resolution: "legacy_timeseries_display_samples"; source_samples: number; selected_samples: number; parameters: Record<string, unknown>; chart_resolution: "comparison_char...' is not assignable to parameter of type 'ComparisonChartsResponse'.
+  Types of property 'statistics' are incompatible.
+    Type '(ComparisonStatisticsBlock | { status: string; error: string; series: never[]; visualization_id: string; source: { endpoint: string; resolution: "legacy_timeseries_display_samples"; ... 4 more ...; relationship: string; }; } | { ...; })[]' is not assignable to type 'ComparisonStatisticsBlock[]'.
+      Type 'ComparisonStatisticsBlock | { status: string; error: string; series: never[]; visualization_id: string; source: { endpoint: string; resolution: "legacy_timeseries_display_samples"; ... 4 more ...; relationship: string; }; } | { ...; }' is not assignable to type 'ComparisonStatisticsBlock'.
+        Type '{ status: string; error: string; series: never[]; visualization_id: string; source: { endpoint: string; resolution: "legacy_timeseries_display_samples"; source_samples: number; selected_samples: number; parameters: Record<string, unknown>; chart_resolution: "comparison_chart_display_samples"; relationship: string; }...' is not assignable to type 'ComparisonStatisticsBlock'.
+          Types of property 'status' are incompatible.
+            Type 'string' is not assignable to type '"ok" | "empty" | "error"'.

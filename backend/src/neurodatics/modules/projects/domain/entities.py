@@ -43,12 +43,31 @@ class Project(BaseModel):
     drive_root_folder_url = Column(String(500), nullable=True)
     # Name of the folder the user picked; the browser-built ZIP is not stored.
     source_folder_name = Column(String(255), nullable=True)
+    pre_experiment = Column(JSON, nullable=True)
+    pre_experiment_revision = Column(Integer, nullable=False, default=0, server_default="0")
 
     # Relationships
     files = relationship("ProjectFile", back_populates="project", cascade="all, delete-orphan")
     sensors = relationship("ProjectSensor", back_populates="project", cascade="all, delete-orphan")
     participants = relationship("Participant", back_populates="project", cascade="all, delete-orphan")
     scenaries = relationship("Scenaries", back_populates="project", cascade="all, delete-orphan")
+    planning_responses = relationship("PreExperimentResponse", back_populates="project", cascade="all, delete-orphan")
+
+
+class PreExperimentResponse(BaseModel):
+    """Immutable submitted answers with the participant and questions as presented."""
+    __tablename__ = "pre_experiment_responses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    revision = Column(Integer, nullable=False)
+    participant_id = Column(UUID(as_uuid=True), nullable=False)
+    phase = Column(String(10), nullable=False)
+    participant_snapshot = Column(JSON, nullable=False)
+    questionnaire_snapshot = Column(JSON, nullable=False)
+    answers = Column(JSON, nullable=False)
+    submitted_at = Column(DateTime(timezone=True), nullable=False)
+    project = relationship("Project", back_populates="planning_responses")
 
 
 class ProjectFile(BaseModel):

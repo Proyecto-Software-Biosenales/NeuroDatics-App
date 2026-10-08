@@ -19,6 +19,8 @@ from uuid import uuid4
 import pandas as pd
 import pytest
 
+from neurodatics.modules.analytics.domain.parquet_projection import ParquetProjection
+
 import neurodatics.modules.projects.application.use_cases.upload_experiment_zip as upload_module
 from neurodatics.config.settings import settings
 from neurodatics.modules.analytics.application.services.parquet_reader_service import (
@@ -134,9 +136,13 @@ class _FakeCache:
         self._dir = tmp_path
         self.reads = []
 
-    def read_dataframe(self, project_id, participant_code, generation=0):
+    def read_dataframe(self, project_id, participant_code, generation=0, *, projection=None):
         self.reads.append(participant_code)
         return None
+
+    def get(self, project_id, participant_code, generation=0):
+        path = self._dir / f"{project_id}-g{generation}-{participant_code}.parquet"
+        return path if path.exists() else None
 
     def put(self, project_id, participant_code, content, generation=0):
         path = self._dir / f"{project_id}-g{generation}-{participant_code}.parquet"
@@ -285,7 +291,8 @@ async def test_identity_resolution_survives_reversed_row_order():
 
 
 @pytest.mark.asyncio
-async def test_read_downloads_the_parquet_belonging_to_the_requested_participant(tmp_path):
+@pytest.mark.parametrize("projection", [None, ParquetProjection("identity", required=("who",), optional=("time",))])
+async def test_read_downloads_the_parquet_belonging_to_the_requested_participant(tmp_path, projection):
     project_id = uuid4()
     session = _v2_project(project_id)
 
@@ -300,7 +307,7 @@ async def test_read_downloads_the_parquet_belonging_to_the_requested_participant
     reader._cache = _FakeCache(tmp_path)
     reader._build_drive_client = AsyncMock(return_value=client)
 
-    frame = await reader.read(project_id, "P01")
+    frame = await reader.read(project_id, "P01", projection=projection)
 
     assert set(frame["who"]) == {"P01"}
     assert client.downloaded == ["drive-user1"]
@@ -439,6 +446,123 @@ async def test_mixed_top_level_and_nested_metadata_both_resolve():
     assert second.project_file.filename == "user2.parquet"
 
 
+@pytest.mark.asyncio
+async def test_batch_identity_resolution_loads_candidates_once_and_keeps_partial_errors():
+    project_id = uuid4()
+    session = _v2_project(project_id)
+    reader = ParquetReaderService(session)
+
+    resolved, errors = await reader.resolve_user_parquets(
+        project_id,
+        ["P03", "P01", "P09"],
+    )
+
+    assert list(resolved) == ["P03", "P01"]
+    assert resolved["P03"].project_file.filename == "user3.parquet"
+    assert resolved["P01"].project_file.filename == "user1.parquet"
+    assert isinstance(errors["P09"], ParticipantParquetNotFoundError)
+    assert session.queried_entities.count(ProjectFile) == 1
+    assert session.queried_entities.count(Participant) == 0
+
+
+@pytest.mark.asyncio
+async def test_prepare_batch_resolves_generation_identity_and_storage_before_workers(
+    tmp_path,
+):
+    project_id = uuid4()
+    session = _v2_project(project_id)
+    reader = ParquetReaderService(session)
+    reader._cache = _FakeCache(tmp_path)
+    storage = object()
+    reader._build_drive_client = AsyncMock(return_value=storage)
+
+    batch = await reader.prepare_batch(project_id, CSV_BLOCK_ORDER, generation=19)
+
+    assert not batch.errors
+    assert list(batch.reads) == CSV_BLOCK_ORDER
+    assert {prepared.generation for prepared in batch.reads.values()} == {19}
+    assert {prepared.external_id for prepared in batch.reads.values()} == {
+        "drive-user1",
+        "drive-user2",
+        "drive-user3",
+    }
+    assert batch.storage_client is storage
+    assert session.queried_entities.count(ProjectFile) == 1
+    reader._build_drive_client.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_prepare_batch_warm_paths_pin_identity_and_recovery_client(tmp_path):
+    project_id = uuid4()
+    session = _v2_project(project_id)
+    reader = ParquetReaderService(session)
+    reader._cache = _FakeCache(tmp_path)
+    for code in CSV_BLOCK_ORDER:
+        reader._cache.put(project_id, code, b"cached", generation=23)
+    storage = object()
+    reader._build_drive_client = AsyncMock(return_value=storage)
+
+    batch = await reader.prepare_batch(project_id, CSV_BLOCK_ORDER, generation=23)
+
+    assert not batch.errors
+    assert all(prepared.cached_path is not None for prepared in batch.reads.values())
+    assert all(prepared.external_id for prepared in batch.reads.values())
+    assert batch.storage_client is storage
+    assert session.queried_entities.count(ProjectFile) == 1
+    reader._build_drive_client.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_prepare_batch_none_generation_resolves_once_before_workers(tmp_path):
+    project_id = uuid4()
+    session = _FakeSession(
+        project_id,
+        project_files=[_user_parquet(project_id, 1, participant_code="P01")],
+        participants=_participants_in_db_order(project_id, ["P01"]),
+        ingestion_generation=31,
+    )
+    reader = ParquetReaderService(session)
+    reader._cache = _FakeCache(tmp_path)
+    reader._build_drive_client = AsyncMock(return_value=object())
+
+    batch = await reader.prepare_batch(project_id, ["P01"], generation=None)
+
+    assert batch.reads["P01"].generation == 31
+    assert session.queried_entities.count(Project) == 1
+    assert session.queried_entities.count(ProjectFile) == 1
+
+
+@pytest.mark.asyncio
+async def test_prepared_read_recovers_if_cached_path_is_swept_without_db(tmp_path):
+    project_id = uuid4()
+    session = _FakeSession(
+        project_id,
+        project_files=[_user_parquet(project_id, 1, participant_code="P01")],
+        participants=_participants_in_db_order(project_id, ["P01"]),
+    )
+    source = pd.DataFrame({"time": [1.0, 2.0], "gsr": [0.2, 0.3]})
+    payload_path = tmp_path / "payload.parquet"
+    source.to_parquet(payload_path, index=False)
+    payload = payload_path.read_bytes()
+    cache = _FakeCache(tmp_path / "cache")
+    cache._dir.mkdir()
+    cache.put(project_id, "P01", payload, generation=29)
+    storage = _FakeDriveClient({"drive-user1": payload})
+    reader = ParquetReaderService(session)
+    reader._cache = cache
+    reader._build_drive_client = AsyncMock(return_value=storage)
+    batch = await reader.prepare_batch(project_id, ["P01"], generation=29)
+    prepared = batch.reads["P01"]
+    prepared.cached_path.unlink()
+
+    recovered = await reader.read_prepared(prepared, batch.storage_client)
+
+    pd.testing.assert_frame_equal(recovered, source)
+    assert storage.downloaded == ["drive-user1"]
+    # All queries happened during preparation; the worker recovery is scalar-only.
+    assert session.queried_entities == [ProjectFile]
+
+
 # --------------------------------------------------------------------------
 # Visible failures instead of a silently wrong participant
 # --------------------------------------------------------------------------
@@ -563,6 +687,32 @@ async def test_legacy_parquets_are_matched_by_participant_row_position(caplog):
     assert (await reader.resolve_user_parquet(project_id, "P02")).project_file.filename == (
         "user3.parquet"
     )
+
+
+@pytest.mark.asyncio
+async def test_batch_legacy_resolution_loads_candidates_and_participants_once(caplog):
+    project_id = uuid4()
+    session = _FakeSession(
+        project_id,
+        project_files=[_user_parquet(project_id, index) for index in (1, 2, 3)],
+        participants=_participants_in_db_order(project_id, DB_ROW_ORDER),
+    )
+    reader = ParquetReaderService(session)
+
+    with caplog.at_level(logging.WARNING, logger=READER_LOGGER):
+        resolved, errors = await reader.resolve_user_parquets(
+            project_id,
+            ["P03", "P01", "P02"],
+        )
+
+    assert not errors
+    assert [resolved[code].project_file.filename for code in ("P03", "P01", "P02")] == [
+        "user1.parquet",
+        "user2.parquet",
+        "user3.parquet",
+    ]
+    assert session.queried_entities.count(ProjectFile) == 1
+    assert session.queried_entities.count(Participant) == 1
 
 
 @pytest.mark.asyncio

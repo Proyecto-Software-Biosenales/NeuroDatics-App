@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-10-03T15:23:03.9269089Z",
+  "received_protected": 1069,
+  "unchanged": 1067,
+  "allowed_changed": [
+    "docs/CHANGELOG.md",
+    "docs/perf/ejecucion/ESTADO.md"
+  ],
+  "missing": [],
+  "unexpected_drift": [],
+  "ok": true,
+  "exclusions_in_received_inventory": [
+    "docs/perf/ejecucion/ASIGNACION-G06-CIERRE.md",
+    "docs/perf/ejecucion/ASIGNACION-G06.md",
+    "docs/perf/ejecucion/ASIGNACION-G07.md",
+    "docs/perf/ejecucion/ASIGNACION-G08-CONTINUACION.md",
+    "docs/perf/ejecucion/ASIGNACION-G08.md",
+    "docs/perf/ejecucion/ASIGNACION-G09-CORRECCION.md",
+    "docs/perf/ejecucion/ASIGNACION-G09.md",
+    "docs/perf/ejecucion/ASIGNACION-G10-CIERRE.md",
+    "docs/perf/ejecucion/ASIGNACION-G10-CONTINUACION.md",
+    "docs/perf/ejecucion/ASIGNACION-G10.md",
+    "docs/perf/ejecucion/ASIGNACION-G11.md",
+    "docs/perf/ejecucion/evidencia/g11/agente-cli.jsonl",
+    "docs/perf/ejecucion/evidencia/g11/agente-cli.stderr.log",
+    "docs/perf/ejecucion/ORQUESTACION.md",
+    "docs/perf/ejecucion/REVISION-G06.md",
+    "docs/perf/ejecucion/REVISION-G07.md",
+    "docs/perf/ejecucion/REVISION-G08.md",
+    "docs/perf/ejecucion/REVISION-G09.md",
+    "docs/perf/ejecucion/REVISION-G10.md"
+  ]
+}

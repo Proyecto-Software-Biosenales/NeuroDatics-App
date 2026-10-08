@@ -1,0 +1,30 @@
+✔ A→B→A revalidates metadata and reuses only a current generation (61.4555ms)
+✔ two subscribers share one request; isolated cancellation preserves its sibling (17.9526ms)
+✔ last cancellation aborts; ignored abort retains slot until settlement and never caches (26.6138ms)
+✔ in-flight project invalidation and logout discard late answers in both loaders (15.2152ms)
+✔ unknown/failed context and expired session cannot persist or consume old cache (13.0617ms)
+✔ keys isolate users, sessions, projects, generations, AOI revisions and every filter (7.1098ms)
+✔ revalidation blocks hits; a late metadata answer from an old session is ignored (11.9051ms)
+✔ mutation waits and invalidates work, including a failed write (8.532ms)
+✔ physical active/queue bounds survive repeated ignored aborts; duplicate admission is free (52.7691ms)
+✔ LRU/TTL/bytes bound strings, metadata, blobs and oversize results (62.4134ms)
+✔ four card orchestrations can wait on the four network slots without deadlock (14.8905ms)
+✔ cancellation while validating metadata rejects immediately without cancelling its sibling (10.493ms)
+✔ an evicted context's late metadata cannot invalidate its reopened replacement (36.1056ms)
+✔ slow metadata admits bounded unique waits, shares duplicates and detaches cancellations (19.6589ms)
+✔ AOI digest covers geometry/order and legacy or oversized config cannot retain AOIs (12.796ms)
+✔ real hooks reuse A→B→A and revalidate focus, changed generation and failed context (508.9865ms)
+✔ real sibling hooks share request, cancel separately, invalidate AOIs and isolate sessions (1013.6527ms)
+✔ scoped images share one download, bypass the legacy blob cache and revoke consumer URLs (203.0279ms)
+✔ focus detects remote AOI shape edits with unchanged ingestion and preserves signal cache (322.7703ms)
+✔ a late answer for a previous card never replaces the current card's data (307.7289ms)
+✔ a remounted card attaches to its in-flight request instead of repeating it (165.7428ms)
+✔ a scoped remount waits for fresh metadata before reusing its card cache (107.4737ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2698.5118

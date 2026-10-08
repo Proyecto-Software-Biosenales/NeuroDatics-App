@@ -2,7 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import {
   Bar,
   BarChart,
@@ -51,9 +51,24 @@ import {
   resolveScanpathTotalDurationS,
   scanpathRadiusForDuration,
 } from "../scanpathScale"
+import {
+  ACTIVE_SCANPATH_STYLE,
+  SCANPATH_STYLES,
+  scanpathGeometry,
+  scanpathLabelFontSize,
+} from "../scanpathStyle"
 
-const COMPARISON_SCANPATH_MIN_RADIUS = 10
-const COMPARISON_SCANPATH_MAX_RADIUS = 28
+/** Cards in a participant grid: the stimulus fills the space left, not a fixed height. */
+const CompactSurfaceContext = createContext(false)
+
+// Same preset as the "Mapa de recorridos" tab, so every scanpath looks alike.
+const scanpathStyle = SCANPATH_STYLES[ACTIVE_SCANPATH_STYLE]
+const scanpathLabelStyle: CSSProperties = {
+  paintOrder: "stroke",
+  stroke: scanpathStyle.labelHalo,
+  strokeWidth: scanpathStyle.labelHaloWidth,
+  strokeLinejoin: scanpathStyle.labelHaloLineJoin,
+}
 
 interface ImageState {
   url: string | null
@@ -88,6 +103,7 @@ function StimulusSurface({
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const [box, setBox] = useState<ContainedImageBox | null>(null)
+  const compact = useContext(CompactSurfaceContext)
 
   const measure = useCallback(() => {
     setBox(getContainedImageBox(imageRef.current, containerRef.current))
@@ -117,14 +133,18 @@ function StimulusSurface({
   return (
     <div
       ref={containerRef}
-      className="relative min-h-64 overflow-hidden rounded-xl bg-muted/30"
+      className={
+        compact
+          ? "relative min-h-0 flex-1 overflow-hidden rounded-xl bg-muted/30"
+          : "relative min-h-64 overflow-hidden rounded-xl bg-muted/30"
+      }
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imageRef}
         src={image.url}
         alt={alt}
-        className="analytics-visual-image min-h-64"
+        className={compact ? "h-full w-full object-contain" : "analytics-visual-image min-h-64"}
         onLoad={measure}
       />
       {renderOverlay?.(box)}
@@ -350,6 +370,7 @@ export function HeatmapPanel({
   image,
   overlayUrl,
   aoi,
+  compact = false,
 }: {
   fixation: FixationData | null
   loading: boolean
@@ -357,6 +378,7 @@ export function HeatmapPanel({
   image: ImageState
   overlayUrl: string | null
   aoi: AoiMetricsData | null
+  compact?: boolean
 }) {
   if (loading)
     return (
@@ -369,8 +391,9 @@ export function HeatmapPanel({
     )
 
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+    <CompactSurfaceContext.Provider value={compact}>
+    <div className={compact ? "flex h-full min-h-0 flex-col gap-2" : "space-y-3"}>
+      <div className={compact ? "grid grid-cols-3 gap-2" : "grid gap-3 sm:grid-cols-3"}>
         <MiniMetric
           label="Fijaciones"
           value={String(fixation.stats.n_fixations)}
@@ -404,6 +427,7 @@ export function HeatmapPanel({
         )}
       />
     </div>
+    </CompactSurfaceContext.Provider>
   )
 }
 
@@ -420,12 +444,14 @@ export function ScanpathPanel({
   error,
   image,
   aoi,
+  compact = false,
 }: {
   data: ScanpathData | null
   loading: boolean
   error: string | null
   image: ImageState
   aoi: AoiMetricsData | null
+  compact?: boolean
 }) {
   if (loading)
     return (
@@ -444,12 +470,15 @@ export function ScanpathPanel({
   )
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Los círculos usan una escala absoluta: el mismo tamaño representa la
-        misma duración entre participantes.
-      </p>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <CompactSurfaceContext.Provider value={compact}>
+    <div className={compact ? "flex h-full min-h-0 flex-col gap-2" : "space-y-3"}>
+      {compact ? null : (
+        <p className="text-xs text-muted-foreground">
+          Los círculos usan una escala absoluta: el mismo tamaño representa la
+          misma duración entre participantes.
+        </p>
+      )}
+      <div className={compact ? "grid grid-cols-4 gap-2" : "grid gap-3 sm:grid-cols-2 xl:grid-cols-4"}>
         <MiniMetric label="Objetivos" value={String(data.n_objectives)} />
         <MiniMetric
           label="Distancia"
@@ -469,6 +498,7 @@ export function ScanpathPanel({
         alt="Mapa de recorridos del escenario"
         renderOverlay={(box) => {
           if (!box) return null
+          const geometry = scanpathGeometry(scanpathStyle, box.renderedW, box.renderedH)
           const points = data.objectives.map((objective) =>
             scanpathPoint(box, objective.cx, objective.cy)
           )
@@ -486,17 +516,17 @@ export function ScanpathPanel({
                     y1={points[index].y}
                     x2={point.x}
                     y2={point.y}
-                    stroke="#F43F5E"
-                    strokeWidth="2"
-                    strokeOpacity="0.72"
+                    stroke={scanpathStyle.lineStroke}
+                    strokeWidth={geometry.lineWidth}
+                    strokeLinecap="round"
                   />
                 ))}
                 {data.objectives.map((objective, index) => {
                   const point = points[index]
                   const radius = scanpathRadiusForDuration(
                     objective.duration_s,
-                    COMPARISON_SCANPATH_MIN_RADIUS,
-                    COMPARISON_SCANPATH_MAX_RADIUS,
+                    geometry.minRadius,
+                    geometry.maxRadius,
                     radiusCapMs
                   )
                   const details = formatScanpathObjectiveDetails(objective)
@@ -518,19 +548,20 @@ export function ScanpathPanel({
                         cx={point.x}
                         cy={point.y}
                         r={radius}
-                        fill="#F43F5E"
-                        fillOpacity="0.72"
-                        stroke="white"
-                        strokeWidth="2"
-                        className="transition-[stroke-width] group-focus-visible:stroke-[3]"
+                        fill={scanpathStyle.nodeFill}
+                        stroke={scanpathStyle.nodeStroke}
+                        strokeWidth={geometry.nodeStrokeWidth}
+                        className={scanpathStyle.nodeClassName}
                       />
                       <text
                         x={point.x}
-                        y={point.y + 4}
+                        y={point.y}
                         textAnchor="middle"
-                        fill="white"
-                        fontSize="11"
+                        dominantBaseline="central"
+                        fill={scanpathStyle.labelFill}
+                        fontSize={scanpathLabelFontSize(scanpathStyle, radius)}
                         fontWeight="700"
+                        style={scanpathLabelStyle}
                       >
                         {objective.id}
                       </text>
@@ -542,25 +573,29 @@ export function ScanpathPanel({
           )
         }}
       />
-      <div className="rounded-xl border border-border bg-muted/20 px-4 py-3">
-        <ScanpathDurationLegend
-          capMs={radiusCapMs}
-          minRadius={COMPARISON_SCANPATH_MIN_RADIUS}
-          maxRadius={COMPARISON_SCANPATH_MAX_RADIUS}
-          color="#F43F5E"
-        />
-      </div>
+      {compact ? null : (
+        <div className="rounded-xl border border-border bg-muted/20 px-4 py-3">
+          <ScanpathDurationLegend
+            capMs={radiusCapMs}
+            minRadius={scanpathStyle.minRadius}
+            maxRadius={scanpathStyle.maxRadius}
+            color={scanpathStyle.nodeFill}
+          />
+        </div>
+      )}
     </div>
+    </CompactSurfaceContext.Provider>
   )
 }
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
+  const compact = useContext(CompactSurfaceContext)
   return (
-    <div className="rounded-xl border border-border bg-background px-4 py-3">
-      <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+    <div className={compact ? "min-w-0 rounded-lg border border-border bg-background px-2 py-1.5" : "rounded-xl border border-border bg-background px-4 py-3"}>
+      <p className={compact ? "truncate text-[10px] font-medium tracking-wider text-muted-foreground uppercase" : "text-xs font-medium tracking-wider text-muted-foreground uppercase"}>
         {label}
       </p>
-      <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
+      <p className={compact ? "truncate text-sm font-semibold tabular-nums" : "mt-1 text-xl font-semibold tabular-nums"}>{value}</p>
     </div>
   )
 }
@@ -570,11 +605,14 @@ export function AoiPanel({
   loading,
   error,
   image,
+  compact = false,
 }: {
   data: AoiMetricsData | null
   loading: boolean
   error: string | null
   image: ImageState
+  /** Only the dwell chart: every card shares the same AOI geometry. */
+  compact?: boolean
 }) {
   if (loading) {
     return (
@@ -592,17 +630,20 @@ export function AoiPanel({
     )
 
   return (
-    <div className="grid gap-4 xl:grid-cols-2 2xl:gap-5">
-      <StimulusSurface
-        image={image}
-        alt="Áreas de interés del escenario"
-        renderOverlay={(box) => <AoiOverlay aois={data.aois} box={box} />}
-      />
+    <div className={compact ? "h-full" : "grid gap-4 xl:grid-cols-2 2xl:gap-5"}>
+      {compact ? null : (
+        <StimulusSurface
+          image={image}
+          alt="Áreas de interés del escenario"
+          renderOverlay={(box) => <AoiOverlay aois={data.aois} box={box} />}
+        />
+      )}
       <div
         role="img"
         aria-label={`Comparación de permanencia para ${data.aois.length} AOIs.`}
+        className={compact ? "h-full" : undefined}
       >
-        <AnalyticsChartShell xAxisLabel="AOI" variant="mid">
+        <AnalyticsChartShell xAxisLabel="AOI" variant="mid" className={compact ? "h-full!" : undefined}>
         <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
           <BarChart
             data={data.aois}

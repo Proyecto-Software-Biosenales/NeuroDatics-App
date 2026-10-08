@@ -58,6 +58,7 @@ from .eeg_analytics_service import (
 from .fixation_analytics_service import (
     FixationDurationVariantService as FixationDurationVariantService,
     FixationEventService as FixationEventService,
+    FixationEventResult as FixationEventResult,
 )
 from .scanpath_analytics_service import (
     ScanpathAnalyticsService as ScanpathAnalyticsService,

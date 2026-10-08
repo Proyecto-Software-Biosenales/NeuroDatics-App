@@ -20,12 +20,14 @@ test("EEG views preserve channels, signal mode and independent time windows", as
     const power = Object.fromEntries(channels.map((channel, index) => [channel, [index + 1, index + 3, index + 2]]))
     if (path === "/api/projects") {
       await route.fulfill({ json: [{ id: "eeg-project", name: "EEG Project", sensors: [{ id: "eeg-sensor", sensor_type: "EEG" }] }] })
+    } else if (path === "/api/projects/eeg-project") {
+      await route.fulfill({ json: { id: "eeg-project" } })
     } else if (path.endsWith("/analytics/participants")) {
       await route.fulfill({ json: [{ participant_code: "P01", user_index: 1 }] })
     } else if (path.endsWith("/analytics/scenarios")) {
       await route.fulfill({ json: [] })
     } else if (path.endsWith("/analytics/timeseries/eeg")) {
-      await route.fulfill({ json: { ...common, time: [0, 1, 2], raw: power, smooth: power, statistics: { raw: Object.fromEntries(channels.map((c) => [c, {count:1200,mean:2,std:1,median:2,min:1,max:3,rms:2.2}])), smooth: {} } } })
+      await route.fulfill({ json: { ...common, time: [0, 1, 2], raw: power, smooth: power, statistics: { raw: Object.fromEntries(channels.map((c) => [c, {count:1200,mean:2,std:1,median:2,min:1,max:3,rms:2.2}])), smooth: Object.fromEntries(channels.map((c) => [c, {count:1200,mean:2,std:1,median:2,min:1,max:3,rms:2.2}])) } } })
     } else if (path.endsWith("/analytics/psd/eeg")) {
       await route.fulfill({ json: { ...common, frequency: [0, 5, 10], power, use_db: true, unit: "dB" } })
     } else if (path.endsWith("/analytics/spectrogram/eeg")) {
@@ -52,21 +54,23 @@ test("EEG views preserve channels, signal mode and independent time windows", as
   await expect(page.getByRole("button", { name: "Electroencefalógrafo", exact: true })).toHaveAttribute("aria-pressed", "true")
   await expect(page.getByText("Estadísticas EEG por canal", { exact: true })).toBeVisible()
   await expect(page.getByLabel("Canales EEG").getByRole("button", { name: "F3", exact: true })).toBeEnabled()
-  await expect(page.getByRole("button", { name: "Cruda", exact: true })).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByRole("button", { name: "Suavizada", exact: true })).toHaveAttribute("aria-pressed", "true")
   await expect(page.getByText("Muestras EEG ausentes: revisar el registro.", {exact:true})).toBeVisible()
   await expect(page.getByRole("cell", {name:"1200",exact:true}).first()).toBeVisible()
   await expect(page.getByRole("columnheader", {name:"Base",exact:true})).toHaveCount(0)
+  await page.waitForLoadState("networkidle")
+  expect(requested.filter((path) => path.endsWith("/eeg"))).toEqual(["/api/projects/eeg-project/analytics/timeseries/eeg"])
   // Quality warnings close the page instead of pushing the charts down.
   expect(await page.getByRole("status").filter({ hasText: "Calidad y alcance de EEG" }).evaluate((element) =>
     Boolean(element.parentElement?.lastElementChild === element)
   )).toBe(true)
-  // A chip beside the chart counts them and jumps there; ordinary data is not
-  // reported as a clipped axis.
+  // Only that closing card lists them: the chart carries no quality chip, and
+  // ordinary data is not reported as a clipped axis.
+  await expect(page.getByRole("button", { name: /avisos? de calidad/ })).toHaveCount(0)
   await expect(page.getByRole("button", { name: /Eje recortado/ })).toHaveCount(0)
-  await page.getByRole("button", { name: "1 aviso de calidad", exact: true }).click()
-  await expect(page.getByRole("status").filter({ hasText: "Calidad y alcance de EEG" })).toBeInViewport()
-  await expect(page.getByRole("status").filter({ hasText: "Calidad y alcance de EEG" })).toBeFocused()
   await page.getByLabel("Canales EEG").getByRole("button", { name: "F3", exact: true }).click()
+  await page.waitForLoadState("networkidle")
+  expect(requested.filter((path) => path.endsWith("/eeg")).every((path) => path.endsWith("/timeseries/eeg"))).toBe(true)
   const timeWindow = page.getByRole("button", { name: /^Ventana temporal:/ })
   await timeWindow.click()
   await page.getByLabel("Inicio", { exact: true }).fill("0.5")
@@ -112,7 +116,7 @@ test("EEG views preserve channels, signal mode and independent time windows", as
   await expect(page.getByText("Ventana 2 / 3", { exact: true })).toBeVisible()
 
   await page.getByRole("tab", { name: "EEG por canal", exact: true }).click()
-  await expect(page.getByRole("button", { name: "Cruda", exact: true })).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByRole("button", { name: "Suavizada", exact: true })).toHaveAttribute("aria-pressed", "true")
   await expect(page.getByLabel("Canales EEG").getByRole("button", { name: "F3", exact: true })).toHaveAttribute("aria-pressed", "false")
   await expect(page.getByText("Ventana activa", { exact: true })).toBeVisible()
   await timeWindow.click()
@@ -123,5 +127,11 @@ test("EEG views preserve channels, signal mode and independent time windows", as
   await timeWindow.click()
   await expect(page.getByLabel("Inicio", { exact: true })).toHaveValue("0.25")
   await expect(page.getByLabel("Fin", { exact: true })).toHaveValue("1.75")
+  expect(new Set(requested.filter((path) => path.endsWith("/eeg")))).toEqual(new Set([
+    "/api/projects/eeg-project/analytics/timeseries/eeg",
+    "/api/projects/eeg-project/analytics/psd/eeg",
+    "/api/projects/eeg-project/analytics/spectrogram/eeg",
+    "/api/projects/eeg-project/analytics/topography/eeg",
+  ]))
   expect(errors).toEqual([])
 })

@@ -1,0 +1,12 @@
+[
+  {
+    "build": "g02-closure",
+    "frontend_scope_count": 30,
+    "differences": []
+  },
+  {
+    "build": "g02-local-closure",
+    "frontend_scope_count": 30,
+    "differences": []
+  }
+]

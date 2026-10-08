@@ -1,0 +1,15 @@
+Cierre mecánico G06 completado.
+
+- Hashes: 4/4 coinciden con el manifiesto.
+- Patch regenerado contra `output/perf-g06/base`: 10 archivos.
+- Manifiesto UTF-8: 24/24 entradas verificadas.
+- Preservación: 395 recibidos, 392 extranjeros intactos, frontend 73/73.
+- Evidencia existente: 207 pruebas y 25 snapshots por runtime; sin nuevas ejecuciones.
+
+Archivos creados/actualizados:
+
+- [cierre-verificacion.json](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g06/cierre-verificacion.json)
+- [respuesta-cierre.txt](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/evidencia/g06/respuesta-cierre.txt)
+- `own.patch`, `manifiesto-final.json`, `preservacion.json`
+
+Estado preservado: G06 completo, pendiente de revisión del coordinador; G07 no iniciado.

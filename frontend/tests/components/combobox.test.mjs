@@ -161,12 +161,12 @@ test("analytics filters preserve all-scenarios and null participant selection", 
   const page = await fixture(t, "filters")
   const triggers = page.locator('[data-slot="select-trigger"]')
   await expect(triggers.nth(0)).toContainText("Todos los escenarios")
-  await expect(triggers.nth(1)).toContainText("Sin sujetos")
+  await expect(triggers.nth(1)).toContainText("Sin participantes")
   await triggers.nth(0).click()
   await page.getByRole("option", { name: "Beta scenario", exact: true }).click()
   await expect(triggers.nth(0)).toContainText("Beta scenario")
   await triggers.nth(1).click()
-  await page.getByRole("option", { name: "Sujeto P02", exact: true }).click()
+  await page.getByRole("option", { name: "Participante P02", exact: true }).click()
   assert.deepEqual(JSON.parse(await page.locator("#selection").textContent()), {
     project: "", participant: "P02", scenario: "Beta scenario",
   })
@@ -185,7 +185,7 @@ test("report participant selection remains operable inside its radio label", asy
   const trigger = page.locator('[data-slot="select-trigger"]')
   await expect(trigger).toContainText("Selecciona un participante")
   await trigger.click()
-  await page.getByRole("option", { name: "Sujeto P01", exact: true }).click()
+  await page.getByRole("option", { name: "Participante P01", exact: true }).click()
   assert.equal(JSON.parse(await page.locator("#selection").textContent()).participant, "P01")
   await expect(trigger).toBeFocused()
 })

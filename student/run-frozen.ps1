@@ -62,7 +62,23 @@ if ($Assemble) {
     robocopy "$Work\frontend" "$Pkg\frontend" /E /NFL /NDL /NJH /NJS /NP | Out-Null
     robocopy $PgSource "$Pkg\pgsql" /E /NFL /NDL /NJH /NJS /NP | Out-Null
     robocopy $TemplateSource "$Pkg\pg-template" /E /NFL /NDL /NJH /NJS /NP | Out-Null
-    # The PostgreSQL zip does not ship the Visual C++ runtime its 44 executables import, and a
+    # Nothing a student runs: library test suites, C headers, Cython sources and link libraries
+    # that PyInstaller collects with pyarrow; PostgreSQL's StackBuilder GUI (wx*, libcurl), its
+    # regression-test and ecpg programs, link libraries, and message catalogs other than Spanish.
+    # The DLLs removed here are imported by none of postgres, pg_ctl, pg_isready, pg_controldata,
+    # psql or the lib\ extensions; the gates below run on the pruned folder.
+    $internal = "$Pkg\_internal"
+    @('pyarrow\tests', 'pyarrow\include', 'matplotlib\mpl-data\sample_data') |
+        ForEach-Object { if (Test-Path "$internal\$_") { Remove-Item "$internal\$_" -Recurse -Force } }
+    Get-ChildItem $internal -Recurse -File -Include '*.lib', '*.h', '*.hpp', '*.pyx', '*.pxd', '*.pxi', '*.cmake' |
+        Remove-Item -Force
+    $pgBin = "$Pkg\pgsql\bin"
+    Get-ChildItem -Path "$pgBin\*" -File -Include 'wx*.dll', 'libcurl.*', 'stackbuilder.exe', 'testplug.dll', 'icuio67.dll',
+        'icutu67.dll', 'libecpg_compat.dll', 'ecpg.exe', 'pg_regress*.exe', 'pg_isolation_regress.exe',
+        'isolationtester.exe', 'libpq_*.exe', 'test_*.exe', '*.lib' | Remove-Item -Force
+    Get-ChildItem "$Pkg\pgsql\lib" -File -Filter '*.lib' | Remove-Item -Force
+    Get-ChildItem "$Pkg\pgsql\share\locale" -Directory | Where-Object Name -ne 'es' | Remove-Item -Recurse -Force
+    # The PostgreSQL zip does not ship the Visual C++ runtime its executables import, and a
     # laptop without the redistributable would fail to start the database. The frozen runtime
     # carries copies; put them beside the executables that need them.
     $runtime = @(Get-ChildItem "$Pkg\_internal" -Filter 'vcruntime140*.dll' -File)
@@ -72,7 +88,7 @@ if ($Assemble) {
         if (-not (Test-Path "$Pkg\pgsql\bin\$needed")) { throw "$needed is not beside postgres.exe" }
     }
     "assembled: $Pkg"
-    "  exe+_internal MB : " + (MB $dist)
+    "  exe+_internal MB : " + (MB "$Pkg\_internal")
     "  tools MB         : " + (MB "$Pkg\tools")
     "  frontend MB      : " + (MB "$Pkg\frontend")
     "  pgsql MB         : " + (MB "$Pkg\pgsql") + "  (runtime dlls: " + (($runtime | ForEach-Object Name) -join ', ') + ")"

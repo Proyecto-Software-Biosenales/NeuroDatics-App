@@ -1,6 +1,7 @@
 """Duration selection and canonical events share one fixation contract."""
 
 from copy import deepcopy
+from dataclasses import dataclass, field
 import json
 from typing import Optional
 import numpy as np
@@ -13,10 +14,48 @@ from neurodatics.shared.fixation_contract import (
     SUPPORTED_FIXATION_MIN_DURATIONS_MS,
     fixation_duration_column,
 )
-from ...domain.coordinate_transform import attach_transform_provenance
+from ...domain.coordinate_transform import attach_transform_provenance, displayed_stimulus_size
 from .numeric_helpers import _infer_fs as _infer_fs
 from .numeric_helpers import scope_to_scenario as scope_to_scenario
 from .fixation_event_reconstruction import _event_from_run, _from_v2, _legacy_events
+
+
+@dataclass(frozen=True, eq=False)
+class FixationEventResult:
+    """Operation-local owner of events, provenance and acquisition geometry.
+
+    Source samples/attrs must remain unchanged for the operation's lifetime.
+    Private storage is never a consumer's working frame: every public snapshot
+    owns its buffers and nested metadata. Do not retain this as a global cache.
+    ``None`` duration means stored canonical columns, not an explicit variant.
+    """
+
+    _events: pd.DataFrame = field(repr=False)
+    _metadata: dict = field(repr=False)
+    _source: pd.DataFrame = field(repr=False)
+    scenario: Optional[str]
+    proximity_threshold: float
+    min_fixation_duration_ms: Optional[int]
+    display_size: Optional[tuple[float, float]]
+
+    def __post_init__(self):
+        object.__setattr__(self, "_events", self._events.copy(deep=True))
+        object.__setattr__(self, "_metadata", deepcopy(self._metadata))
+
+    @property
+    def events(self) -> pd.DataFrame:
+        """Return a consumer-owned mutable event table."""
+        return self._events.copy(deep=True)
+
+    @property
+    def metadata(self) -> dict:
+        """Return consumer-owned provenance, including nested warning lists."""
+        return deepcopy(self._metadata)
+
+    def require_source(self, df: pd.DataFrame, scenario: Optional[str]) -> None:
+        """AOI sample metrics must use the exact source and scenario."""
+        if df is not self._source or scenario != self.scenario:
+            raise ValueError("Fixation result and sample metrics require the same source and scenario")
 
 
 class FixationDurationVariantService:
@@ -513,15 +552,39 @@ class FixationEventService:
         effective_rate: Optional[float],
     ) -> dict[Optional[str], float]:
         fallback = 1.0 / effective_rate if effective_rate and effective_rate > 0 else 0.0
-        cadence: dict[Optional[str], float] = {}
-        for segment in dict.fromkeys(segments):
-            segment_times = np.asarray(
-                [time for time, key in zip(times, segments) if key == segment and np.isfinite(time)],
-                dtype=float,
-            )
+        ordered_segments = list(dict.fromkeys(segments))
+        if not ordered_segments:
+            return {}
+
+        # A single detector segment is the common case. Keep its vectorized
+        # path separate instead of paying for the general grouping structure.
+        if len(ordered_segments) == 1:
+            segment = ordered_segments[0]
+            segment_times = np.asarray(times[:len(segments)], dtype=float)
+            segment_times = segment_times[np.isfinite(segment_times)]
             diffs = np.diff(segment_times)
             diffs = diffs[(diffs > 0) & np.isfinite(diffs)]
-            cadence[segment] = float(np.median(diffs)) if diffs.size else fallback
+            return {
+                segment: float(np.median(diffs)) if diffs.size else fallback
+            }
+
+        # Preserve first-seen segment order and each segment's original clock
+        # order. In particular, do not sort decreasing or interleaved clocks.
+        grouped_times: dict[Optional[str], list[float]] = {
+            segment: [] for segment in ordered_segments
+        }
+        for time_value, segment in zip(times, segments):
+            if np.isfinite(time_value):
+                grouped_times[segment].append(time_value)
+
+        cadence: dict[Optional[str], float] = {}
+        for segment, values in grouped_times.items():
+            segment_times = np.asarray(values, dtype=float)
+            diffs = np.diff(segment_times)
+            diffs = diffs[(diffs > 0) & np.isfinite(diffs)]
+            cadence[segment] = (
+                float(np.median(diffs)) if diffs.size else fallback
+            )
         return cadence
 
     @staticmethod
@@ -606,3 +669,25 @@ class FixationEventService:
         else:
             events, metadata = cls._legacy_events(scoped, proximity_threshold)
         return events, attach_transform_provenance(metadata, scoped)
+
+    @classmethod
+    def build_result(
+        cls,
+        df: pd.DataFrame,
+        scenario: Optional[str] = None,
+        proximity_threshold: float = 0.03,
+        min_fixation_duration_ms: Optional[int] = None,
+    ) -> FixationEventResult:
+        """Construct once for one unchanged source/scope/variant/proximity.
+
+        Events already include transformation, gaps, quality and detector
+        provenance. Geometry follows the original scanpath's source scope.
+        """
+        events, metadata = cls.build_events(
+            df, scenario=scenario, proximity_threshold=proximity_threshold,
+            min_fixation_duration_ms=min_fixation_duration_ms,
+        )
+        return FixationEventResult(
+            events, metadata, df, scenario, proximity_threshold,
+            min_fixation_duration_ms, displayed_stimulus_size(scope_to_scenario(df, scenario)),
+        )

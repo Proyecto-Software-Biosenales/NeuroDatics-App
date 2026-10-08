@@ -1,4 +1,4 @@
-"""All 23 analytics handlers execute over HTTP against the shared synthetic corpus."""
+"""All 24 analytics handlers execute over HTTP against the shared synthetic corpus."""
 
 import io
 from itertools import product
@@ -15,7 +15,7 @@ ROUTES = [
     "/timeseries/gaze", "/statistics/gaze", "/timeseries/distance", "/statistics/distance",
     "/timeseries/gsr", "/statistics/gsr", "/timeseries/eeg", "/psd/eeg",
     "/spectrogram/eeg", "/topography/eeg", "/scanpath", "/fixations", "/heatmap",
-    "/fixations/sensitivity", "/fixations/histogram", "/aois",
+    "/fixations/sensitivity", "/fixations/histogram", "/aois", "/scenario-timing",
 ]
 
 
@@ -35,7 +35,7 @@ def test_contract_inventory_covers_every_analytics_route():
     mounted = {route.path.split("/analytics", 1)[1] for route in app.routes
                if "/analytics/" in getattr(route, "path", "")}
     assert mounted == set(ROUTES)
-    assert len(ROUTES) == 23
+    assert len(ROUTES) == 24
 
 
 @pytest.mark.parametrize("endpoint", ROUTES)
@@ -71,6 +71,20 @@ def test_successful_analytics_contract(http_client, endpoint, snapshot):
             # v2 adds provenance/full-resolution statistics. Keep the v1 shape
             # baseline unchanged and explicitly verify the added contract here.
             legacy_body = dict(body) if isinstance(body, dict) else body
+            if endpoint == "/comparison/charts":
+                assert body["contract_version"] == "comparison-charts-v3"
+                assert body["statistics_schema_version"] == "comparison-statistics-v1"
+                assert {item["visualization_id"] for item in body["statistics"]} == {
+                    "pupil", "gaze", "distance", "gsr", "eeg_timeseries",
+                }
+                assert all(
+                    item["source"]["resolution"] == "legacy_timeseries_display_samples"
+                    for item in body["statistics"]
+                )
+                for added in (
+                    "contract_version", "statistics_schema_version", "statistics",
+                ):
+                    legacy_body.pop(added, None)
             if endpoint.endswith("/eeg"):
                 assert body["metadata"]["version"] == "eeg-v2"
                 assert isinstance(body["metadata"]["warnings"], list)

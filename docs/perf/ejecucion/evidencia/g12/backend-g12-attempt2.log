@@ -1,0 +1,833 @@
+2026-10-03 10:42:26,965 - neurodatics.config.logging - INFO - Logging configured successfully
+2026-10-03 10:42:27,065 - neurodatics.modules.projects.application.services.csv_processing_service - INFO - Starting CSV processing: csv_path=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g12\backend\g00-qi8oiplx\synthetic-experiment\experiment.csv, output_dir=C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\output\perf-g12\backend\g00-qi8oiplx\synthetic-experiment\parquet, users=2, encoding=utf-8
+2026-10-03 10:42:28,409 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,445 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,477 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,508 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,539 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,571 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,607 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,616 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,621 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,626 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,631 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:28,636 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,912 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,918 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,919 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,919 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,919 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,920 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,920 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,921 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,921 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,922 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,922 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,923 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,923 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,924 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,924 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,925 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,925 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,926 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,926 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,926 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,927 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,927 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,928 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,928 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,930 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,931 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:29,931 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:29,990 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0588s
+2026-10-03 10:42:29,991 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:29,992 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:29,992 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:29,993 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,011 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0188s
+2026-10-03 10:42:30,013 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,013 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,014 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,014 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,032 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0181s
+2026-10-03 10:42:30,033 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,034 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,035 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,035 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,054 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0189s
+2026-10-03 10:42:30,055 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,055 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,056 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,056 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,075 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0185s
+2026-10-03 10:42:30,075 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,076 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,077 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,077 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,095 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0182s
+2026-10-03 10:42:30,096 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,097 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,097 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,098 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,102 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0051s
+2026-10-03 10:42:30,104 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,104 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,106 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,106 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,112 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0062s
+2026-10-03 10:42:30,113 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,114 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,115 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,116 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,120 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0045s
+2026-10-03 10:42:30,121 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,122 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,123 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,123 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,128 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0051s
+2026-10-03 10:42:30,129 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,130 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,131 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,131 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,135 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0043s
+2026-10-03 10:42:30,136 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,137 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,137 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,138 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,142 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0050s
+2026-10-03 10:42:30,143 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,144 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,145 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,145 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,160 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0155s
+2026-10-03 10:42:30,161 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,162 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,163 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,163 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,184 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0208s
+2026-10-03 10:42:30,184 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,185 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,186 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,186 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,200 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0145s
+2026-10-03 10:42:30,201 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,202 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,203 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,203 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,217 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0143s
+2026-10-03 10:42:30,218 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,218 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,219 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,220 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,233 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0140s
+2026-10-03 10:42:30,234 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,235 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,236 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,236 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,249 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0135s
+2026-10-03 10:42:30,250 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,251 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,252 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,252 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,253 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0015s
+2026-10-03 10:42:30,254 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,254 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,255 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,255 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,256 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0015s
+2026-10-03 10:42:30,257 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,258 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,258 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,259 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,260 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0015s
+2026-10-03 10:42:30,261 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,261 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,262 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,262 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,263 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0016s
+2026-10-03 10:42:30,264 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,264 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,265 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,265 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,267 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0015s
+2026-10-03 10:42:30,267 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,268 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,269 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,269 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,270 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0015s
+2026-10-03 10:42:30,271 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,271 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,272 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,272 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,292 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0201s
+2026-10-03 10:42:30,293 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,294 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,294 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,295 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,314 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0197s
+2026-10-03 10:42:30,315 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,316 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,316 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,317 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,336 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0193s
+2026-10-03 10:42:30,336 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,337 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,338 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,338 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,357 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0189s
+2026-10-03 10:42:30,357 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,358 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,359 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,359 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,378 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0190s
+2026-10-03 10:42:30,379 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,380 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,380 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,381 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,399 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0191s
+2026-10-03 10:42:30,400 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,401 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,401 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,402 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,404 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0026s
+2026-10-03 10:42:30,405 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,405 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,406 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,406 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,409 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0026s
+2026-10-03 10:42:30,409 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,410 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,411 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,411 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,413 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0025s
+2026-10-03 10:42:30,414 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,414 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,415 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,415 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,418 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0025s
+2026-10-03 10:42:30,419 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,419 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,420 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,420 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,422 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0026s
+2026-10-03 10:42:30,423 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,424 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,424 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,425 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,427 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0025s
+2026-10-03 10:42:30,428 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,428 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,429 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,429 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,438 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0091s
+2026-10-03 10:42:30,439 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,439 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,440 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,440 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,448 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0084s
+2026-10-03 10:42:30,449 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,449 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,450 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,450 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,458 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0078s
+2026-10-03 10:42:30,458 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,459 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,460 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,460 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,469 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0089s
+2026-10-03 10:42:30,469 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,470 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,471 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,471 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,479 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0088s
+2026-10-03 10:42:30,480 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,481 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,481 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,482 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,490 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0081s
+2026-10-03 10:42:30,491 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,491 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,492 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,492 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,493 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0011s
+2026-10-03 10:42:30,494 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,494 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,495 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,495 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,496 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0011s
+2026-10-03 10:42:30,496 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,497 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,498 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,498 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,499 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0011s
+2026-10-03 10:42:30,499 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,500 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,500 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,501 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,502 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0011s
+2026-10-03 10:42:30,502 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,503 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,503 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,504 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,504 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0010s
+2026-10-03 10:42:30,505 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,506 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,506 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,507 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,507 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0011s
+2026-10-03 10:42:30,508 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,509 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,509 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,509 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,517 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0081s
+2026-10-03 10:42:30,518 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,518 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,519 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,519 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,527 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0078s
+2026-10-03 10:42:30,528 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,529 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,529 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,530 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,537 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0078s
+2026-10-03 10:42:30,538 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,539 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,540 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,540 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,548 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0081s
+2026-10-03 10:42:30,548 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,549 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,550 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,550 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,558 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0080s
+2026-10-03 10:42:30,558 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,559 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,560 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,560 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,567 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0075s
+2026-10-03 10:42:30,568 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,568 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,569 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,569 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,571 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0013s
+2026-10-03 10:42:30,571 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,572 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,572 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,572 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,573 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0013s
+2026-10-03 10:42:30,574 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,575 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,575 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,576 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,577 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0014s
+2026-10-03 10:42:30,577 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,578 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,579 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,579 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,580 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0014s
+2026-10-03 10:42:30,581 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,581 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,582 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,582 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,583 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0013s
+2026-10-03 10:42:30,584 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,584 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,585 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,585 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,586 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0013s
+2026-10-03 10:42:30,587 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,587 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,588 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,588 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,618 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0297s
+2026-10-03 10:42:30,619 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,619 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,620 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,620 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,649 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0294s
+2026-10-03 10:42:30,650 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,651 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,651 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,652 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,681 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0294s
+2026-10-03 10:42:30,682 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,682 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,683 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,684 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,713 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0296s
+2026-10-03 10:42:30,714 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,714 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,715 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,716 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,745 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0298s
+2026-10-03 10:42:30,746 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,747 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,748 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,748 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,777 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0298s
+2026-10-03 10:42:30,778 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,779 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,780 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,780 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,790 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0105s
+2026-10-03 10:42:30,791 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,792 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,792 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,793 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,803 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0103s
+2026-10-03 10:42:30,803 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,804 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,805 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,805 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,816 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0115s
+2026-10-03 10:42:30,817 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,818 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,819 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,819 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,830 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0108s
+2026-10-03 10:42:30,831 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,831 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,832 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,832 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,847 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0146s
+2026-10-03 10:42:30,848 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,848 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,849 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a
+2026-10-03 10:42:30,850 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:42:30,860 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0113s
+2026-10-03 10:42:30,861 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-01&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:42:30,861 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,895 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,931 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,964 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:30,999 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:31,034 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,209 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,298 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,395 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,480 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,564 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,651 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,775 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,832 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,885 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:32,939 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:33,001 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:42:33,054 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,898 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,919 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,920 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,920 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,921 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,921 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,922 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,922 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,923 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,923 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,924 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,924 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,925 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,925 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,925 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,926 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,926 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,927 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,927 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,928 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,928 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,928 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,929 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,929 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,931 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:25,931 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:25,932 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:26,130 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1987s
+2026-10-03 10:43:26,131 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:26,132 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:26,133 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:26,134 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:26,299 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1659s
+2026-10-03 10:43:26,300 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:26,301 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:26,302 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:26,303 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:26,469 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1662s
+2026-10-03 10:43:26,470 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:26,471 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:26,472 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:26,472 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:26,636 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1636s
+2026-10-03 10:43:26,637 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:26,638 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:26,639 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:26,639 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:26,804 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1648s
+2026-10-03 10:43:26,805 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:26,806 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:26,807 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:26,808 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:26,973 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1654s
+2026-10-03 10:43:26,976 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:26,976 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:26,977 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:26,978 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:26,993 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0161s
+2026-10-03 10:43:26,994 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:26,995 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:26,996 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:26,996 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,011 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0157s
+2026-10-03 10:43:27,013 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,013 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,014 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,015 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,030 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0156s
+2026-10-03 10:43:27,031 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,032 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,032 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,033 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,048 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0159s
+2026-10-03 10:43:27,049 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,050 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,051 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,051 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,067 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0157s
+2026-10-03 10:43:27,068 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,068 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,069 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,070 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,085 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0156s
+2026-10-03 10:43:27,086 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,087 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,088 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,088 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,248 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1607s
+2026-10-03 10:43:27,249 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,250 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,251 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,251 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,405 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1540s
+2026-10-03 10:43:27,406 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,407 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,408 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,408 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,559 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1515s
+2026-10-03 10:43:27,560 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,561 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,562 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,562 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,716 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1538s
+2026-10-03 10:43:27,717 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,718 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,718 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,719 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:27,871 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1529s
+2026-10-03 10:43:27,873 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:27,873 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:27,874 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:27,875 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:28,028 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1532s
+2026-10-03 10:43:28,029 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:28,030 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:28,031 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:28,031 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:28,033 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0018s
+2026-10-03 10:43:28,034 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:28,034 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:28,035 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:28,035 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:28,036 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0016s
+2026-10-03 10:43:28,037 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:28,038 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:28,038 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:28,039 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:28,040 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0015s
+2026-10-03 10:43:28,040 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:28,041 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:28,042 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:28,042 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:28,043 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0015s
+2026-10-03 10:43:28,044 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:28,044 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:28,045 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:28,045 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:28,047 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0018s
+2026-10-03 10:43:28,048 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:28,048 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:28,049 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:28,049 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:28,050 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0015s
+2026-10-03 10:43:28,051 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/psd/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:28,052 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:28,052 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:28,053 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:28,657 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6047s
+2026-10-03 10:43:28,659 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:28,660 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:28,661 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:28,662 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:29,264 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6029s
+2026-10-03 10:43:29,267 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:29,269 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:29,270 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:29,271 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:29,876 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6060s
+2026-10-03 10:43:29,878 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:29,880 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:29,881 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:29,881 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:30,492 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6107s
+2026-10-03 10:43:30,495 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:30,496 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:30,497 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:30,498 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:31,101 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6038s
+2026-10-03 10:43:31,103 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:31,105 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:31,106 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:31,106 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:31,708 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6021s
+2026-10-03 10:43:31,711 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:31,712 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:31,713 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:31,713 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:31,754 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0410s
+2026-10-03 10:43:31,755 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:31,756 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:31,757 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:31,757 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:31,797 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0401s
+2026-10-03 10:43:31,798 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:31,799 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:31,800 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:31,800 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:31,840 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0402s
+2026-10-03 10:43:31,842 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:31,842 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:31,843 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:31,843 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:31,885 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0419s
+2026-10-03 10:43:31,887 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:31,887 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:31,888 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:31,889 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:31,929 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0411s
+2026-10-03 10:43:31,931 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:31,932 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:31,933 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:31,933 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:31,973 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0405s
+2026-10-03 10:43:31,975 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/spectrogram/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:31,976 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:31,977 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:31,977 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,084 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1068s
+2026-10-03 10:43:32,085 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,086 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,087 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,087 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,193 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1065s
+2026-10-03 10:43:32,194 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,195 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,196 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,196 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,305 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1095s
+2026-10-03 10:43:32,307 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,307 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,308 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,308 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,415 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1065s
+2026-10-03 10:43:32,416 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,416 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,417 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,418 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,523 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1055s
+2026-10-03 10:43:32,524 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,524 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,525 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,526 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,631 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1053s
+2026-10-03 10:43:32,632 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,633 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,634 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,634 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,636 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0021s
+2026-10-03 10:43:32,636 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,637 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,638 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,638 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,639 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0018s
+2026-10-03 10:43:32,640 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,641 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,641 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,642 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,643 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0018s
+2026-10-03 10:43:32,644 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,644 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,645 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,645 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,648 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0029s
+2026-10-03 10:43:32,649 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,649 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,650 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,650 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,652 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0018s
+2026-10-03 10:43:32,652 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,653 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,653 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,654 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,655 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0018s
+2026-10-03 10:43:32,656 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/topography/eeg?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,656 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,657 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,657 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,691 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0339s
+2026-10-03 10:43:32,692 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,693 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,694 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,694 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,726 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0324s
+2026-10-03 10:43:32,729 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,730 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,731 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,731 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,763 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0326s
+2026-10-03 10:43:32,764 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,765 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,766 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,766 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,799 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0329s
+2026-10-03 10:43:32,800 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,801 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,802 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,802 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,835 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0335s
+2026-10-03 10:43:32,836 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,837 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,838 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,838 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,871 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0330s
+2026-10-03 10:43:32,872 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,872 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,873 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,874 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,877 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0033s
+2026-10-03 10:43:32,877 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,878 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,879 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,879 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,882 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0031s
+2026-10-03 10:43:32,882 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,883 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,884 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,885 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,888 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0039s
+2026-10-03 10:43:32,888 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,889 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,890 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,890 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,893 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0031s
+2026-10-03 10:43:32,893 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,894 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,895 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,895 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,898 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0030s
+2026-10-03 10:43:32,898 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,899 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,900 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,900 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:32,903 - neurodatics.api.middlewares - INFO - Response: 200 - 0.0031s
+2026-10-03 10:43:32,903 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/timeseries/gsr?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:32,904 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:32,905 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:32,905 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:33,552 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6475s
+2026-10-03 10:43:33,553 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:33,554 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:33,555 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:33,555 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:34,203 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6478s
+2026-10-03 10:43:34,213 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:34,214 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:34,215 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:34,215 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:34,865 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6504s
+2026-10-03 10:43:34,866 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:34,867 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:34,868 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:34,868 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:35,522 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6542s
+2026-10-03 10:43:35,532 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:35,533 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:35,534 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:35,534 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:36,179 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6456s
+2026-10-03 10:43:36,181 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:36,181 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:36,182 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:36,183 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:36,854 - neurodatics.api.middlewares - INFO - Response: 200 - 0.6720s
+2026-10-03 10:43:36,864 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:36,864 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:36,866 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:36,866 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:37,038 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1724s
+2026-10-03 10:43:37,039 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:37,040 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:37,041 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:37,041 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:37,207 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1668s
+2026-10-03 10:43:37,208 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:37,209 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:37,210 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:37,210 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:37,385 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1748s
+2026-10-03 10:43:37,386 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:37,387 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:37,388 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:37,388 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:37,557 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1698s
+2026-10-03 10:43:37,558 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:37,559 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:37,560 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:37,560 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:37,743 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1831s
+2026-10-03 10:43:37,744 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:37,745 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:37,746 - neurodatics.api.middlewares - INFO - Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a
+2026-10-03 10:43:37,746 - neurodatics.config.security - DEBUG - Auth check - credentials present: True, scheme: bearer
+2026-10-03 10:43:37,915 - neurodatics.api.middlewares - INFO - Response: 200 - 0.1689s
+2026-10-03 10:43:37,927 - httpx - INFO - HTTP Request: GET http://testserver/api/projects/00000000-0000-0000-0000-000000000101/analytics/aois?participant_code=SYN-L00&scenario=stimulus-a "HTTP/1.1 200 OK"
+2026-10-03 10:43:37,927 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:38,196 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:38,457 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:38,721 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:38,994 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:39,259 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-10-03 10:43:39,552 - asyncio - DEBUG - Using proactor: IocpProactor
+Traceback (most recent call last):
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\ejecucion\evidencia\g12\probes\g12_backend.py", line 308, in <module>
+    main()
+    ~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\ejecucion\evidencia\g12\probes\g12_backend.py", line 296, in main
+    results.append(measure(f"save/participants/{count}", lambda: asyncio.run(SQLParticipantRepository(RecordingDB()).upsert_participants(PROJECT, participants)), args.repeats))
+                   ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\ejecucion\evidencia\g12\probes\g12_backend.py", line 78, in measure
+    operation()
+    ~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\docs\perf\ejecucion\evidencia\g12\probes\g12_backend.py", line 296, in <lambda>
+    results.append(measure(f"save/participants/{count}", lambda: asyncio.run(SQLParticipantRepository(RecordingDB()).upsert_participants(PROJECT, participants)), args.repeats))
+                                                                 ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python314\Lib\asyncio\runners.py", line 204, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Program Files\Python314\Lib\asyncio\runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Program Files\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\backend\src\neurodatics\modules\participants\infrastructure\repository_impl.py", line 79, in upsert_participants
+    return [loaded_by_id[participant_id] for participant_id in participant_ids]
+            ~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+KeyError: None

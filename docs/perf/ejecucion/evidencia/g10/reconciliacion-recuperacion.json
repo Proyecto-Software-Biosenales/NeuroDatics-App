@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-03T05:15:09.4135911Z",
+  "scope_count": 157,
+  "scope_drift": [
+    "docs/perf/ejecucion/ESTADO.md"
+  ],
+  "protected_count": 1040,
+  "protected_drift": [
+    "docs/perf/ejecucion/ESTADO.md"
+  ],
+  "runner": "No G10 codex exec process remains; outer was stopped, nested executor ended without final answer",
+  "next": "One fresh direct implementer with explicit subordinate role; original inventory and snapshot preserved"
+}

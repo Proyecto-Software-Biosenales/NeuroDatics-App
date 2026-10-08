@@ -11,6 +11,8 @@ export interface Project {
   updatedAt?: string
   sensors: SensorType[]
   participants?: number
+  isPreExperiment?: boolean
+  planningParticipantsCount?: number
 }
 
 /**

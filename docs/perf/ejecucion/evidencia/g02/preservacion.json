@@ -1,0 +1,115 @@
+{
+  "protected_count": 669,
+  "intact_count": 669,
+  "drift": [],
+  "own_scope_prior": [
+    {
+      "path": "docs/perf/ejecucion/ESTADO.md",
+      "changed": true
+    },
+    {
+      "path": "frontend/app/dashboard/page.tsx",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/api/analyticsApi.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/comparison/useComparisonData.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/components/AoiComparisonTab.tsx",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/components/DeviceDistanceTab.tsx",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/components/GazePointTab.tsx",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/components/HeatmapTab.tsx",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/components/ScanpathTab.tsx",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/hooks/useAnalyticsData.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/ParticipantCard.tsx",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/ParticipantComparisonDialog.tsx",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/cardData.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/cardHooks.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/comparisonLoader.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/analytics/participantComparison/participantComparison.test.mjs",
+      "changed": true
+    },
+    {
+      "path": "frontend/features/projects/api/projectsApi.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/lib/api/apiFetch.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/lib/auth/sessionStore.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/lib/providers/AuthProvider.tsx",
+      "changed": true
+    },
+    {
+      "path": "frontend/tests/e2e/comparison-dashboard.spec.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/tests/e2e/dashboard-navigation.spec.ts",
+      "changed": false
+    },
+    {
+      "path": "frontend/tests/e2e/eeg-active-view.spec.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/tests/e2e/eeg-dashboard.spec.ts",
+      "changed": true
+    },
+    {
+      "path": "frontend/tests/hooks/analytics-cancellation.test.mjs",
+      "changed": true
+    },
+    {
+      "path": "frontend/tests/hooks/analytics-request.test.mjs",
+      "changed": true
+    },
+    {
+      "path": "frontend/tests/hooks/participant-comparison-entry.test.mjs",
+      "changed": true
+    }
+  ]
+}

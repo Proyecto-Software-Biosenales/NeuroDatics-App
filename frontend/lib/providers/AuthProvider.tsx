@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { AppUser, AuthContextType } from '@/features/auth/auth'
 import { IS_LOCAL_MODE } from '@/lib/appMode'
 import { ensureLocalSession } from '@/lib/auth/localAuth'
+import { setAnalyticsSession } from '@/features/analytics/analyticsCache'
 import {
   clearStoredAuthSession,
   getAuthSessionChangedEventName,
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const bootstrap = () => {
       const storedAuth = readStoredAuthSession()
+      setAnalyticsSession(storedAuth?.user.id ?? null, storedAuth?.session.accessToken ?? null, storedAuth?.session.expiresAt ?? null)
       setCurrentUser(storedAuth?.user ?? null)
       setSession(storedAuth?.session ?? null)
       setLoading(false)

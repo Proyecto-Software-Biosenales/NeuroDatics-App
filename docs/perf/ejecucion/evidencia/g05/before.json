@@ -1,0 +1,220 @@
+{
+  "phase": "before",
+  "runtime": {
+    "python": "3.14.3",
+    "pandas": "2.3.3",
+    "numpy": "2.4.4",
+    "pyarrow": "25.0.0"
+  },
+  "measurements": [
+    {
+      "name": "small/group_collect",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 361.8906000046991,
+      "min_ms": 356.7281999858096,
+      "max_ms": 390.19379997625947,
+      "samples": [
+        {
+          "ms": 356.7281999858096,
+          "cpu_ms": 359.375,
+          "counts": {
+            "event_builds": 16
+          },
+          "rss_bytes": 718778368,
+          "process_lifetime_peak_bytes": 783691776
+        },
+        {
+          "ms": 366.7929000221193,
+          "cpu_ms": 359.375,
+          "counts": {
+            "event_builds": 16
+          },
+          "rss_bytes": 720814080,
+          "process_lifetime_peak_bytes": 783691776
+        },
+        {
+          "ms": 361.8906000046991,
+          "cpu_ms": 375.0,
+          "counts": {
+            "event_builds": 16
+          },
+          "rss_bytes": 720814080,
+          "process_lifetime_peak_bytes": 783691776
+        },
+        {
+          "ms": 390.19379997625947,
+          "cpu_ms": 390.625,
+          "counts": {
+            "event_builds": 16
+          },
+          "rss_bytes": 720814080,
+          "process_lifetime_peak_bytes": 783691776
+        },
+        {
+          "ms": 358.34680002881214,
+          "cpu_ms": 359.375,
+          "counts": {
+            "event_builds": 16
+          },
+          "rss_bytes": 720969728,
+          "process_lifetime_peak_bytes": 783691776
+        }
+      ]
+    },
+    {
+      "name": "small/build_figures_pdf",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 1464.2495999578387,
+      "min_ms": 1445.92470000498,
+      "max_ms": 1514.2601000261493,
+      "samples": [
+        {
+          "ms": 1464.2495999578387,
+          "cpu_ms": 1375.0,
+          "counts": {
+            "event_builds": 16,
+            "report_assets": 17,
+            "pdf_bytes": 330652
+          },
+          "rss_bytes": 790433792,
+          "process_lifetime_peak_bytes": 859254784
+        },
+        {
+          "ms": 1445.92470000498,
+          "cpu_ms": 1421.875,
+          "counts": {
+            "event_builds": 16,
+            "report_assets": 17,
+            "pdf_bytes": 330652
+          },
+          "rss_bytes": 805208064,
+          "process_lifetime_peak_bytes": 875008000
+        },
+        {
+          "ms": 1514.2601000261493,
+          "cpu_ms": 1468.75,
+          "counts": {
+            "event_builds": 16,
+            "report_assets": 17,
+            "pdf_bytes": 330652
+          },
+          "rss_bytes": 790650880,
+          "process_lifetime_peak_bytes": 887169024
+        },
+        {
+          "ms": 1458.8477999786846,
+          "cpu_ms": 1421.875,
+          "counts": {
+            "event_builds": 16,
+            "report_assets": 17,
+            "pdf_bytes": 330652
+          },
+          "rss_bytes": 783364096,
+          "process_lifetime_peak_bytes": 887169024
+        },
+        {
+          "ms": 1506.989000015892,
+          "cpu_ms": 1437.5,
+          "counts": {
+            "event_builds": 16,
+            "report_assets": 17,
+            "pdf_bytes": 330652
+          },
+          "rss_bytes": 788586496,
+          "process_lifetime_peak_bytes": 887169024
+        }
+      ]
+    },
+    {
+      "name": "large/group_collect",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 24371.752799954265,
+      "min_ms": 23793.587500054855,
+      "max_ms": 24469.482699991204,
+      "samples": [
+        {
+          "ms": 24469.482699991204,
+          "cpu_ms": 24406.25,
+          "counts": {
+            "event_builds": 32
+          },
+          "rss_bytes": 2052734976,
+          "process_lifetime_peak_bytes": 2173861888
+        },
+        {
+          "ms": 24435.15039997874,
+          "cpu_ms": 24437.5,
+          "counts": {
+            "event_builds": 32
+          },
+          "rss_bytes": 1228451840,
+          "process_lifetime_peak_bytes": 2457231360
+        },
+        {
+          "ms": 24011.519099993166,
+          "cpu_ms": 23937.5,
+          "counts": {
+            "event_builds": 32
+          },
+          "rss_bytes": 1184129024,
+          "process_lifetime_peak_bytes": 2457231360
+        },
+        {
+          "ms": 23793.587500054855,
+          "cpu_ms": 23781.25,
+          "counts": {
+            "event_builds": 32
+          },
+          "rss_bytes": 1741127680,
+          "process_lifetime_peak_bytes": 2457231360
+        },
+        {
+          "ms": 24371.752799954265,
+          "cpu_ms": 24328.125,
+          "counts": {
+            "event_builds": 32
+          },
+          "rss_bytes": 2248208384,
+          "process_lifetime_peak_bytes": 2457231360
+        }
+      ]
+    }
+  ],
+  "equivalence": {
+    "small": {
+      "sha256": "9ec34e819ddb73882bfb6ea7eb45f34da542bbc5f8aebc159442ae7ece170e2e",
+      "serialized_bytes": 353526
+    },
+    "render_inputs": {
+      "sha256": "92115bd259cbbf67831e973aca2d17729b05d1b3841818b33cea90fda0e35533",
+      "serialized_bytes": 21093
+    },
+    "asset_hashes": {
+      "assets/001-logo.svg": "f1e54db996ba44555f78a44d8f771ac09b9968c7ed186624ca9dad30ca738884",
+      "assets/002-portada.svg": "1e879111b69ec5e745422834b6d902ed9b0e5a6f1ba7617a3e24c9173b091b92",
+      "assets/003-1-heatmap.jpg": "3259c17b8754359d358eb74e22dd05b471bfa222bb02c3dff610ee192b8590cf",
+      "assets/004-1-scanpath-p1.jpg": "a0ccfe9e3022d9e046fcc5035723ee6af2cfdb3a2f46b00a2cb6133f59651fef",
+      "assets/005-1-scanpath-p2.jpg": "14c62e5156047fcc83163e94c4516c7459abf7e6a6dc75c59c9ee8a100d58663",
+      "assets/006-1-aoi-dwell.svg": "5469d283021bed5b93f39bd435ebdb78fc4fa2d14e0f53bf0037357e2d898bd5",
+      "assets/007-1-fixated-time.svg": "de1b80a57476b06eecf1aacb8a8dd2fce464f180d80d5a8775c12034ce01e145",
+      "assets/008-1-pupil.svg": "a5d0eb547605944f5f4ed8a420b96f4f6cd8edcbe3d5488608f6245ee288fc44",
+      "assets/009-1-distance.svg": "a3b01c65d42df95ad401749ce388d3cbd73af5fdaf5215ee435790529ff867a3",
+      "assets/010-2-heatmap.jpg": "3259c17b8754359d358eb74e22dd05b471bfa222bb02c3dff610ee192b8590cf",
+      "assets/011-2-scanpath-p1.jpg": "a0ccfe9e3022d9e046fcc5035723ee6af2cfdb3a2f46b00a2cb6133f59651fef",
+      "assets/012-2-scanpath-p2.jpg": "14c62e5156047fcc83163e94c4516c7459abf7e6a6dc75c59c9ee8a100d58663",
+      "assets/013-2-aoi-dwell.svg": "5469d283021bed5b93f39bd435ebdb78fc4fa2d14e0f53bf0037357e2d898bd5",
+      "assets/014-2-fixated-time.svg": "de1b80a57476b06eecf1aacb8a8dd2fce464f180d80d5a8775c12034ce01e145",
+      "assets/015-2-pupil.svg": "a9f586c48fb0d2427b063a2d553335ebeee72dc67975dff3cf3d77719fc4b62c",
+      "assets/016-2-distance.svg": "bd9298d890ca407e808ecfbc42d6ab0417773767a89b4293a18afea94417f383",
+      "assets/017-resumen-tiempo-fijado.svg": "136152e78d20ae8ddb0f7b0d563fc3a91890e7e11e0ac37c86d0c1e7d845b126"
+    },
+    "large": {
+      "sha256": "0ebe5ded6c0d854f2fdf0ed4a9f9e56cbc37ae86d4a37df05598c4e4a6acf996",
+      "serialized_bytes": 38688425
+    }
+  },
+  "evidence_note": "Original final after run compared full normalized recordings/render input objects exactly before compacting them to SHA256 summaries outside measurement. Future runs compare these canonical checksums."
+}

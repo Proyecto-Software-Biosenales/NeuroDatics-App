@@ -107,23 +107,67 @@ export function hexToRgb(hex: string): RgbColor {
   }
 }
 
+/** The ramp parsed once. Re-parsing the hex per pixel cost more than the maths. */
+const VIRIDIS_STOP_RGB = VIRIDIS_STOPS.map((stop) => hexToRgb(stop.color))
+
 export function interpolateColor(position: number) {
   const clamped = Math.max(0, Math.min(1, position))
   const upperIndex = VIRIDIS_STOPS.findIndex((stop) => stop.point >= clamped)
-  if (upperIndex <= 0) return hexToRgb(VIRIDIS_STOPS[0].color)
+  if (upperIndex <= 0) return { ...VIRIDIS_STOP_RGB[0] }
 
   const lower = VIRIDIS_STOPS[upperIndex - 1]
   const upper = VIRIDIS_STOPS[upperIndex]
   const span = upper.point - lower.point || 1
   const local = (clamped - lower.point) / span
-  const lowerRgb = hexToRgb(lower.color)
-  const upperRgb = hexToRgb(upper.color)
+  const lowerRgb = VIRIDIS_STOP_RGB[upperIndex - 1]
+  const upperRgb = VIRIDIS_STOP_RGB[upperIndex]
 
   return {
     r: Math.round(lowerRgb.r + (upperRgb.r - lowerRgb.r) * local),
     g: Math.round(lowerRgb.g + (upperRgb.g - lowerRgb.g) * local),
     b: Math.round(lowerRgb.b + (upperRgb.b - lowerRgb.b) * local),
   }
+}
+
+/** True when a uint32 written over an ImageData buffer lands as R,G,B,A. */
+const LITTLE_ENDIAN_PIXELS = (() => {
+  const probe = new Uint32Array(1)
+  new Uint8Array(probe.buffer)[0] = 1
+  return probe[0] === 1
+})()
+
+/** One `ImageData` pixel as a uint32, so a canvas row is one write per pixel. */
+export function packRgba(r: number, g: number, b: number, a = 255) {
+  return LITTLE_ENDIAN_PIXELS
+    ? (((a << 24) | (b << 16) | (g << 8) | r) >>> 0)
+    : (((r << 24) | (g << 16) | (b << 8) | a) >>> 0)
+}
+
+export const VIRIDIS_LUT_SIZE = 256
+
+/** The ramp pre-shaded at 256 levels; a pixel is a lookup, not an interpolation. */
+export const VIRIDIS_LUT = (() => {
+  const lut = new Uint32Array(VIRIDIS_LUT_SIZE)
+  for (let index = 0; index < VIRIDIS_LUT_SIZE; index += 1) {
+    const { r, g, b } = interpolateColor(index / (VIRIDIS_LUT_SIZE - 1))
+    lut[index] = packRgba(r, g, b)
+  }
+  return lut
+})()
+
+/**
+ * Opaque viridis pixel for `value` on `domain`, matching
+ * `scaleSpectrogramValue` to within one of the ramp's 256 levels. Heat maps
+ * call this once per device pixel, so it allocates nothing.
+ */
+export function viridisPixel(value: number, domain: { min: number; max: number }) {
+  if (!Number.isFinite(value)) return VIRIDIS_LUT[0]
+  const span = domain.max - domain.min
+  if (!Number.isFinite(span) || span <= 0) return VIRIDIS_LUT[VIRIDIS_LUT_SIZE >> 1]
+  const position = ((value - domain.min) / span) * (VIRIDIS_LUT_SIZE - 1)
+  if (position <= 0) return VIRIDIS_LUT[0]
+  if (position >= VIRIDIS_LUT_SIZE - 1) return VIRIDIS_LUT[VIRIDIS_LUT_SIZE - 1]
+  return VIRIDIS_LUT[(position + 0.5) | 0]
 }
 
 export function scaleSpectrogramValue(value: number, domain: { min: number; max: number }) {
@@ -160,6 +204,28 @@ export function interpolateTopographyValue(x: number, y: number, rows: Topograph
   }
 }
 
+/**
+ * The same inverse-distance value without the nearest electrode, for the head
+ * map's per-pixel pass: returning a record there allocated once per pixel.
+ */
+export function topographyValueAt(x: number, y: number, rows: TopographyFrameRow[]): number {
+  let weightedSum = 0
+  let weightTotal = 0
+
+  for (const row of rows) {
+    if (!Number.isFinite(row.value)) continue
+    const dx = x - row.x
+    const dy = y - row.y
+    const squared = dx * dx + dy * dy
+    if (squared < 1e-6) return row.value
+    const weight = 1 / Math.max(squared, 1e-6)
+    weightedSum += row.value * weight
+    weightTotal += weight
+  }
+
+  return weightTotal > 0 ? weightedSum / weightTotal : 0
+}
+
 export function rotateTopographyPositionClockwise(x: number, y: number) {
   // Backend layout points front of head toward +Y; this view turns the face toward +X.
   return {
@@ -193,6 +259,23 @@ export function fullResolutionStats(data: EegTimeseriesData | null, mode: string
   })
 }
 
+const medianHopCache = new WeakMap<number[], number>()
+
+/** Median spacing of a time axis, kept per axis: deriving it sorts the axis. */
+export function medianHop(times: number[]): number {
+  if (times.length <= 1) return 0
+  const cached = medianHopCache.get(times)
+  if (cached !== undefined) return cached
+  const deltas: number[] = []
+  for (let index = 1; index < times.length; index += 1) {
+    const delta = times[index] - times[index - 1]
+    if (delta > 0) deltas.push(delta)
+  }
+  const hop = median(deltas)
+  medianHopCache.set(times, hop)
+  return hop
+}
+
 /** Locate the real window center; points farther than half a hop are unobserved. */
 export function nearestTimeIndex(times: number[], target: number, hopS?: number): number {
   if (times.length === 0 || !Number.isFinite(target)) return -1
@@ -206,11 +289,158 @@ export function nearestTimeIndex(times: number[], target: number, hopS?: number)
   const right = Math.min(low, times.length - 1)
   const left = Math.max(0, low - 1)
   const index = Math.abs(times[left] - target) <= Math.abs(times[right] - target) ? left : right
-  const fallbackHop = times.length > 1
-    ? median(times.slice(1).map((time, i) => time - times[i]).filter((delta) => delta > 0))
-    : 0
-  const hop = hopS != null && Number.isFinite(hopS) && hopS > 0 ? hopS : fallbackHop
+  // The spectrogram hit-tests once per drawn column, so the hop is only
+  // derived when the caller has none to give, and then only once per axis.
+  const hop = hopS != null && Number.isFinite(hopS) && hopS > 0 ? hopS : medianHop(times)
   return Math.abs(times[index] - target) <= hop / 2 + 1e-9 ? index : -1
+}
+
+/** Which windows each device column of a spectrogram reads, and in what mix.
+ *
+ *  `left < 0` marks a column the recording never observed, which stays a gap.
+ *  With `interpolate` off, `left === right` and the column is the nearest
+ *  window, as a heat map cell. With it on, a column between two *adjacent*
+ *  windows mixes them by `weight`; windows either side of a gap are never
+ *  mixed, so the gaps keep exactly the width they have without interpolation.
+ */
+export function spectrogramColumns(
+  times: number[],
+  width: number,
+  hopS?: number,
+  interpolate = false
+): { left: Int32Array; right: Int32Array; weight: Float32Array } {
+  const left = new Int32Array(width).fill(-1)
+  const right = new Int32Array(width).fill(-1)
+  const weight = new Float32Array(width)
+  const count = times.length
+  if (count === 0 || width === 0) return { left, right, weight }
+
+  const hop = hopS != null && Number.isFinite(hopS) && hopS > 0 ? hopS : medianHop(times)
+  const half = hop / 2 + 1e-9
+  const first = times[0]
+  const span = times[count - 1] - first
+  // Further apart than this and the two windows have a gap between them.
+  const adjacent = hop * 1.5
+
+  for (let x = 0; x < width; x += 1) {
+    const target = first + (width > 1 ? x / (width - 1) : 0) * span
+    if (!interpolate) {
+      const index = nearestTimeIndex(times, target, hop)
+      left[x] = index
+      right[x] = index
+      continue
+    }
+
+    let low = 0
+    let high = count
+    while (low < high) {
+      const middle = (low + high) >>> 1
+      if (times[middle] <= target) low = middle + 1
+      else high = middle
+    }
+    const before = low - 1
+    if (before < 0) {
+      if (target >= first - half) {
+        left[x] = 0
+        right[x] = 0
+      }
+      continue
+    }
+    if (before >= count - 1) {
+      if (target <= times[count - 1] + half) {
+        left[x] = count - 1
+        right[x] = count - 1
+      }
+      continue
+    }
+
+    const distance = times[before + 1] - times[before]
+    if (distance <= adjacent) {
+      left[x] = before
+      right[x] = before + 1
+      weight[x] = distance > 0 ? (target - times[before]) / distance : 0
+      continue
+    }
+    // Across a gap only the half window either side was observed.
+    if (target <= times[before] + half) {
+      left[x] = before
+      right[x] = before
+    } else if (target >= times[before + 1] - half) {
+      left[x] = before + 1
+      right[x] = before + 1
+    }
+  }
+  return { left, right, weight }
+}
+
+export interface SpectrogramGaps {
+  /** Windows the payload carries. */
+  columns: number
+  /** Window slots the axis has room for that no window occupies. */
+  missingWindows: number
+  /** Windows present but without an estimate, per channel, worst first. */
+  nullColumns: Array<{ channel: string; count: number }>
+  /** Windows without an estimate on at least one channel shown. */
+  nullColumnsAny: number
+  /** Seconds of the axis carrying no estimate. */
+  seconds: number
+  hopS: number
+}
+
+/** What the black bands in a spectrogram are, counted.
+ *
+ *  Two things leave a band, and the panel cannot tell them apart by itself:
+ *  a window the analysis skipped because it contained a missing sample, and a
+ *  stretch of the axis where no window exists at all because the window did
+ *  not fit between two discontinuities (a clock jump or a scenario change).
+ */
+export function spectrogramGaps(
+  times: number[],
+  power: Record<string, Array<Array<number | null>>>,
+  channels: string[],
+  hopS?: number
+): SpectrogramGaps {
+  const columns = times.length
+  const hop = hopS != null && Number.isFinite(hopS) && hopS > 0 ? hopS : medianHop(times)
+  const summary: SpectrogramGaps = {
+    columns,
+    missingWindows: 0,
+    nullColumns: [],
+    nullColumnsAny: 0,
+    seconds: 0,
+    hopS: hop,
+  }
+  if (columns === 0 || !(hop > 0)) return summary
+
+  const slots = Math.round((times[columns - 1] - times[0]) / hop) + 1
+  summary.missingWindows = Math.max(0, slots - columns)
+
+  // A skipped window is blanked across every frequency, so the first row of
+  // the matrix reports the whole column.
+  const missingAnywhere = new Uint8Array(columns)
+  for (const channel of channels) {
+    const row = power[channel]?.[0]
+    if (!row) continue
+    let count = 0
+    for (let index = 0; index < columns; index += 1) {
+      const value = row[index]
+      if (typeof value === "number" && Number.isFinite(value)) continue
+      count += 1
+      missingAnywhere[index] = 1
+    }
+    if (count > 0) summary.nullColumns.push({ channel, count })
+  }
+  summary.nullColumns.sort((a, b) => b.count - a.count || a.channel.localeCompare(b.channel))
+  for (let index = 0; index < columns; index += 1) {
+    summary.nullColumnsAny += missingAnywhere[index]
+  }
+
+  let unobserved = 0
+  for (let index = 1; index < columns; index += 1) {
+    unobserved += Math.max(0, times[index] - times[index - 1] - hop)
+  }
+  summary.seconds = unobserved + summary.nullColumnsAny * hop
+  return summary
 }
 
 /** Shared y range that one sample cannot stretch, plus what it leaves outside.

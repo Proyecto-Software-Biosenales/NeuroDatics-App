@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
 import { Clock, Flame, Hash, Timer } from "lucide-react"
 import {
   Card,
@@ -13,8 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
-import { apiFetchBlob } from "@/lib/api/apiFetch"
-import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
+import { useStimulusImage } from "../participantComparison/cardHooks"
 import {
   useAoiMetrics,
   useFixationData,
@@ -43,7 +43,6 @@ export function HeatmapTab({
   scenario,
   minFixationDurationMs,
 }: HeatmapTabProps) {
-  const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showPurple, setShowPurple] = useState(false)
   const [showAois, setShowAois] = useState(true)
   const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
@@ -94,38 +93,9 @@ export function HeatmapTab({
   }, [])
 
   // Load scenario background image
-  useEffect(() => {
-    const fileId = fixData?.scenario_file_id
 
-    let cancelled = false
-    let currentUrl: string | null = null
 
-    Promise.resolve().then(() => {
-      if (!cancelled) setScenarioImageUrl(null)
-    })
-
-    if (!fileId) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    apiFetchBlob(getStimulusImageUrl(projectId, fileId))
-      .then((blob) => {
-        if (cancelled) return
-        currentUrl = URL.createObjectURL(blob)
-        setScenarioImageUrl(currentUrl)
-      })
-      .catch(() => {
-        if (!cancelled) setScenarioImageUrl(null)
-      })
-
-    return () => {
-      cancelled = true
-      if (currentUrl) URL.revokeObjectURL(currentUrl)
-    }
-  }, [projectId, fixData?.scenario_file_id])
-
+  const scenarioImageUrl = useStimulusImage(projectId, fixData?.scenario_file_id ?? null).url
   useEffect(() => {
     const frame = requestAnimationFrame(() => computeLetterbox())
     const container = imageContainerRef.current
@@ -168,12 +138,24 @@ export function HeatmapTab({
   return (
     <div className="analytics-stack">
       <Card>
-        <CardHeader>
-          <CardTitle>Mapa de calor</CardTitle>
-          <CardDescription>
-            Representación visual de la densidad de atención sobre el estímulo
-            basada en la duración y frecuencia de las fijaciones.
-          </CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
+            <CardTitle>Mapa de calor</CardTitle>
+            <CardDescription>
+              Representación visual de la densidad de atención sobre el estímulo
+              basada en la duración y frecuencia de las fijaciones.
+            </CardDescription>
+          </div>
+          <CompareParticipantsButton
+            spec={() => ({
+              kind: "heatmap",
+              title: "Mapa de calor",
+              scenario,
+              sourceParticipant: participantCode,
+              origin: "individual",
+              params: { minFixationDurationMs, showAois },
+            })}
+          />
         </CardHeader>
         <CardContent>
           {!participantCode ? (

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import re
@@ -7,10 +8,10 @@ import unicodedata
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from collections.abc import Awaitable, Callable
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 from uuid import UUID
 
-import anyio
 import numpy as np
 import pandas as pd
 from fastapi import HTTPException, status
@@ -19,12 +20,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ....analytics.application.services.parquet_reader_service import ParquetReaderService
+from ....analytics.infrastructure.singleflight import settled_thread
+from .....config.settings import settings
 from neurodatics.shared.cache_generation import project_cache_generation
 from ....integrations.storage_provider import build_isolated_drive_client
-from ....projects.domain.entities import Project, ProjectFile
+from ....projects.domain.entities import Project
+from ....projects.infrastructure.image_cache import (
+    ProjectImageRef,
+    get_cached_project_image,
+    load_project_image,
+    project_image_ref,
+)
 from ....scenaries.domain.entities import Scenaries
 from ...api.schemas import ExecutiveReportRequest
 from ...infrastructure.pdf_adapter import PDFAdapter
+from ...infrastructure.io_budget import ReportIOBudget
 from ..sensor_reports import common, eeg, eye_tracking, gsr
 
 logger = logging.getLogger(__name__)
@@ -33,6 +43,10 @@ REPORT_SENSOR_ORDER = ("EyeTracker", "GSR", "EEG")
 REPORT_BUILDERS = {"EyeTracker": eye_tracking.build, "GSR": gsr.build, "EEG": eeg.build}
 PDF_MEDIA_TYPE = "application/pdf"
 ZIP_MEDIA_TYPE = "application/zip"
+report_io_budget = ReportIOBudget(
+    max_running=settings.report_io_max_concurrency,
+    max_waiting=settings.report_io_max_waiting,
+)
 
 
 @dataclass(frozen=True)
@@ -40,6 +54,33 @@ class GeneratedReport:
     content: bytes
     filename: str
     media_type: str
+
+
+async def _run_ordered_io(
+    operations: Sequence[Callable[[], Awaitable[Any]]],
+) -> List[Any]:
+    """Run with a fixed worker count; results/exceptions retain input order."""
+
+    if not operations:
+        return []
+    results: List[Any] = [None] * len(operations)
+    next_index = 0
+
+    async def worker() -> None:
+        nonlocal next_index
+        while next_index < len(operations):
+            index = next_index
+            next_index += 1
+            try:
+                results[index] = await report_io_budget.run(operations[index])
+            except Exception as exc:
+                results[index] = exc
+
+    worker_count = min(settings.report_io_max_concurrency, len(operations))
+    async with asyncio.TaskGroup() as task_group:
+        for _ in range(worker_count):
+            task_group.create_task(worker(), name="executive-report-io")
+    return results
 
 
 def normalize_sensor_name(sensor: str) -> Optional[str]:
@@ -270,7 +311,7 @@ class ExecutiveReportService:
             )
             for sensor in selected_sensors
         ]
-        return await anyio.to_thread.run_sync(
+        return await settled_thread(
             lambda: build_generated_report(str(project.name), contexts)
         )
 
@@ -309,48 +350,109 @@ class ExecutiveReportService:
     ) -> Tuple[Dict[str, pd.DataFrame], List[str]]:
         reader = ParquetReaderService(self._db)
         frames: Dict[str, pd.DataFrame] = {}
-        warnings = []
+        warnings: List[str] = []
+        try:
+            batch = await reader.prepare_batch(
+                project_id,
+                list(participant_codes),
+                generation,
+            )
+        except Exception as exc:
+            logger.warning("Could not prepare executive report data batch: %s", exc)
+            return {}, [
+                f"No se pudieron cargar los datos del participante {code}."
+                for code in participant_codes
+            ]
+
+        ordered_reads = [
+            (code, batch.reads[code])
+            for code in participant_codes
+            if code in batch.reads
+        ]
+        operations = [
+            (
+                lambda prepared=prepared: reader.read_prepared(
+                    prepared,
+                    batch.storage_client,
+                )
+            )
+            for _, prepared in ordered_reads
+        ]
+        outcomes = await _run_ordered_io(operations)
+        outcome_by_code = {
+            code: outcome
+            for (code, _), outcome in zip(ordered_reads, outcomes)
+        }
         for code in participant_codes:
-            try:
-                frames[code] = await reader.read(project_id, code, generation)
-            except Exception as exc:
-                logger.warning("Could not load participant %s for executive report: %s", code, exc)
-                warnings.append(f"No se pudieron cargar los datos del participante {code}.")
+            outcome = outcome_by_code.get(code, batch.errors.get(code))
+            if isinstance(outcome, pd.DataFrame):
+                frames[code] = outcome
+                continue
+            if outcome is None:
+                outcome = RuntimeError("participant was not resolved")
+            logger.warning(
+                "Could not load participant %s for executive report: %s",
+                code,
+                outcome,
+            )
+            warnings.append(f"No se pudieron cargar los datos del participante {code}.")
         return frames, warnings
 
     async def _load_scenario_images(self, project: Project) -> Dict[str, Optional[bytes]]:
         images: Dict[str, Optional[bytes]] = {}
-        drive_client = None
+        refs_by_key: Dict[str, ProjectImageRef] = {}
+        scenario_keys: Dict[str, str] = {}
         for scenary in select_report_scenarios(project.scenaries or []):
-            images[str(scenary.name)] = None
-            if not scenary.file_id:
+            name = str(scenary.name)
+            images[name] = None
+            project_file = getattr(scenary, "file", None)
+            if not project_file or not getattr(scenary, "file_id", None):
                 continue
-            project_file = await self._load_project_file(project.id, scenary.file_id)
-            if not project_file or not (project_file.mime_type or "").startswith("image/"):
-                continue
-            if not project_file.external_id:
-                continue
-            if drive_client is None:
-                drive_client = await self._build_drive_client()
-            if drive_client is None:
+            if (
+                getattr(project_file, "id", None) != scenary.file_id
+                or getattr(project_file, "project_id", None) != project.id
+                or getattr(project_file, "deleted_at", None) is not None
+            ):
                 continue
             try:
-                images[str(scenary.name)] = await anyio.to_thread.run_sync(
-                    lambda external_id=project_file.external_id: drive_client.download_file_content(external_id)
-                )
-            except Exception as exc:
-                logger.info("Could not load scenario image %s for report: %s", scenary.name, exc)
-        return images
+                ref = project_image_ref(project_file)
+            except (ValueError, FileNotFoundError):
+                continue
+            refs_by_key.setdefault(ref.cache_key, ref)
+            scenario_keys[name] = ref.cache_key
 
-    async def _load_project_file(self, project_id: UUID, file_id: UUID) -> Optional[ProjectFile]:
-        result = await self._db.execute(
-            select(ProjectFile).where(
-                ProjectFile.project_id == project_id,
-                ProjectFile.id == file_id,
-                ProjectFile.deleted_at.is_(None),
+        misses: List[Tuple[str, ProjectImageRef]] = []
+        loaded_by_key = {}
+        # Cache probing is serial and task-free.  Only if a remote miss exists do
+        # we resolve OAuth on this request's DB, still before concurrent workers.
+        for cache_key, ref in refs_by_key.items():
+            cached = await get_cached_project_image(ref)
+            if cached is None:
+                misses.append((cache_key, ref))
+            else:
+                loaded_by_key[cache_key] = cached.content
+
+        storage_client = await self._build_drive_client() if misses else None
+        operations = [
+            (
+                lambda ref=ref: load_project_image(ref, storage_client)
             )
-        )
-        return result.scalar_one_or_none()
+            for _, ref in misses
+        ]
+        outcomes = await _run_ordered_io(operations)
+        for (cache_key, ref), outcome in zip(misses, outcomes):
+            if not isinstance(outcome, Exception):
+                loaded_by_key[cache_key] = outcome.content
+            else:
+                logger.info(
+                    "Could not load scenario image file %s for report: %s",
+                    ref.file_id,
+                    outcome,
+                )
+
+        for name, cache_key in scenario_keys.items():
+            images[name] = loaded_by_key.get(cache_key)
+        return images
 
     async def _build_drive_client(self):
         return await build_isolated_drive_client(self._db)

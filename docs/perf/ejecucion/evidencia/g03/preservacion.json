@@ -1,0 +1,18 @@
+{
+  "checked": 792,
+  "same": 792,
+  "drift": [],
+  "exclusions": [
+    "backend/src/neurodatics/modules/analytics/api/routes.py",
+    "backend/src/neurodatics/modules/analytics/application/services/parquet_reader_service.py",
+    "backend/src/neurodatics/modules/analytics/infrastructure/parquet_cache.py",
+    "backend/tests/characterization/conftest.py",
+    "backend/tests/unit/test_parquet_participant_identity.py",
+    "docs/perf/ejecucion/ESTADO.md",
+    "docs/perf/ejecucion/ORQUESTACION.md"
+  ],
+  "frontend_checked": 236,
+  "frontend_same": 236,
+  "source_scope_base": "output/perf-g03/base; patch against received base, not HEAD",
+  "documental_encoding_repair_verified": true
+}

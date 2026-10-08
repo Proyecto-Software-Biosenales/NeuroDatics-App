@@ -44,15 +44,19 @@ test("there is no account, Google or Drive anywhere in the app", async ({ page }
 
   const header = page.locator("header")
   await expect(header.getByText("Estudiante")).toBeVisible()
-  await expect(header.getByRole("link", { name: "Configuración" })).toHaveCount(0)
+  await expect(header.getByRole("link", { name: "Configuración" })).toBeVisible()
   await expect(header.getByRole("button", { name: "Salir" })).toHaveCount(0)
   await expect(page.getByText("Google", { exact: false })).toHaveCount(0)
 
-  // The sign-in and Drive pages are not reachable: they hand the student on to their own screens.
+  // Sign-in redirects locally; Configuration exposes planning without Google or Drive.
   await page.goto("/login/")
   await expect(page).toHaveURL(/\/dashboard\/?$/)
   await page.goto("/configuracion/")
-  await expect(page).toHaveURL(/\/proyectos\/?$/)
+  await expect(page).toHaveURL(/\/configuracion\/?$/)
+  await expect(page.getByText("Pre-experimento y cuestionarios", { exact: true })).toBeVisible()
+  await expect(page.getByText("Google", { exact: false })).toHaveCount(0)
+  await expect(page.getByText("Google Drive", { exact: false })).toHaveCount(0)
+  await expect(page.getByText("Sesión de NeuroDatics", { exact: true })).toHaveCount(0)
 
   // Poppins comes from the app itself (the browser could not have fetched it from anywhere else).
   await page.goto("/proyectos/")
@@ -142,12 +146,12 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
   // Analytics computed live from the ingested data.
   await page.goto("/dashboard/")
   const sidebar = page.getByRole("button", { name, exact: true }).locator("xpath=../..")
-  await expect(sidebar.getByRole("button", { name: "Electroencefalógrafo" })).toHaveAttribute("aria-pressed", "true")
+  await expect(sidebar.getByRole("button", { name: "Eye Tracker" })).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByText("Promedio ambas pupilas")).toBeVisible({ timeout: 90_000 })
+  await sidebar.getByRole("button", { name: "Electroencefalógrafo" }).click()
   await expect(page.getByText("puntos renderizados")).toBeVisible({ timeout: 90_000 })
   await sidebar.getByRole("button", { name: "Sensor Galvánico" }).click()
   await expect(page.locator("main .recharts-surface").first()).toBeVisible({ timeout: 90_000 })
-  await sidebar.getByRole("button", { name: "Eye Tracker" }).click()
-  await expect(page.getByText("Promedio ambas pupilas")).toBeVisible({ timeout: 90_000 })
 
   // Deleting removes the project and says the student's own files went with it (no Drive folder).
   await page.goto("/proyectos/")

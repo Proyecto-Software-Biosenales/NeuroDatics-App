@@ -17,12 +17,12 @@ import type { VisualizationId } from "./registry"
 
 interface Summary {
   count: number
-  mean: number
-  median: number
-  std: number
-  min: number
-  max: number
-  baseline: number
+  mean: number | null
+  median: number | null
+  std: number | null
+  min: number | null
+  max: number | null
+  baseline: number | null
   peak: number | null
 }
 
@@ -92,17 +92,6 @@ function summarize(input: Array<number | null | undefined>): Summary | null {
   }
 }
 
-function numericRow(
-  sensor: string,
-  visualization: string,
-  series: string,
-  unit: string,
-  values: Array<number | null | undefined>
-): NumericRow | null {
-  const summary = summarize(values)
-  return summary ? { sensor, visualization, series, unit, ...summary } : null
-}
-
 function numericStateRow(
   sensor: string,
   visualization: string,
@@ -163,155 +152,52 @@ export function ComparisonStatistics({
   const selected = useMemo(() => new Set(selectedIds), [selectedIds])
 
   const numericRows = (() => {
-    const rows: Array<NumericRow | NumericStateRow | null> = []
-    if (selected.has("pupil")) {
-      if (data.pupil.data) {
-        const pupilRows = [
-          numericRow(
-            "Eye Tracker",
-            "Dilatación pupilar",
-            "Izquierda suavizada",
-            "mm",
-            data.pupil.data.smooth_left
-          ),
-          numericRow(
-            "Eye Tracker",
-            "Dilatación pupilar",
-            "Derecha suavizada",
-            "mm",
-            data.pupil.data.smooth_right
-          ),
-        ].filter((row): row is NumericRow => row != null)
-        rows.push(
-          ...(pupilRows.length
-            ? pupilRows
-            : [
-                numericStateRow(
-                  "Eye Tracker",
-                  "Dilatación pupilar",
-                  false,
-                  null
-                ),
-              ])
-        )
-      } else {
+    const rows: Array<NumericRow | NumericStateRow> = []
+    const definitions = [
+      ["pupil", "Eye Tracker", "Dilatación pupilar"],
+      ["distance", "Eye Tracker", "Distancia al dispositivo"],
+      ["gaze", "Eye Tracker", "Gaze point"],
+      ["gsr", "GSR", "Respuesta galvánica"],
+      ["eeg_timeseries", "EEG", "EEG por canal"],
+    ] as const
+    const response = data.comparisonCharts.data
+    for (const [id, sensor, visualization] of definitions) {
+      if (!selected.has(id)) continue
+      if (!response) {
         rows.push(
           numericStateRow(
-            "Eye Tracker",
-            "Dilatación pupilar",
-            data.pupil.loading,
-            data.pupil.error
+            sensor,
+            visualization,
+            data.comparisonCharts.loading,
+            data.comparisonCharts.error
           )
         )
+        continue
       }
-    }
-    if (selected.has("distance")) {
-      const row = data.distance.data
-        ? numericRow(
-            "Eye Tracker",
-            "Distancia al dispositivo",
-            "Distancia",
-            "cm",
-            data.distance.data.distance_cm
-          )
-        : null
-      rows.push(
-        row ??
-          numericStateRow(
-            "Eye Tracker",
-            "Distancia al dispositivo",
-            data.distance.loading,
-            data.distance.error
-          )
+      const block = response.statistics.find(
+        (candidate) => candidate.visualization_id === id
       )
-    }
-    if (selected.has("gaze")) {
-      if (data.gaze.data) {
-        const gazeRows = [
-          numericRow(
-            "Eye Tracker",
-            "Gaze point",
-            "Posición X",
-            "%",
-            data.gaze.data.gx_clean
-          ),
-          numericRow(
-            "Eye Tracker",
-            "Gaze point",
-            "Posición Y",
-            "%",
-            data.gaze.data.gy_clean
-          ),
-        ].filter((row): row is NumericRow => row != null)
-        rows.push(
-          ...(gazeRows.length
-            ? gazeRows
-            : [numericStateRow("Eye Tracker", "Gaze point", false, null)])
-        )
-      } else {
-        rows.push(
-          numericStateRow(
-            "Eye Tracker",
-            "Gaze point",
-            data.gaze.loading,
-            data.gaze.error
-          )
-        )
+      if (!block || block.status !== "ok" || !block.series.length) {
+        const error =
+          !block
+            ? "Respuesta estadística incompleta"
+            : block.status === "error"
+              ? "No se pudo calcular esta señal"
+              : null
+        rows.push(numericStateRow(sensor, visualization, false, error))
+        continue
+      }
+      for (const series of block.series) {
+        rows.push({
+          sensor,
+          visualization,
+          series: series.label,
+          unit: series.unit,
+          ...series.summary,
+        })
       }
     }
-    if (selected.has("gsr")) {
-      const row = data.gsr.data
-        ? numericRow(
-            "GSR",
-            "Respuesta galvánica",
-            "Señal suavizada",
-            "µS",
-            data.gsr.data.gsr_smooth
-          )
-        : null
-      rows.push(
-        row ??
-          numericStateRow(
-            "GSR",
-            "Respuesta galvánica",
-            data.gsr.loading,
-            data.gsr.error
-          )
-      )
-    }
-    if (selected.has("eeg_timeseries")) {
-      if (data.eegTimeseries.data?.channels.length) {
-        const eeg = data.eegTimeseries.data
-        const eegRows: NumericRow[] = []
-        for (const channel of eeg.channels) {
-          const row = numericRow(
-            "EEG",
-            "EEG por canal",
-            channel.toUpperCase(),
-            "µV",
-            eeg.smooth[channel] ?? []
-          )
-          if (row) eegRows.push(row)
-        }
-        rows.push(
-          ...(eegRows.length
-            ? eegRows
-            : [numericStateRow("EEG", "EEG por canal", false, null)])
-        )
-      } else {
-        rows.push(
-          numericStateRow(
-            "EEG",
-            "EEG por canal",
-            data.eegTimeseries.loading,
-            data.eegTimeseries.error
-          )
-        )
-      }
-    }
-    return rows.filter((row): row is NumericRow | NumericStateRow =>
-      Boolean(row)
-    )
+    return rows
   })()
 
   const metricRows = useMemo(() => {

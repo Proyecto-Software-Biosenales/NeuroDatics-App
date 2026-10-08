@@ -513,6 +513,7 @@ class EegAnalyticsService:
         bandpass_hz=None,
         notch_hz=None,
         per_channel_color_domain=False,
+        min_time_bins=None,
     ):
         available, selected, signal = cls._prepare(
             df,
@@ -539,6 +540,13 @@ class EegAnalyticsService:
         starts = list(signal.windows(size, hop))
         if not starts:
             return output
+        if min_time_bins and len(starts) < min_time_bins:
+            # A few-second scenario gives ~10 windows, drawn as wide blocks.
+            # A shorter hop keeps the window, so time resolution is unchanged;
+            # it only places more of the same windows along the axis.
+            hop = max(1, (len(starts) - 1) * hop // max(1, min_time_bins - 1))
+            overlap = size - hop
+            starts = list(signal.windows(size, hop))
         frequency = np.fft.rfftfreq(size, d=1 / signal.fs)
         mask = (
             frequency <= max_freq_hz

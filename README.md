@@ -43,6 +43,10 @@ El backend no expone un puerto al host: el frontend reenvía `/api`, `/docs`, `/
 
 ## Operación diaria
 
+Puedes crear un **Pre-experimento** antes de tener la carpeta y organizar sus
+participantes, pantalla y cuestionarios opcionales desde **Configuración**.
+Consulta la [guía de pre-experimentos y cuestionarios](docs/PRE_EXPERIMENTO.md).
+
 ```powershell
 # Ver registros de todos los servicios
 docker compose logs -f

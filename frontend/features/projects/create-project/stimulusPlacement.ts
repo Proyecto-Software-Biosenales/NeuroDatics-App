@@ -52,30 +52,51 @@ const finite = (value: string): number | null => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export const isStimulusPlacementDraftValid = (draft: StimulusPlacementDraft): boolean => {
-  if (!draft.enabled) return true
+/**
+ * Single source of truth for placement validity. Returns a reader-facing Spanish
+ * explanation of the first problem found, or null when the draft is publishable,
+ * so the editor can tell the user *why* a file is still incomplete instead of
+ * just refusing to advance.
+ */
+export const describeStimulusPlacementIssue = (
+  draft: StimulusPlacementDraft,
+): string | null => {
+  if (!draft.enabled) return null
   const screenWidth = finite(draft.screenWidthPx)
   const screenHeight = finite(draft.screenHeightPx)
   const left = finite(draft.stimulusLeftPx)
   const top = finite(draft.stimulusTopPx)
   const width = finite(draft.stimulusWidthPx)
   const height = finite(draft.stimulusHeightPx)
+
+  if (screenWidth === null || screenHeight === null) {
+    return "Indica el tamaño de la pantalla usada en la adquisición."
+  }
   if (
-    screenWidth === null || !Number.isInteger(screenWidth) || screenWidth <= 0 ||
-    screenHeight === null || !Number.isInteger(screenHeight) || screenHeight <= 0 ||
-    left === null || top === null ||
-    width === null || width <= 0 ||
-    height === null || height <= 0
+    !Number.isInteger(screenWidth) || screenWidth <= 0 ||
+    !Number.isInteger(screenHeight) || screenHeight <= 0
   ) {
-    return false
+    return "El tamaño de la pantalla debe ser un número entero de píxeles mayor que cero."
+  }
+  if (left === null || top === null || width === null || height === null) {
+    return "Completa la posición y el tamaño con el que se mostró el estímulo."
+  }
+  if (width <= 0 || height <= 0) {
+    return "El ancho y el alto mostrados deben ser mayores que cero."
   }
 
   if (draft.displayMode === "fullscreen") {
-    return !draft.viewportEnabled && left === 0 && top === 0 &&
-      width === screenWidth && height === screenHeight
+    if (draft.viewportEnabled) {
+      return "Pantalla completa no admite una región visible recortada."
+    }
+    if (left !== 0 || top !== 0 || width !== screenWidth || height !== screenHeight) {
+      return `Pantalla completa exige origen 0,0 y tamaño ${screenWidth}×${screenHeight}.`
+    }
+    return null
   }
+
   if ((draft.displayMode === "cover" || draft.displayMode === "crop") && !draft.viewportEnabled) {
-    return false
+    return "Cover y Crop necesitan que definas la región visible."
   }
 
   const viewportLeft = draft.viewportEnabled ? finite(draft.viewportLeftPx) : 0
@@ -84,16 +105,26 @@ export const isStimulusPlacementDraftValid = (draft: StimulusPlacementDraft): bo
   const viewportHeight = draft.viewportEnabled ? finite(draft.viewportHeightPx) : screenHeight
   const scrollX = draft.viewportEnabled ? finite(draft.scrollXPx) : 0
   const scrollY = draft.viewportEnabled ? finite(draft.scrollYPx) : 0
+
   if (
     viewportLeft === null || viewportTop === null ||
-    viewportWidth === null || viewportWidth <= 0 ||
-    viewportHeight === null || viewportHeight <= 0 ||
-    scrollX === null || scrollX < 0 || scrollY === null || scrollY < 0 ||
+    viewportWidth === null || viewportHeight === null ||
+    scrollX === null || scrollY === null
+  ) {
+    return "Completa las medidas de la región visible y del scroll."
+  }
+  if (viewportWidth <= 0 || viewportHeight <= 0) {
+    return "La región visible debe tener ancho y alto mayores que cero."
+  }
+  if (scrollX < 0 || scrollY < 0) {
+    return "El scroll no puede ser negativo."
+  }
+  if (
     viewportLeft < 0 || viewportTop < 0 ||
     viewportLeft + viewportWidth > screenWidth ||
     viewportTop + viewportHeight > screenHeight
   ) {
-    return false
+    return "La región visible debe quedar dentro de la pantalla."
   }
 
   const right = left + width
@@ -103,25 +134,33 @@ export const isStimulusPlacementDraftValid = (draft: StimulusPlacementDraft): bo
   const intersectsViewport =
     Math.min(right, viewportRight) > Math.max(left, viewportLeft) &&
     Math.min(bottom, viewportBottom) > Math.max(top, viewportTop)
-  if (!intersectsViewport) return false
+  if (!intersectsViewport) {
+    return "El estímulo queda fuera de la región visible."
+  }
   if (draft.displayMode === "contain") {
-    return left >= viewportLeft && top >= viewportTop &&
+    const fits = left >= viewportLeft && top >= viewportTop &&
       right <= viewportRight && bottom <= viewportBottom
+    return fits ? null : "Contain exige que el estímulo quepa completo dentro de la región visible."
   }
   if (draft.displayMode === "cover") {
-    return left <= viewportLeft && top <= viewportTop &&
+    const covers = left <= viewportLeft && top <= viewportTop &&
       right >= viewportRight && bottom >= viewportBottom
+    return covers ? null : "Cover exige que el estímulo cubra toda la región visible."
   }
-  return true
+  return null
 }
+
+export const isStimulusPlacementDraftValid = (draft: StimulusPlacementDraft): boolean =>
+  describeStimulusPlacementIssue(draft) === null
 
 export const serializeStimulusPlacements = (
   drafts: StimulusPlacementDraft[],
 ): ApiStimulusPlacementEnvelope[] => drafts
   .filter((draft) => draft.enabled)
   .map((draft) => {
-    if (!isStimulusPlacementDraftValid(draft)) {
-      throw new Error(`Completa la ubicación del estímulo ${draft.sourceEntryPath}.`)
+    const issue = describeStimulusPlacementIssue(draft)
+    if (issue) {
+      throw new Error(`${draft.sourceEntryPath}: ${issue}`)
     }
 
     const placement: ApiStimulusPlacementEnvelope["placement"] = {

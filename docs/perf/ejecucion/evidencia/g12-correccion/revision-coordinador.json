@@ -1,0 +1,7 @@
+{
+  "utc": "2026-10-04T00:01:37.1924144Z",
+  "patch_reverse_exit": 0,
+  "source_review": "Eight owned-project fakes add CURRENT_USER owner_id; env template adds 2/16 defaults once. No assertions/production changes. 33 directed each runtime; global1183backend passes, TypeScript test fixture failure remains.",
+  "approved_correction": true,
+  "g12_complete": false
+}

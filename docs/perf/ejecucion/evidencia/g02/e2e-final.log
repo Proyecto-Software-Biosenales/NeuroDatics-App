@@ -1,0 +1,29 @@
+
+Running 21 tests using 1 worker
+
+(node:51316) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 [chromium] › tests\e2e\comparison-dashboard.spec.ts:503:1 › uses comparable absolute fixation sizes across participants (1.5s)
+  ok  2 [chromium] › tests\e2e\comparison-dashboard.spec.ts:566:1 › renders a generic stimulus in the single-sensor view for a fileless moment (531ms)
+  ok  3 [chromium] › tests\e2e\comparison-dashboard.spec.ts:612:1 › renders a generic stimulus and gaze point when the selected moment has no file (1.1s)
+  ok  4 [chromium] › tests\e2e\comparison-dashboard.spec.ts:681:1 › keeps the document fixed while the comparison shell consumes extra scroll (1.0s)
+  ok  5 [chromium] › tests\e2e\comparison-dashboard.spec.ts:754:1 › contains the correlation matrix horizontal scroll on a narrow viewport (818ms)
+  ok  6 [chromium] › tests\e2e\comparison-dashboard.spec.ts:807:1 › restores applied views per user and project across filters, navigation, and reload (2.3s)
+  ok  7 [chromium] › tests\e2e\dashboard-navigation.spec.ts:12:1 › opens the first project and selects the first visible sensor on entry and project clicks (1.1s)
+  ok  8 [chromium] › tests\e2e\dashboard-navigation.spec.ts:65:1 › keeps the empty dashboard usable when there are no projects (237ms)
+  ok  9 [chromium] › tests\e2e\eeg-active-view.spec.ts:11:3 › timeseries requests only its active endpoint on channel, participant and scenario changes (1.8s)
+  ok 10 [chromium] › tests\e2e\eeg-active-view.spec.ts:11:3 › psd requests only its active endpoint on channel, participant and scenario changes (1.9s)
+  ok 11 [chromium] › tests\e2e\eeg-active-view.spec.ts:11:3 › spectrogram requests only its active endpoint on channel, participant and scenario changes (2.0s)
+  ok 12 [chromium] › tests\e2e\eeg-active-view.spec.ts:11:3 › topography requests only its active endpoint on channel, participant and scenario changes (2.0s)
+  ok 13 [chromium] › tests\e2e\eeg-dashboard.spec.ts:3:1 › EEG views preserve channels, signal mode and independent time windows (2.1s)
+40 participantes, dilatación pupilar, latencia simulada 120–240 ms: primera tarjeta en frío 1228 ms, desplazamiento hasta P40 1251 ms, reapertura en caliente 111 ms, máximo 4 consultas simultáneas, 3/3 tarjetas montadas (apertura/final).
+  ok 14 [chromium] › tests\e2e\participant-comparison.spec.ts:249:1 › loads visible cards through a bounded queue, keeps each participant isolated and restores the view (6.5s)
+  ok 15 [chromium] › tests\e2e\participant-comparison.spec.ts:354:1 › selector searches, selects and clears, and deselection cancels pending work (3.9s)
+  ok 16 [chromium] › tests\e2e\participant-comparison.spec.ts:392:1 › a click pins the stimulus point for that participant and a drag zooms only its card (1.9s)
+  ok 17 [chromium] › tests\e2e\participant-comparison.spec.ts:434:1 › with every scenario the pinned recording second is marked on the other cards (1.2s)
+  ok 18 [chromium] › tests\e2e\participant-comparison.spec.ts:453:1 › renders on a narrow screen without horizontal overflow (1.3s)
+  ok 19 [chromium] › tests\e2e\participant-comparison.spec.ts:465:1 › desktop screenshot of the participant grid (1.6s)
+  ok 20 [chromium] › tests\e2e\participant-comparison.spec.ts:480:1 › EEG keeps the source signal mode and channels; Comparativas panels open the grid; spatial maps explain their scenario restriction (2.2s)
+  ok 21 [chromium] › tests\e2e\participant-comparison.spec.ts:524:1 › spatial and EEG frequency views render per participant without runtime errors (3.9s)
+
+  21 passed (41.7s)

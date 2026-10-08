@@ -4,7 +4,7 @@ import { EegChannelSelector } from "./EegChannelSelector"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { useMemo, type Dispatch, type SetStateAction } from "react"
+import { useMemo, type Dispatch, type SetStateAction, type ReactNode } from "react"
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts"
 import { Activity, Brain, ChartSpline, Clock, Crosshair, Gauge, Rows3, Scissors, TrendingDown, TrendingUp, Waves } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -56,6 +56,8 @@ interface EegTimeseriesViewProps {
   timeseriesWindowDraft: TimeWindowDraft
   timeseriesWindowError: string | null
   view: EegView
+  /** "Comparar participantes" for this chart, built by EegTab. */
+  compareAction?: ReactNode
   visibleChannels: string[]
   artifactSpans: EegArtifactSpan[]
   chartLayout: ChartLayout
@@ -64,8 +66,6 @@ interface EegTimeseriesViewProps {
   setFocusChannel: Dispatch<SetStateAction<string | null>>
   montage: { lanes: MontageLane[]; spacing: number; domain: [number, number] }
   yDomain: { min: number; max: number; clippedLow: number; clippedHigh: number } | null
-  /** Points at the quality card that closes the tab; absent on a clean export. */
-  qualityNote: AnalyticsChartNote | null
 }
 
 export function EegTimeseriesView({
@@ -101,6 +101,7 @@ export function EegTimeseriesView({
   timeseriesWindowDraft,
   timeseriesWindowError,
   view,
+  compareAction,
   visibleChannels,
   artifactSpans,
   chartLayout,
@@ -109,7 +110,6 @@ export function EegTimeseriesView({
   setFocusChannel,
   montage,
   yDomain,
-  qualityNote,
 }: EegTimeseriesViewProps) {
   const dragZoom = useChartDragZoom(handleZoomTimeseriesWindow)
   const stacked = chartLayout === "stacked"
@@ -177,7 +177,6 @@ export function EegTimeseriesView({
           onClick: () => scrollToSection(EEG_ARTIFACT_SPANS_ID),
         }]
       : []),
-    ...(qualityNote ? [qualityNote] : []),
   ]
   return <>
 {view === "timeseries" ? (
@@ -221,6 +220,7 @@ export function EegTimeseriesView({
               onReset={handleResetTimeseriesWindow}
             />
           </div>
+          {compareAction}
         </CardHeader>
 
         <CardContent>

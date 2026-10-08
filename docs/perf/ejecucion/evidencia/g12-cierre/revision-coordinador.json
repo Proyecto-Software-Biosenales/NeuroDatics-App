@@ -1,0 +1,59 @@
+{
+  "utc": "2026-10-04T00:24:22.2170891Z",
+  "status": "G00-G12 complete and approved",
+  "accepted": "G00-G10 implemented; G11 evaluated and rejected; G12 integrated verification complete",
+  "effective_continuations": 6,
+  "received_manifest_verified": 23,
+  "unchanged_received_files": 1092,
+  "authorized_differences": [
+    "frontend/tests/e2e/comparison-dashboard.spec.ts",
+    "docs/perf/ejecucion/ESTADO.md",
+    "backend/tests/unit/test_correlation_analytics_routes.py",
+    "backend/tests/unit/test_gaze_at_scenario.py",
+    "backend/tests/unit/test_heatmap_cache_headers.py",
+    "backend/tests/unit/test_heatmap_route_dimensions.py",
+    "backend/.env.example",
+    "docs/CHANGELOG.md"
+  ],
+  "intact_received_snapshot_files": 362,
+  "current_frontend_build_source_matches": 235,
+  "source_count": 236,
+  "sole_build_drift": "tests/e2e/comparison-dashboard.spec.ts: type import and annotations only; payload/assertions unchanged",
+  "gate": {
+    "utc": "2026-10-04T00:09:43.2350925Z",
+    "tool_item": "item_14 completed",
+    "exit_code": 0,
+    "all_green": true,
+    "eslint": true,
+    "exit_marker": true,
+    "diagnosis": "Tee captured stdout/stderr only; final Write-Host information stream and caller VERIFY_EXIT outside Tee are present in completed tool output, not verify-final.log. Gate actually completed green. Do not rerun."
+  },
+  "backend_tests": 1183,
+  "snapshots": 25,
+  "frontend_tests": 104,
+  "hook_tests": 54,
+  "production_e2e": 11,
+  "matrices": "54 rows; 53 comparable; warmup+n5; limits detailed in RESULTADOS.md",
+  "verification_repeated_after_docs": false,
+  "received_patches": "3 reverse-checks passed before root doc approval using --ignore-space-change",
+  "coordinator_doc_patch_reverse_exit": 0,
+  "coordinator_patch_harness": "initial Windows backslash header rejected; regenerated with forward slash paths; final valid",
+  "coordinator_application_changes": false,
+  "pending_authorized_local_work": [],
+  "external_validations_not_claimed": [
+    "real PostgreSQL",
+    "real Redis",
+    "real Drive",
+    "cloud",
+    "frozen executable",
+    "global RAM bound"
+  ],
+  "automation": {
+    "deleted_after_pause_per_app_lifecycle": true,
+    "reason": "authorized objective and required local checks complete",
+    "toml_absent": true,
+    "backup": "automation-original.toml",
+    "paused_preserving_configuration": true,
+    "id": "neurodatics-plan-de-rendimiento-por-agentes"
+  }
+}

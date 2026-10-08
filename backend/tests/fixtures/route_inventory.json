@@ -17,6 +17,7 @@
   "GET /api/projects/{project_id}/analytics/participants",
   "GET /api/projects/{project_id}/analytics/psd/eeg",
   "GET /api/projects/{project_id}/analytics/scanpath",
+  "GET /api/projects/{project_id}/analytics/scenario-timing",
   "GET /api/projects/{project_id}/analytics/scenarios",
   "GET /api/projects/{project_id}/analytics/spectrogram/eeg",
   "GET /api/projects/{project_id}/analytics/statistics/distance",
@@ -32,6 +33,8 @@
   "GET /api/projects/{project_id}/files/experiment-zip/progress",
   "GET /api/projects/{project_id}/files/{file_id}/image",
   "GET /api/projects/{project_id}/files/{file_id}/preview",
+  "GET /api/projects/{project_id}/pre-experiment",
+  "GET /api/projects/{project_id}/pre-experiment/export",
   "GET /health",
   "GET /health/ready",
   "PATCH /api/projects/{project_id}",
@@ -40,9 +43,11 @@
   "POST /api/projects/{project_id}/files/experiment-zip",
   "POST /api/projects/{project_id}/files/experiment-zip/cancel",
   "POST /api/projects/{project_id}/finalize",
+  "POST /api/projects/{project_id}/pre-experiment/responses",
   "POST /api/reports/executive",
   "PUT /api/projects/{project_id}/aois",
   "PUT /api/projects/{project_id}/participants",
+  "PUT /api/projects/{project_id}/pre-experiment",
   "PUT /api/projects/{project_id}/scenaries",
   "PUT /api/projects/{project_id}/sensors"
 ]

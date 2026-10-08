@@ -1,0 +1,426 @@
+{
+  "scope": "real FFmpeg and Typst, synthetic media and data, no database/storage/network",
+  "results": [
+    {
+      "name": "video/cold_frame_local_source",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 181.78549996810034,
+      "min_ms": 157.59260003687814,
+      "max_ms": 211.19000000180677,
+      "samples": [
+        {
+          "ms": 211.19000000180677,
+          "cpu_ms": 31.25,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 2,
+            "video_source_cache_hits": 1,
+            "ffprobe": 1,
+            "ffmpeg": 1,
+            "response_bytes": 10547
+          },
+          "rss_bytes": 303923200,
+          "process_lifetime_peak_bytes": 304099328
+        },
+        {
+          "ms": 157.59260003687814,
+          "cpu_ms": 15.625,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 2,
+            "video_source_cache_hits": 1,
+            "ffprobe": 1,
+            "ffmpeg": 1,
+            "response_bytes": 10547
+          },
+          "rss_bytes": 304857088,
+          "process_lifetime_peak_bytes": 305041408
+        },
+        {
+          "ms": 191.49970001308247,
+          "cpu_ms": 15.625,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 2,
+            "video_source_cache_hits": 1,
+            "ffprobe": 1,
+            "ffmpeg": 1,
+            "response_bytes": 10547
+          },
+          "rss_bytes": 305995776,
+          "process_lifetime_peak_bytes": 306180096
+        },
+        {
+          "ms": 173.9547000033781,
+          "cpu_ms": 31.25,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 2,
+            "video_source_cache_hits": 1,
+            "ffprobe": 1,
+            "ffmpeg": 1,
+            "response_bytes": 10547
+          },
+          "rss_bytes": 306688000,
+          "process_lifetime_peak_bytes": 306872320
+        },
+        {
+          "ms": 181.78549996810034,
+          "cpu_ms": 31.25,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 2,
+            "video_source_cache_hits": 1,
+            "ffprobe": 1,
+            "ffmpeg": 1,
+            "response_bytes": 10547
+          },
+          "rss_bytes": 307892224,
+          "process_lifetime_peak_bytes": 308076544
+        }
+      ]
+    },
+    {
+      "name": "video/frame_disk_hit",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 9.395300003234297,
+      "min_ms": 8.872199978213757,
+      "max_ms": 10.818300012033433,
+      "samples": [
+        {
+          "ms": 9.470000048168004,
+          "cpu_ms": 15.625,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "response_bytes": 10547,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 309604352,
+          "process_lifetime_peak_bytes": 309649408
+        },
+        {
+          "ms": 8.872199978213757,
+          "cpu_ms": 15.625,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "response_bytes": 10547,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 310300672,
+          "process_lifetime_peak_bytes": 310345728
+        },
+        {
+          "ms": 9.122900024522096,
+          "cpu_ms": 0.0,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "response_bytes": 10547,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 310718464,
+          "process_lifetime_peak_bytes": 310763520
+        },
+        {
+          "ms": 9.395300003234297,
+          "cpu_ms": 15.625,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "response_bytes": 10547,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 311746560,
+          "process_lifetime_peak_bytes": 311791616
+        },
+        {
+          "ms": 10.818300012033433,
+          "cpu_ms": 15.625,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "response_bytes": 10547,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 312938496,
+          "process_lifetime_peak_bytes": 312983552
+        }
+      ]
+    },
+    {
+      "name": "video/frame_304",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 7.3293999885208905,
+      "min_ms": 6.802199990488589,
+      "max_ms": 7.946700032334775,
+      "samples": [
+        {
+          "ms": 7.946700032334775,
+          "cpu_ms": 15.625,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 313708544,
+          "process_lifetime_peak_bytes": 313753600
+        },
+        {
+          "ms": 7.018799951765686,
+          "cpu_ms": 0.0,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 314564608,
+          "process_lifetime_peak_bytes": 314609664
+        },
+        {
+          "ms": 7.3293999885208905,
+          "cpu_ms": 15.625,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 314576896,
+          "process_lifetime_peak_bytes": 314621952
+        },
+        {
+          "ms": 7.373400032520294,
+          "cpu_ms": 0.0,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 314695680,
+          "process_lifetime_peak_bytes": 314740736
+        },
+        {
+          "ms": 6.802199990488589,
+          "cpu_ms": 0.0,
+          "counts": {
+            "owner_lookup_simulated": 1,
+            "generation_resolution": 1,
+            "parquet_reads": 1,
+            "jpeg_cache_checks": 1,
+            "jpeg_body_reads": 1,
+            "jpeg_bytes_read": 10547
+          },
+          "rss_bytes": 315133952,
+          "process_lifetime_peak_bytes": 315330560
+        }
+      ]
+    },
+    {
+      "name": "video/three_distinct_frames",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 489.2059999983758,
+      "min_ms": 472.7753000333905,
+      "max_ms": 510.71519998367876,
+      "samples": [
+        {
+          "ms": 472.7753000333905,
+          "cpu_ms": 62.5,
+          "counts": {
+            "owner_lookup_simulated": 3,
+            "generation_resolution": 3,
+            "parquet_reads": 3,
+            "jpeg_cache_checks": 6,
+            "video_source_cache_hits": 3,
+            "ffprobe": 3,
+            "ffmpeg": 3,
+            "response_bytes": 33754
+          },
+          "rss_bytes": 316702720,
+          "process_lifetime_peak_bytes": 316887040
+        },
+        {
+          "ms": 489.2059999983758,
+          "cpu_ms": 46.875,
+          "counts": {
+            "owner_lookup_simulated": 3,
+            "generation_resolution": 3,
+            "parquet_reads": 3,
+            "jpeg_cache_checks": 6,
+            "video_source_cache_hits": 3,
+            "ffprobe": 3,
+            "ffmpeg": 3,
+            "response_bytes": 33754
+          },
+          "rss_bytes": 317214720,
+          "process_lifetime_peak_bytes": 317399040
+        },
+        {
+          "ms": 510.71519998367876,
+          "cpu_ms": 93.75,
+          "counts": {
+            "owner_lookup_simulated": 3,
+            "generation_resolution": 3,
+            "parquet_reads": 3,
+            "jpeg_cache_checks": 6,
+            "video_source_cache_hits": 3,
+            "ffprobe": 3,
+            "ffmpeg": 3,
+            "response_bytes": 33754
+          },
+          "rss_bytes": 317472768,
+          "process_lifetime_peak_bytes": 317657088
+        },
+        {
+          "ms": 485.6941999751143,
+          "cpu_ms": 93.75,
+          "counts": {
+            "owner_lookup_simulated": 3,
+            "generation_resolution": 3,
+            "parquet_reads": 3,
+            "jpeg_cache_checks": 6,
+            "video_source_cache_hits": 3,
+            "ffprobe": 3,
+            "ffmpeg": 3,
+            "response_bytes": 33754
+          },
+          "rss_bytes": 317767680,
+          "process_lifetime_peak_bytes": 317952000
+        },
+        {
+          "ms": 489.9026000057347,
+          "cpu_ms": 281.25,
+          "counts": {
+            "owner_lookup_simulated": 3,
+            "generation_resolution": 3,
+            "parquet_reads": 3,
+            "jpeg_cache_checks": 6,
+            "video_source_cache_hits": 3,
+            "ffprobe": 3,
+            "ffmpeg": 3,
+            "response_bytes": 33754
+          },
+          "rss_bytes": 318337024,
+          "process_lifetime_peak_bytes": 318521344
+        }
+      ]
+    },
+    {
+      "name": "small/report_group_eye_build_and_pdf",
+      "n": 5,
+      "warmup": 1,
+      "median_ms": 2063.446299987845,
+      "min_ms": 1797.1907999599352,
+      "max_ms": 2092.666400014423,
+      "samples": [
+        {
+          "ms": 2092.666400014423,
+          "cpu_ms": 2046.875,
+          "counts": {
+            "event_builds": 16,
+            "pdf_bytes": 330652,
+            "report_assets": 17
+          },
+          "rss_bytes": 368300032,
+          "process_lifetime_peak_bytes": 440381440
+        },
+        {
+          "ms": 2082.0686999941245,
+          "cpu_ms": 1906.25,
+          "counts": {
+            "event_builds": 16,
+            "pdf_bytes": 330652,
+            "report_assets": 17
+          },
+          "rss_bytes": 381808640,
+          "process_lifetime_peak_bytes": 452001792
+        },
+        {
+          "ms": 2063.446299987845,
+          "cpu_ms": 1906.25,
+          "counts": {
+            "event_builds": 16,
+            "pdf_bytes": 330652,
+            "report_assets": 17
+          },
+          "rss_bytes": 395968512,
+          "process_lifetime_peak_bytes": 466653184
+        },
+        {
+          "ms": 1797.1907999599352,
+          "cpu_ms": 1765.625,
+          "counts": {
+            "event_builds": 16,
+            "pdf_bytes": 330652,
+            "report_assets": 17
+          },
+          "rss_bytes": 410628096,
+          "process_lifetime_peak_bytes": 481144832
+        },
+        {
+          "ms": 1998.5129999695346,
+          "cpu_ms": 1859.375,
+          "counts": {
+            "event_builds": 16,
+            "pdf_bytes": 330652,
+            "report_assets": 17
+          },
+          "rss_bytes": 400318464,
+          "process_lifetime_peak_bytes": 481144832
+        }
+      ]
+    }
+  ],
+  "video": {
+    "fixture": "FFmpeg testsrc2, 2s, 320x240, 10 fps",
+    "bytes": 43972,
+    "ffmpeg": "ffmpeg version 8.0.1-essentials_build-www.gyan.dev Copyright (c) 2000-2025 the FFmpeg developers"
+  },
+  "limits": [
+    "video source already local; no download timing",
+    "direct async route call with simulated owner lookup; not auth/HTTP integration",
+    "report data/images already in memory; includes figures and PDF, excludes I/O",
+    "peak RSS is process-lifetime cumulative"
+  ]
+}

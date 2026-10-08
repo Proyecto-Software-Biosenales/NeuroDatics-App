@@ -26,7 +26,7 @@ const navItems: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', protected: true },
   { path: '/reportes', label: 'Reportes', protected: true },
   { path: '/configuracion', label: 'Configuración', protected: true },
-].filter((item) => !(IS_LOCAL_MODE && item.path === '/configuracion')) // no Google Drive to set up locally
+]
 
 export const NavBar = () => {
   const pathname = usePathname()

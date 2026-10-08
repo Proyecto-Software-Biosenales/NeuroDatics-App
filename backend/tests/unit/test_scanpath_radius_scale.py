@@ -125,7 +125,7 @@ async def test_scanpath_route_uses_v4_cache_namespace(monkeypatch):
     cache = _CacheSpy()
 
     async def allow_ownership(*args, **kwargs):
-        return SimpleNamespace(id=project_id, ingestion_generation=7)
+        return SimpleNamespace(id=project_id, owner_id=current_user, ingestion_generation=7)
 
     async def no_scenary(*args, **kwargs):
         return None

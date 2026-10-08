@@ -1,0 +1,13 @@
+Corrección G09 cerrada y pendiente de aprobación root.
+
+- Fix mínimo: `scenaries_id=key[0]` en [repository_impl.py](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/backend/src/neurodatics/modules/scenaries/infrastructure/repository_impl.py:247).
+- Regresión SQLite real añadida: dos escenarios, AOIs distintas y último input inexistente.
+- Rojo previo confirmado: FK `NULL`, exit 1.
+- Verde final: 26 pruebas en ambos runtimes; Ruff verde.
+- Patch reverse-check: exit 0.
+- Preservación: 998/998 ajenos, 3/3 snapshots, sin drift/faltantes.
+- Manifiesto: 30 entradas; controles y logs root excluidos.
+- Documentación actualizada en [G09.md](C:/AAMisArchivos/AAprogramming/AAAWebDeb/Bioseñales/NeuroDatics-App/docs/perf/ejecucion/G09.md), `ESTADO` y `API.md`.
+- `REVISION-G09.md` fue releído íntegramente al final; no apareció otro error dentro del caso.
+
+No se tocaron G10, configuración, dependencias, usuarios, ciencia ni archivos root.
