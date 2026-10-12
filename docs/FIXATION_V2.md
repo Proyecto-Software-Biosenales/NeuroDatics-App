@@ -277,6 +277,19 @@ alguna falla se mide con las filas y se emite una advertencia:
 Un identificador que se partió en spans defensivos no usa este camino: el conteo
 describe el identificador completo y no puede repartirse entre sus spans.
 
+Por eso una duración reconstruida puede quedar por debajo del mínimo configurado
+aunque el detector nunca haya emitido un evento más corto. El mínimo es una regla
+de detección sobre el soporte del detector, no una garantía sobre el valor que
+devuelve la reconstrucción. Un diagnóstico sobre seis bloques exportados a
+aproximadamente 300 Hz con mirada de 60 Hz lo confirmó: el evento más corto del
+detector midió unos 216 ms en los seis bloques, y la reconstrucción devolvió 793
+eventos frente a los 792 detectados, con dos por debajo de 200 ms. Uno porque el
+soporte almacenado no cabía en el intervalo de sus filas y se volvió a medir con
+ellas; otro porque un límite de estímulo partió el identificador en dos spans y
+cada fragmento midió solo sus propias filas. Los dos casos emiten advertencia y
+se conservan: la regla de detección y la duración reconstruida se informan por
+separado en lugar de ajustar una para que encaje con la otra.
+
 Las filas inválidas explícitas, con el par sentinela o `fixation_id` nulo,
 siguen sin aportar nada: cortan el tramo y su hueco no entra en `duration_s` por
 ninguno de los dos caminos. En cambio, un timestamp repetido —artefacto de una
