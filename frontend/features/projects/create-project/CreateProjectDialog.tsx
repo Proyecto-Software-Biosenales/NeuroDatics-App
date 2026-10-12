@@ -1,7 +1,7 @@
 "use client"
 
 import { ProjectSaveProgress } from "@/features/projects/components/ProjectSaveProgress"
-import { ChevronLeft, ChevronRight, Check } from "lucide-react"
+import { ChevronLeft, ChevronRight, Check, ClipboardList, FolderOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -143,6 +143,11 @@ export const CreateProjectDialog = ({
           </DialogTitle>
           <DialogDescription asChild>
             <div>
+              {mode === "pre" && (
+                <span className="text-sm text-muted-foreground">
+                  Prepara el estudio sin carpeta de datos y agrega las grabaciones cuando las tengas.
+                </span>
+              )}
               {mode === "folder" && <>
               <span className="text-sm text-muted-foreground">
                 Paso {currentStep} de 4
@@ -162,9 +167,16 @@ export const CreateProjectDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        {currentStep === 1 && !isResumedDraft && !hasDraftProject && !formData.uploadedZip && !saveError && <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo de proyecto">
-          <Button type="button" variant={mode === "folder" ? "default" : "outline"} aria-pressed={mode === "folder"} disabled={preBusy || isSaving} onClick={() => setMode("folder")}>Con carpeta</Button>
-          <Button type="button" variant={mode === "pre" ? "default" : "outline"} aria-pressed={mode === "pre"} disabled={preBusy || isSaving} onClick={() => setMode("pre")}>Pre-experimento</Button>
+        {currentStep === 1 && !isResumedDraft && !hasDraftProject && !formData.uploadedZip && !saveError && <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 sm:inline-grid sm:w-fit" role="group" aria-label="Tipo de proyecto">
+          {([
+            ["folder", "Con carpeta", FolderOpen],
+            ["pre", "Pre-experimento", ClipboardList],
+          ] as const).map(([value, label, Icon]) => (
+            <Button key={value} type="button" variant="ghost" aria-pressed={mode === value} disabled={preBusy || isSaving} onClick={() => setMode(value)} className="h-9 gap-2 px-4 text-muted-foreground hover:bg-background/60 aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm">
+              <Icon aria-hidden />
+              {label}
+            </Button>
+          ))}
         </div>}
 
         {mode === "pre" ? <PreExperimentCreateForm onBusyChange={setPreBusy} onCancel={() => handleOpenChange(false)} onCreated={project => { setIsOpen(false); setMode("folder"); reset(); onProjectCreated?.(project); onStep1Complete?.() }} /> : <>

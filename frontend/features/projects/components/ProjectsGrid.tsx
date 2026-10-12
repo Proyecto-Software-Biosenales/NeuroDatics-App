@@ -110,9 +110,9 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             isDeleting ? "animate-pulse scale-[0.99] opacity-70 pointer-events-none" : ""
           } ${
             isDraftProcessing
-              ? "border-border shadow-none bg-muted/40 pb-16"
+              ? "border-border shadow-none bg-muted/40 pb-16 xl:pb-16"
               : isDraftPending
-              ? "border-border shadow-sm bg-card pb-14"
+              ? "border-border shadow-sm bg-card pb-14 xl:pb-16"
               : "border-border shadow-sm bg-card hover:-translate-y-0.5 hover:shadow-lg"
           }`}
         >

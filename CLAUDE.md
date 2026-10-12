@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # Cleanup verification
 
 - Run `./verify.ps1` from the repository root after every deletion batch.

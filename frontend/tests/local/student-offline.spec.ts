@@ -44,8 +44,11 @@ test("there is no account, Google or Drive anywhere in the app", async ({ page }
 
   const header = page.locator("header")
   await expect(header.getByText("Estudiante")).toBeVisible()
-  await expect(header.getByRole("link", { name: "Configuración" })).toBeVisible()
+  await expect(header.getByRole("link", { name: "Configuración" })).toHaveCount(0)
   await expect(header.getByRole("button", { name: "Salir" })).toHaveCount(0)
+  await header.getByRole("button", { name: "Menú de usuario" }).click()
+  await expect(page.getByRole("menuitem", { name: "Configuración" })).toBeVisible()
+  await page.keyboard.press("Escape")
   await expect(page.getByText("Google", { exact: false })).toHaveCount(0)
 
   // Sign-in redirects locally; Configuration exposes planning without Google or Drive.
@@ -54,6 +57,7 @@ test("there is no account, Google or Drive anywhere in the app", async ({ page }
   await page.goto("/configuracion/")
   await expect(page).toHaveURL(/\/configuracion\/?$/)
   await expect(page.getByText("Pre-experimento y cuestionarios", { exact: true })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Ir a proyectos" })).toBeVisible()
   await expect(page.getByText("Google", { exact: false })).toHaveCount(0)
   await expect(page.getByText("Google Drive", { exact: false })).toHaveCount(0)
   await expect(page.getByText("Sesión de NeuroDatics", { exact: true })).toHaveCount(0)
@@ -85,6 +89,56 @@ test("the one local session is minted again when it ran out or the browser forgo
   await page.evaluate(() => localStorage.clear())
   await page.reload()
   await expect(page.locator("header").getByText("Estudiante")).toBeVisible()
+  expectClean(seen)
+})
+
+test("a pre-experiment is prepared tab by tab without a folder, then deleted", async ({ page }) => {
+  const seen = watch(page)
+  const name = `Pre-experimento local ${Date.now()}`
+
+  await page.goto("/proyectos/")
+  await page.getByRole("button", { name: "Crear nuevo proyecto" }).first().click()
+  const dialog = page.getByRole("dialog")
+  await dialog.getByRole("button", { name: "Pre-experimento", exact: true }).click()
+  await dialog.getByRole("textbox", { name: "Nombre del proyecto *", exact: true }).fill(name)
+
+  await dialog.getByRole("tab", { name: /^Participantes/ }).click()
+  await dialog.getByRole("button", { name: "Agregar participante", exact: true }).click()
+  await dialog.getByRole("textbox", { name: "Código *", exact: true }).fill("P01")
+  await dialog.getByRole("textbox", { name: "Nombre del participante *", exact: true }).fill("Participante sintético")
+
+  await dialog.getByRole("tab", { name: /^Pantalla/ }).click()
+  await dialog.getByRole("spinbutton", { name: "Ancho (px)", exact: true }).fill("1920")
+
+  await dialog.getByRole("tab", { name: /^Cuestionarios/ }).click()
+  await dialog.getByRole("checkbox", { name: "Usar cuestionario antes", exact: true }).check()
+  await dialog.getByRole("button", { name: "Agregar pregunta antes", exact: true }).click()
+  await dialog.getByRole("textbox", { name: "Enunciado", exact: true }).fill("¿Cómo te sientes?")
+  await dialog.getByRole("button", { name: "Crear pre-experimento", exact: true }).click()
+  await expect(dialog).toBeHidden({ timeout: 30_000 })
+
+  const cardWith = (has: ReturnType<Page["getByRole"]>) =>
+    page.locator("div").filter({ has: page.getByText(name, { exact: true }) }).filter({ has }).last()
+  const card = cardWith(page.getByRole("button", { name: "Opciones del proyecto" }))
+  await expect(cardWith(page.getByText("Sin carpeta todavía"))).toBeVisible()
+
+  // What was typed in the tabs is what Configuración loads from the local database.
+  await cardWith(page.getByRole("link", { name: "Configuración" })).getByRole("link", { name: "Configuración" }).click()
+  await expect(page).toHaveURL(/\/configuracion\/?\?proyecto=/)
+  await expect(page.getByRole("textbox", { name: "Nombre del participante *", exact: true })).toHaveValue(
+    "Participante sintético",
+  )
+  await expect(page.getByRole("textbox", { name: "Enunciado", exact: true })).toHaveValue("¿Cómo te sientes?")
+
+  await page.goto("/proyectos/")
+  await card.getByRole("button", { name: "Opciones del proyecto" }).click()
+  await page.getByRole("menuitem", { name: "Eliminar" }).click()
+  const confirm = page.getByRole("alertdialog")
+  await confirm.getByRole("button", { name: "Continuar" }).click()
+  await confirm.getByPlaceholder('Escribe "eliminar"').fill("eliminar")
+  await confirm.getByRole("button", { name: "Eliminar proyecto" }).click()
+  await expect(page.getByText(name, { exact: true })).toHaveCount(0, { timeout: 60_000 })
+
   expectClean(seen)
 })
 

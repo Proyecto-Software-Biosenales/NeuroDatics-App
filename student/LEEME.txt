@@ -19,7 +19,13 @@ Consejo: antes de extraer, clic derecho sobre el ZIP > Propiedades. Si al final 
 
 2. ABRIR
 --------
-Dentro de la carpeta extraída, doble clic en  neurodatics-estudiantes.exe
+Dentro de la carpeta extraída solo verás dos archivos: esta guía y  neurodatics-estudiantes.exe
+Doble clic en  neurodatics-estudiantes.exe
+
+Los archivos del programa están en una carpeta oculta llamada "_internal". No la borres, no la muevas
+y no saques el .exe de esta carpeta: el programa la necesita a su lado. Si quieres un acceso directo
+en el escritorio: clic derecho sobre el .exe > "Enviar a" > "Escritorio (crear acceso directo)"
+(en Windows 11, primero "Mostrar más opciones").
 
 Windows puede mostrar "Windows protegió tu PC" porque el programa no tiene firma comercial.
 No es un virus: solo significa que Microsoft no conoce este archivo.
@@ -67,4 +73,4 @@ carpeta. Guarda copias de lo que necesites antes.
    - No muevas ni borres carpetas del programa mientras la app está abierta.
 
 
-Licencias de los componentes incluidos: THIRD-PARTY-NOTICES.txt (en esta misma carpeta).
+Licencias de los componentes incluidos: THIRD-PARTY-NOTICES.txt, dentro de la carpeta oculta _internal.

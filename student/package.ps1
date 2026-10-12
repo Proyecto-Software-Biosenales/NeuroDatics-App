@@ -8,9 +8,14 @@
 #   3. extracts that zip into a fresh folder with an accented path and starts the real app from it
 #      in an empty profile, offline-guarded, then stops it (skip with -SkipVerify)
 #   4. writes package-report.json: sizes, hash, what was checked and the release blockers still open
-#   5. copies laptop-test.ps1 beside the zip: the script to run on the test laptop
-#   6. lays the whole delivery out in delivery\NeuroDatics-Estudiantes (git-ignored, like the server edition's
-#      delivery\NeuroDatics-App): the ready-to-run folder, the zip, its hash, the laptop kit (skip with -NoDelivery)
+#   5. copies laptop-test.ps1 beside the zip in <Work>\release: the maintainer's script for the test laptop
+#   6. makes delivery\NeuroDatics-Estudiantes (git-ignored, like the server edition's delivery\NeuroDatics-App)
+#      the ready-to-run program folder, which shows only the exe and LEEME.txt, and puts the zip beside it
+#      as delivery\NeuroDatics-Estudiantes-<Version>-win64.zip (skip with -NoDelivery)
+#
+# Layout of the program folder (and of the single folder inside the zip):
+#   neurodatics-estudiantes.exe  LEEME.txt
+#   _internal\  hidden: the Python runtime, pgsql\, pg-template\, tools\, frontend\, THIRD-PARTY-NOTICES.txt
 #
 # The extracted-zip check is a smoke test. The full gates (run-frozen.ps1 -Pkg <extracted> -Only serve)
 # still apply and are the way to prove the exact file that will be uploaded.
@@ -25,7 +30,6 @@ param(
 $ErrorActionPreference = 'Stop'
 $Work = (Resolve-Path $Work).Path
 $student = $PSScriptRoot
-$repo = (Resolve-Path "$student\..").Path
 if (-not $Pkg) { $Pkg = Join-Path $Work 'Estudiantes ñandú\NeuroDatics Estudiantes' }
 $exe = Join-Path $Pkg 'neurodatics-estudiantes.exe'
 if (-not (Test-Path $exe)) { throw "no assembled package at $Pkg (run student\build.ps1, then student\run-frozen.ps1 -Assemble)" }
@@ -37,19 +41,32 @@ $zipPath = Join-Path $release "NeuroDatics-Estudiantes-$Version-win64.zip"
 
 function MB($p) { [math]::Round(((Get-ChildItem -LiteralPath $p -Recurse -File -Force | Measure-Object Length -Sum).Sum) / 1048576, 1) }
 
+# What a student sees on opening the folder: the program and its guide. Everything else is in the
+# runtime's folder, marked hidden here and in the zip (the launcher re-hides it if an extractor
+# dropped the attribute).
+$internal = Join-Path $Pkg '_internal'
+$visible = 'neurodatics-estudiantes.exe', 'LEEME.txt'
+if (-not (Test-Path "$internal\pgsql\bin\postgres.exe")) {
+    throw "the package at $Pkg has the old layout (pgsql beside the exe); assemble it again with student\run-frozen.ps1 -Assemble"
+}
+
 # --- 1. the documents that travel with the program -------------------------------------------------
 # Notepad opens UTF-8 with a BOM as UTF-8; without it the accents in the guide come out wrong.
 $guide = [IO.File]::ReadAllText("$student\LEEME.txt") -replace "`r?`n", "`r`n"
 [IO.File]::WriteAllText("$Pkg\LEEME.txt", $guide, (New-Object Text.UTF8Encoding($true)))
 $env:PYTHONIOENCODING = 'utf-8'
-& $py "$student\make-notices.py" --pkg $Pkg --out "$Pkg\THIRD-PARTY-NOTICES.txt"
+& $py "$student\make-notices.py" --pkg $internal --out "$internal\THIRD-PARTY-NOTICES.txt"
 if ($LASTEXITCODE) { throw 'could not write the third-party notices' }
+$loose = @(Get-ChildItem -LiteralPath $Pkg -Force | Where-Object Name -notin ($visible + '_internal'))
+if ($loose) { throw "unexpected entries beside the exe: $(($loose | ForEach-Object Name) -join ', ')" }
+$dir = Get-Item -LiteralPath $internal -Force
+$dir.Attributes = $dir.Attributes -bor [IO.FileAttributes]::Hidden
 
 # --- release blockers: things a script cannot settle --------------------------------------------------
 $blockers = @()
-$ffmpegBanner = (& "$Pkg\tools\ffmpeg.exe" -version 2>&1 | Out-String)
+$ffmpegBanner = (& "$internal\tools\ffmpeg.exe" -version 2>&1 | Out-String)
 $gpl = $ffmpegBanner -match '--enable-gpl'
-if (-not (Get-ChildItem "$Pkg\tools" -Filter 'LICENSE*' -File -ErrorAction SilentlyContinue)) {
+if (-not (Get-ChildItem "$internal\tools" -Filter 'LICENSE*' -File -ErrorAction SilentlyContinue)) {
     $blockers += if ($gpl) {
         'ffmpeg is a GPL build and tools\ has no LICENSE file: add the license text that came with the build, or switch to an LGPL build (owner decision, PLAN.md open items)'
     } else { 'tools\ has no LICENSE file for ffmpeg: add the license text that came with the build' }
@@ -62,9 +79,32 @@ $blockers += 'governance of raw participant data handed to students is not confi
 # --- 2. the zip -----------------------------------------------------------------------------------------
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+Add-Type -AssemblyName System.IO.Compression
 $clock = [Diagnostics.Stopwatch]::StartNew()
-# includeBaseDirectory: the zip holds one folder, so "Extract all" cannot scatter files across a Downloads folder.
-[IO.Compression.ZipFile]::CreateFromDirectory($Pkg, $zipPath, [IO.Compression.CompressionLevel]::Optimal, $true)
+# The zip holds one folder, so "Extract all" cannot scatter files across a Downloads folder. It is
+# written entry by entry (not CreateFromDirectory) so the _internal folder carries the MS-DOS hidden
+# attribute, which Explorer's "Extract all" restores; empty folders (the PostgreSQL template needs
+# them) get their own entries.
+$base = Split-Path $Pkg -Leaf
+$stream = [IO.File]::Open($zipPath, [IO.FileMode]::CreateNew)
+$archive = New-Object IO.Compression.ZipArchive($stream, [IO.Compression.ZipArchiveMode]::Create)
+try {
+    $folder = $archive.CreateEntry("$base/_internal/")
+    $folder.ExternalAttributes = [int]([IO.FileAttributes]::Directory -bor [IO.FileAttributes]::Hidden)
+    foreach ($item in (Get-ChildItem -LiteralPath $Pkg -Recurse -Force)) {
+        $name = "$base/" + $item.FullName.Substring($Pkg.Length + 1).Replace('\', '/')
+        if ($item.PSIsContainer) {
+            if ($name -ne "$base/_internal" -and -not (Get-ChildItem -LiteralPath $item.FullName -Force | Select-Object -First 1)) {
+                $empty = $archive.CreateEntry("$name/")
+                $empty.ExternalAttributes = [int][IO.FileAttributes]::Directory
+            }
+            continue
+        }
+        [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $item.FullName, $name, [IO.Compression.CompressionLevel]::Optimal)
+    }
+} finally {
+    $archive.Dispose(); $stream.Dispose()
+}
 $zipSeconds = [math]::Round($clock.Elapsed.TotalSeconds, 1)
 $hash = (Get-FileHash $zipPath -Algorithm SHA256).Hash
 $zipName = Split-Path $zipPath -Leaf
@@ -89,8 +129,19 @@ if (-not $SkipVerify) {
     $verify.files_match = ($extractedFiles.Count -eq $pkgFiles.Count) -and
         (($extractedFiles | Measure-Object Length -Sum).Sum -eq ($pkgFiles | Measure-Object Length -Sum).Sum)
     if (-not $verify.files_match) { throw "the extracted zip differs from the package ($($extractedFiles.Count) vs $($pkgFiles.Count) files)" }
-    foreach ($needed in 'neurodatics-estudiantes.exe', 'LEEME.txt', 'THIRD-PARTY-NOTICES.txt', 'pgsql\bin\postgres.exe', 'pgsql\bin\vcruntime140.dll', 'pg-template\PG_VERSION', 'tools\ffprobe.exe', 'frontend\index.html') {
+    foreach ($needed in 'neurodatics-estudiantes.exe', 'LEEME.txt', '_internal\THIRD-PARTY-NOTICES.txt', '_internal\pgsql\bin\postgres.exe', '_internal\pgsql\bin\vcruntime140.dll', '_internal\pg-template\PG_VERSION', '_internal\tools\ffprobe.exe', '_internal\frontend\index.html') {
         if (-not (Test-Path (Join-Path $extracted $needed))) { throw "the extracted package lacks $needed" }
+    }
+    # What the student sees: the top of the zip, and the hidden flag Explorer will restore.
+    $reader = [IO.Compression.ZipFile]::OpenRead($zipPath)
+    try {
+        $top = @($reader.Entries | ForEach-Object { ($_.FullName -split '/')[1] } | Where-Object { $_ } | Sort-Object -Unique)
+        $hiddenEntry = $reader.GetEntry("$base/_internal/")
+        $verify.zip_top_level = $top
+        $verify.zip_support_folder_hidden = [bool]($hiddenEntry -and ($hiddenEntry.ExternalAttributes -band [int][IO.FileAttributes]::Hidden))
+    } finally { $reader.Dispose() }
+    if ((Compare-Object $top ($visible + '_internal')) -or -not $verify.zip_support_folder_hidden) {
+        throw "the zip does not open on the program and its guide alone: $($top -join ', '), hidden=$($verify.zip_support_folder_hidden)"
     }
     $verify.longest_relative_path = ($extractedFiles | ForEach-Object { $_.FullName.Substring($extracted.Length + 1).Length } | Measure-Object -Maximum).Maximum
 
@@ -141,8 +192,10 @@ if (-not $SkipVerify) {
     $verify.postgres_left = @(Get-Process postgres -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$extractRoot*" }).Count
     $verify.offline_guard_blocked = if (($out -join "`n") -match '"offline_guard_blocked": (\[[^\]]*\])') { $Matches[1] } else { 'no report' }
     $verify.extracted_path = $extracted
+    # .NET's extractor drops the hidden flag; the launcher must have put it back.
+    $verify.launcher_hid_support_folder = [bool]((Get-Item -LiteralPath "$extracted\_internal" -Force).Attributes -band [IO.FileAttributes]::Hidden)
     "extracted zip started from an accented path: ready in $($verify.seconds_to_ready) s, exit $($verify.exit_code), postgres left $($verify.postgres_left), guard blocked $($verify.offline_guard_blocked)"
-    if ($verify.exit_code -ne 0 -or $verify.tracebacks -or $verify.postgres_left -or $verify.offline_guard_blocked -ne '[]') { throw "the extracted package did not behave: $($verify | ConvertTo-Json -Compress)" }
+    if ($verify.exit_code -ne 0 -or $verify.tracebacks -or $verify.postgres_left -or $verify.offline_guard_blocked -ne '[]' -or -not $verify.launcher_hid_support_folder) { throw "the extracted package did not behave: $($verify | ConvertTo-Json -Compress)" }
 }
 
 # --- 4. the report --------------------------------------------------------------------------------------
@@ -161,15 +214,31 @@ if (-not $SkipVerify) {
 "release blockers still open: $($blockers.Count) (see $release\package-report.json)"
 
 # --- 5. the delivery folder ---------------------------------------------------------------------------
+# The delivery folder IS the program folder: opening it shows the exe and LEEME.txt, nothing else.
+# The zip students download sits beside it; the maintainer's files (hash, report, laptop kit) stay
+# in <Work>\release.
 if (-not $NoDelivery) {
+    if (Test-Path $DeliveryDir) {
+        # /MIR below deletes whatever else is there: refuse a folder that is not a previous delivery.
+        $previous = Get-ChildItem -LiteralPath $DeliveryDir -Force
+        $isDelivery = (-not $previous) -or (Test-Path (Join-Path $DeliveryDir 'neurodatics-estudiantes.exe')) -or
+            (Test-Path (Join-Path $DeliveryDir 'NeuroDatics Estudiantes\neurodatics-estudiantes.exe'))
+        if (-not $isDelivery) { throw "$DeliveryDir is not empty and holds no previous delivery; refusing to mirror over it" }
+    }
     New-Item -ItemType Directory -Force $DeliveryDir | Out-Null
     $DeliveryDir = (Resolve-Path $DeliveryDir).Path
-    robocopy $Pkg (Join-Path $DeliveryDir (Split-Path $Pkg -Leaf)) /MIR /NFL /NDL /NJH /NJS /NP | Out-Null
-    foreach ($f in @($zipPath, "$release\SHA256.txt", "$release\laptop-test.ps1", "$release\package-report.json", "$repo\docs\student\LAPTOP-TEST.md")) {
-        Copy-Item $f $DeliveryDir -Force
-    }
-    $copied = @(Get-ChildItem -LiteralPath (Join-Path $DeliveryDir (Split-Path $Pkg -Leaf)) -Recurse -File -Force)
+    robocopy $Pkg $DeliveryDir /MIR /DCOPY:DAT /NFL /NDL /NJH /NJS /NP | Out-Null
+    $support = Get-Item -LiteralPath (Join-Path $DeliveryDir '_internal') -Force
+    $support.Attributes = $support.Attributes -bor [IO.FileAttributes]::Hidden
+    $deliveredZip = Join-Path (Split-Path $DeliveryDir -Parent) $zipName
+    Get-ChildItem (Split-Path $DeliveryDir -Parent) -File -Filter 'NeuroDatics-Estudiantes*.zip' |
+        Where-Object FullName -ne $deliveredZip | Remove-Item -Force   # superseded downloads
+    Copy-Item $zipPath $deliveredZip -Force
+    $copied = @(Get-ChildItem -LiteralPath $DeliveryDir -Recurse -File -Force)
     if ($copied.Count -ne $pkgFiles.Count) { throw "the delivery folder has $($copied.Count) files, the package $($pkgFiles.Count)" }
-    "delivery: $DeliveryDir  (" + (MB $DeliveryDir) + " MiB)"
+    $shown = @(Get-ChildItem -LiteralPath $DeliveryDir | ForEach-Object Name)   # without -Force: what Explorer shows
+    if (Compare-Object $shown $visible) { throw "the delivery folder shows $($shown -join ', ') instead of $($visible -join ', ')" }
+    "delivery: $DeliveryDir  (" + (MB $DeliveryDir) + " MiB; shows $($shown -join ', '))"
+    "download: $deliveredZip"
 }
 $global:LASTEXITCODE = 0

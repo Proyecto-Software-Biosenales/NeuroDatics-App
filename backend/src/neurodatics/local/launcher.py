@@ -3,8 +3,10 @@
 Everything the app needs is decided here and handed over through the environment before the
 application is imported, because its settings are read once at import time.
 
-    <package>/                  the extracted folder (read-only is fine)
-        pgsql/bin  pg-template  tools/ (ffmpeg)  frontend/ (from M3)
+    NeuroDatics Estudiantes/    the extracted folder (read-only is fine); a student sees only
+        neurodatics-estudiantes.exe  LEEME.txt
+        _internal/              hidden: the frozen runtime and the package (sys._MEIPASS)
+            pgsql/bin  pg-template  tools/ (ffmpeg)  frontend/  THIRD-PARTY-NOTICES.txt
     %LOCALAPPDATA%/NeuroDatics Estudiantes/
         pgdata  logs  storage  cache  postgres.password  instance.json
 
@@ -39,13 +41,42 @@ FRONTEND_DIR = "frontend"
 FAILURE_LOG = "launcher-errors.log"
 
 _CTRL_CLOSE_EVENTS = {2, 5, 6}  # console closed, user logging off, system shutting down
+_FILE_ATTRIBUTE_HIDDEN = 0x2
+_INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF
 _console_handlers: list = []
 
 
 def package_dir(override: Optional[str]) -> pathlib.Path:
+    """Where pgsql, pg-template, tools and frontend live.
+
+    The frozen package keeps them in the runtime's own folder (``_internal``) so the folder a
+    student opens shows only the program and its guide. A package that still has them beside
+    the executable (builds before 2026-10-08) keeps working.
+    """
     if override:
         return pathlib.Path(override)
+    support = getattr(sys, "_MEIPASS", None)
+    if support and (pathlib.Path(support) / "pgsql").is_dir():
+        return pathlib.Path(support)
     return pathlib.Path(sys.executable).resolve().parent
+
+
+def hide_support_folder(pkg: pathlib.Path) -> None:
+    """Keep the support folder hidden beside the executable, best effort.
+
+    The zip already marks it hidden, but not every extractor honours that. Only the frozen
+    runtime's own folder is touched; a folder passed with --pkg is left alone.
+    """
+    support = getattr(sys, "_MEIPASS", None)
+    if not support or pathlib.Path(support) != pkg:
+        return
+    try:
+        kernel32 = ctypes.windll.kernel32
+        attributes = kernel32.GetFileAttributesW(str(pkg)) & 0xFFFFFFFF  # DWORD; ctypes returns int
+        if attributes != _INVALID_FILE_ATTRIBUTES and not attributes & _FILE_ATTRIBUTE_HIDDEN:
+            kernel32.SetFileAttributesW(str(pkg), attributes | _FILE_ATTRIBUTE_HIDDEN)
+    except (AttributeError, OSError):
+        pass  # not Windows, or a read-only location: cosmetic only
 
 
 def default_data_dir() -> pathlib.Path:
@@ -231,6 +262,7 @@ def main(argv: Optional[list[str]] = None) -> int:
               file=sys.stderr)
         return 2
     pkg = package_dir(args.pkg)
+    hide_support_folder(pkg)
     data_root = pathlib.Path(args.data_dir or os.environ.get("NEURODATICS_DATA_DIR") or default_data_dir())
     data_root.mkdir(parents=True, exist_ok=True)
 

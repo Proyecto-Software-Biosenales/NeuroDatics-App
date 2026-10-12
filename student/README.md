@@ -11,8 +11,8 @@ builds and checks the package.
 | `requirements-frozen.txt` | `pip freeze` of the build venv that produced the tested package. |
 | `check-pins.py` | Fails when a pin differs from the tested environment (`.venv`) or from the build venv. |
 | `build.ps1` | Builds the web app (`NEXT_PUBLIC_APP_MODE=local`, output in `frontend/.next-local`, copied to `<Work>/frontend`) and freezes `src/student_entry.py` into `<Work>/dist/neurodatics-estudiantes`. |
-| `run-frozen.ps1` | Assembles the package folder (dropping test suites, headers, link libraries and PostgreSQL's GUI and test programs), then runs the gates below against it. |
-| `package.ps1` | Adds the guide and notices, zips the assembled package to `<Work>/release/`, writes `SHA256.txt` and `package-report.json`, and starts the app from the extracted zip (accented path, empty profile). |
+| `run-frozen.ps1` | Assembles the package folder (PostgreSQL, template, ffmpeg and web app inside `_internal`; dropping test suites, headers, link libraries and PostgreSQL's GUI and test programs), then runs the gates below against it. |
+| `package.ps1` | Adds the guide (beside the exe) and the notices (in `_internal`), hides `_internal`, zips the package to `<Work>/release/`, writes `SHA256.txt` and `package-report.json`, starts the app from the extracted zip (accented path, empty profile) and lays out `delivery\`. |
 | `LEEME.txt` | The student guide (Spanish), shipped inside the package. Edit it here, not in the package. |
 | `make-notices.py` | Writes `THIRD-PARTY-NOTICES.txt` from the build venv, `frontend/package.json` and the ffmpeg actually in `tools\`. |
 | `laptop-test.ps1` | Runs on the test laptop (Windows PowerShell 5.1): machine facts, a real experiment through the app, memory and connection sampling, a zip to send back. |
@@ -61,11 +61,25 @@ student\package.ps1 -Work output\student -Version 0.1        # after build.ps1 a
 student\run-frozen.ps1 -Work output\student -Pkg "<release-check\...\NeuroDatics Estudiantes>" -Only serve   # optional: the full gate on the extracted zip
 ```
 
-`package.ps1` also lays the delivery out in `delivery\NeuroDatics-Estudiantes\` (git-ignored, next to the teacher
-edition's `delivery\NeuroDatics-App`): the ready-to-run `NeuroDatics Estudiantes` folder, the zip, `SHA256.txt`,
-`laptop-test.ps1`, `package-report.json` and `LAPTOP-TEST.md` (`-NoDelivery` skips it). The release folder
-(`<Work>\release`) holds the zip, `SHA256.txt`, `laptop-test.ps1` and `package-report.json`, whose
-`release_blockers` lists what no script can settle (ffmpeg licence, governance, the real-laptop run). The by-hand
+The package a student opens shows two files and nothing else:
+
+```text
+NeuroDatics Estudiantes\
+    neurodatics-estudiantes.exe
+    LEEME.txt
+    _internal\          hidden: Python runtime, pgsql\, pg-template\, tools\, frontend\, THIRD-PARTY-NOTICES.txt
+```
+
+`run-frozen.ps1 -Assemble` puts the parts inside PyInstaller's `_internal` and the launcher finds them through
+`sys._MEIPASS` (`neurodatics.local.launcher.package_dir`; a folder with `pgsql` beside the exe still works).
+`package.ps1` marks `_internal` hidden in the folder and in the zip (Explorer's "Extract all" restores it), and the
+launcher hides it again on start for extractors that drop the flag.
+
+`package.ps1` makes `delivery\NeuroDatics-Estudiantes\` (git-ignored, next to the teacher edition's
+`delivery\NeuroDatics-App`) that program folder itself, and puts the zip beside it as
+`delivery\NeuroDatics-Estudiantes-<Version>-win64.zip`, removing older ones (`-NoDelivery` skips this). The
+maintainer's files stay in `<Work>\release`: the zip, `SHA256.txt`, `laptop-test.ps1` and `package-report.json`,
+whose `release_blockers` lists what no script can settle (ffmpeg licence, governance, the real-laptop run). The by-hand
 procedure for the laptop is [`docs/student/LAPTOP-TEST.md`](../docs/student/LAPTOP-TEST.md). A double-clicked launch
 (no arguments) that fails prints the error, writes `logs\launcher-errors.log` in the data directory and waits for
 Enter; runs with arguments (every gate) never wait.

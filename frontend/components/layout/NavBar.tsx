@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { LoaderCircle, Menu, Moon, Sun, User } from 'lucide-react'
+import { ChevronDown, LoaderCircle, Menu, Moon, Settings, Sun, User } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
@@ -25,7 +25,6 @@ const navItems: NavItem[] = [
   { path: '/proyectos', label: 'Proyectos', protected: true },
   { path: '/dashboard', label: 'Dashboard', protected: true },
   { path: '/reportes', label: 'Reportes', protected: true },
-  { path: '/configuracion', label: 'Configuración', protected: true },
 ]
 
 export const NavBar = () => {
@@ -118,10 +117,28 @@ export const NavBar = () => {
               {mounted && resolvedTheme === 'dark' ? <Sun className="h-4 w-4 2xl:h-5 2xl:w-5" /> : <Moon className="h-4 w-4 2xl:h-5 2xl:w-5" />}
             </Button>
             {currentUser ? (
-              <div className="hidden items-center gap-2 rounded-lg bg-muted px-2.5 py-1.5 text-sm text-muted-foreground sm:flex 2xl:px-3 2xl:py-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                <span className="max-w-36 truncate 2xl:max-w-44">{currentUser.name ?? currentUser.email ?? 'Usuario'}</span>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-label="Menú de usuario"
+                    className="h-auto gap-2 bg-muted px-2.5 py-1.5 font-normal text-muted-foreground hover:text-foreground 2xl:px-3 2xl:py-2"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="hidden max-w-36 truncate sm:inline 2xl:max-w-44">{currentUser.name ?? currentUser.email ?? 'Usuario'}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/configuracion" aria-current={pathname === '/configuracion' ? 'page' : undefined}>
+                      <Settings aria-hidden="true" />
+                      Configuración
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : null}
 
             {loading ? (

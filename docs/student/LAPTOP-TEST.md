@@ -28,6 +28,8 @@ the open items in [PLAN.md](PLAN.md).
 2. **Hash.** `Get-FileHash` against `SHA256.txt`.
 3. **Extract** with Explorer: right click, "Extract all". Time it (about 5,000 files) and note whether Defender slows it.
 4. **Read `LEEME.txt`** in the extracted folder. Is every step true on this machine? Note each place it is not.
+   With hidden files not shown, the folder must show only `neurodatics-estudiantes.exe` and `LEEME.txt`; note it
+   if `_internal` is visible after extraction (it is hidden again once the exe has run).
 5. **Cut the network:** airplane mode, then check a browser cannot open any site.
 6. **Double-click `neurodatics-estudiantes.exe`.** This is the SmartScreen moment. Record the exact wording,
    the buttons offered, and whether "Ejecutar de todas formas" exists. If Smart App Control blocks it with no
@@ -43,7 +45,8 @@ the open items in [PLAN.md](PLAN.md).
     should start normally. (This proves PostgreSQL recovers on a real machine.)
 12. **Elevated:** right click the exe, "Run as administrator". It must say it cannot run as administrator and wait for
     Enter; it must not leave anything running.
-13. **Failure screen:** with the app closed, rename `pgsql` inside the folder to `pgsql-x`, double-click the exe.
+13. **Failure screen:** with the app closed, rename `_internal\pgsql` (type `_internal` in Explorer's address bar
+    after the folder's path) to `pgsql-x`, double-click the exe.
     It should print a message in Spanish, name a log file, and wait for Enter instead of vanishing. Rename it back.
 
 ## Automatic part (about 5 minutes)

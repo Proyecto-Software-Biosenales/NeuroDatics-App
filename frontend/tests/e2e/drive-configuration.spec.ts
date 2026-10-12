@@ -106,13 +106,16 @@ test("sin credenciales de Google explica cómo completar la instalación", async
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
-test("Configuración es accesible desde la navegación sin desbordar la ventana", async ({ page }) => {
+test("Configuración es accesible desde el menú de usuario sin desbordar la ventana", async ({ page }) => {
   await signIn(page)
   await mockConnection(page, { connection: { connected: false, account_email: null, oauth_configured: true } })
-  for (const width of [768, 1024, 1440]) {
+  for (const width of [390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto("/configuracion")
-    await expect(page.getByRole("navigation", { name: "Navegación principal" }).getByRole("link", { name: "Configuración" })).toBeVisible()
+    await expect(page.getByRole("navigation", { name: "Navegación principal" })).not.toContainText("Configuración")
+    await page.getByRole("button", { name: "Menú de usuario" }).click()
+    await expect(page.getByRole("menuitem", { name: "Configuración" })).toBeVisible()
+    await page.keyboard.press("Escape")
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   }
 })

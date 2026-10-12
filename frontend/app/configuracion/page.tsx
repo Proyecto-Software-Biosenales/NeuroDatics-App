@@ -177,13 +177,17 @@ function DriveConfiguration() {
             </CardContent>
           </Card>
 
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="max-w-xl text-sm text-muted-foreground">
-              Para el uso diario, inicia el grupo «neurodatics» desde Docker Desktop y abre la aplicación. La conexión de Drive se conserva.
-            </p>
+          </>}
+
+          {/* The Docker hint is server-only; the way back to the projects is not. */}
+          <div className={`flex flex-wrap items-center gap-4 ${IS_LOCAL_MODE ? "justify-end" : "justify-between"}`}>
+            {!IS_LOCAL_MODE && (
+              <p className="max-w-xl text-sm text-muted-foreground">
+                Para el uso diario, inicia el grupo «neurodatics» desde Docker Desktop y abre la aplicación. La conexión de Drive se conserva.
+              </p>
+            )}
             <Button asChild variant="outline"><Link href="/proyectos">Ir a proyectos</Link></Button>
           </div>
-          </>}
         </div>
       </div>
 

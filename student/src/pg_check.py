@@ -11,7 +11,6 @@ import json
 import os
 import pathlib
 import subprocess
-import sys
 import tempfile
 import time
 
@@ -226,7 +225,9 @@ def adopt(args) -> int:
 
 def main(command: str, argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pkg", default=str(pathlib.Path(sys.executable).resolve().parent))
+    from neurodatics.local.launcher import package_dir  # the launcher's own lookup, _internal first
+
+    parser.add_argument("--pkg", default=str(package_dir(None)))
     parser.add_argument("--data-root", required=True)
     parser.add_argument("--out", default="pg-check.json")
     parser.add_argument("--leave-running", action="store_true")

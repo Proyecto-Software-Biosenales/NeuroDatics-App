@@ -58,41 +58,55 @@ if ($Assemble) {
     if (Test-Path $Pkg) { Remove-Item $Pkg -Recurse -Force }
     New-Item -ItemType Directory -Force $Pkg | Out-Null
     robocopy $dist $Pkg /E /NFL /NDL /NJH /NJS /NP | Out-Null
-    robocopy "$Work\tools" "$Pkg\tools" /E /NFL /NDL /NJH /NJS /NP | Out-Null
-    robocopy "$Work\frontend" "$Pkg\frontend" /E /NFL /NDL /NJH /NJS /NP | Out-Null
-    robocopy $PgSource "$Pkg\pgsql" /E /NFL /NDL /NJH /NJS /NP | Out-Null
-    robocopy $TemplateSource "$Pkg\pg-template" /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    # Everything but the exe (and, later, LEEME.txt) lives in the runtime's own folder, which the
+    # launcher finds through sys._MEIPASS and package.ps1 marks hidden: a student opening the
+    # folder sees the program and its guide, nothing else.
+    $internal = "$Pkg\_internal"
+    if (-not (Test-Path $internal)) { throw "the frozen runtime has no _internal folder at $internal" }
+    robocopy "$Work\tools" "$internal\tools" /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    robocopy "$Work\frontend" "$internal\frontend" /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    robocopy $PgSource "$internal\pgsql" /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    robocopy $TemplateSource "$internal\pg-template" /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    $loose = @(Get-ChildItem -LiteralPath $Pkg -Force | Where-Object Name -notin 'neurodatics-estudiantes.exe', '_internal')
+    if ($loose) { throw "unexpected entries beside the exe: $(($loose | ForEach-Object Name) -join ', ')" }
     # Nothing a student runs: library test suites, C headers, Cython sources and link libraries
     # that PyInstaller collects with pyarrow; PostgreSQL's StackBuilder GUI (wx*, libcurl), its
     # regression-test and ecpg programs, link libraries, and message catalogs other than Spanish.
     # The DLLs removed here are imported by none of postgres, pg_ctl, pg_isready, pg_controldata,
     # psql or the lib\ extensions; the gates below run on the pruned folder.
-    $internal = "$Pkg\_internal"
+    $parts = 'tools', 'frontend', 'pgsql', 'pg-template'
     @('pyarrow\tests', 'pyarrow\include', 'matplotlib\mpl-data\sample_data') |
         ForEach-Object { if (Test-Path "$internal\$_") { Remove-Item "$internal\$_" -Recurse -Force } }
-    Get-ChildItem $internal -Recurse -File -Include '*.lib', '*.h', '*.hpp', '*.pyx', '*.pxd', '*.pxi', '*.cmake' |
-        Remove-Item -Force
-    $pgBin = "$Pkg\pgsql\bin"
+    # The Python runtime only: the parts copied in above are pruned on their own terms below.
+    Get-ChildItem $internal -Force | Where-Object Name -notin $parts | ForEach-Object {
+        if ($_.PSIsContainer) {
+            Get-ChildItem $_.FullName -Recurse -File -Include '*.lib', '*.h', '*.hpp', '*.pyx', '*.pxd', '*.pxi', '*.cmake'
+        } elseif ($_.Extension -in '.lib', '.h', '.hpp', '.pyx', '.pxd', '.pxi', '.cmake') { $_ }
+    } | Remove-Item -Force
+    $pgBin = "$internal\pgsql\bin"
     Get-ChildItem -Path "$pgBin\*" -File -Include 'wx*.dll', 'libcurl.*', 'stackbuilder.exe', 'testplug.dll', 'icuio67.dll',
         'icutu67.dll', 'libecpg_compat.dll', 'ecpg.exe', 'pg_regress*.exe', 'pg_isolation_regress.exe',
         'isolationtester.exe', 'libpq_*.exe', 'test_*.exe', '*.lib' | Remove-Item -Force
-    Get-ChildItem "$Pkg\pgsql\lib" -File -Filter '*.lib' | Remove-Item -Force
-    Get-ChildItem "$Pkg\pgsql\share\locale" -Directory | Where-Object Name -ne 'es' | Remove-Item -Recurse -Force
+    Get-ChildItem "$internal\pgsql\lib" -File -Filter '*.lib' | Remove-Item -Force
+    Get-ChildItem "$internal\pgsql\share\locale" -Directory | Where-Object Name -ne 'es' | Remove-Item -Recurse -Force
     # The PostgreSQL zip does not ship the Visual C++ runtime its executables import, and a
     # laptop without the redistributable would fail to start the database. The frozen runtime
     # carries copies; put them beside the executables that need them.
-    $runtime = @(Get-ChildItem "$Pkg\_internal" -Filter 'vcruntime140*.dll' -File)
-    if ($runtime.Count -lt 1) { throw "no vcruntime140*.dll in $Pkg\_internal to ship beside PostgreSQL" }
-    $runtime | ForEach-Object { Copy-Item $_.FullName "$Pkg\pgsql\bin" -Force }
+    $runtime = @(Get-ChildItem $internal -Filter 'vcruntime140*.dll' -File)
+    if ($runtime.Count -lt 1) { throw "no vcruntime140*.dll in $internal to ship beside PostgreSQL" }
+    $runtime | ForEach-Object { Copy-Item $_.FullName $pgBin -Force }
     foreach ($needed in @('vcruntime140.dll')) {
-        if (-not (Test-Path "$Pkg\pgsql\bin\$needed")) { throw "$needed is not beside postgres.exe" }
+        if (-not (Test-Path "$pgBin\$needed")) { throw "$needed is not beside postgres.exe" }
     }
+    $runtimeFiles = @(Get-ChildItem $internal -Force | Where-Object Name -notin $parts | ForEach-Object {
+        if ($_.PSIsContainer) { Get-ChildItem $_.FullName -Recurse -File -Force } else { $_ } })
     "assembled: $Pkg"
-    "  exe+_internal MB : " + (MB "$Pkg\_internal")
-    "  tools MB         : " + (MB "$Pkg\tools")
-    "  frontend MB      : " + (MB "$Pkg\frontend")
-    "  pgsql MB         : " + (MB "$Pkg\pgsql") + "  (runtime dlls: " + (($runtime | ForEach-Object Name) -join ', ') + ")"
-    "  pg-template MB   : " + (MB "$Pkg\pg-template")
+    "  exe MB           : " + [math]::Round((Get-Item $exe).Length / 1MB, 1)
+    "  runtime MB       : " + [math]::Round((($runtimeFiles | Measure-Object Length -Sum).Sum) / 1MB, 1)
+    "  tools MB         : " + (MB "$internal\tools")
+    "  frontend MB      : " + (MB "$internal\frontend")
+    "  pgsql MB         : " + (MB "$internal\pgsql") + "  (runtime dlls: " + (($runtime | ForEach-Object Name) -join ', ') + ")"
+    "  pg-template MB   : " + (MB "$internal\pg-template")
     "  TOTAL MB         : " + (MB $Pkg)
     $global:LASTEXITCODE = 0   # robocopy reports "files copied" as exit code 1
     return

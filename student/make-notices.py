@@ -1,6 +1,6 @@
 r"""Write THIRD-PARTY-NOTICES.txt for the student package from what is actually inside it.
 
-    <build-venv>\Scripts\python.exe student\make-notices.py --pkg <package folder> --out <file>
+    <build-venv>\Scripts\python.exe student\make-notices.py --pkg <package folder>\_internal --out <file>
 
 Python components come from the build venv's installed metadata (the packages the frozen program
 was built from), web components from frontend/package.json plus each package's own license field,
@@ -99,13 +99,14 @@ def ffmpeg_section(tools: pathlib.Path) -> list[str]:
 
 FIXED = """\
 NeuroDatics Estudiantes bundles the following software. Each keeps its own license.
+Folder names below are relative to _internal\\, the hidden folder beside the program that holds this file.
 
 PostgreSQL 16 (pgsql\\, pg-template\\)
   Database server, from the EnterpriseDB binary distribution of PostgreSQL 16.
   Licensed under the PostgreSQL License (a permissive license similar to BSD/MIT).
   https://www.postgresql.org/about/licence/
 
-Python runtime (_internal\\)
+Python runtime (neurodatics-estudiantes.exe and the rest of _internal\\)
   The interpreter and standard library are licensed under the Python Software Foundation License.
   https://docs.python.org/3/license.html
 

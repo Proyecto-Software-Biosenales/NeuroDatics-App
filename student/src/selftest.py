@@ -104,7 +104,9 @@ def finite_numbers(value) -> int:
 def tools_dir(args) -> pathlib.Path:
     if args.tools_dir:
         return pathlib.Path(args.tools_dir)
-    return pathlib.Path(sys.executable).resolve().parent / "tools"
+    from neurodatics.local.launcher import package_dir  # the launcher's own lookup, _internal first
+
+    return package_dir(None) / "tools"
 
 
 # Each result must hold at least this many finite numbers. Statistics are a handful of values;

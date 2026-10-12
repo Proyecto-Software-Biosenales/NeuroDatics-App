@@ -168,6 +168,46 @@ def test_data_lives_in_the_profile_not_beside_the_program(monkeypatch, tmp_path)
     assert launcher.default_data_dir() == tmp_path / launcher.APP_DIR_NAME
 
 
+def _frozen_layout(tmp_path, monkeypatch, *, support_holds_package: bool):
+    """A fake onedir package: the exe beside _internal (sys._MEIPASS)."""
+    root = tmp_path / "NeuroDatics Estudiantes"
+    support = root / "_internal"
+    (support / "pgsql" if support_holds_package else support).mkdir(parents=True)
+    if not support_holds_package:
+        (root / "pgsql").mkdir()
+    monkeypatch.setattr(sys, "_MEIPASS", str(support), raising=False)
+    monkeypatch.setattr(sys, "executable", str(root / "neurodatics-estudiantes.exe"))
+    return root, support
+
+
+def test_the_package_is_found_inside_the_runtime_folder(tmp_path, monkeypatch):
+    root, support = _frozen_layout(tmp_path, monkeypatch, support_holds_package=True)
+
+    assert launcher.package_dir(None) == support
+    assert launcher.package_dir(str(root)) == root  # --pkg always wins
+
+
+def test_a_package_with_its_parts_beside_the_exe_still_starts(tmp_path, monkeypatch):
+    root, _ = _frozen_layout(tmp_path, monkeypatch, support_holds_package=False)
+
+    assert launcher.package_dir(None) == root.resolve()
+
+
+def test_the_support_folder_is_hidden_and_nothing_else(tmp_path, monkeypatch):
+    import ctypes
+
+    root, support = _frozen_layout(tmp_path, monkeypatch, support_holds_package=True)
+    get = ctypes.windll.kernel32.GetFileAttributesW
+
+    launcher.hide_support_folder(root)  # not the runtime folder: left alone
+    assert not get(str(root)) & 0x2
+
+    launcher.hide_support_folder(support)
+    launcher.hide_support_folder(support)  # idempotent
+    assert get(str(support)) & 0x2
+    assert get(str(support)) & 0x10  # still a directory
+
+
 def test_the_migrations_folder_is_found_from_a_source_checkout():
     assert (launcher.migrations_dir() / "env.py").is_file()
 

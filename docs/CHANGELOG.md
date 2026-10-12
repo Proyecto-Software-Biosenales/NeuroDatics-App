@@ -24,6 +24,85 @@ Add new entries at the top of *Unreleased*.
 
 ## Unreleased
 
+### 2026-10-11 — Configuración moves to the user menu; student package 0.4
+- **What:** *Configuración* is no longer a link in the top navigation bar (desktop or the mobile hamburger menu).
+  The user chip (name + status dot) is now a button, «Menú de usuario», that opens a dropdown with
+  «Configuración». It works at every width, including phones where the name is hidden. Applies to both editions.
+- **Tests:** the e2e navigation test now checks the bar has no «Configuración» and the menu item is reachable at
+  390/768/1024/1440 px; `student-offline.spec.ts` checks the same in the student edition.
+- **Checked:** `./verify.ps1` ALL GREEN (ESLint 0 errors / 6 warnings). `run-frozen.ps1`: selftest, pg-check,
+  pg-adopt, serve, browser (4 passed, 0 failed) and race all passed; 0 non-loopback connections; 0 postgres
+  processes left by the run. Packaged zip smoke test passed from an accented path.
+- **Student package:** `NeuroDatics-Estudiantes-0.4-win64.zip`, SHA-256
+  `ADCBD4C0258DBFD24E73D44C2CCD0A474C69F493DF8E60EF27411D5FFA6009E7`. The three release blockers in
+  `package-report.json` (GPL ffmpeg license, no real-laptop run, raw-data governance) are unchanged.
+- **Not run:** `frontend/tests/e2e/drive-configuration.spec.ts` (server edition, needs its own Playwright run).
+
+### 2026-10-08 — Pre-experiment creation in tabs; student package 0.3
+- **Why:** creating a project without a folder was one long form with nested collapsibles, which was hard to scan
+  and gave no sense of what was optional or already filled in.
+- **Create dialog:** *Pre-experimento* now has four tabs: Proyecto, Participantes, Pantalla and Cuestionarios.
+  Each tab shows its state (Opcional, Listo, «2 agregados», Revisar). Only the name is required, and «Crear
+  pre-experimento» works from any tab. An invalid section opens its tab and shows the reason. The first tab has
+  shortcut cards to the optional sections. Questionnaires use «Antes» and «Después» sub-tabs with question counts.
+  The *Con carpeta / Pre-experimento* switch is now a segmented control with icons.
+- **Shared editors:** `PlanningParticipants`, `PlanningScreen` and `PlanningQuestionnaire` are used by both the
+  dialog and Configuración (`PreExperimentEditor`). Configuración gets the same participant cards, unit-suffixed
+  measurements, icon buttons for moving or removing questions, and empty states. `validateConfig` is split into
+  per-section validators with unchanged messages.
+- **Project card:** a draft card's dashed footer («Sin carpeta todavía» / «Agregar carpeta») covered the
+  «Configuración» link at `xl`, because `xl:p-6` overrode the bottom padding. The card now keeps room for it at
+  every width.
+- **Checked:** `./verify.ps1` ALL GREEN (backend 1208 passed, frontend hooks/components 67, ESLint 0/6).
+  `pre-experiment.test.mjs` now covers the tab flow, including the jump to the invalid tab. A new
+  `student-offline.spec.ts` test creates a pre-experiment tab by tab in local mode, reads it back in
+  Configuración and deletes it. That test found the card overlap.
+- **Student package 0.3:** rebuilt in `output/student-m1`. Gates: selftest, pg, pg-adopt, serve (HTTP all stages,
+  browser **4 passed**, 0 non-loopback connections, guard blocked nothing, no postgres left) and race. The
+  `package.ps1` smoke started the extracted zip from an accented path in 9.2 s. `delivery/` holds
+  `NeuroDatics-Estudiantes-0.3-win64.zip`, SHA-256 `25B5815F720555F3D4205EF68207D197785AF86426B546267A3CAE1782F8E8A5`.
+  The program folder shows only the exe and `LEEME.txt`. The release blockers are the same three as in 0.2: ffmpeg
+  licence, real-laptop run and data governance.
+
+### 2026-10-08 — Agent rule: every applicable change also reaches NeuroDatics Estudiantes
+- New `AGENTS.md` at the root, which `CLAUDE.md` imports with `@AGENTS.md`. Every change must also work in the
+  student edition. Only Google sign-in, Drive, Docker, Redis, the proxy and network deployment are exempt.
+- It lists the local-mode pitfalls already seen: gating too much on `IS_LOCAL_MODE`, remote resources, settings
+  without a local default, static-export limits, collection routes without a trailing slash, and PyInstaller
+  data and dependency lists.
+- It requires a package rebuild, with gates, after any change to `backend/src`, `backend/migrations`, `frontend/`
+  or `student/`. If the package could not be rebuilt, the agent must say so.
+
+### 2026-10-08 — Student package 0.2: caught up with the server edition, opens on the exe and its guide
+- **Why:** the `delivery/` package was the 2026-10-01 build. It had no migration 026 and no pre-experiment UI, so
+  it lacked *Pre-experimento y cuestionarios* and everything else from `45e49be`. Its folder also opened on
+  eight entries: a subfolder holding the exe, the zip, the hash, the report, the laptop kit and a sandbox file.
+- **Parity audit (source):** local mode swaps only the account and Google routers. Projects, with pre-experiment
+  nested under them, participants, scenaries, analytics and reports are mounted in both editions. None of the
+  new features (pre-experiment, participant comparison, AOI insights, the analytics cache) touches Drive. One
+  oversight was fixed: *Ir a proyectos* on Configuración sat inside the `!IS_LOCAL_MODE` block with the Docker
+  hint, so it was missing locally. `student-offline.spec.ts` now expects it.
+- **Layout:** the folder shows only `neurodatics-estudiantes.exe` and `LEEME.txt`. `run-frozen.ps1 -Assemble`
+  puts `pgsql`, `pg-template`, `tools` and `frontend` inside PyInstaller's `_internal`; `package.ps1` puts
+  `THIRD-PARTY-NOTICES.txt` there too. `launcher.package_dir` finds them through `sys._MEIPASS`, and an old
+  folder with `pgsql` beside the exe still starts. `_internal` is marked hidden in the folder. It is also hidden
+  in the zip, written entry by entry with an MS-DOS hidden directory entry plus entries for the template's empty
+  folders. `hide_support_folder` re-hides it on start for extractors that drop the flag.
+- **Delivery:** `delivery/NeuroDatics-Estudiantes` is now the program folder itself, with
+  `delivery/NeuroDatics-Estudiantes-0.2-win64.zip` beside it (SHA-256 `6D8AE82E…0C945`). The old zips, the
+  laptop kit, the hash, the report and `prueba-sandbox.wsb` are gone from `delivery/`. The maintainer's copies
+  stay in `<Work>\release`. The guide explains the hidden folder and how to make a desktop shortcut.
+- **Checked:** rebuilt in `output/student-m1` after `npm ci`, because `frontend/node_modules` was empty. The bundle
+  contains the pre-experiment UI and the runtime contains migration 026. Gates on the new layout: selftest, pg,
+  pg-adopt, serve (HTTP all stages, browser 3/3, 0 non-loopback connections, guard blocked nothing) and race.
+  The `package.ps1` smoke started the app from the extracted zip on an accented path in 11.4 s. It checked that
+  the zip's top level is the exe, `LEEME.txt` and a hidden `_internal`, and that the launcher re-hid the folder.
+  Extracting the real zip with Explorer's engine (Shell `CopyHere`, Windows 11 26200) gave 4,081 files, a hidden
+  `_internal`, and only the two files visible. `verify.ps1` passed: 1,208 backend tests, 25 snapshots and
+  ALL GREEN. There are 3 new launcher unit tests.
+- **Not checked:** other extractors (7-Zip and others may show `_internal` until the first launch) and a real
+  student laptop. The three release blockers (ffmpeg licence, laptop run, data governance) are unchanged.
+
 ### 2026-10-03 — G12 gate cerrado documentalmente
 - Registrado el gate global completado por root: item 14 `COMPLETED`, exit 0, `ALLGREEN`, `VERIFY_EXIT=0` y ESLint con 0 errores/6 warnings. La captura parcial histórica de `verify-final.log` se conserva como limitación de Tee, no como fallo del gate.
 - Documentadas las correcciones aprobadas G04/G07 (cinco fuentes) y la corrección G10 limitada a anotaciones/importación de contrato del fixture E2E. G12 queda completo, pendiente únicamente de revisión/aprobación root; deploy, distribución y equivalencias externas siguen fuera de alcance.
