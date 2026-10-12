@@ -86,11 +86,10 @@ src/neurodatics/
     main.py          aplicación FastAPI: CORS, middlewares, rutas, salud y, en local, el montaje del sitio
     api/             router.py, middlewares.py y deps.py (dependencias compartidas de las rutas)
     modules/         un paquete por dominio: projects, participants, scenaries, analytics, reports, auth,
-                     integrations; cada uno con api/, application/, domain/ e infrastructure/
-    infra/           adaptadores técnicos: db (modelos y repositorios), cache, queue, storage, health,
-                     observability
-    shared/          contratos neutros: esquemas, constantes, utilidades, identidad de escenario,
-                     contrato de fijaciones, generación de caché
+                     integrations; con api/, application/, domain/ e infrastructure/ según lo que use
+    infra/           adaptadores técnicos: db (base y sesión), cache, queue, storage, health
+    shared/          contratos neutros: identidad de escenario, contrato de fijaciones, generación de
+                     caché, recursos de la máquina
     config/          settings.py, logging.py y security.py
     local/           edición estudiantes: launcher, PostgreSQL embebido, guard offline, bloqueo de
                      instancia y el sitio estático

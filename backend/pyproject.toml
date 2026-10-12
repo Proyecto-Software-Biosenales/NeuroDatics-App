@@ -8,7 +8,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.12,<4.0"
 fastapi = "^0.104.1"
 starlette = "^0.27.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0"}
@@ -60,7 +60,7 @@ dev = "neurodatics.main:main"
 pythonpath = ["src"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["F401", "F811", "F841", "ERA001"]
@@ -68,4 +68,4 @@ select = ["F401", "F811", "F841", "ERA001"]
 [tool.deptry]
 known_first_party = ["neurodatics"]
 # Runtime discovery happens outside direct Python imports for these packages.
-per_rule_ignores = { DEP002 = ["psycopg", "cryptography", "python-multipart"] }
+per_rule_ignores = { DEP002 = ["cryptography", "python-multipart"] }
