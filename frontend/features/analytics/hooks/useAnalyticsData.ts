@@ -174,10 +174,6 @@ export const usePupilTimeseries = makeAnalyticsHook(
   windowArgs,
   "Error loading timeseries"
 )
-export const usePupilStatistics = makeAnalyticsHook(
-  "getPupilStatistics", AnalyticsApi.getPupilStatistics,
-  windowArgs
-)
 export const useGazeTimeseries = makeAnalyticsHook(
   "getGazeTimeseries", AnalyticsApi.getGazeTimeseries,
   windowArgs,

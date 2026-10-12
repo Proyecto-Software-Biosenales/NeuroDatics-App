@@ -49,10 +49,6 @@ export function formatPercent(value: number, decimals = 1): string {
   return `${formatDecimal(value, decimals)}${NBSP}%`
 }
 
-export function withUnit(value: string, unit: string): string {
-  return unit ? `${value}${NBSP}${unit}` : value
-}
-
 export function plural(count: number, singular: string, pluralForm: string): string {
   return `${count}${NBSP}${count === 1 ? singular : pluralForm}`
 }

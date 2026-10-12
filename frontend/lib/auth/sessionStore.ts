@@ -21,10 +21,6 @@ function emitAuthSessionChanged() {
   window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT))
 }
 
-export function getAuthSessionStorageKey() {
-  return AUTH_SESSION_STORAGE_KEY
-}
-
 export function getAuthSessionChangedEventName() {
   return AUTH_SESSION_CHANGED_EVENT
 }
