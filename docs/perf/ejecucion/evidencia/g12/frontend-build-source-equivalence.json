@@ -1,6 +1,0 @@
-{
-  "scope": "current frontend tracked plus untracked non-ignored files copied by the isolated G12 build; .env files excluded by protocol",
-  "checked": 236,
-  "drift": [],
-  "result": "the existing output/perf-g12/frontend build sources are byte-identical to current frontend sources"
-}

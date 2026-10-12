@@ -1,6 +1,0 @@
-2026-10-04T00:01:38.840690Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
-2026-10-04T00:01:38.840726Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
-2026-10-04T00:01:38.849202Z  WARN codex_core::shell_snapshot: Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell
-2026-10-04T00:01:39.703344Z  WARN codex_skills::interface: ignoring interface.icon_small: icon path with '..' must resolve under plugin assets/
-2026-10-04T00:01:39.703364Z  WARN codex_skills::interface: ignoring interface.icon_large: icon path with '..' must resolve under plugin assets/
-2026-10-04T00:06:56.602854Z ERROR codex_core::tools::router: error=apply_patch verification failed: invalid hunk at line 3, '# Pre-edit snapshot inventory' is not a valid hunk header. Valid hunk headers: '*** Add File: {path}', '*** Delete File: {path}', '*** Update File: {path}'

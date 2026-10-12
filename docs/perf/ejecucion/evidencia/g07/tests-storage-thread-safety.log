@@ -1,8 +1,0 @@
-...............................................                          [100%]
-============================== warnings summary ===============================
-..\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: 1126 warnings
-  C:\AAMisArchivos\AAprogramming\AAAWebDeb\Biose�ales\NeuroDatics-App\.venv\Lib\site-packages\pytest_asyncio\plugin.py:155: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
-    return asyncio.iscoroutinefunction(obj)
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-47 passed, 1126 warnings in 1.40s

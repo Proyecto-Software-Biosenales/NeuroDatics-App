@@ -1,4 +1,0 @@
-git apply --reverse --check --ignore-space-change docs/perf/ejecucion/evidencia/g10/own.patch
-exit_code=0
-own.patch_sha256=a9d2b6547ff92992eef39b9333a76e92ff28357974157780a688e151369ece8f
-own.patch_bytes=54438

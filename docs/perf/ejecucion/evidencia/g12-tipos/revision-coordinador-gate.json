@@ -1,9 +1,0 @@
-{
-  "utc": "2026-10-04T00:09:43.2350925Z",
-  "tool_item": "item_14 completed",
-  "exit_code": 0,
-  "all_green": true,
-  "eslint": true,
-  "exit_marker": true,
-  "diagnosis": "Tee captured stdout/stderr only; final Write-Host information stream and caller VERIFY_EXIT outside Tee are present in completed tool output, not verify-final.log. Gate actually completed green. Do not rerun."
-}

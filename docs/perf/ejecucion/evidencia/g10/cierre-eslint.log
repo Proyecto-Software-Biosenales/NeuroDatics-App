@@ -1,4 +1,0 @@
-Command: npx eslint tests/e2e/comparison-dashboard.spec.ts
-Scope: only the E2E file corrected during closure.
-Exit code: 0
-Output: none

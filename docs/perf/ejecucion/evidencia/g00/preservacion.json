@@ -1,9 +1,0 @@
-{
-  "protected_files": 110,
-  "unchanged_files": 110,
-  "head": "f310003bd734203a41268f40a4627bd99d5a3233",
-  "excluded_scope": "docs/perf/ejecucion/*: coordinator ORQUESTACION and new execution artifacts",
-  "notes": "Content hashes only; no secret files or data copied. No reset/stash/commit.",
-  "drift": [],
-  "captured_utc": "2026-10-02T05:30:26.0230854Z"
-}

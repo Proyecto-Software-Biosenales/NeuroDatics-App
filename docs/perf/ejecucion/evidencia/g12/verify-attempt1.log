@@ -1,7 +1,0 @@
-out-file: 
-Line |
-   2 |  … it=0; try { & .\verify.ps1 *>&1 | Tee-Object -FilePath $taskLog } cat …
-     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | Could not find a part of the path 'C:\AAMisArchivos\AAprogramming\AAAWebDeb\Bioseñales\NeuroDatics-App\backend\docs\perf\ejecucion\evidencia\g12\verify.log'.
-
-EXIT_CODE=1

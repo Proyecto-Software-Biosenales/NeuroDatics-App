@@ -1,1 +1,0 @@
-2026-10-02: intento único tras list_agents=3 hijos completados; collaboration.spawn_agent(GPT-6.1 Sol/high, fork_turns=none) respondió: collab spawn failed: agent thread limit reached. Ningún agente G09 iniciado por esa herramienta. Continuar CLI GPT-5.6 Sol/high; no reintentos idénticos.
