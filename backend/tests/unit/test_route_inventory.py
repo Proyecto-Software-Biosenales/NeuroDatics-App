@@ -16,7 +16,5 @@ def test_mounted_http_route_inventory():
         for method in route.methods
     )
     snapshot = Path(__file__).parents[1] / "fixtures" / "route_inventory.json"
-    # La entrega añade una lectura autenticada sin modificar el inventario histórico.
     expected = json.loads(snapshot.read_text(encoding="utf-8"))
-    expected.append("GET /api/integrations/google-drive/connection")
     assert actual == sorted(expected)

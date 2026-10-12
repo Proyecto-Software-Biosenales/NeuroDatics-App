@@ -95,7 +95,8 @@ src/neurodatics/
                      instancia y el sitio estático
     diagnostics/     comprobación previa de red
 migrations/          revisiones de Alembic (versions/) y env.py
-tests/               unit, integration, e2e, characterization (con __snapshots__) y fixtures (golden/)
+tests/               unit, characterization (con __snapshots__) y fixtures (golden/); las pruebas de
+                     extremo a extremo son de Playwright y viven en frontend/tests/e2e/
 benchmarks/          mediciones de rendimiento (bench_*.py); ver benchmarks/README.md
 ```
 

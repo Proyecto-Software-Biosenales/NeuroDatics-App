@@ -4,6 +4,7 @@
   "GET /api/auth/google/login-url",
   "GET /api/integrations/google-drive/authorize",
   "GET /api/integrations/google-drive/callback",
+  "GET /api/integrations/google-drive/connection",
   "GET /api/projects/",
   "GET /api/projects/{project_id}",
   "GET /api/projects/{project_id}/analytics/aois",

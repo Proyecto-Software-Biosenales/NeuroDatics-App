@@ -1,3 +1,11 @@
+"""Unit coverage for the detector itself: ``FixationDetectionService``.
+
+Pins the minimum-duration contract and its variants, the normalized I-DT and
+angular I-VT modes, effective-rate resampling, invalid-gap bridging and
+splitting, scenario segmentation, the screen-to-stimulus mapping of centroids,
+determinism, and the shape of the emitted metadata and warnings.
+"""
+
 import json
 
 import numpy as np

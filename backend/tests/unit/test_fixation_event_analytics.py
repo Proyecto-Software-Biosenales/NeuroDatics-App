@@ -1,3 +1,11 @@
+"""How the analytics services read fixation events already stored in Parquet.
+
+Covers the v2 labelled-event path and the legacy fallback: unique events per
+segment, dwell that never charges the saccade or signal-loss gap, heatmap
+weighting by detector duration, AOI transitions across segments, and the
+fixation response schema.
+"""
+
 from types import SimpleNamespace
 
 import pandas as pd

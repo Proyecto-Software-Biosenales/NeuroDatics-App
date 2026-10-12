@@ -1,3 +1,11 @@
+"""Ingestion and analytics joined up: CSV processing through to fixation reads.
+
+Covers multiblock and multirate exports that recompute fixations while keeping
+the other sensors intact, sensor-only blocks that must not fabricate events,
+the end-to-end choice of angular detection when the screen geometry is
+complete, and the detector duration surviving the canonical analytics contract.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path

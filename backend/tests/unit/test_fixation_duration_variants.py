@@ -1,3 +1,11 @@
+"""The minimum-duration variant selector and its reach into analytics.
+
+Covers validation, discovery and projection of the stored duration variants
+(without mutating the input frame), the explicit default that keeps older v2
+data honest, the provenance of the selected duration across every fixation
+service, and the sensitivity report.
+"""
+
 from __future__ import annotations
 
 from types import SimpleNamespace
