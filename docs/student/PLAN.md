@@ -1,14 +1,16 @@
 # Student edition — plan (v2, approved)
 
 Status: **APPROVED as written by the owner, 2026-09-20 (M0 closed)**. **M1 done except its proof
-gate** (clean Windows profile, networking off): feasible, embedded PostgreSQL confirmed. Results:
-[M1-SPIKE.md](M1-SPIKE.md). **M2 done 2026-09-21** (local mode, launcher and build gates, all
+gate** (clean Windows profile, networking off): feasible, embedded PostgreSQL confirmed. What the
+spike settled, and why the edition is built this way, is in
+[`student/README.md`](../../student/README.md). **M2 done 2026-09-21** (local mode, launcher and build gates, all
 passing on the frozen package; see "M2 result"). **M3 done 2026-09-21** (local frontend served by the
 backend, proven in a real offline browser; see "M3 result"). **M4 prepared 2026-09-21**: everything that
 can be built and proven on this machine is (see "M4 result"); the laptop run itself is the owner's
 ([LAPTOP-TEST.md](LAPTOP-TEST.md)).
-Owner answers and evidence: [LEDGER.md](LEDGER.md). The earlier signed-package
-proposal is withdrawn; it is kept in [superseded/](superseded/) for reference only.
+The decisions still in force are in
+[`student/README.md`](../../student/README.md); the owner answers and the milestone ledger stay in the
+history (tag `docs-archive-pre-release`). The earlier signed-package proposal is withdrawn.
 
 ## Objective
 
@@ -42,12 +44,14 @@ launch. Projects live on the student's disk and are still there next time.
   project lock and goldens untouched, which is the lower-risk way to keep the app "exactly
   the same". M1 ran the real advisory lock, JSONB merge and all 26 migrations on it, and it
   started, stopped cleanly and recovered from a killed process. The SQLite fallback is not
-  needed. The launcher traps M1 found are in [M1-SPIKE.md](M1-SPIKE.md).
+  needed. The launcher traps M1 found are written where they apply, in
+  `backend/src/neurodatics/local/postgres.py` and [`student/README.md`](../../student/README.md).
 
 ## What "same app, offline" requires
 
 Nothing user-facing has to be dropped. The work is three infrastructure assumptions
-that sit under every feature. Evidence and file references are in the ledger.
+that sit under every feature. Evidence and file references are in
+[`student/README.md`](../../student/README.md).
 
 | Layer | Today | Student edition | Difficulty |
 | --- | --- | --- | --- |
@@ -65,10 +69,11 @@ lock, throttle) and runs on student hardware whose limits are unmeasured.
 
 ## Open items
 
-Plan approved as written on 2026-09-20, which closed M0 (recorded in the ledger). Still open:
+Plan approved as written on 2026-09-20, which closed M0. Still open:
 
 - **M1 proof gate:** a clean Windows machine or VM (or a fresh Windows 11 laptop) to run the
-  frozen package with networking off. This machine could not do it; see M1-SPIKE.md.
+  frozen package with networking off. This machine could not do it; the procedure is in
+  [LAPTOP-TEST.md](LAPTOP-TEST.md).
 - **Unsigned package risk:** Windows 11 Smart App Control, when on, can block unsigned apps with
   no "run anyway" choice, and it was Off on the test machine. Test on a fresh Windows 11 laptop
   before relying on "unsigned, with a guide".
@@ -83,8 +88,8 @@ Plan approved as written on 2026-09-20, which closed M0 (recorded in the ledger)
 
 | Milestone | Outcome | Proof |
 | --- | --- | --- |
-| M0 | Owner approves this page | Approval recorded in the ledger |
-| M1 | Feasibility spike: frozen runtime with ingestion, analytics, typst and ffmpeg starts and processes a real ZIP offline. Measures size and confirms or replaces the embedded PostgreSQL lean (starts offline, shuts down cleanly, recovers after a killed process) | Run on a clean Windows profile with networking off; sizes recorded. **Result:** everything passes and sizes are recorded, but the clean-profile, network-off run is still open ([M1-SPIKE.md](M1-SPIKE.md)) |
+| M0 | Owner approves this page | Approved by the owner on 2026-09-20 |
+| M1 | Feasibility spike: frozen runtime with ingestion, analytics, typst and ffmpeg starts and processes a real ZIP offline. Measures size and confirms or replaces the embedded PostgreSQL lean (starts offline, shuts down cleanly, recovers after a killed process) | Run on a clean Windows profile with networking off; sizes recorded. **Result:** everything passes and sizes are recorded, but the clean-profile, network-off run is still open ([LAPTOP-TEST.md](LAPTOP-TEST.md)) |
 | M2 | Local mode: identity, storage, database and cache adapters. Start from the M1 findings: template cluster, launcher hardening, Redis-free readiness, no Drive at startup, local cache paths | `./verify.ps1` green, backend pytest, goldens unchanged, frozen selftest still passing. **Result:** all met, plus a real HTTP upload-to-report flow on the frozen package (see "M2 result") |
 | M3 | Local frontend: static build served locally, fonts and Drive dependencies removed | Full flow with networking off. **Result:** met in a real Chromium against the frozen package (see "M3 result") |
 | M4 | Package, clean-laptop test, student guide | Fresh Windows laptop from the Drive download to a visible dashboard. **Result:** package, guide, notices, hash and laptop kit done and proven from the extracted zip here; the laptop run is still open (see "M4 result") |

@@ -23,7 +23,7 @@ Son números de línea del CSV original; una importación en Excel que retire fi
 
 Los canales LE, F4, C4, P4, P3 y C3 del bloque 5 también tienen la unidad vacía. Por tanto, **F3 del bloque 5 se multiplica por 1.000; los otros canales y bloques no heredan ese factor**. Los números de bloque son posiciones de grabación, no identificadores públicos de personas.
 
-En F3 del bloque 5, el rango exportado es −0,97 a 9,64; normalizado es −970 a 9.640. Los rangos del archivo de adquisición candidato y el metadato respaldan el multiplicador; no demuestran alineación exacta muestra a muestra ni confirman la unidad física. La auditoría reproducida el 25 de septiembre está en [FINDINGS.md](FINDINGS.md) y [eeg-evidencia.md](../presentation/propuesta-final/eeg-evidencia.md).
+En F3 del bloque 5, el rango exportado es −0,97 a 9,64; normalizado es −970 a 9.640. Los rangos del archivo de adquisición candidato y el metadato respaldan el multiplicador; no demuestran alineación exacta muestra a muestra ni confirman la unidad física. La auditoría reproducida el 25 de septiembre está en [FINDINGS.md](FINDINGS.md).
 
 ## Contrato actual de importación
 

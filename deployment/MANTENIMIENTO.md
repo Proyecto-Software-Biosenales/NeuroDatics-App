@@ -32,6 +32,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File deployment/tests/instalador.
 pwsh -NoProfile -File deployment/tests/smoke.ps1
 ```
 
-La prueba de integración comprueba las imágenes, configuración, salud y migraciones de una base nueva, rutas HTTP y conservación de datos al detener/iniciar directamente los contenedores como hace Docker Desktop. No obtiene consentimiento real de Google ni instala WSL/Docker en este equipo. Esas ramas se deben ensayar también en una VM Windows limpia antes de una distribución amplia; consulta los resultados registrados en `docs/delivery-handoff.md`.
+La prueba de integración comprueba las imágenes, configuración, salud y migraciones de una base nueva, rutas HTTP y conservación de datos al detener/iniciar directamente los contenedores como hace Docker Desktop. No obtiene consentimiento real de Google ni instala WSL/Docker en este equipo. Esas ramas se deben ensayar también en una VM Windows limpia antes de una distribución amplia; ese ensayo sigue pendiente. El informe de cierre que registró los resultados anteriores ya no está en el árbol: queda en el historial, bajo el tag `docs-archive-pre-release`.
 
 Los instaladores se descargan del proveedor al necesitarlos, por lo que una PC nueva necesita Internet. La aplicación ya construida viaja en el paquete. No se requiere publicar imágenes ni dar acceso a un registro Docker.

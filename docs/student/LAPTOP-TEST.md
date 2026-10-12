@@ -76,7 +76,7 @@ A failure is a result: record it and send the report. Do not retry until it pass
 
 Send me the result zip and your notes from the by-hand steps. I will then:
 
-- record the run in [M1-SPIKE.md](M1-SPIKE.md), the [ledger](LEDGER.md) and the M1 and M4 rows of [PLAN.md](PLAN.md);
+- record the run in the M1 and M4 rows of [PLAN.md](PLAN.md);
 - correct `LEEME.txt` where the laptop disagreed (the RAM and disk figures in it are provisional until a real run measures them);
 - update the open items that the run settles: Smart App Control, student RAM, antivirus behaviour, real ZIP size.
 

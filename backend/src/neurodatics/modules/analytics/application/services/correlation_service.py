@@ -317,7 +317,7 @@ class CorrelationAnalyticsService:
         # The dB scale does not absorb it: a 0.25 s bin is either contaminated or
         # it is not. Reporting and excluding those bins changes the
         # /correlations response contract, which is a protected snapshot, so it
-        # waits for the owner. See docs/eeg-audit/PLAN.md T10.
+        # waits for the owner. See docs/eeg-audit/FINDINGS.md.
 
         # `le` is intentionally excluded: it is a reference/auxiliary channel, not scalp data.
         source_columns = [

@@ -52,7 +52,7 @@ Evidence is written to `<Work>/frozen-results/` (`selftest.json`, `pg-check.json
 - **race**: two launches started at the same instant on one data directory.
 
 The paths deliberately contain accents and spaces. None of this is the clean-machine, network-off proof
-gate (`docs/student/m1-spike/vm/CHECKLIST.md`), which needs a machine this one is not.
+gate ([`docs/student/LAPTOP-TEST.md`](../docs/student/LAPTOP-TEST.md)), which needs a machine this one is not.
 
 ## Package and test on a laptop (M4)
 

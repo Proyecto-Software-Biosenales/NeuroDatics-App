@@ -122,7 +122,7 @@ try {
         commit = $commit; working_tree_modified = [bool]$estado; source_sha256 = $sourceHash; images = $imagenes; files = $archivos }
     $manifest | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $Destino 'manifest.json') -Encoding utf8NoBOM
     $archivos | Where-Object { $_.path -like 'images/*' } | ForEach-Object { "$($_.sha256)  $([IO.Path]::GetFileName($_.path))" } | Set-Content -LiteralPath (Join-Path $Destino 'images/SHA256SUMS.txt') -Encoding ascii
-    @("NeuroDatics: entrega generada el $($manifest.generated_at)", "Commit base: $commit", "Incluye cambios sin confirmar: $([bool]$estado)", "Huella del código: $sourceHash", 'Plataforma: linux/amd64', 'Servicios: frontend, backend, db, redis', 'Pruebas: consulta docs/delivery-handoff.md en el repositorio; generar el paquete no equivale a probarlo.') | Set-Content -LiteralPath (Join-Path $Destino 'VERSION.txt') -Encoding utf8NoBOM
+    @("NeuroDatics: entrega generada el $($manifest.generated_at)", "Commit base: $commit", "Incluye cambios sin confirmar: $([bool]$estado)", "Huella del código: $sourceHash", 'Plataforma: linux/amd64', 'Servicios: frontend, backend, db, redis', 'Pruebas: consulta deployment/MANTENIMIENTO.md en el repositorio; generar el paquete no equivale a probarlo.') | Set-Content -LiteralPath (Join-Path $Destino 'VERSION.txt') -Encoding utf8NoBOM
     $null = Get-Manifiesto $Destino -VerificarArchivos
     Write-Host "Entrega generada y verificada: $Destino" -ForegroundColor Green
     Write-Host 'Se conservó .env si ya existía. No se incluyeron credenciales del repositorio automáticamente.'

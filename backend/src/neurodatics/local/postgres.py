@@ -2,7 +2,7 @@
 
 The server is the same PostgreSQL 16 the teacher edition runs, so SQL, migrations, the project
 lock and the JSONB token merge stay untouched. Each rule below was learnt by running the real
-Windows binaries (docs/student/M1-SPIKE.md):
+Windows binaries (student/README.md):
 
 * ``initdb`` cannot run from a path with non-ASCII characters, so a cluster template built
   elsewhere is copied instead; ``initdb`` never runs on the student's machine.
