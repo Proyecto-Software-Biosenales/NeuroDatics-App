@@ -11,7 +11,7 @@ from neurodatics.modules.analytics.application.services.correlation_service impo
     CORRELATION_SIGNAL_IDS,
     CorrelationAnalyticsService,
 )
-from neurodatics.modules.analytics.domain.scenario_identity import ScenarioAmbiguityError
+from neurodatics.shared.scenario_identity import ScenarioAmbiguityError
 
 
 PROJECT_ID = uuid4()

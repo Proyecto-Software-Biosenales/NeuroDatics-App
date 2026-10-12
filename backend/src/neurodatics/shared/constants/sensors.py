@@ -1,2 +1,0 @@
-# sensors.py placeholder
-SENSORS = []

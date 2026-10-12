@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import pytest
 
-from neurodatics.modules.analytics.domain.cache_generation import (
+from neurodatics.shared.cache_generation import (
     generation_token,
     is_generation_token,
     normalize_generation,

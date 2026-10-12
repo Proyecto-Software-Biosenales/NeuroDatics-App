@@ -25,7 +25,7 @@ from neurodatics.modules.analytics.application.services.analytics_service import
 from neurodatics.modules.analytics.application.services.correlation_service import (
     CorrelationAnalyticsService,
 )
-from neurodatics.modules.analytics.domain.scenario_identity import (
+from neurodatics.shared.scenario_identity import (
     ScenarioAmbiguityError,
     is_all_scenarios,
     resolve_scenario,
