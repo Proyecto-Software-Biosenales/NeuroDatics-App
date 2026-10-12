@@ -40,6 +40,7 @@ paquete de estudiantes:
 
 | Versión | SHA-256 del zip |
 | --- | --- |
+| 0.5 | `7F478A9BF63B6A8BB2AFF9E0B747971004872B56FC555115DE7D7E11EF5CF772` |
 | 0.4 | `ADCBD4C0258DBFD24E73D44C2CCD0A474C69F493DF8E60EF27411D5FFA6009E7` |
 | 0.3 | `25B5815F720555F3D4205EF68207D197785AF86426B546267A3CAE1782F8E8A5` |
 | 0.2 | `6D8AE82E…0C945` (el registro histórico solo guardó el valor abreviado) |
@@ -64,8 +65,17 @@ viaja en una carpeta oculta junto al ejecutable.
   se reemplazaron por códigos ficticios, y un archivo con datos personales salió del control de
   versiones.
 - Se retiró andamiaje muerto: archivos, scripts y referencias que ya no servían a nada.
-- El paquete de estudiantes **no** se reconstruyó en este cambio. La versión vigente sigue siendo la
-  0.4.
+- **Paquete de estudiantes 0.5.** Reconstruido porque el cambio toca `backend/src` y `frontend/`.
+  SHA-256 del zip: `7F478A9BF63B6A8BB2AFF9E0B747971004872B56FC555115DE7D7E11EF5CF772` (251,5 MiB,
+  4081 archivos, 631,4 MiB al extraer). Pasaron todas sus puertas: autoprueba, PostgreSQL embebido
+  (plantilla, contraseña en loopback, migraciones a la cabeza, parada limpia, caída y recuperación,
+  adopción de un servidor en marcha, copia interrumpida), adopción de un servidor huérfano, servicio
+  real sobre HTTP en un perfil nuevo (las diez etapas, incluidas subida, analítica, medios, informe y
+  borrado), navegador **4 de 4** sobre el paquete en marcha, y el arranque simultáneo de dos
+  instancias. Cero conexiones fuera de loopback en 49 muestras, cero procesos de PostgreSQL
+  residuales y el guard offline no tuvo que bloquear nada. El zip extraído arrancó desde una ruta con
+  acentos en 18,3 s. La carpeta del programa muestra solo el ejecutable y `LEEME.txt`.
+- Los tres asuntos de entrega listados arriba siguen abiertos, sin cambios.
 
 ### 2026-10-11 — Configuración está en el menú de usuario
 
