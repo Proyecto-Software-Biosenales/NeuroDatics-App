@@ -18,6 +18,10 @@ pwsh -NoProfile -File deployment/package.ps1 -Destino C:\Entregas\NeuroDatics -C
 
 Revisa el destinatario antes de compartir un paquete con `.env`. No distribuyas una carpeta de generación fallida: solo el mensaje final confirma que se exportaron y verificaron todos los archivos. Distribuye la carpeta completa; no únicamente los BAT.
 
+## El `.env` de la entrega contiene secretos reales
+
+`delivery/NeuroDatics-App/.env` guarda la configuración real de la instalación: 33 claves, entre ellas la contraseña de PostgreSQL y el secreto JWT. Nunca debe viajar en un zip, en un correo ni en una copia del repositorio. Por eso `delivery/` está en `.gitignore`: si alguna vez necesitas compartir el árbol de la entrega, saca ese archivo antes y entrégalo por un canal aparte al responsable.
+
 ## Verificación
 
 ```powershell
