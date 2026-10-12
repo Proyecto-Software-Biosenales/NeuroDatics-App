@@ -143,6 +143,9 @@ From the repository root in PowerShell:
 ```powershell
 .venv/Scripts/python.exe -X utf8 backend/scripts/audit_eeg_references.py `
   docs/RefererenceExperiments --report output/eeg-reference-audit.json
+# diagnostics.png (the figure in FINDINGS.md) comes from that same audit JSON.
+.venv/Scripts/python.exe -X utf8 backend/scripts/plot_eeg_audit.py `
+  output/eeg-reference-audit.json docs/eeg-audit/diagnostics.png
 # Use a fresh, workspace-local pytest temporary directory in restricted sessions.
 $env:PYTEST_ADDOPTS='--basetemp=../output/pytest-eeg-fresh'
 ./verify.ps1
