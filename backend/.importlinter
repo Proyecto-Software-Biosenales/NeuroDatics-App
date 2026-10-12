@@ -1,6 +1,10 @@
 [importlinter]
 root_package = neurodatics
 
+# Lo permitido en este contrato: la analítica sí lee `modules.projects.domain.entities` (los modelos ORM
+# `Project` y `ProjectFile`) para resolver propiedad del proyecto, sus archivos y la generación de caché
+# vigente. Lo prohibido es depender de `modules.projects.application`, es decir de los casos de uso y
+# servicios de ingesta: la analítica consume artefactos ya publicados, no dispara el procesamiento.
 [importlinter:contract:analytics-processing]
 name = Analytics must not depend on project application code
 type = forbidden
@@ -9,13 +13,23 @@ source_modules =
 forbidden_modules =
     neurodatics.modules.projects.application
 
+# Las excepciones declaradas abajo: al publicar una generación nueva hay que invalidar lo derivado de la
+# anterior, y hoy la ingesta llama directamente a las dos cachés de analítica para podarlas. La tercera
+# entrada es el mismo cruce alcanzado de forma indirecta: la poda de medios pasa por
+# `projects.infrastructure.video_preview_metadata`, que reutiliza `scope_to_scenario` de analítica. Si
+# alguien quiere cerrar el cruce del todo, el camino es un puerto en `shared` que analítica implemente,
+# como ya se hace con `storage_provider`.
 [importlinter:contract:processing-analytics]
 name = Project processing services must not depend on analytics
 type = forbidden
 source_modules =
-    neurodatics.modules.projects.application.services
+    neurodatics.modules.projects.application
 forbidden_modules =
     neurodatics.modules.analytics
+ignore_imports =
+    neurodatics.modules.projects.application.use_cases.upload_experiment_zip -> neurodatics.modules.analytics.infrastructure.parquet_cache
+    neurodatics.modules.projects.application.use_cases.upload_experiment_zip -> neurodatics.modules.analytics.infrastructure.redis_cache
+    neurodatics.modules.projects.infrastructure.video_preview_metadata -> neurodatics.modules.analytics.application.services.numeric_helpers
 
 [importlinter:contract:shared-neutral]
 name = Shared contracts must remain independent of feature modules

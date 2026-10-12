@@ -131,19 +131,44 @@ Cada módulo funcional repite la misma estructura interna: `api/` (rutas y esque
 `application/` (casos de uso y servicios), `domain/` (entidades y reglas) e `infrastructure/`
 (repositorios y adaptadores).
 
+Hay una convención asumida en ese `domain/`: los `modules/*/domain/entities.py` son modelos ORM de
+SQLAlchemy. Los tres módulos que tienen entidades —`projects`, `participants` y `scenaries`— declaran
+sus clases sobre `infra.db.base.BaseModel`, con `Column`, `ForeignKey` y `relationship`, así que el
+dominio depende de la persistencia y no al revés. Es deliberado y es coherente en los tres, no un
+descuido. Lo que implica: una entidad no se instancia fuera de una sesión de SQLAlchemy (ni sirve como
+objeto de transporte entre capas; para eso están los esquemas de `api/`), y las reglas que no son de
+persistencia no se cuelgan de esas clases, sino que viven en `domain/` como funciones o clases aparte
+—el ejemplo es `scenaries/domain/stimulus_placement.py`, que resuelve el contrato
+`screen-stimulus-v1` sin importar SQLAlchemy.
+
 Las fronteras que importan no son una convención: están verificadas por `backend/.importlinter`, que
 `./verify.ps1` ejecuta como parte de la puerta.
 
 | Contrato | Qué prohíbe |
 | --- | --- |
 | `analytics-processing` | `modules.analytics` no puede depender de `modules.projects.application`. |
-| `processing-analytics` | `modules.projects.application.services` no puede depender de `modules.analytics`. |
+| `processing-analytics` | `modules.projects.application` no puede depender de `modules.analytics`, salvo los cruces declarados. |
 | `shared-neutral` | `shared` no puede depender de ningún `modules`. |
 
 Los dos primeros existen porque ingesta y analítica se habían enredado en un ciclo. Hoy la ingesta
 produce artefactos y la analítica los consume, sin que ninguna llame a la otra: lo que comparten pasa
 por `shared/`. El tercero mantiene `shared/` como lo que dice ser, un lugar de contratos sin
 dependencias hacia las funciones.
+
+Dos matices de esa frontera, los dos decisiones escritas y no accidentes. El primero es una
+dependencia permitida: la analítica **sí** importa `modules.projects.domain.entities` —`Project` y
+`ProjectFile`— en sus rutas, en el lector de Parquet y en el almacén de tokens de transformación,
+porque necesita esos modelos ORM para resolver de quién es el proyecto, qué archivos tiene y cuál es
+la generación vigente. Lo que el contrato prohíbe es depender del `application` de proyectos, es
+decir de sus casos de uso y servicios: la analítica lee lo ya publicado, no dispara el procesamiento.
+El segundo es una excepción declarada en el sentido contrario: `processing-analytics` cubre hoy todo
+`modules.projects.application`, y `ignore_imports` lista los cruces que existen. Al publicar una
+generación nueva hay que invalidar lo derivado de la anterior, y la ingesta
+(`use_cases/upload_experiment_zip.py`) lo hace llamando directamente a las dos cachés de analítica,
+`ParquetCacheService` y `AnalyticsRedisCache`; la poda de medios alcanza el mismo módulo de forma
+indirecta, al reutilizar un ayudante numérico de analítica. Al estar declaradas, el contrato impide
+que aparezcan cruces nuevos sin que nadie lo note. Cerrarlas del todo sería un puerto en `shared` que
+analítica implemente, como ya se hace con `storage_provider`.
 
 La superficie HTTP, toda bajo `/api`:
 

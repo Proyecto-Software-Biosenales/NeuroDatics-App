@@ -77,8 +77,11 @@ Tres límites que mantienen separadas las capas del backend:
 
 - **`analytics-processing`**: `modules.analytics` no puede depender de `modules.projects.application`; la
   analítica lee datos, no orquesta el ciclo de vida de un proyecto.
-- **`processing-analytics`**: `modules.projects.application.services` no puede depender de
-  `modules.analytics`; la ingesta y el procesamiento no arrastran la analítica detrás.
+- **`processing-analytics`**: `modules.projects.application` no puede depender de
+  `modules.analytics`; la ingesta y el procesamiento no arrastran la analítica detrás. Los tres cruces
+  que existían al escribir el contrato están declarados en `ignore_imports` con su motivo: sirven para
+  invalidar las cachés al publicar una generación nueva. No se añaden entradas nuevas a esa lista sin
+  discutirlo; lo que corresponde es un puerto en `shared`, como `storage_provider`.
 - **`shared-neutral`**: `shared` no puede depender de ningún `modules`; los contratos compartidos se
   quedan neutros para que cualquier módulo pueda usarlos.
 
