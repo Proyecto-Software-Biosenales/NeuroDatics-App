@@ -15,7 +15,7 @@ export const IMAGES_FOLDER_NAME = "images"
 export const VIDEOS_FOLDER_NAME = "videos"
 export const ACQUISITION_FOLDER_NAME = "acquisition"
 
-/** `Sujet_1001014126_Scenario_Scenario 1_Rec1` */
+/** `Sujet_1000000001_Scenario_Scenario 1_Rec1` */
 const ACQUISITION_FOLDER_PATTERN =
   /^sujet[_\s]*([^_]+)_scenario[_\s]*(.+?)_rec[_\s]*(\d+)$/i
 

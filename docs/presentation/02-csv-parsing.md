@@ -42,11 +42,11 @@ One CSV holds several participants. Two markers define the structure:
 `_find_block_specs` walks the file and pairs them:
 
 ```
-line 1    Grabación: 1001014126        ← block 1 starts
+line 1    Grabación: 1000000001        ← block 1 starts
 line 2-9  Nombre: … / Frecuencia: …    ← metadata for block 1
 line 10   Time;EEG…;GSR…               ← header for block 1
 line 11-9000  data rows
-line 9001 Grabación: 1001014127        ← block 1 ends, block 2 starts
+line 9001 Grabación: 1000000002        ← block 1 ends, block 2 starts
 ```
 
 Three hard rules, each producing an error with a line number:
@@ -312,7 +312,7 @@ request over a multi-hundred-MB recording answers in well under a second.
 ```python
 ProcessingResult(
     detected_sensors            = ["EEG", "GSR", "EyeTracker"],
-    participants                = [ParticipantInfo("1001014126", 1), ...],
+    participants                = [ParticipantInfo("1000000001", 1), ...],
     user_parquet_paths          = [(1, "/tmp/.../user1.parquet"), ...],
     scenario_parquet_paths      = [(1, "Scenario 1", "/tmp/.../Scenario_1.parquet"), ...],
     encoding                    = "utf-16",

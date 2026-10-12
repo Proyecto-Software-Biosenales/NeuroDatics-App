@@ -37,7 +37,7 @@ A single CSV holds **several participants** ("recordings"), each with its own
 metadata header, its own column set and its own sampling rates. Simplified:
 
 ```csv
-Grabación: 1001014126
+Grabación: 1000000001
 Nombre: Bandwidth / X
 Frecuencia: 60
 Unidad Tobii: %
@@ -52,7 +52,7 @@ Time;Electroencefalografía (EEG) / F3;GSR / GSR;Bandwidth / X;Bandwidth / Y;Ban
 0,003;13,1;3,52;48,23;51,00;3,41;612;48,2;51,0;Scenario 1
 0,007;11,9;3,53;0;0;;613;-100;-100;Scenario 1
 ...
-Grabación: 1001014127
+Grabación: 1000000002
 Nombre: Bandwidth / X
 ...
 ```

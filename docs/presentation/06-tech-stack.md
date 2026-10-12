@@ -167,7 +167,7 @@ than being surprised by them.
 ## 6.5 Reading data back
 
 ```
-GET /api/projects/{id}/analytics/scanpath?participant_code=1001014126&scenario=Scenario 1
+GET /api/projects/{id}/analytics/scanpath?participant_code=1000000001&scenario=Scenario 1
         │
         ├─ verify ownership (404 if not yours)
         ├─ read ingestion_generation from the project row (already loaded)

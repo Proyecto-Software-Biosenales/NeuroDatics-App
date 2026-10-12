@@ -36,7 +36,7 @@ ACQUISITION_FOLDER_NAME = "acquisition"
 SCENARY_ALLOWED_FOLDERS = {IMAGES_FOLDER_NAME, VIDEOS_FOLDER_NAME}
 
 # Acquisition sub-folders are named like:
-#   Sujet_1001014126_Scenario_Scenario 1_Rec1
+#   Sujet_1000000001_Scenario_Scenario 1_Rec1
 # The scenario segment may itself contain underscores and spaces, so it is matched
 # lazily between the "_Scenario_" marker and the trailing "_Rec<n>".
 ACQUISITION_FOLDER_PATTERN = re.compile(

@@ -210,9 +210,9 @@ def test_acquisition_folder_is_parsed_for_defaults_but_never_ingested(tmp_path):
             "data.csv": b"time;x\n",
             "Images/a.png": b"png",
             "Videos/v.mp4": b"mp4",
-            "Acquisition/Sujet_1001014126_Scenario_Scenario 1_Rec1/notes.txt": b"n",
-            "Acquisition/Sujet_1001014126_Scenario_Scenario 1_Rec1/meta.json": b"{}",
-            "Acquisition/Sujet_1000557085_Scenario_Yom Yom_Rec2/notes.txt": b"n",
+            "Acquisition/Sujet_1000000001_Scenario_Scenario 1_Rec1/notes.txt": b"n",
+            "Acquisition/Sujet_1000000001_Scenario_Scenario 1_Rec1/meta.json": b"{}",
+            "Acquisition/Sujet_1000000003_Scenario_Yom Yom_Rec2/notes.txt": b"n",
         },
     )
 
@@ -220,7 +220,7 @@ def test_acquisition_folder_is_parsed_for_defaults_but_never_ingested(tmp_path):
 
     assert acquisition.present is True
     assert selection.acquisition_folder == "Acquisition"
-    assert acquisition.default_participant_codes() == ["1001014126", "1000557085"]
+    assert acquisition.default_participant_codes() == ["1000000001", "1000000003"]
     assert acquisition.default_scenario_names() == ["Scenario 1", "Yom Yom"]
 
     first = acquisition.recordings[0]
@@ -261,7 +261,7 @@ def test_non_recording_folders_under_acquisition_are_not_counted_as_recordings(t
         tmp_path,
         {
             "data.csv": b"time;x\n",
-            "Acquisition/Sujet_1001014126_Scenario_Scenario 1_Rec1/notes.txt": b"n",
+            "Acquisition/Sujet_1000000001_Scenario_Scenario 1_Rec1/notes.txt": b"n",
             "Acquisition/random_folder/file.txt": b"x",
         },
     )
@@ -269,7 +269,7 @@ def test_non_recording_folders_under_acquisition_are_not_counted_as_recordings(t
     _, _, _, acquisition, _ = analyze(path, ALLOW_NO_MEDIA)
 
     assert [rec.folder_name for rec in acquisition.recordings] == [
-        "Sujet_1001014126_Scenario_Scenario 1_Rec1"
+        "Sujet_1000000001_Scenario_Scenario 1_Rec1"
     ]
 
 
