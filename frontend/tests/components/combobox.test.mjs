@@ -154,6 +154,7 @@ test("typeahead finds project names while the option list is open", async (t) =>
   await expect(page.getByRole("option", { name: /Beta study/ })).toBeFocused()
   await page.keyboard.press("Enter")
   await expect(trigger).toHaveText("Beta study")
+  await expect(trigger).toBeFocused()
   assert.equal(await page.getByRole("textbox").count(), 0)
 })
 
