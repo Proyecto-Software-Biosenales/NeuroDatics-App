@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card"
-import { ProjectSelect } from "../../../features/projects/components/ProjectSelect"
+import { ProjectSelect } from "./ProjectSelect"
 import { SelectedProjectInfo } from "./SelectedProjectInfo"
 import type { Project } from "@/features/projects/types"
 

@@ -1,5 +1,5 @@
 import { FolderClosed } from "lucide-react"
-import { SensorBadge } from "../../../features/projects/components/SensorBadge"
+import { SensorBadge } from "./SensorBadge"
 import type { Project } from "@/features/projects/types"
 
 interface SelectedProjectInfoProps {
