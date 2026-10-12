@@ -112,3 +112,65 @@ $env:PYTHONPATH = 'src'
 ```
 
 `pg-adopt` continues the data root a previous `pg-check --leave-running` left behind. `--help` lists the options (`--port`, `--offline-guard`, `--exit-after`, `--stop-file`).
+
+## Why it is built this way
+
+Each decision below is in the code it describes (`backend/src/neurodatics/local/`, `student/*.ps1`),
+and exists because a simpler option was tried or ruled out.
+
+**The same PostgreSQL 16, embedded, instead of a lighter database.** The app's SQL is not portable:
+the project mutation lock is a PostgreSQL advisory lock, the analytics transform tokens are merged
+with the JSONB `||` operator, and a third of the migrations name PostgreSQL types. A different engine
+would mean rewriting those and re-proving them against the goldens, so the student edition ships the
+EDB build of the same server as a second process and the application code stays untouched. Migrations
+run on every start, which is why a migration must not use an extension the EDB zip does not carry.
+
+**The cluster is copied from a template, never created on the student's machine.** `initdb` fails from
+a path with non-ASCII characters, and a student's user folder may well have one. `pg-template` is built
+elsewhere with `initdb -A trust -U postgres -E UTF8 --locale=C` from an ASCII path and copied on first
+launch. The copy is assembled under a `.building` name and renamed into place, so an interrupted first
+launch leaves nothing that looks like a cluster; the rename waits and retries, because a virus scanner
+or the search indexer can still hold the files it just copied. The cluster is secured before it ever
+accepts a connection: a random password set with the server stopped, and a `pg_hba.conf` with nothing
+but loopback and `scram-sha-256`. The server always starts in UTC, whatever timezone the template was
+built in, and readiness is polled with `pg_isready` rather than trusted from `pg_ctl -w`, because a
+stale `postmaster.pid` still reports success while crash recovery is starting.
+
+**A running server is adopted, not fought.** A launcher that died leaves its postmaster running. The
+next launch reads the pid file, accepts the pid only when it is a live `postgres.exe` from our own
+`bin` (pids are reused and the machine may run other servers), takes the port from the file and
+continues with that server. A second launch on the same data directory does not start a second server
+either: the instance lock makes it open the running app and exit.
+
+**Everything lives in the user's profile, not beside the program.** A folder extracted into Downloads
+or Desktop is often synced by OneDrive, and syncing a live database directory corrupts it, so the data
+root is `%LOCALAPPDATA%\NeuroDatics Estudiantes` (`--data-dir` overrides). The cost is deliberate and
+documented in the guide: deleting the extracted program folder does not delete the student's projects.
+
+**The web app is a static export served by the backend itself.** One origin means no CORS, no second
+port and no proxy: the pages call `/api/...` on the address they were loaded from. The site is mounted
+last so every API route wins over its catch-all, and two Windows-export details are mapped in front of
+it: the collection route the app requests without a trailing slash, and Next's page-data prefetch,
+which a Windows export writes into a nested folder.
+
+**Everything listens on 127.0.0.1, and there is no login.** The app's port is bound to loopback before
+the server starts, so no other program can take it in between, and PostgreSQL is started with
+`listen_addresses=127.0.0.1`. Without accounts, the only thing keeping another web page from driving
+the API is that a browser cannot name a loopback `Host` it does not own, nor send an `Origin` that
+differs from the one it was served from: local mode refuses both. The offline guard is the other half
+of the promise, and it is a check rather than a defence: it refuses and records every non-loopback
+connection the process attempts, hooking the socket module and asyncio's `sock_connect` on both loop
+classes, because the default Windows loop connects through `ConnectEx` and never calls
+`socket.connect`. It cannot see ffmpeg, Typst or another process, so the gates also sample the
+operating system's connection table. In local mode the Google routes are not even imported, the cache
+is in-process (no Redis to be down) and files go through the local storage client, so there is nothing
+left that wants the network.
+
+**Frozen with PyInstaller as one directory, and everything travels inside `_internal`.** A student sees
+`neurodatics-estudiantes.exe` and `LEEME.txt`; PostgreSQL, its template, ffmpeg, the web app and the
+notices sit in the runtime's own folder, which the launcher finds through `sys._MEIPASS` and re-hides
+on start for extractors that drop the hidden flag. ffmpeg travels because the stimulus probe looks for
+`ffprobe` on `PATH`, which the launcher points at the bundled `tools`; the Visual C++ runtime travels
+beside `pgsql\bin` because the PostgreSQL binaries need it and a student's machine may not have it.
+The app also refuses to run elevated, with a message, because PostgreSQL will not run under an
+administrator token.

@@ -66,3 +66,38 @@ student\package.ps1 -Work output\student-m1 -Version <siguiente>
 - Si no puedes reconstruir (faltan entradas, otra máquina, falla una prueba), no lo ocultes: dilo en tu respuesta
   final y en `docs/CHANGELOG.md` («paquete de estudiantes no reconstruido» y el motivo).
 - Anota en la entrada de `docs/CHANGELOG.md` la versión, el SHA-256 del zip y qué pruebas pasaron.
+
+## Reglas que siguen vigentes
+
+### Verificación
+
+- **El entorno virtual es el de la raíz.** Usa `.venv\Scripts\python.exe`; `backend\.venv` está
+  incompleto. El pytest del backend se ejecuta desde `backend` y su configuración ya aporta `src`:
+  `cd backend; ..\.venv\Scripts\python.exe -m pytest`.
+- **`./verify.ps1` desde la raíz es la puerta única.** Ejecuta las pruebas del backend, Ruff y Vulture
+  con sus versiones fijadas, deptry, los contratos de importación, el arranque de la aplicación y las
+  regresiones de hooks de React en Chromium real. Ese navegador se instala una vez:
+  `cd frontend; npx playwright install chromium`. No declares verde nada que no haya pasado por ahí.
+- **Los goldens y los snapshots están protegidos.** Nunca regeneres uno existente para que pase una
+  prueba que falla: si el valor cambió, explica por qué o corrige el código. Syrupy 4.6.1 no tiene
+  `--snapshot-update-new-only`, así que un snapshot nuevo se genera en un directorio aislado sin
+  líneas base previas, se revisa y se confirma aparte. Ninguna bandera de actualización entra en la
+  verificación.
+
+### Antes de borrar algo
+
+- **Un endpoint huérfano no es un módulo muerto.** `modules/integrations/google_drive/` es la vía por
+  la que analítica, subidas, borrados e informes llegan a Drive; lo alcanzan a través de
+  `modules/integrations/storage_provider.py`, que en local se sustituye por disco.
+- **El código atado a un framework nunca está muerto por recuento de referencias:** manejadores,
+  esquemas de Pydantic, modelos de SQLAlchemy, archivos del App Router de Next.js y reexportaciones
+  en `__init__`. Las pruebas E2E de Playwright con API simulada solo protegen el renderizado, no el
+  backend.
+- **`shadcn` es dependencia de ejecución:** `globals.css` importa su CSS.
+- **`jszip` se carga con `await import()`**, así que no tiene ningún import estático.
+- **Busca las dos formas de cada ajuste:** `settings.x` y `getattr(settings, "x")`. Los decoradores de
+  FastAPI ocupan varias líneas, así que analiza las rutas en multilínea.
+- **Busca en `delivery/` antes de retirar cualquier superficie de API.** Es una compilación
+  distribuida y su frontend viaja empaquetado.
+- **Poppins se sirve desde `frontend/public/fonts`** en las dos ediciones. `student/build.ps1` falla si
+  la exportación contiene una fuente o un script remotos, o un valor de `frontend/.env*`.

@@ -101,6 +101,39 @@ from the original EDF or a correctly formatted native file.
   event-related-potential alignment. Hardware/software markers can provide an
   alignment basis in future acquisition. [Wearable Sensing timing documentation](https://support.wearablesensing.com/faq/triggers/questions/trigger-types.html).
 
+## How much a channel summary depends on a few windows
+
+Recomputed on 2026-09-25 with the current services on the same references, after verifying
+the file hash. Descriptive of these recordings only.
+
+Artifact detection combines three independent descriptions of one trace, each covering a case
+the others miss: a sample-to-sample step whose threshold adapts per channel between 100 and 500
+assumed uV, a robust amplitude z above 10, and a peak-to-peak excursion above 1,000 assumed uV
+inside one second. They are review heuristics, not truth labels and not a validated classifier.
+None of them removes a sample; excluding flagged windows from a spectral estimate is available
+and **off by default**.
+
+On F3 of SAIO block 5, whole block, scenario boundaries preserved: 55 Welch windows of 1,024
+samples, frequency resolution 0.293293 Hz, of which **4 (7.27 %) overlap a flagged segment**.
+Total power is 207,384.417757 assumed uV² with every window and 3,252.180097 without those four,
+a factor of **63.7678**; alpha power is 103.768508 against 38.491247. No band-pass, notch or
+re-reference was applied.
+
+A single short artifact can therefore dominate a channel summary. Excluding windows is a
+sensitivity analysis, not a corrected truth: it changes temporal coverage, one sample can belong
+to more than one overlapping window, and what remains is not shown to be pure neural signal.
+The exclusion applies to PSD windows and does not extend to the correlation service. The
+historical note about one 4.87 s artifact filling 21 of 341 bins is **6.16 %**, not the 5.7 %
+written at the time; that correlation experiment was not recomputed.
+
+Two descriptions in [methods](METHODS.md) are older than the code. The Welch window is the
+longest valid run capped at 1,024 samples, and a channel that cannot fill it is reported as
+incomplete instead of shortening the window for the others; letting one short channel set the
+window moved the remaining channels' total power by −9.6 % to −47.4 % with their own data
+untouched. The step threshold is also bounded by a ceiling rather than being a single MAD
+multiple. The approximately 60 Hz export returns no value for the 30–45 Hz band instead of a
+number.
+
 ## Native files requiring different handling
 
 The three raw DSI files declare 15 columns but contain 23 comma-delimited fields:
