@@ -63,22 +63,19 @@ Ejecutar desde `frontend`:
 ```powershell
 npm run typecheck
 npm run lint
-npm run test:comparison-click
-npm run test:hooks
+npm run test:unit
+npm run test:browser
 npm run test:e2e
 npm run build
 ```
 
 Las pruebas cubren selección inicial de Dashboard, preservación del estado EEG, comparativas, scroll de tablas, formularios de proyectos, carga/cancelación, selectores en diálogos, radios de reportes, exportación, teclado y foco.
 
-`tests/e2e/ui-consistency.spec.ts` recorre Inicio, login con Google, proyectos, reportes configurados y Dashboard a 390, 768, 1366 y 1920 px, con temas claro y oscuro. Comprueba errores de navegador, contenido esperado y ausencia de scroll horizontal del documento. Las capturas son referencias de revisión humana, no snapshots que acepten diferencias automáticamente.
+`tests/e2e/ui-consistency.spec.ts` recorre Inicio, login con Google, proyectos, reportes configurados y Dashboard a 390, 768, 1366 y 1920 px, con temas claro y oscuro. Comprueba errores de navegador, contenido esperado y ausencia de scroll horizontal del documento. Se recorre sin sesión en login y con sesión en el resto.
 
 ```powershell
-$env:UI_CAPTURE='after'
 npx playwright test tests/e2e/ui-consistency.spec.ts
 ```
-
-Las imágenes se guardan en `.next/ui-refactor/after`; las referencias de esta migración están en `.next/ui-refactor/before`. Son artefactos locales y pueden regenerarse. Las capturas finales de autenticación se realizan sin sesión; las iniciales con sesión reflejaban su redirección a Dashboard.
 
 El punto de partida tenía seis advertencias de ESLint sobre imágenes de estímulos (`no-img-element`), sin errores. No se ocultan esas advertencias.
 

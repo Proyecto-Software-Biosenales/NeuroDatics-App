@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test"
-import path from "node:path"
 
 const project = {
   id: "ui-project", name: "Estudio de experiencia", description: "Sesión de evaluación de estímulos",
@@ -46,9 +45,6 @@ for (const theme of ["light", "dark"]) {
         }
         await page.evaluate(() => document.fonts.ready)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-        if (process.env.UI_CAPTURE) {
-          await page.screenshot({ path: path.resolve(".next/ui-refactor", process.env.UI_CAPTURE, `${route.replace(/\//g, "") || "home"}-${theme}-${width}.png`), fullPage: true })
-        }
       }
       expect(errors).toEqual([])
     })

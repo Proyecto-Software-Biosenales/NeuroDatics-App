@@ -168,6 +168,7 @@ test("analytics filters preserve all-scenarios and null participant selection", 
   await expect(triggers.nth(0)).toContainText("Beta scenario")
   await triggers.nth(1).click()
   await page.getByRole("option", { name: "Participante P02", exact: true }).click()
+  await expect(triggers.nth(1)).toBeFocused()
   assert.deepEqual(JSON.parse(await page.locator("#selection").textContent()), {
     project: "", participant: "P02", scenario: "Beta scenario",
   })

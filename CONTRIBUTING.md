@@ -61,8 +61,8 @@ El script se detiene en la primera puerta que falla. En orden:
 | Arranque de la aplicación | importa `neurodatics.main` y cuenta las operaciones HTTP montadas | La aplicación no se importa: una ruta, un esquema o un ajuste rompe el arranque. |
 | Contratos de importación | `lint-imports --no-cache` | Se cruzó uno de los límites de `backend/.importlinter` (abajo). |
 | TypeScript | `tsc --noEmit` | Error de tipos en el frontend. |
-| Pruebas del frontend | `npm run test:comparison-click` | Una regresión en la lógica de `features/` (`node --test`). |
-| Regresiones de hooks | `npm run test:hooks` | Un hook o un componente real falla en Chromium real; si el navegador no está instalado, instálalo con el comando de arriba. |
+| Pruebas unitarias del frontend | `npm run test:unit` | Una regresión en la lógica de `features/` (`node --test`). |
+| Hooks y componentes en navegador | `npm run test:browser` | Un hook o un componente real falla en Chromium real; si el navegador no está instalado, instálalo con el comando de arriba. |
 | Trinquete de ESLint | `eslint . --format json` | Se superó el umbral: **0 errores y como máximo 6 avisos**. |
 
 El trinquete de ESLint no se sube para que pase un cambio. `verify.ps1` acepta `-MaxLintErrors` y
@@ -111,13 +111,35 @@ cd backend
 Frontend, desde `frontend`:
 
 ```powershell
-npm run test:comparison-click   # node --test sobre features/
-npm run test:hooks              # node --test de hooks y componentes en Chromium real
+npm test                        # typecheck + test:unit + test:browser, lo que mira verify.ps1
+npm run test:unit               # node --test sobre features/
+npm run test:browser            # node --test de hooks y componentes en Chromium real
 npm run typecheck               # tsc --noEmit
 npm run lint                    # eslint
 npm run test:e2e                # Playwright sobre tests/e2e (levanta el servidor de desarrollo)
 npm run test:e2e:comparison     # solo el panel de comparación
 ```
+
+`npm test` agrupa las tres puertas de frontend que `verify.ps1` ejecuta sin navegador completo; el
+trinquete de ESLint sigue siendo suyo porque cuenta avisos contra un umbral.
+
+### Dónde vive cada prueba del frontend
+
+Las dos ubicaciones no son dos convenciones para lo mismo: separan qué capa se prueba.
+
+- **Co-locada junto al módulo** (`features/**/*.test.mjs`, la ejecuta `test:unit`): lógica pura en Node.
+  La prueba transpila el módulo y lo ejecuta sin DOM ni React. Va aquí todo lo que se pueda decidir con
+  entradas y salidas: cálculos, escalas, geometría, reducción de datos, formato de textos.
+- **En `tests/hooks/` y `tests/components/`** (las ejecuta `test:browser`): hooks y componentes montados en
+  Chromium real a través de `tests/browserBundle.mjs`. Va aquí lo que solo se puede comprobar con un
+  renderizado de verdad: efectos, cancelación de peticiones, foco, teclado y comportamiento de los
+  controles de Radix.
+
+Un mismo asunto puede tener prueba en los dos sitios y ninguna sobra: la caché de analítica se decide en
+`features/analytics/analyticsCache.test.mjs` y se monta en `tests/hooks/analytics-cache.test.mjs`, y lo que
+deriva la vista de calidad EEG se calcula en `features/analytics/eegPresentation.test.mjs` mientras
+`tests/components/eeg-quality-surface.test.mjs` comprueba los paneles con eventos reales.
+Las pruebas de `tests/e2e/` son de Playwright sobre la aplicación en marcha y no entran en `verify.ps1`.
 
 La prueba de la edición estudiantes, `frontend/tests/local/student-offline.spec.ts`, **no la ejecuta ningún
 script de npm**: necesita el paquete real en marcha y la lanza `student/run-frozen.ps1` (puerta `serve`) con

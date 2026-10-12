@@ -112,7 +112,9 @@ test("Configuración es accesible desde el menú de usuario sin desbordar la ven
   for (const width of [390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto("/configuracion")
-    await expect(page.getByRole("navigation", { name: "Navegación principal" })).not.toContainText("Configuración")
+    // The bar itself, not its desktop nav: below md the nav is not rendered at all, so asserting
+    // on it would fail for the wrong reason. The banner is always there and covers the whole bar.
+    await expect(page.getByRole("banner")).not.toContainText("Configuración")
     await page.getByRole("button", { name: "Menú de usuario" }).click()
     await expect(page.getByRole("menuitem", { name: "Configuración" })).toBeVisible()
     await page.keyboard.press("Escape")

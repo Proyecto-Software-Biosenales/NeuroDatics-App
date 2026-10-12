@@ -32,9 +32,9 @@ try {
     try {
         & npx.cmd --no-install tsc --noEmit
         Assert-Exit 'TypeScript'
-        & npm.cmd run test:comparison-click
-        Assert-Exit 'Frontend tests'
-        & npm.cmd run test:hooks
+        & npm.cmd run test:unit
+        Assert-Exit 'Frontend unit tests'
+        & npm.cmd run test:browser
         Assert-Exit 'React hook browser regressions (install Chromium with npx playwright install chromium)'
         $taskLintJson = & npx.cmd --no-install eslint . --format json
         $taskLintExit = $LASTEXITCODE
