@@ -320,9 +320,16 @@ anteriores y añaden la procedencia común:
   "source": "raw_gaze",
   "estimated": false,
   "effective_sampling_rate_hz": 60.1125,
+  "min_fixation_duration_ms": 200,
+  "available_min_fixation_durations_ms": [100, 150, 200, 250, 300],
   "warnings": []
 }
 ```
+
+`min_fixation_duration_ms` es la variante de la que provienen los eventos, y
+`available_min_fixation_durations_ms` enumera las variantes que el Parquet puede
+reconstruir. Un Parquet histórico declara la primera como desconocida y la
+segunda vacía, que es lo que deshabilita el selector de duración.
 
 `estimated` es `false` únicamente cuando los eventos provienen de una
 exportación del detector V2. Cualquier respuesta del adaptador legacy lo declara
@@ -367,10 +374,15 @@ escala de 2000 ms. La identidad de caché de scanpath es `scanpath_v4`, por lo
 que las respuestas participant-relative de `scanpath_v3` no se reutilizan.
 
 `participant_code` y `scenario` seleccionan los datos; fijaciones y heatmap
-requieren un escenario concreto. Heatmap devuelve la procedencia en los headers
-`X-Fixation-Algorithm-Version`, `X-Fixation-Method`, `X-Fixation-Source`,
-`X-Fixation-Estimated`, `X-Fixation-Effective-Rate-Hz` y, si aplica,
-`X-Fixation-Warnings`.
+requieren un escenario concreto. Como el heatmap devuelve una imagen, lleva la
+procedencia en los headers: `X-Fixation-Algorithm-Version`, `X-Fixation-Method`,
+`X-Fixation-Source`, `X-Fixation-Estimated`, `X-Fixation-Effective-Rate-Hz`,
+`X-Fixation-Min-Duration-Ms` y, si aplican, `X-Fixation-Warnings` y
+`X-Fixation-Available-Min-Durations-Ms`. Añade además los del contrato de
+coordenadas: `X-Stimulus-Transform-Status`, `X-Stimulus-Coordinate-Space`,
+`X-Stimulus-Transform-Version`, `X-Stimulus-Transform-Fingerprint` y, si
+aplica, `X-Stimulus-Transform-Warnings`. Una respuesta servida desde la caché
+lleva exactamente los mismos headers que una calculada.
 
 Todas estas analíticas consumen la misma tabla de eventos. `n_fixations` cuenta
 eventos únicos, el dwell no suma huecos y las transiciones AOI se reinician entre
@@ -427,9 +439,15 @@ estos Parquets no tienen conteos del detector que reutilizar.
 
 ## Limitaciones y validación pendiente
 
-- Las coordenadas se interpretan sobre estímulos estáticos. Scroll, zoom, vídeo,
-  movimiento del estímulo o cambios de viewport requieren transformar la mirada
-  al sistema de coordenadas del contenido antes de comparar AOI o scanpaths.
+- Las coordenadas se interpretan sobre estímulos estáticos. Ese caso ya está
+  cubierto: el contrato `screen-stimulus-v1` transforma la mirada de la pantalla
+  al sistema del estímulo durante la ingesta y la analítica informa qué contrato
+  la produjo (ver [SCREEN_TO_STIMULUS_TRANSFORM.md](SCREEN_TO_STIMULUS_TRANSFORM.md)).
+  Lo que sigue sin soporte es la geometría variable en el tiempo: scroll o zoom
+  que cambian durante la grabación, estímulo en movimiento y cambios de viewport.
+  El contrato los rechaza en lugar de promediarlos a un rectángulo fijo, así que
+  comparar AOI o scanpaths en esos casos requiere primero una extensión del
+  contrato con ubicaciones por tramo de tiempo.
 - El modo angular depende de una geometría y distancia calibradas. Metadatos
   incorrectos producen velocidades angulares incorrectas aunque el cálculo sea
   determinista.
@@ -446,24 +464,23 @@ estos Parquets no tienen conteos del detector que reutilizar.
 
 ## Ejecutar las pruebas
 
-Desde la raíz del repositorio:
+El entorno virtual del proyecto es el de la raíz. El pytest del backend se
+ejecuta desde `backend`, cuya configuración ya aporta `src` al `PYTHONPATH`.
+Las pruebas de este detector:
 
 ```powershell
 Set-Location backend
-poetry install
-poetry run pytest -q tests/unit/test_csv_processing_service.py tests/unit/test_fixation_detection_service.py tests/unit/test_fixation_v2_pipeline.py tests/unit/test_fixation_event_analytics.py
+..\.venv\Scripts\python.exe -m pytest -q tests/unit/test_csv_processing_service.py tests/unit/test_fixation_detection_service.py tests/unit/test_fixation_v2_pipeline.py tests/unit/test_fixation_event_analytics.py
 ```
 
-Si el entorno virtual ya está activo y contiene las dependencias del proyecto:
+Todo el backend:
 
 ```powershell
 Set-Location backend
-python -m pytest -q tests/unit/test_csv_processing_service.py tests/unit/test_fixation_detection_service.py tests/unit/test_fixation_v2_pipeline.py tests/unit/test_fixation_event_analytics.py
+..\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Para ejecutar todo el backend:
-
-```powershell
-Set-Location backend
-poetry run pytest -q
-```
+Los goldens numéricos de este detector están fijados contra las versiones de
+numpy, scipy y pyarrow de ese entorno; `backend/poetry.lock` resuelve versiones
+más antiguas, así que no sirve para comprobarlos. La puerta completa del
+repositorio es `./verify.ps1` desde la raíz.

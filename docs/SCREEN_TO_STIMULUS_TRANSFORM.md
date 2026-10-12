@@ -1,8 +1,28 @@
-# Batch 5A: screen-to-stimulus coordinate contract
+# Contrato de coordenadas pantalla → estímulo
 
-Status: **proposed; approval required before Batch 5B**  
-Contract version: `screen-stimulus-v1`  
-Scope: design only; this document changes no production behavior.
+Estado: **implementado y en producción**. Versión del contrato: `screen-stimulus-v1`.
+
+Este documento es la especificación normativa del contrato. Se escribió como diseño previo a la
+implementación y conserva ese registro, pero el contrato ya está construido: lo que describe es el
+comportamiento vigente, no una propuesta. Donde el texto dice «Batch 5B debe…», léase como la regla
+que el código cumple hoy.
+
+Dónde vive la implementación:
+
+| Pieza | Ubicación |
+| --- | --- |
+| Interpretación del contrato, sin dependencias de framework | `backend/src/neurodatics/modules/scenaries/domain/stimulus_placement.py` |
+| Persistencia (tabla `stimulus_placements`, uno a uno con el escenario) | migración `backend/migrations/versions/020_create_stimulus_placements.py`, modelo `modules/scenaries/domain/entities.py` |
+| Entrada por la subida (`stimulus_placements_json` del multipart) | `modules/projects/api/routes.py`, `modules/projects/application/use_cases/upload_experiment_zip.py` |
+| Columnas derivadas en el Parquet y su procedencia | `modules/projects/application/services/csv_processing_service.py` |
+| Lectura en analítica (estado, huella, máscaras, `coordinate_transform`) | `modules/analytics/domain/coordinate_transform.py` |
+| Consumidores analíticos (fijaciones, AOI, pupila, scanpath, mapa de calor) | `modules/analytics/application/services/`, `modules/analytics/api/` |
+| Captura en el navegador | `frontend/features/projects/create-project/stimulusPlacement.ts` y `components/StimulusPlacementEditor.tsx` |
+| Pruebas | `backend/tests/unit/test_stimulus_placement_persistence.py`, `test_stimulus_coordinate_analytics.py`, `test_upload_stimulus_placement.py`, `test_stimulus_probe_service.py`, `frontend/.../stimulusPlacement.test.mjs` |
+
+Sigue fuera del contrato, y el código lo rechaza en lugar de aproximarlo: la geometría variable en el
+tiempo (`geometry_stability = time_varying`), el scroll o el zoom que cambian durante la grabación, el
+estímulo en movimiento y las ubicaciones distintas por participante.
 
 ## Decision summary
 
@@ -619,8 +639,10 @@ The stored effective origin already contains the scroll translation. Subtracting
 
 Suggested new core suite: `backend/tests/unit/test_stimulus_coordinate_transform.py`, with extensions to fixation detection, V2 pipeline, upload metadata, scenario identity, fixation analytics, heatmap/report geometry, route provenance, and cache tests. Frontend pure serialization/mapping tests should follow the repository's existing `.test.mjs` pattern; use Playwright only for the full wizard request/UI round trip.
 
-## Approval gate
+## Límites del contrato
 
-Batch 5B must implement only this approved contract. In particular, it must not silently reinterpret missing placement as fullscreen, overwrite raw `gx`/`gy`, clip out-of-bounds gaze, run angular kinematics in stimulus-stretched coordinates, or claim support for time-varying scroll under the static v1 model.
-
-No Batch 5B implementation has been performed.
+Estas son las reglas que la implementación cumple y que cualquier cambio posterior debe seguir
+cumpliendo: una ubicación ausente no se reinterpreta como pantalla completa, los valores crudos
+`gx`/`gy` no se sobrescriben, una mirada fuera de rango no se recorta al borde, la cinemática angular
+no se calcula en coordenadas estiradas al estímulo, y el modelo estático v1 no declara soporte para
+scroll variable en el tiempo.

@@ -1,318 +1,584 @@
-# Current experiment upload pipeline
+# Pipeline de subida de experimentos
 
-Audited on **2026-09-06**, against commit `a6962cc2e0616683bcfb5d4d064f09247d92402d`. This document describes the checked-in implementation. The companion [proposed pipeline and repair plan](UPLOAD_PIPELINE_PROPOSED.md) describes changes that have **not** been implemented.
+Documento vivo del flujo de ingesta: qué hace una subida, en qué orden, qué garantiza y qué no.
+Integra el endurecimiento del pipeline aplicado el 12 de septiembre de 2026, que antes vivía en un
+documento aparte. Describe el comportamiento del código que está en la rama, no la configuración de
+un despliegue en particular.
 
-The review followed the browser create/edit flows, API and framework request handling, ZIP validation and extraction, CSV processing, Drive storage, database publication, cancellation, and downstream readers. Evidence comes from source inspection, existing tests, and isolated synthetic probes. It does not establish the configuration or behavior of a running production deployment.
+Para el contrato de coordenadas que se resuelve durante la subida, ver
+[SCREEN_TO_STIMULUS_TRANSFORM.md](SCREEN_TO_STIMULUS_TRANSFORM.md); para el detector de fijaciones
+que corre dentro del paso de CSV, [FIXATION_V2.md](FIXATION_V2.md). El historial de los cambios de
+producto está en [CHANGELOG.md](CHANGELOG.md), y las notas de las campañas que lo precedieron quedaron
+en el historial de Git bajo el tag de archivo (`git show docs-archive-pre-release:<ruta>`).
 
-## 1. What an upload actually does
+## 1. Qué hace una subida
 
-An experiment upload takes a folder from the user's computer, packages it into one ZIP in the browser, sends that ZIP to the API, derives analytical data from its CSV, stores selected assets and derived Parquets in Google Drive, and publishes their database references. The request stays open until this work and the normal cleanup path finish.
+Una subida de experimento toma una carpeta del computador del usuario, la empaqueta en un solo ZIP en
+el navegador, lo envía a la API, deriva los datos analíticos de su CSV, guarda los medios
+seleccionados y los Parquet derivados en el almacenamiento de objetos, y publica sus referencias en la
+base de datos. La solicitud HTTP permanece abierta hasta que ese trabajo y su limpieza terminan.
 
-There is **one active ingestion implementation**, used by both project creation and project editing. There is no active upload queue or worker. The historical `processing_jobs` model, repository, and migration still exist, but the upload endpoint does not create or execute those jobs. Redis currently supports analytics caching; it does not make uploads durable. The earlier RQ stub was explicitly retired; see the [change log](CHANGELOG.md).
+Hay **una sola implementación de ingesta**, usada tanto por la creación como por la edición de un
+proyecto. No hay cola ni worker de subidas: el modelo histórico `processing_jobs` y su repositorio
+siguen existiendo, pero el endpoint de subida no crea ni ejecuta esos trabajos. Redis sirve a la caché
+de analítica; no hace durable la subida.
 
-Three kinds of state must be kept separate when reading the code:
+El almacenamiento de objetos lo elige
+`modules/integrations/storage_provider.py`: Google Drive en la edición de servidor, una carpeta en
+disco bajo el directorio de datos en NeuroDatics Estudiantes (`APP_MODE=local`). Las dos
+implementaciones tienen los mismos métodos y las mismas formas de retorno, así que todo lo que sigue
+describe las dos ediciones; donde el texto diga «Drive», en local es la carpeta local.
 
-| State | Where it lives | Meaning |
+Tres clases de estado hay que mantener separadas al leer el código:
+
+| Estado | Dónde vive | Significado |
 | --- | --- | --- |
-| Project lifecycle: `draft`, `active`, `archived` | PostgreSQL `projects.status` | Whether the project setup has been finalized. |
-| Ingestion: `PENDING`, `PROCESSING`, `READY`, `FAILED` | PostgreSQL `projects.ingestion_status` | The coarse outcome of ingestion. It is overwritten for each attempt. |
-| Transfer phase and cancellation flag | Browser state and an in-memory Python registry keyed by project ID | Temporary progress for the request. There is no upload-attempt ID. |
+| Ciclo de vida del proyecto: `draft`, `active`, `archived` | `projects.status` | Si la configuración del proyecto se finalizó. |
+| Ingesta: `PENDING`, `PROCESSING`, `READY`, `FAILED` | `projects.ingestion_status` | El resultado grueso de la ingesta. |
+| Intento de subida: `processing`, `uploading`, `canceling`, `completed`, `failed` | `upload_attempts` | Estado durable de un intento concreto, con su UUID, su error y su raíz pendiente de limpieza. |
+| Fase de transferencia y progreso | Estado del navegador y un registro en memoria | Progreso temporal de la solicitud. |
 
-`ingestion_generation` is a fourth, different concept: an integer identifying the currently published data for cache freshness. It advances in the transaction that publishes a successful replacement. `READY` therefore means the data publication succeeded; it does not mean the create wizard has finished saving participants, sensors, annotations, or project activation.
+`ingestion_generation` es un cuarto concepto distinto: un entero que identifica los datos publicados
+vigentes, para la frescura de las cachés. Avanza en la transacción que publica un reemplazo exitoso.
+Por tanto `READY` significa que la publicación de datos funcionó; no significa que el asistente de
+creación haya terminado de guardar participantes, sensores, anotaciones y la activación del proyecto.
 
-## 2. The end-to-end flow
+## 2. Contrato de corrección
+
+Una subida prepara una **generación nueva en su propia raíz**. Los archivos existentes siguen siendo
+los autoritativos hasta que una sola transacción de base de datos publica archivos, escenarios,
+participantes y sensores detectados, la generación de ingesta y un recibo durable de finalización.
+
+- Un fallo **antes** de la publicación conserva la generación anterior. Si el proyecto ya estaba
+  `READY`, sigue `READY` con sus datos anteriores (`IngestionLifecycle.recover`); solo un proyecto que
+  nunca publicó queda `FAILED`.
+- Un fallo **después** de la publicación nunca borra la raíz de esa generación.
+- Una transición condicional del intento cerca la publicación frente a la recuperación, por si el
+  worker pierde su conexión de bloqueo.
+- Los identificadores de la raíz remota se reservan y se persisten en el diario de limpieza **antes**
+  de crearla en el almacenamiento, de modo que un corte no deja una carpeta sin dueño conocido.
 
 ```mermaid
-sequenceDiagram
-    participant U as User and browser wizard
-    participant N as Next.js proxy
-    participant A as FastAPI
-    participant D as PostgreSQL
-    participant G as Google Drive
-    U->>U: Inspect folder, resolve choices, package ZIP
-    U->>D: Create or update draft through project API
-    U->>N: Multipart ZIP plus selection and calibration
-    N->>A: Forward request
-    A->>A: Framework parses multipart into UploadFile
-    A->>A: Authenticate, acquire local admission slot, copy ZIP to temp
-    A->>D: Verify owner and load system Drive integration
-    A->>A: Validate archive, extract selected entries, resolve placement
-    A->>D: Set PROCESSING and commit
-    A->>G: Create a fresh root folder
-    A->>A: Parse CSV, derive fixations, write Parquets
-    U->>A: Poll project progress while request stays open
-    A->>G: Upload scenario media and Parquets in parallel
-    A->>D: Replace file/scenario references, set READY, bump generation, commit
-    A->>G: Best-effort delete previous root after commit
-    A->>A: Best-effort prune old cache entries
-    A-->>U: Return ingestion summary
-    U->>A: Save remaining wizard metadata and finalize project
+flowchart TD
+    A[Selección de carpeta] --> B[Empaquetado ZIP en el navegador + UUID del intento]
+    B --> C[Autenticar y admitir antes de parsear el multipart]
+    C --> D[Acotar cuerpo, campos, encabezados y número de archivos]
+    D --> E[Bloqueo de mutación del proyecto e intento durable]
+    E --> F[Validar ZIP, extraer y resolver ubicaciones de estímulo]
+    F --> R[Reservar id de raíz y persistir el diario de limpieza]
+    R --> G[Crear raíz, procesar CSV, subir y verificar artefactos]
+    G --> H[Transición condicional del intento y publicación atómica]
+    H --> I[Recibo READY y limpieza posterior al commit]
+    F --> J[Fallo: conservar los datos publicados y encolar la limpieza]
+    R --> J
+    G --> J
+    J --> K[Recuperación periódica acotada]
+    I --> K
 ```
 
-The diagram shows the normal path. Error handling has exceptions described below, including an extraction failure that can set `FAILED` before the normal `PROCESSING` transition.
+## 3. El recorrido, etapa por etapa
 
-### 2.1 Folder discovery and user decisions
+### 3.1 Descubrimiento de la carpeta y decisiones del usuario
 
-The create UI accepts a directory picker or directory drag-and-drop. It reconstructs paths for dropped files, removes hidden-file/resource-fork entries, checks the aggregate selected file size against `500 * 1024 * 1024`, and calls the shared folder-structure analyzer. These are binary MiB even though the UI and settings use “MB.”
+La interfaz de creación acepta un selector de directorio o arrastrar y soltar una carpeta.
+Reconstruye las rutas de los archivos soltados, descarta archivos ocultos y *resource forks*, compara
+el tamaño agregado seleccionado contra `500 * 1024 * 1024` y llama al analizador de estructura
+compartido. Son MiB binarios aunque la interfaz y los ajustes digan «MB».
 
-The analyzer uses whole path components named `Images`, `Videos`, and `Acquisition`, case-insensitively. The root folder prefix is removed so paths in the UI match the intended archive paths. It inventories CSV candidates outside Acquisition, media directories, and Acquisition recording-directory names. The create flow asks the user to choose when there are several candidates, or to confirm intentionally missing image/video directories. Acquisition directory names such as `Sujet_P01_Scenario_Ad A_Rec1` can supply participant and scenario defaults.
+El analizador reconoce componentes de ruta completos llamados `Images`, `Videos` y `Acquisition`, sin
+distinguir mayúsculas. Inventaría los CSV candidatos fuera de `Acquisition`, los directorios de
+medios y los nombres de los directorios de grabación. Cuando hay varios candidatos pide elegir; cuando
+falta un directorio de medios pide confirmarlo. Un nombre como `Sujet_P01_Scenario_Ad A_Rec1` puede
+aportar participante y escenario por defecto.
 
-Client choices improve the experience, but the backend repeats validation. Create and edit do not currently provide identical behavior: the edit flow still has older folder filtering and does not provide the complete clarification workflow. This matters for legitimate data-only experiments and ambiguous folders; see findings F10 and F11.
+Las decisiones del cliente mejoran la experiencia, pero el backend repite toda la validación:
+`folderStructure.ts` refleja deliberadamente las reglas de `ZipValidationService`, y la autoridad es
+siempre el backend.
 
-Source: [CreateProjectStep1.tsx](../frontend/features/projects/create-project/CreateProjectStep1.tsx), [folderStructure.ts](../frontend/features/projects/create-project/folderStructure.ts), and [EditProjectDialog.tsx](../frontend/features/projects/edit-project/EditProjectDialog.tsx).
+Fuente: `frontend/features/projects/create-project/CreateProjectStep1.tsx`,
+`folderStructure.ts`, `frontend/features/projects/edit-project/EditProjectDialog.tsx`.
 
-### 2.2 Packaging and draft creation
+### 3.2 Empaquetado y borrador
 
-The browser dynamically loads JSZip, adds files at archive-relative paths, and calls `generateAsync` with `compression: "STORE"`. It creates a ZIP `File` from the resulting Blob. STORE avoids compression work, but the full ZIP still has to be assembled before transfer. The aggregate source-size check does not include ZIP headers, so a folder at the exact limit can produce a ZIP over the server limit.
+El navegador carga JSZip con `await import()`, añade los archivos en rutas relativas al archivo y
+llama a `generateAsync` con `compression: "STORE"`. STORE evita el trabajo de compresión, así que el
+ZIP pesa aproximadamente lo que la carpeta, pero el archivo completo se arma en memoria antes de
+transferirlo. La verificación del tamaño agregado no cuenta los encabezados del ZIP, así que una
+carpeta exactamente en el límite puede producir un ZIP por encima del límite del servidor.
 
-There is no streaming ZIP output, resumable browser transfer, or packaging cancellation contract. Exact browser memory amplification has not been measured: File/Blob backing storage and browser implementation matter, so a fixed “twice the folder size in heap” claim would be unjustified.
+La creación obtiene un id de proyecto con `POST /api/projects/` en `draft`/`PENDING`; un borrador
+reanudado se actualiza. Un nombre repetido devuelve 409. El asistente sube contra ese id.
 
-Creation obtains a project ID with `POST /api/projects/` in `draft`/`PENDING`; a resumed draft is updated. A project-name conflict returns 409. The wizard then uploads against that ID. Its error cleanup is broader than its apparent intent: some failure paths delete the project even when it was resumed or the ingestion had already succeeded. The behavior is described in F1, not treated here as a safe draft-management guarantee.
+El ciclo de vida del intento en el navegador está en un solo lugar
+(`useZipUploadAttempt.ts`), igual que el empaquetado y las comprobaciones de duplicados
+(`packageExperimentFolder.ts`) y el mapeo de los metadatos detectados (`uploadMetadata.ts`). Un error
+de red, una cancelación, un borrador reanudado o una lectura de detalle fallida **no** borran el
+proyecto: el recibo de una subida exitosa se conserva en el estado de la interfaz, así que un `GET` de
+detalle que falle se puede reintentar sin volver a subir.
 
-Source: [useCreateProjectWizard.ts](../frontend/features/projects/create-project/useCreateProjectWizard.ts), especially packaging and the upload/catch path.
+No hay salida de ZIP en streaming, transferencia reanudable desde el navegador ni contrato de
+cancelación del empaquetado. La amplificación exacta de memoria del navegador no está medida.
 
-### 2.3 Browser transfer and proxy
+### 3.3 Transferencia y proxy
 
-`apiUploadFormWithProgress` uses XMLHttpRequest for `upload.onprogress`. It attaches the bearer token, checks token expiry, handles 401 as an authentication failure, uses a 30-minute timeout, and supports an AbortSignal. Ordinary API calls use the shared fetch helper. Upload errors preserve structured response details where the caller handles them; a failed HTTP response does not itself prove that no server-side changes occurred.
+`apiUploadFormWithProgress` usa `XMLHttpRequest`, porque `fetch` todavía no tiene evento de progreso
+de subida. Adjunta el token, comprueba su vencimiento, trata el 401 como fallo de autenticación, usa
+un tiempo límite de 30 minutos y acepta un `AbortSignal`. El navegador mide solo la transferencia
+navegador→servidor; cuando termina, la interfaz pasa a «procesando» y consulta el endpoint de progreso.
 
-The browser measures only browser-to-server transfer. Once that transfer ends, the UI changes to processing and polls the separate Drive-progress endpoint. Drive progress describes a later leg of the same request.
+El proxy de Next.js reenvía `/api` por el mismo origen con `proxyClientMaxBodySize: "550mb"` y
+`proxyTimeout: 30 * 60_000`. El backend expone el puerto 8000 solo en la red interna de Docker; el
+servicio publicado es el frontend. Eso no es un tiempo límite del trabajo de ingesta, ni una cuota de
+disco, ni una garantía de que un proxy corporativo aguante media hora.
 
-The same-origin Next.js proxy forwards `/api` internally. Checked-in settings are `proxyClientMaxBodySize: "550mb"` and `proxyTimeout: 30 * 60_000`. The Docker backend exposes port 8000 internally; the frontend is the published service. These settings are not an upload job timeout, disk quota, or guarantee that an upstream corporate proxy will keep the connection open for 30 minutes.
+En la edición de estudiantes no hay proxy: el backend sirve la exportación estática del frontend
+desde su propio origen (`local/static_frontend.py`).
 
-Source: [apiFetch.ts](../frontend/lib/api/apiFetch.ts), [projectsApi.ts](../frontend/features/projects/api/projectsApi.ts), [next.config.mjs](../frontend/next.config.mjs), [docker-compose.yml](../docker-compose.yml).
+Fuente: `frontend/lib/api/apiFetch.ts`, `frontend/features/projects/api/projectsApi.ts`,
+`frontend/next.config.mjs`, `docker-compose.yml`.
 
-### 2.4 API contract and the actual receive boundary
+### 3.4 Contrato de la API y frontera de recepción
 
-`POST /api/projects/{project_id}/files/experiment-zip` takes multipart form data:
+`POST /api/projects/{project_id}/files/experiment-zip` recibe `multipart/form-data`:
 
-| Field | Purpose |
+| Campo | Propósito |
 | --- | --- |
-| `file` | Required ZIP payload. |
-| `selected_csv_path` | Explicit archive-relative CSV choice. |
-| `selected_images_folder`, `selected_videos_folder` | Explicit media directory choices. |
-| `selected_acquisition_folder` | Acquisition directory used for defaults. |
-| `allow_missing_images`, `allow_missing_videos` | Explicit confirmation of absent media types; default false. |
-| `screen_width_px`, `screen_height_px`, `screen_width_mm`, `screen_height_mm`, `viewing_distance_mm` | Optional physical screen calibration, subject to the geometry builder's validation. |
-| `stimulus_placements_json` | Placement envelopes tying selected media to acquisition-screen coordinates. |
+| `file` | ZIP, obligatorio. |
+| `upload_id` | UUID del intento, compartido por subida, progreso y cancelación. |
+| `selected_csv_path` | Elección explícita del CSV, relativa al archivo. |
+| `selected_images_folder`, `selected_videos_folder` | Elección explícita de los directorios de medios. |
+| `selected_acquisition_folder` | Directorio `Acquisition` usado para los valores por defecto. |
+| `allow_missing_images`, `allow_missing_videos` | Confirmación explícita de la ausencia de medios; por defecto `false`. |
+| `screen_width_px`, `screen_height_px`, `screen_width_mm`, `screen_height_mm`, `viewing_distance_mm` | Calibración física de la pantalla, opcional. |
+| `stimulus_placements_json` | Sobres de ubicación que atan cada medio seleccionado a las coordenadas de la pantalla de adquisición. |
 
-FastAPI's installed request handler calls `await request.form()` before resolving dependencies and invoking this route. Starlette creates spooled temporary UploadFiles during parsing. Only **after that parsing** does this endpoint acquire `UploadAdmissionControl.slot(current_user)` and copy the UploadFile into its own `neurodatics-upload-*` temporary directory in 1 MiB chunks.
+La ruta se instala con una clase de ruta propia (`upload_route.py`) que se interpone **antes** de que
+FastAPI parsee el multipart. En ese orden:
 
-The application copy enforces the configured ZIP cap and returns 413 when exceeded. It avoids another archive-sized Python bytes object. It **does not** reject the original network body at the moment the cap is crossed: the multipart body has already reached framework parsing. Authentication, local admission, and project ownership also do not protect all pre-route receive/spooling costs. Ownership is checked in the use case after the application copy.
+1. Autentica y resuelve el usuario.
+2. Rechaza un `Content-Length` inválido, y con 413 uno declarado por encima del límite (el tope del
+   ZIP más 2 MiB de margen para el resto del formulario).
+3. Rechaza con 415 cualquier `Content-Type` que no sea `multipart/form-data`.
+4. Toma el turno de admisión (`upload_admission_control.slot`).
+5. Parsea con un lector acotado: el flujo se corta en cuanto los bytes recibidos pasan el límite
+   (413), un campo de formulario no puede pasar de 1 MiB, los encabezados de una parte no pasan de
+   16 KiB, y se aceptan como máximo un archivo y 20 campos. Los campos duplicados dan 400.
+6. Entrega el formulario ya acotado a FastAPI, sin copiarlo otra vez.
 
-This distinction was verified against local FastAPI 0.104.1 and Starlette 0.27.0 source. Proxy buffering and peak disk usage were not measured in Docker. On a large request, framework spooling and the application's ZIP copy can coexist, followed by extracted files and generated Parquets.
+El dueño del proyecto y el bloqueo de mutación se comprueban después, sobre un formulario que ya está
+acotado. Con la versión fijada de Starlette, los archivos temporales se cierran también en los
+caminos de desconexión y cancelación, no solo ante un error del parser.
 
-Source: [routes.py:1092](../backend/src/neurodatics/modules/projects/api/routes.py#L1092), route declaration at line 1134; locally installed `fastapi/routing.py` lines 223 and 264, and `starlette/formparsers.py` lines 207 and 254.
+### 3.5 Admisión, propiedad y almacenamiento
 
-### 2.5 Admission, ownership, and Drive configuration
+La admisión es local al proceso, con un cerrojo de hilos. Por defecto permite una ingesta activa por
+usuario, cuatro globales y al menos cinco segundos entre arranques. El rechazo devuelve 429 con
+`Retry-After`. Es una puerta de concurrencia y de tasa: no es una cola, ni una reserva de
+almacenamiento, ni una cuota durable, y el límite global es **por proceso de API**.
 
-Admission is process-local, protected by a threading lock. Defaults allow one active ingestion per user, four globally, and at least five seconds between starts. Rejections return 429 with `Retry-After`. The slot is released by a context manager on ordinary unwinding. This is a concurrency/rate gate, not a queue, per-project lease, storage reservation, or durable quota.
+El caso de uso carga el proyecto por `(project_id, owner_id)`, incluyendo archivos, participantes,
+sensores, escenarios y anotaciones. Después deja usable el almacén de objetos. En servidor eso
+significa configurar el cliente de Drive desde el único registro `system_integrations` de
+`google_drive`; si no hay conexión guardada, la respuesta es 503 antes de cualquier escritura. En local
+no hay credenciales que configurar y siempre está disponible.
 
-The use case loads the project by `(project_id, owner_id)`, eagerly including related files, participants, sensors, scenarios, and annotations. It then configures the global Drive client from the single `system_integrations` record for `google_drive`. This happens **before ZIP validation**. `force_refresh=True` bypasses the integration configuration cache; it does not itself force a network access-token refresh. Missing integration configuration gives 503 before the use case's main compensation block.
+El transporte a Drive respeta el requisito de la SDK de Google: cada hilo construye y reutiliza su
+propio `httplib2.Http` (`_thread_state = threading.local()`), y la rotación de credenciales invalida
+los servicios sin compartir un transporte entre hilos. `build_isolated_drive_client` además arma un
+cliente nuevo para una sola solicitud, de modo que una lectura no toca el singleton compartido.
 
-The normal route requires this stored OAuth connection even though the low-level Drive client has service-account fallback code. The connection is system-wide, not per project owner. Google application login and Drive authorization are separate flows. The retained Drive authorization route is authenticated; the OAuth callback uses signed, expiring state. No role distinction is enforced by that router between ordinary authenticated users and integration administrators.
+### 3.6 Validación del archivo y resolución del manifiesto
 
-Source: [upload_throttle.py](../backend/src/neurodatics/modules/projects/application/services/upload_throttle.py), [upload_experiment_zip.py:120](../backend/src/neurodatics/modules/projects/application/use_cases/upload_experiment_zip.py#L120), [configure_client.py](../backend/src/neurodatics/modules/integrations/google_drive/infrastructure/configure_client.py), [integration repository](../backend/src/neurodatics/modules/integrations/google_drive/infrastructure/repository.py), [integration routes](../backend/src/neurodatics/modules/integrations/google_drive/api/routes.py).
+El validador comprueba el sufijo del nombre, los tipos MIME declarados aceptados
+(`application/zip` y `application/x-zip-compressed`), el tamaño en disco y los límites del directorio
+central: expansión declarada, expansión por entrada, número de entradas y razón de compresión. `enforce_archive_limits` lee solo el directorio central y no
+descomprime nada, pero ese directorio lo controla quien envía el archivo, así que los tamaños
+declarados nunca son el único límite de extracción.
 
-### 2.6 Archive validation and manifest resolution
+Después recorre la estructura y resuelve las selecciones pedidas. No tener un CSV usable es un error
+de validación. Varios CSV o varias carpetas de medios con el mismo nombre exigen una elección. La
+ausencia de `Images`/`Videos` exige su confirmación. Un árbol `Acquisition` aporta valores por
+defecto y no se trata como otra fuente de datos; seleccionar un árbol filtra las grabaciones de los
+demás.
 
-The validator checks ZIP filename suffix, accepted declared MIME types (`application/zip` and `application/x-zip-compressed`), on-disk archive size, and central-directory limits. Limits cover declared expansion size, per-entry expansion, file count, and compression ratio. These checks are valuable bomb defenses, but declared sizes are not trusted as the sole extraction limit.
+Una estructura sin resolver devuelve 409 con `detail.error = "structure_clarification_required"`, las
+preguntas, el nombre del campo que responde cada una y las opciones detectadas. El endpoint no guarda
+una sesión de subida en curso: responder una pregunta implica reenviar el archivo completo. Adivinar
+analizaría el archivo equivocado en silencio.
 
-It then scans structure and resolves the requested selections. No usable CSV is a validation error. Several CSVs or several named media folders require a choice. Missing Images/Videos requires the corresponding confirmation. An optional Acquisition tree supplies defaults; it is not treated as another data CSV source.
+Los nombres originales de los miembros se validan antes de normalizarlos. Los miembros duplicados, los
+alias de ruta, el recorrido de directorios (`..`), los miembros cifrados o no soportados, los desajustes
+con el manifiesto y una diferencia exacta en el tamaño de extracción fallan en cerrado.
 
-Unresolved structure returns 409 with `detail.error = "structure_clarification_required"`, questions, answer-field names, and detected options. The endpoint does not retain a staged upload session. Answering a question therefore requires another complete ZIP request.
+El manifiesto seleccionado clasifica las extensiones de imagen como `scenario_image`, las de vídeo como
+`scenario_video`, el CSV como `raw_csv`, el PDF como `report_pdf` y lo demás como `other_asset`. Un
+medio fuera de un ancestro con nombre de medios baja a recurso ordinario. Los CSV y árboles de medios
+no seleccionados y el contenido de `Acquisition` quedan excluidos de los artefactos extraídos.
 
-The selected manifest classifies image extensions as `scenario_image`, video extensions as `scenario_video`, CSV as `raw_csv`, PDF as `report_pdf`, and other files as `other_asset`. Media outside appropriately named media ancestors is demoted to an ordinary asset. Nonselected candidate CSVs/media trees and Acquisition contents are excluded from extracted individual artifacts. Direct API callers can include ordinary assets that the browser may have filtered out.
+**Excluir no es borrar del ZIP guardado.** Con la retención del ZIP original activada, el archivo
+exacto recibido también se sube, y lo excluido sigue dentro de él. Por eso la retención está apagada
+por defecto.
 
-**Exclusion is not removal from the saved ZIP.** With original-ZIP retention enabled, the exact received archive is also sent to Drive. Any excluded content still present in that archive remains inside that stored ZIP. Acquisition filenames can also appear in response defaults even when their file bytes are not individually extracted.
+La clasificación por extensión y MIME no prueba que un medio sea decodificable ni seguro: no hay
+inspección del contenido.
 
-Source: [zip_validation_service.py](../backend/src/neurodatics/modules/projects/application/services/zip_validation_service.py). Confirmed selection and duplicate-member gaps appear in F8 and F9.
+Fuente: `modules/projects/application/services/zip_validation_service.py`.
 
-### 2.7 Extraction and stimulus placement
+### 3.7 Extracción y ubicación del estímulo
 
-Extraction creates `neurodatics-ingestion-*`, then writes only manifest entries under an `extracted` directory. It rejects relative paths containing `..`, leading absolute paths, and drive-style prefixes as checked by its helper. It reads members to EOF, which exercises ZIP CRC validation, and counts actual output bytes against both entry and total budgets. It never calls unrestricted `extractall`.
+La extracción crea `neurodatics-ingestion-*` y escribe solo las entradas del manifiesto bajo un
+directorio `extracted`. Rechaza rutas relativas con `..`, rutas absolutas y prefijos de unidad. Lee
+cada miembro hasta EOF, lo que hace que `zipfile` verifique su CRC, y **vuelve a contar los bytes que
+realmente salen** contra el presupuesto de la entrada y el total. Nunca llama a un `extractall` sin
+restricciones.
 
-The pipeline resolves stimulus placement while selected media is local. An envelope must identify selected media unambiguously, agree with screen calibration, and satisfy the static placement contract. Unknown paths, incompatible calibration, ambiguous media identity, and unsupported time-varying geometry are rejected with structured 422 errors. Placement snapshots and physical calibration are carried into file metadata and analytical output.
+Con los medios seleccionados aún en disco local, el pipeline resuelve la ubicación del estímulo. Un
+sobre debe identificar sin ambigüedad un medio seleccionado, concordar con la calibración de pantalla
+y satisfacer el contrato estático de ubicación. Las rutas desconocidas, la calibración incompatible, la
+identidad ambigua y la geometría variable en el tiempo se rechazan con errores 422 estructurados. La
+instantánea de la ubicación y la calibración física viajan a los metadatos del archivo y a la salida
+analítica.
 
-Image/video probing records intrinsic width, height, and, where available, frame rate and duration. An unreadable media file can yield unknown dimensions rather than fail ingestion; downstream rendering may then use reference dimensions. Extension/MIME classification is not proof that a media payload is decodable or safe.
+El sondeo de imagen y vídeo registra ancho y alto intrínsecos y, cuando se puede, cuadros por segundo
+y duración. Un medio ilegible puede quedar con dimensiones desconocidas en vez de hacer fallar la
+ingesta; el renderizado posterior usa entonces dimensiones de referencia.
 
-Validation/extraction and some probing execute synchronously inside the async use case. CSV processing and Drive calls are offloaded, but these earlier operations can still occupy the API event loop. Temporary directories are normally removed on scope exit; abrupt process/container termination has no application-level recovery record.
+La validación, la extracción y parte del sondeo corren de forma sincrónica dentro del caso de uso
+asíncrono, así que pueden ocupar el bucle de eventos de la API. Los directorios temporales se borran al
+salir del ámbito; una terminación abrupta del proceso puede dejarlos, y la recuperación durable cubre
+la publicación y la limpieza del almacén, no un recolector completo del sistema de archivos.
 
-Source: [zip_extraction_service.py](../backend/src/neurodatics/modules/projects/application/services/zip_extraction_service.py), [placement resolution](../backend/src/neurodatics/modules/projects/application/use_cases/upload_experiment_zip.py#L881), [stimulus_probe_service.py](../backend/src/neurodatics/modules/projects/application/services/stimulus_probe_service.py), [coordinate contract](SCREEN_TO_STIMULUS_TRANSFORM.md).
+Fuente: `zip_extraction_service.py`, `stimulus_probe_service.py`,
+[SCREEN_TO_STIMULUS_TRANSFORM.md](SCREEN_TO_STIMULUS_TRANSFORM.md).
 
-### 2.8 CSV processing and analytical artifacts
+### 3.8 Procesamiento del CSV y artefactos analíticos
 
-After validation, extraction, and placement resolution, the use case commits `PROCESSING`, checks cancellation, and creates a fresh Drive root. It processes each selected raw CSV with `asyncio.to_thread(CsvProcessingService.process, ...)`. Normal structure resolution selects one CSV; the loop and response retain plural accounting.
+Después de validar, extraer y resolver las ubicaciones, el caso de uso compromete `PROCESSING`,
+comprueba la cancelación y crea una raíz nueva. Procesa cada CSV crudo seleccionado con
+`asyncio.to_thread(CsvProcessingService.process, ...)`. La resolución normal selecciona un CSV; el
+bucle y la respuesta conservan la contabilidad en plural.
 
-The parser performs the following work:
+El parser hace, en orden:
 
-1. Reads the CSV bytes into memory, decodes supported UTF encodings/Latin-1, and splits text into lines. This part is not a streaming parser.
-2. Identifies recording blocks from recognized time headers and associated metadata; extracts participant codes and recording labels.
-3. Chooses semicolon, tab, or comma delimiters, canonicalizes known column aliases, preserves extra columns, parses localized numbers, and validates known numeric sensor channels and time values.
-4. Reads declared channel units/rates, normalizes supported units, estimates the observed time-grid rate, and records discrepancies rather than pretending the file rate and gaze acquisition rate are interchangeable.
-5. Separates vendor fixation coordinates from raw gaze. Where paired raw gaze is available, runs fixation-v2; calibrated angular detection uses adaptive I-VT, with normalized-coordinate fallback where physical calibration is unavailable. It tracks resampling, detector version, warnings, coordinate space, and stimulus transformation provenance.
-6. Writes a full participant-block Parquet and scenario partitions. The layout is `processed/userN/userN.parquet` and `processed/userN/escenarios/<cleaned-scenario>.parquet`.
+1. Lee los bytes del CSV a memoria, decodifica las codificaciones UTF soportadas o Latin-1 y separa el
+   texto en líneas. No es un parser en streaming.
+2. Identifica bloques de grabación por sus marcadores y encabezados de tiempo reconocidos; extrae
+   códigos de participante y etiquetas de grabación.
+3. Elige el delimitador (punto y coma, tabulador o coma), canonicaliza los alias de columna conocidos,
+   conserva las columnas extra, interpreta los números localizados y valida los canales numéricos
+   conocidos y los valores de tiempo.
+4. Lee unidades y frecuencias declaradas por canal, normaliza las unidades soportadas, estima la
+   frecuencia observada de la rejilla temporal y registra las discrepancias en vez de tratar la
+   frecuencia del archivo y la del eye tracker como intercambiables.
+5. Separa las fijaciones del fabricante de la mirada cruda. Donde hay mirada cruda emparejada ejecuta
+   fixation-v2: detección angular I-VT adaptativa cuando hay calibración física, y respaldo en
+   coordenadas normalizadas cuando no. Registra remuestreo, versión del detector, advertencias,
+   espacio de coordenadas y procedencia de la transformación del estímulo.
+6. Escribe un Parquet completo del bloque del participante y sus particiones por escenario, en
+   `processed/userN/userN.parquet` y `processed/userN/escenarios/<escenario-limpio>.parquet`.
 
-Steps 2–6 run once per participant block, and blocks share nothing. From 10,000 lines up, `process(max_workers=N)` gives the blocks to up to N worker processes started with `spawn`. It gathers their outcomes in file order, so the Parquets, metadata and first error match a one-at-a-time run. `INGESTION_BLOCK_WORKERS=0`, the default, sizes the pool to the machine (`shared/machine_resources.py`): half the usable CPUs, as far as memory allows. Each ingestion that may run at once (one in the student edition, `UPLOAD_MAX_CONCURRENT_GLOBAL` on the server) gets an equal share of the memory limit. That limit is the container's cgroup limit, or half the RAM without one. Each ingestion reserves 1 GiB of its share, plus 256 MiB per worker. Any positive value forces that count, and 1 keeps every block in the API process. The server's default of 2 GiB for four ingestions therefore stays at 1 worker. The Windows installer sets `BACKEND_MEM_LIMIT` on first install to a quarter of the RAM, between 2 and 8 GB. If the pool cannot start or loses a worker, the blocks run in-process instead. The frozen entry point calls `multiprocessing.freeze_support()` first, so a worker never starts a second app. On the SAIO export (six blocks, 232,759 lines), CSV processing took 41 s serial, 23 s with two workers and 10 s with eight, with byte-identical Parquets. Each worker peaked at about 240 MiB.
+Los pasos 2 a 6 corren una vez por bloque de participante y los bloques no comparten nada. Desde
+10 000 líneas, `process(max_workers=N)` reparte los bloques entre hasta N procesos arrancados con
+`spawn` y reúne sus resultados en el orden del archivo, así que los Parquet, los metadatos y el primer
+error coinciden con una ejecución de uno en uno. `INGESTION_BLOCK_WORKERS=0`, el valor por defecto,
+dimensiona el grupo a la máquina (`shared/machine_resources.py`): la mitad de las CPU utilizables,
+hasta donde alcance la memoria. Cada ingesta que pueda correr a la vez (una en la edición de
+estudiantes, `UPLOAD_MAX_CONCURRENT_GLOBAL` en el servidor) recibe una parte igual del límite de
+memoria, que es el límite del contenedor o la mitad de la RAM si no hay. Cada ingesta reserva 1 GiB de
+su parte más 256 MiB por worker. Cualquier valor positivo fuerza ese número, y 1 mantiene todos los
+bloques en el proceso de la API; el valor por defecto del servidor (2 GiB para cuatro ingestas) se
+queda en 1 worker. Si el grupo no arranca o pierde un worker, los bloques corren en el proceso. El
+punto de entrada congelado llama primero a `multiprocessing.freeze_support()`, así que un worker nunca
+arranca una segunda aplicación.
 
-See [FIXATION_V2.md](FIXATION_V2.md) for detector mechanics. The upload contract's responsibility is to preserve the units, identity, and provenance needed to interpret those results; scientific detection should not be silently changed as part of an upload refactor.
+Los detalles del detector están en [FIXATION_V2.md](FIXATION_V2.md). La responsabilidad del pipeline de
+subida es conservar las unidades, la identidad y la procedencia necesarias para interpretar esos
+resultados; la detección científica no se cambia como efecto secundario de un refactor de subida.
 
-The processing result includes detected sensors, participant codes/block indices, generated paths, block metadata, placement snapshots, and warnings. Parquet metadata and the corresponding database file metadata retain relevant provenance. Before upload, the use case verifies that generated Parquets have participant codes and that two user blocks do not claim the same participant identity. Analytics resolves participants by code rather than database row order.
+El resultado del procesamiento incluye sensores detectados, códigos de participante e índices de
+bloque, rutas generadas, metadatos por bloque, instantáneas de ubicación y advertencias. Antes de
+subir, el caso de uso verifica que los Parquet generados tengan código de participante y que dos
+bloques no reclamen la misma identidad. La analítica resuelve participantes por código, nunca por el
+orden de las filas de la base de datos.
 
-A selected CSV that cannot be processed increments failure accounting; if none process, `CsvIngestionError` prevents publication and prevents a generation bump. That check is already implemented. Conversely, success at parsing is not proof of complete scenario identity: the current generic numeric inference and lossy scenario filenames have reproduced collisions, described in F3 and F4.
+Las etiquetas de escenario con aspecto numérico, como `001` y `1`, se mantienen como cadenas y no
+colapsan en una misma identidad. Los nombres de archivo portables que colisionan reciben un sufijo
+determinista de hash; el nombre remoto usa el nombre base del artefacto generado, la deduplicación usa
+la etiqueta original del escenario, y una salida en conflicto se rechaza.
 
-The upload use case **does not persist participant or sensor rows**. It returns their detected values to the wizard, which saves them through later endpoints. Scenarios are created from uploaded media, so a CSV scenario without a matching media scenario is a separate completeness concern.
+Un CSV seleccionado que no se puede procesar incrementa la cuenta de fallos; si ninguno se procesa,
+`CsvIngestionError` impide la publicación y el avance de la generación.
 
-Source: [csv_processing_service.py](../backend/src/neurodatics/modules/projects/application/services/csv_processing_service.py), [fixation_detection_service.py](../backend/src/neurodatics/modules/projects/application/services/fixation_detection_service.py), [participant assertion](../backend/src/neurodatics/modules/projects/application/use_cases/upload_experiment_zip.py#L1036).
+El caso de uso de subida **no persiste filas de participante ni de sensor**: devuelve los valores
+detectados y la publicación los escribe junto con los archivos. Los escenarios se crean a partir de
+los medios subidos, así que un escenario que existe en el CSV pero no tiene medio es un asunto
+distinto, de completitud.
 
-### 2.9 Drive staging and progress
+Fuente: `csv_processing_service.py`, `fixation_detection_service.py`.
 
-Each ingestion creates a new root named from the project name, ID prefix, and UTC timestamp, optionally under `GDRIVE_FOLDER_ID`. The new root is separate from the previously published one. The request keeps a list of created Drive IDs for compensation.
+### 3.9 Subida al almacén y progreso
 
-Only what the app reads afterwards is stored: the selected scenario images and videos, full participant Parquets, and scenario Parquets. Other assets stay in the manifest summary but are neither extracted nor uploaded. Folders are created level by level under the fresh root, without lookups, and files then upload `GDRIVE_UPLOAD_CONCURRENCY` (default 4) at a time on worker threads. Only the event loop touches the database for progress and cancellation. On failure, in-flight uploads are awaited before the root is deleted. `ProjectFile` rows are built afterwards in the original deterministic order.
+Cada ingesta crea una raíz nueva con el nombre del proyecto, el prefijo del id y una marca de tiempo
+UTC, opcionalmente bajo `GDRIVE_FOLDER_ID`. Esa raíz es independiente de la publicada antes, y la
+solicitud guarda la lista de objetos creados para compensar.
 
-The browser-built ZIP is not stored by default (`INGESTION_SAVE_ORIGINAL_ZIP=false`): it duplicated every uploaded file. The picked folder name is kept in `projects.source_folder_name` instead. Raw CSV entries are counted but not uploaded, so with ZIP retention off their source bytes are not kept in Drive; reprocessing requires uploading the folder again. The browser also sends `Acquisition/` entries empty, since the server reads only their paths. Children reference a saved ZIP row through `source_zip_id`, or null when ZIP retention is disabled.
+Solo se guarda lo que la aplicación lee después: las imágenes y vídeos de escenario seleccionados, los
+Parquet completos por participante y los Parquet por escenario. Las carpetas se crean nivel por nivel
+bajo la raíz nueva, sin búsquedas, y los archivos suben `GDRIVE_UPLOAD_CONCURRENCY` a la vez (4 por
+defecto) en hilos de trabajo. Solo el bucle de eventos toca la base de datos para progreso y
+cancelación. Ante un fallo, las subidas en vuelo se esperan antes de borrar la raíz. Las filas
+`ProjectFile` se construyen después, en el orden determinista original.
 
-`GoogleDriveClient.upload_file` computes SHA-256 with a separate sequential disk read, then uses `MediaFileUpload` with 8 MiB chunks and `resumable=True`. The SDK request is executed to completion inside one thread call. Resumable protocol is used for that transfer, but its session/offset is not persisted by NeuroDatics, so an application restart cannot resume the upload. Default HTTP timeout is 300 seconds and request retries are five.
+El ZIP armado por el navegador no se guarda por defecto (`INGESTION_SAVE_ORIGINAL_ZIP=false`), porque
+duplicaba todos los archivos subidos; se guarda el nombre de la carpeta elegida en
+`projects.source_folder_name`. Los CSV crudos se cuentan pero no se suben, así que con la retención
+apagada sus bytes fuente no quedan en el almacén y reprocesar exige volver a subir la carpeta. Los
+hijos referencian la fila del ZIP guardado por `source_zip_id`, o `null` cuando la retención está
+apagada; antes de borrar un ZIP padre, esa referencia se desprende de los hijos históricos, de modo
+que el reemplazo y el borrado solo del ZIP no violan la clave ajena, y un rollback restaura ambas
+referencias.
 
-The progress registry starts only after CSV processing, when output sizes are known. Progress bytes update after a **whole file** succeeds, not after every Drive chunk. It holds at 99% until database publication succeeds. A large ZIP upload can therefore show no byte movement for a long time. Its speed field is named `speed_mbps`, but calculation divides bytes by `1024 * 1024`: the value is MiB/s, not megabits/s.
+La integridad de los bytes se verifica: las creaciones usan identificadores reservados y reconcilian
+una respuesta perdida, los reintentos reanudables consultan el desplazamiento reconocido, el tamaño
+subido y el SHA-256 (o el MD5 que devuelve Drive, como respaldo) deben coincidir con el origen, y los
+flujos de medios siempre se cierran. `upload_file` calcula el SHA-256 con una lectura secuencial
+aparte y luego usa `MediaFileUpload` con trozos de 8 MiB y `resumable=True`. El protocolo reanudable
+se usa para esa transferencia, pero NeuroDatics no persiste su sesión ni su desplazamiento, así que un
+reinicio de la aplicación no reanuda la subida.
 
-The global client shares its service and HTTP transport across thread-offloaded uploads. Google explicitly documents that each requesting thread needs its own `httplib2.Http` instance; concurrency is therefore a concrete implementation risk, even in a single API process. [Google client thread-safety guidance](https://googleapis.github.io/google-api-python-client/docs/thread_safety.html).
+El registro de progreso arranca después de procesar el CSV, cuando ya se conocen los tamaños de
+salida. Los bytes avanzan al terminar **un archivo completo**, no cada trozo, y se quedan en 99 %
+hasta que la publicación en base de datos funciona. Una subida grande puede, por tanto, no mover la
+cifra durante un buen rato. Su campo se llama `speed_mbps`, pero el cálculo divide bytes entre
+`1024 * 1024`: el valor es MiB/s, no megabits por segundo.
 
-Source: [Drive client](../backend/src/neurodatics/infra/storage/gdrive_client.py), [Drive progress registry](../backend/src/neurodatics/modules/projects/application/services/drive_upload_progress_registry.py), [upload orchestration](../backend/src/neurodatics/modules/projects/application/use_cases/upload_experiment_zip.py#L324).
+### 3.10 Publicación en la base de datos y reemplazo
 
-### 2.10 Database publication and replacement
+Terminadas las subidas y cerrado el ámbito de extracción, el caso de uso comprueba la cancelación,
+hace la transición condicional del intento y ejecuta la transacción de publicación:
 
-After all uploads finish and extraction scope closes, the use case checks cancellation and performs the publication transaction:
+1. Borrado lógico de las filas activas de `project_files`.
+2. Desprender las referencias `source_zip_id` de los hijos históricos y borrar físicamente las filas
+   `experiment_zip`.
+3. Borrar los AOI y escenarios existentes.
+4. Insertar las filas de archivo nuevas, los escenarios derivados de los medios y sus ubicaciones.
+5. Publicar participantes y sensores detectados junto con los archivos. Un código de participante que
+   coincide conserva su demografía.
+6. Poner `READY`, limpiar el error de ingesta, actualizar la raíz y la marca de tiempo.
+7. Incrementar `ingestion_generation` de forma atómica y hacer commit.
 
-1. Soft-delete active `project_files` rows.
-2. Hard-delete historical `experiment_zip` rows.
-3. Delete existing AOIs and scenarios.
-4. Insert new file rows and media-derived scenarios/placements.
-5. Set `READY`, clear ingestion error, update Drive root and ingestion timestamp.
-6. Atomically increment `ingestion_generation`, then commit.
+Los métodos de repositorio de esta sección hacen `flush`, no `commit` por separado, así que la
+generación y las referencias publicadas se hacen visibles juntas. Una publicación que falla deshace
+toda la transacción; el `PROCESSING` anterior es un commit aparte.
 
-Repository methods used in this section flush rather than independently commit. The generation and published references consequently become visible together on successful execution. A failed publication rolls this transaction back. The earlier `PROCESSING` commit is separate.
+Las anotaciones se copian solo cuando el medio es el mismo: `preserve_unchanged_stimulus_annotations`
+exige que la ruta fuente del estímulo, sus bytes y su geometría intrínseca coincidan. Un medio que
+cambió recibe anotaciones nuevas en lugar de heredar AOI que ya no corresponden.
 
-There is a serious schema conflict in step 2: soft-deleted children still have `source_zip_id` referencing the ZIP parent. The ORM and migration define no `ON DELETE SET NULL` or cascade for that self-reference. Deleting the parent therefore conflicts with those surviving rows under the declared foreign-key semantics. A small equivalent-schema probe reproduced this constraint failure; the actual migrated PostgreSQL database was not exercised. See F2.
+En éxito, la raíz anterior se borra **después** del commit, a través del diario de limpieza, de modo
+que un borrado que falla deja un registro durable para un barrido posterior en vez de perderse en un
+log. Un fallo de la limpieza o de la poda de cachés no deshace la publicación.
 
-The code comment says the ZIP purge serves a one-ZIP-per-project unique constraint. No matching ZIP unique index was found in checked-in model/migration definitions. The deployed schema must be inspected before designing that migration; a comment is insufficient evidence that the constraint exists.
+El borrado del proyecto y el del ZIP comprometen primero su cambio en la base de datos y su registro
+de limpieza, y solo después tocan el almacén; los registros de limpieza sobreviven al borrado del
+proyecto. Si un commit de publicación queda en duda, los datos del almacén se conservan hasta poder
+leer el recibo durable.
 
-On success, the old Drive root is deleted **after commit**. Failure of that deletion or cache reclamation is logged and does not intentionally undo publication. Old-root cleanup has no durable retry record. Immediate old-root deletion can also affect a read already using a previously resolved file ID; atomic cache generation alone does not keep that remote object available.
+Fuente: `publish_ingestion.py`, `repository_impl.py`, `drive_cleanup.py`.
 
-Re-upload deletes AOIs and recreates scenario identities, including for unchanged media. Existing participant/sensor rows survive this transaction. These behaviors make re-upload a destructive metadata replacement, not just replacement of one ZIP attachment.
+### 3.11 Respuesta, cierre del asistente y lecturas
 
-Source: [publication block](../backend/src/neurodatics/modules/projects/application/use_cases/upload_experiment_zip.py#L653), [repository](../backend/src/neurodatics/modules/projects/infrastructure/repository_impl.py#L105), [entities](../backend/src/neurodatics/modules/projects/domain/entities.py#L50), [source-ZIP migration](../backend/migrations/versions/007_project_ingestion_real_files.py#L95).
+La respuesta exitosa contiene los identificadores del proyecto y la raíz, `READY`, la información de
+retención del ZIP, los archivos subidos, contadores, metadatos y advertencias del procesamiento del
+CSV, sensores y participantes detectados, la estructura seleccionada, los valores por defecto de
+`Acquisition`, las entradas excluidas y las ubicaciones de estímulo. `files_uploaded` cuenta los
+artefactos subidos que no son el ZIP; `csv` cuenta las entradas CSV de origen aunque no se guarden por
+separado. No son un manifiesto completo de bytes ni de objetos.
 
-### 2.11 Response, wizard completion, and reads
+El asistente de creación usa ese resumen y un detalle refrescado del proyecto para poblar los pasos
+siguientes; el navegador ya no repite por su cuenta la publicación de metadatos que el servidor hace.
+`POST /{project_id}/finalize` comprueba nombre, archivos activos o ingesta `READY`, y al menos un
+sensor; no establece la completitud participante↔Parquet.
 
-The successful response contains project/root identifiers, `READY`, ZIP retention information, uploaded files, counters, CSV processing metadata/warnings, detected sensors and participants, selected structure, Acquisition defaults, and excluded entries. `files_uploaded` counts non-ZIP uploaded artifacts; `csv` counts source CSV entries even though they were not stored independently. These counts should not be interpreted as a complete byte/object manifest.
+La analítica lee las referencias Parquet activas de un participante y resuelve la generación del
+proyecto para la identidad de la caché. La caché Parquet en disco y los resultados en Redis usan
+claves con la generación, así que una poda fallida no hace que una generación nueva devuelva
+resultados viejos.
 
-The create wizard uses this summary and a refreshed project detail to populate later steps. Sensors, participant demographics, scenarios/AOIs, and finalization use separate calls. Backend `POST /{project_id}/finalize` checks name, active files or READY ingestion, and at least one sensor; it does not establish participant-to-Parquet completeness. The edit flow ignores important detected metadata from the upload response and refreshes scenarios, leaving existing participant/sensor choices to later save behavior.
+Las rutas autenticadas de imagen y previsualización resuelven un archivo activo del proyecto del
+dueño. Las imágenes usan caché en disco y en memoria, encabezados de caché privada y ETags; la
+previsualización de vídeo usa archivos de vídeo y de cuadro en caché y ffmpeg, invocado con una lista
+de argumentos y tiempos límite acotados, nunca como cadena de shell. Son cachés derivadas de lectura,
+no almacenamiento fuente durable, y un conserje acotado las recupera
+(`media_cache_janitor.py`): el barrido tiene topes de tamaño, de edad y de número de borrados por
+pasada, para que nunca pueda frenar el camino de una solicitud. Es limpieza acotada, no una reserva
+estricta que impida todo exceso transitorio.
 
-Analytics reads active Parquet references for a participant and resolves the project generation for cache identity. Disk Parquet cache and Redis analytical results use generation-aware keys, so failed cache pruning does not make a successful new generation read old results. Uploaded file IDs also change on replacement.
+## 4. Cancelación y semántica de fallos
 
-Authenticated image and preview routes resolve an active file belonging to the owner's project. Images use disk/memory caches, private cache headers and ETags; cold image downloads materialize bytes. Video preview paths use cached video/frame files and ffmpeg. These are derived read caches, not durable source storage. Media cache reclamation already exists; the previous document's blanket “unbounded caches” finding is outdated. The janitor is bounded cleanup, not a strict reservation that prevents all transient overshoot.
+`POST /{project_id}/files/experiment-zip/cancel` comprueba la propiedad, marca el intento y vuelve de
+inmediato. Reconoce una petición de cancelar, no su cumplimiento. Las comprobaciones son cooperativas y
+corren entre fases y entre archivos: no interrumpen el hilo del CSV ni una llamada `execute` del
+transporte en curso. Abortar el XHR por sí solo no es una orden durable de cancelación.
 
-Source: [response schemas](../backend/src/neurodatics/modules/projects/api/schemas.py), [project routes](../backend/src/neurodatics/modules/projects/api/routes.py), [analytics infrastructure](../backend/src/neurodatics/modules/analytics/infrastructure), [media janitor](../backend/src/neurodatics/modules/projects/infrastructure/media_cache_janitor.py).
+Cada solicitud lleva un UUID opcional compartido por subida, progreso y cancelación. Una cancelación
+que llega antes del procesamiento sobrevive a la transición de procesamiento a subida. Un reintento
+exige un UUID nuevo: reusar uno ya arrancado devuelve 409, y consultar el progreso de ese UUID devuelve
+su resultado. El UUID es un recibo de resultado, no una clave de repetición automática. En el
+navegador, la consulta serial compartida aborta las lecturas en vuelo y limpia sus temporizadores en
+toda salida, así que una respuesta rancia no puede revivir un intento viejo ni dejar una consulta de
+fondo encendida.
 
-## 3. Cancellation and failure semantics
+Una cancelación y una subida comprometida con éxito son resultados distintos. Cuando el resultado HTTP
+es incierto, el cliente debe consultar el recibo.
 
-`POST /{project_id}/files/experiment-zip/cancel` verifies ownership, writes a project-keyed in-memory flag, and returns immediately. It acknowledges a request to cancel, not completion. Cooperative checks run between phases/files; they do not interrupt the current CSV thread or a Drive `execute` call. Aborting XHR alone is not a durable cancellation command.
-
-The registry expires inactive entries after six hours. `start()` overwrites an entry and sets `cancel_requested=False`; `fail()` retains an existing cancellation flag. Because `start()` occurs after CSV processing, a cancel arriving during that processing can be erased. A retry can instead observe the canceled prior attempt at an earlier checkpoint and fail before reaching `start()`. Old terminal snapshots can also make browser polling stop before the next request starts.
-
-The broad use-case exception handler marks registry progress failed, rolls back the current DB transaction, and attempts to delete created Drive objects in reverse order. It has no persistent journal for unknown outcomes, unfinished deletes, or a process crash. The Drive deletion method returns false on many failures; compensation does not record a durable retry for that result.
-
-| Failure point | HTTP/result and durable effect |
+| Punto de fallo | Resultado y efecto durable |
 | --- | --- |
-| Missing/expired authentication | Authentication error; multipart parsing may already have consumed resources. |
-| Local admission exhausted | 429 plus `Retry-After`; no use-case ingestion. |
-| Application ZIP copy over limit | 413; application temp directory normally cleaned. |
-| Project missing/not owned | 404 after receive/copy; no project ingestion. |
-| Missing stored Drive connection | 503 before main validation/compensation block. |
-| ZIP structure invalid or clarification needed | 400 or structured 409; rollback/rethrow without changing project ingestion fields, though an existing progress snapshot may be marked failed. |
-| ZIP extraction/CRC failure | 400 at route, but `ExtractionError` is not in the no-status-change exception list: handler can write `FAILED`. |
-| Placement contract failure | Structured 422; no ingestion-field publication. |
-| All selected CSV processing fails | Normally 500; new Drive objects are compensated, old data generation remains, project status is marked FAILED. |
-| Cooperative cancellation observed | 409; compensation attempted; status FAILED with cancellation text, not a distinct durable CANCELED state. |
-| Drive/DB failure before publication | Compensation attempted; old generation preserved if transaction rollback succeeds; project normally marked FAILED. |
-| Drive-root/cache cleanup failure after publication | Normally logged; READY and new generation remain. |
-| Browser timeout, lost response, server death | No durable attempt record proves outcome to the browser. Work may have failed, continued, or committed; local compensation cannot cover every abrupt exit. |
+| Autenticación ausente o vencida | Error de autenticación antes de parsear el multipart. |
+| `Content-Length` inválido / tipo de contenido equivocado | 400 / 415 antes de parsear. |
+| Cuerpo declarado o recibido por encima del límite | 413; el flujo se corta en cuanto se pasa. |
+| Campo, encabezado o campo duplicado fuera de límites | 413 o 400 durante el parseo acotado. |
+| Admisión agotada | 429 con `Retry-After`; no hay ingesta. |
+| Proyecto inexistente o de otro dueño | 404; no hay ingesta. |
+| Otra mutación del proyecto en curso | 409 del bloqueo de mutación. |
+| Sin conexión de almacenamiento (servidor) | 503 antes de validar y de escribir. |
+| ZIP inválido o que necesita aclaración | 400 o 409 estructurado; los datos publicados y su estado de ingesta se conservan. |
+| Fallo de extracción o de CRC | 400; los datos publicados y su estado se conservan. |
+| Fallo del contrato de ubicación | 422 estructurado; sin publicación. |
+| Todos los CSV seleccionados fallan | 500; se compensan los objetos nuevos y la generación anterior queda intacta. |
+| Cancelación observada | 409; se compensa, y el intento queda registrado como cancelado. |
+| Fallo del almacén o de la base antes de publicar | Se compensa; un proyecto que ya estaba `READY` lo sigue estando con su generación anterior. |
+| Fallo de limpieza de la raíz o de la caché después de publicar | Queda en el diario de limpieza para el barrido siguiente; `READY` y la generación nueva permanecen. |
+| Tiempo límite del navegador, respuesta perdida, muerte del servidor | El recibo durable del intento dice qué pasó; la recuperación periódica cierra lo que quedó abierto. |
 
-Generic `ValueError` is mapped by the route to 404 access denied, even if it originates elsewhere in processing. Generic exceptions include raw exception text in the 500 response and ingestion error. Typed domain error boundaries are incomplete.
+El mensaje que llega al cliente es el del error de dominio para los casos esperados (validación,
+aclaración, extracción, ubicación, CSV, identidad de participante, cancelación) y un texto genérico
+para cualquier otro, de modo que una excepción inesperada no expone su texto crudo.
 
-There is no durable per-project exclusion between replacement, cancellation, finalization, and project deletion. `DeleteProjectUseCase` deletes the published Drive root before deleting the project row and does not acquire an ingestion lease. A database failure after the external delete can leave references to missing storage. The ZIP-only DELETE route hard-deletes the ZIP row without deleting its Drive object and is subject to the same source-ZIP foreign-key issue.
+El bloqueo de mutación por proyecto (`pg_try_advisory_xact_lock` en una transacción propia) excluye
+entre sí las escrituras de subida, borrado, finalización, metadatos, participantes, escenarios y AOI.
+Vive en su propia conexión, así que un commit del repositorio no lo libera a medio camino, funciona a
+través de un proxy que agrupa transacciones y se libera si el worker se desconecta. La salud del
+bloqueo se comprueba en los puntos de control de la subida, y la publicación compite además por la
+fila del intento.
 
-## 4. Configuration and resource envelope
+## 5. Recuperación y operación
 
-These are checked-in defaults, not observed production values.
+La API arranca un bucle de recuperación con 60 segundos entre barridos
+(`upload_recovery_loop`, en el ciclo de vida de `main.py`). Cada barrido considera hasta 32 proyectos
+con intentos pendientes, hasta 100 intentos pendientes por proyecto y hasta 32 registros de limpieza.
+Un proyecto con el bloqueo tomado se omite. Una limpieza que falla actualiza su marca de tiempo, para
+que un objeto que falla siempre no monopolice los lotes siguientes. La recuperación necesita la base de
+datos y, en servidor, las credenciales configuradas; si falla, los registros durables esperan al
+barrido siguiente.
 
-| Setting/boundary | Default | What it controls |
+También hay una ejecución única desde el backend, con su `PYTHONPATH=src` y su entorno normales:
+
+```console
+python -m neurodatics.modules.projects.application.use_cases.recover_uploads
+```
+
+**Despliegue.** La migración **022** crea `upload_attempts` y `drive_cleanup_tasks`; no reescribe datos
+de proyecto. El arranque en Docker ya ejecuta `alembic upgrade head`, igual que el lanzador de la
+edición de estudiantes. Backend y frontend se despliegan juntos para tener la cancelación con UUID: un
+cliente viejo puede omitirlo, pero solo uno actualizado distingue su propio intento de otros intentos
+históricos.
+
+La exclusión de mutaciones reserva una conexión y una transacción adicionales por escritura activa de
+proyecto. El dimensionamiento de capacidad tiene que incluirlas junto con las sesiones normales de
+solicitud. El tiempo de vida de un bloqueo de transacción está documentado en
+[Explicit Locking](https://www.postgresql.org/docs/16/explicit-locking.html) de PostgreSQL. El diseño
+del transporte sigue el
+[requisito de seguridad entre hilos](https://googleapis.github.io/google-api-python-client/docs/thread_safety.html)
+de la SDK, y los identificadores reservados y la subida reanudable siguen la
+[guía de subidas](https://developers.google.com/workspace/drive/api/guides/manage-uploads) de Google.
+
+El historial de intentos completados no tiene política de retención automática: conviene vigilar el
+crecimiento de la tabla y los fallos de limpieza como parte de la operación normal.
+
+## 6. Configuración y envolvente de recursos
+
+Valores por defecto del repositorio (`backend/src/neurodatics/config/settings.py`, `.env.example`,
+`docker-compose.yml`), no valores observados en producción.
+
+| Ajuste o frontera | Por defecto | Qué controla |
 | --- | --- | --- |
-| Browser aggregate file limit | 500 MiB | Before ZIP overhead; hard-coded. |
-| Next.js proxy body setting | `550mb` | Configured proxy body handling. |
-| XHR/proxy timeout | 30 minutes | Request lifetime, not durable job lifetime. |
-| `PROJECT_ZIP_MAX_SIZE_MB` | 500 | Application ZIP file size. |
-| `PROJECT_ZIP_MAX_UNCOMPRESSED_MB` | 2000 | Declared archive expansion and selected extraction budget. |
-| `PROJECT_ZIP_MAX_ENTRY_UNCOMPRESSED_MB` | 600 | Per-entry expansion budget. |
-| `PROJECT_ZIP_MAX_ENTRIES` | 20,000 | Archive entry-count guard. |
-| `PROJECT_ZIP_MAX_COMPRESSION_RATIO` | 100 | Compression-ratio guard. |
-| `UPLOAD_MAX_CONCURRENT_PER_USER` / `GLOBAL` | 1 / 4 | Per-process ingestion admission. |
-| `UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS` | 5 | Gap between admitted starts. |
-| `INGESTION_BLOCK_WORKERS` | 0 (auto) | Worker processes per CSV: half the usable CPUs, within each concurrent ingestion's memory share. |
-| `INGESTION_SAVE_ORIGINAL_ZIP` | true | Store exact received archive in Drive. |
-| `GDRIVE_HTTP_TIMEOUT_SECONDS` / `GDRIVE_REQUEST_RETRIES` | 300 / 5 | Drive transport timeout/retries. |
-| Backend Docker memory limit/reservation | 2 GiB / 512 MiB | Container memory ceiling/reservation. |
-| Parquet cache TTL | 4 hours | Local Parquet freshness/retention behavior. |
-| Redis analytics TTL | 900 seconds | Result-cache retention. |
-| Prior Parquet generations retained / removal budget | 1 / 32 | Bounded post-ingestion reclamation. |
-| Redis stale-generation deletion budget | 5,000 | Bounded invalidation work. |
-| Media cache size/age/removal defaults | 2 GiB / 72 hours / 500 | Janitor thresholds and per-sweep limit. |
+| Límite agregado en el navegador | 500 MiB | Antes del sobrecosto del ZIP; está en el código. |
+| Cuerpo del proxy de Next.js | `550mb` | Manejo del cuerpo en el proxy. |
+| Tiempo límite de XHR y del proxy | 30 minutos | Vida de la solicitud, no de un trabajo durable. |
+| `PROJECT_ZIP_MAX_SIZE_MB` | 500 | Tamaño del archivo ZIP. |
+| `PROJECT_ZIP_MAX_UNCOMPRESSED_MB` | 2000 | Expansión declarada y presupuesto de extracción. |
+| `PROJECT_ZIP_MAX_ENTRY_UNCOMPRESSED_MB` | 600 | Presupuesto de expansión por entrada. |
+| `PROJECT_ZIP_MAX_ENTRIES` | 20 000 | Guarda sobre el número de entradas. |
+| `PROJECT_ZIP_MAX_COMPRESSION_RATIO` | 100 | Guarda sobre la razón de compresión. |
+| Campo de formulario / encabezados de parte / archivos / campos | 1 MiB / 16 KiB / 1 / 20 | Límites del parseo acotado. |
+| `UPLOAD_MAX_CONCURRENT_PER_USER` / `_GLOBAL` | 1 / 4 | Admisión de ingesta, por proceso. |
+| `UPLOAD_MIN_SECONDS_BETWEEN_UPLOADS` | 5 | Separación entre arranques admitidos. |
+| `INGESTION_BLOCK_WORKERS` | 0 (automático) | Procesos por CSV: mitad de las CPU utilizables, dentro de la parte de memoria de cada ingesta concurrente. |
+| `INGESTION_SAVE_ORIGINAL_ZIP` | `false` | Guardar el archivo exacto recibido. |
+| `GDRIVE_UPLOAD_CONCURRENCY` | 4 | Subidas simultáneas por ingesta; acota también las conexiones abiertas. |
+| `GDRIVE_HTTP_TIMEOUT_SECONDS` / `GDRIVE_REQUEST_RETRIES` | 300 / 5 | Tiempo límite y reintentos del transporte. |
+| `BACKEND_MEM_LIMIT` / `BACKEND_MEM_RESERVATION` | 2 GiB / 512 MiB | Techo y reserva de memoria del contenedor. |
+| `PARQUET_CACHE_TTL_HOURS` | 4 | Frescura de la caché Parquet en disco. |
+| `ANALYTICS_REDIS_TTL_SECONDS` | 900 | Retención de la caché de resultados. |
+| `PARQUET_CACHE_KEEP_PREVIOUS_GENERATIONS` / `_PRUNE_MAX_REMOVALS` | 1 / 32 | Recuperación acotada tras la ingesta. |
+| `ANALYTICS_REDIS_STALE_GENERATION_MAX_DELETIONS` | 5000 | Trabajo acotado de invalidación. |
+| `MEDIA_CACHE_MAX_BYTES` / `_MAX_AGE_HOURS` / `_PRUNE_MAX_REMOVALS` | 2 GiB / 72 h / 500 | Umbrales del conserje de medios y tope por pasada. |
+| Barrido de recuperación | 60 s / 32 proyectos / 100 intentos / 32 limpiezas | Cadencia y tope de la recuperación. |
 
-For capacity planning, distinguish received ZIP bytes, framework spool bytes, extracted bytes, generated Parquet bytes, browser ZIP construction, parser DataFrames/arrays, and persistent caches. Four admitted large CSV ingestions can exceed practical memory/disk capacity even if every ZIP passes the archive limits. The 2 GiB container cap turns exhaustion into a failed container; it does not ensure graceful rejection or recovery.
+Para dimensionar capacidad conviene distinguir los bytes recibidos del ZIP, los bytes extraídos, los
+Parquet generados, la construcción del ZIP en el navegador, los DataFrames del parser y las cachés
+persistentes. Los límites del archivo no son reservas de memoria ni de disco: cuatro ingestas grandes
+admitidas a la vez pueden superar la capacidad práctica aunque cada ZIP pase todos los límites. El
+techo del contenedor convierte el agotamiento en un contenedor caído; no garantiza un rechazo
+elegante. El límite global de cuatro es por proceso de API, igual que el registro de progreso y la
+admisión, que son estructuras de módulo: correctos para un proceso de uvicorn, insuficientes en cuanto
+se escale horizontalmente.
 
-## 5. Findings and confidence
+## 7. Límites conocidos
 
-Priority **P0** means protect existing data or analytical identity first; **P1** means repair lifecycle/reliability boundaries next; **P2** means improve capacity, usability, or operations after the correctness contract is established. Reproduced findings used synthetic data/mocks, not production projects.
+- La subida sigue usando una solicitud HTTP larga, y el empaquetado en el navegador y el parseo del
+  CSV materializan datos considerables.
+- Una terminación abrupta del proceso puede dejar directorios temporales de la aplicación. La
+  recuperación durable cubre la publicación y la limpieza del almacén, no un recolector completo del
+  sistema de archivos.
+- La retención del ZIP original guarda el archivo exacto, incluidas las entradas excluidas. Con la
+  retención apagada, el CSV crudo no tiene una copia fuente independiente, lo que debilita la
+  reproducibilidad.
+- La clasificación de medios es por extensión y MIME declarado, con un respaldo permisivo para
+  dimensiones desconocidas. No es un análisis de seguridad del contenido.
+- Las credenciales de Drive son una integración de todo el sistema, con un token de refresco guardado
+  en el servidor y un alcance amplio. El router de autorización está autenticado y el callback usa un
+  estado firmado y con vencimiento, pero no hay distinción de rol entre un usuario autenticado
+  cualquiera y quien administra la integración. En la edición de estudiantes esto no aplica: no hay
+  credenciales ni red.
 
-| ID | Priority | Finding and evidence | Consequence |
-| --- | --- | --- | --- |
-| F1 | P0 | Create wizard deletes a project on broad step-1 failure, including success followed by failed detail GET. Real React hook with mocked API reproduced `upload → DELETE draft-a`. `useCreateProjectWizard.ts:523, 620`. | A recoverable UI/network error can remove a committed ingestion or resumed draft. |
-| F2 | P0 | ZIP parent purge leaves referencing soft-deleted children. Model/migration and repository confirm order; equivalent SQLite FK probe fails. PostgreSQL deployment untested. | Replacement of a previously saved ZIP can fail at publication; ZIP-only delete can fail too. |
-| F3 | P0 | `A B` and `A_B` both write `A_B.parquet`; temp-data probe read the second scenario from both paths. `csv_processing_service.py:916, 922`; upload dedupe at 1081. | Silent scenario artifact overwrite and discarded output. |
-| F4 | P0 | Generic numeric inference converts scenario labels `001` and `1` into one numeric identity; synthetic parser probe reproduced one partition. `csv_processing_service.py:515, 644`. | Silent merge of distinct experimental conditions. |
-| F5 | P1 | Project-keyed cancellation is reset by `start()` and retained by `fail()`; direct registry probe confirms both. Browser polls before starting request. | Lost cancel, poisoned retry, stale completed/failed progress. |
-| F6 | P1 | Shared global Drive service/HTTP transport used across `to_thread` calls. Source plus Google's thread-safety contract. | Concurrent users can trigger transport races; increasing worker/thread concurrency is unsafe as-is. |
-| F7 | P1 | Rate/size gates occur after framework multipart parsing; source verified in installed FastAPI/Starlette. | Rejected or unauthenticated requests can still consume receive/spooling resources. |
-| F8 | P1 | Duplicate ZIP members pass inventory and string-based extraction reads the last matching member. Synthetic probe: three manifest entries, two extracted-map keys. | Manifest and actual bytes disagree; ambiguous artifacts can be stored twice. |
-| F9 | P1 | Selecting one Acquisition tree does not filter previously collected recordings from other trees. Synthetic two-tree probe confirmed combined defaults. `zip_validation_service.py:353, 686`. | Participant/scenario defaults can come from excluded recordings. |
-| F10 | P1 | Create/edit polling intervals are not reliably cleared on rejected upload paths. Real hook probe retained one interval after network error. | Background polling and stale UI state survive failure/cancel. |
-| F11 | P1 | Edit lacks create's full selection handling, ignores upload detected metadata, and backend replacement clears scenarios/AOIs but leaves participant/sensor rows. | Replacement can lose annotations or leave identities inconsistent with new data. |
-| F12 | P1 | Extraction errors become FAILED despite occurring before PROCESSING; generic error mapping is overbroad. | Previous valid data can be accompanied by misleading project/error state. |
-| F13 | P1 | No durable attempt, lease, artifact journal, reconciliation, or restart recovery. No coordinated delete/finalize exclusion. | Unknown outcomes, orphan folders, concurrent lifecycle races, stuck PROCESSING. |
-| F14 | P2 | Whole ZIP packaging, full CSV decoding/DataFrames, synchronous extraction/probing, long open request. | Browser/server resource pressure and responsiveness degradation. |
-| F15 | P2 | Original ZIP retention includes excluded entries; raw CSV otherwise has no independent retained source. | Current selection and retention semantics can surprise users and weaken reproducibility when retention is off. |
-| F16 | P2 | Extension-based media trust, permissive unknown-dimension fallback, whole-image readback, raw exceptions, system-wide OAuth credentials. | Incomplete content validation, diagnostics exposure, and operational/security boundaries needing explicit treatment. |
+## 8. Pruebas
 
-F2 is supported by the declared schema and SQL ordering, not by a live PostgreSQL reproduction. F6 is a documented contract violation risk, not an observed cross-user data leak. F13–F16 combine source-confirmed limitations with their potential consequences; load/crash/security impact has not been measured.
+La puerta del repositorio es `./verify.ps1`: pruebas del backend y sus snapshots protegidos, Ruff,
+Vulture, declaración de dependencias, arranque de la aplicación, contratos de importación, TypeScript,
+pruebas unitarias del frontend, regresiones de hooks y componentes en Chromium y ESLint.
 
-### Existing safeguards to preserve
-
-Authentication/ownership on project operations, structure clarification, bounded selected extraction and CRC checking, Drive query escaping, streaming disk-backed Drive upload, participant-code assertions, failure when every CSV fails, atomic generation publication, post-commit old-root deletion, and bounded cache reclamation already exist. These should not be presented as missing features or removed during redesign.
-
-## 6. Verification record and limits
-
-The primary focused backend run passed **118 tests** in 16.81 seconds, with dependency deprecation warnings:
+Las pruebas específicas del pipeline de subida cubren el rechazo temprano en la recepción, los
+miembros exactos del ZIP, la identidad de escenario, la cancelación antes de recibir, la consulta
+rancia, la preservación del borrador, el cercado por recibo, un commit de resultado desconocido, el
+orden del borrado y el rollback de metadatos y claves ajenas. Algunos ejemplos:
 
 ```powershell
 Set-Location backend
-../.venv/Scripts/python.exe -m pytest tests/unit/test_upload_pipeline_hardening.py tests/unit/test_zip_validation_service.py tests/unit/test_upload_csv_processing_metadata.py tests/unit/test_upload_cache_generation.py tests/unit/test_upload_stimulus_placement.py tests/unit/test_parquet_participant_identity.py tests/unit/test_csv_processing_service.py tests/unit/test_fixation_v2_pipeline.py tests/unit/test_ingestion_generation_repository.py tests/unit/test_gdrive_client.py -q
+..\.venv\Scripts\python.exe -m pytest tests/unit/test_upload_pipeline_hardening.py tests/unit/test_zip_validation_service.py tests/unit/test_upload_csv_processing_metadata.py tests/unit/test_upload_cache_generation.py tests/unit/test_upload_stimulus_placement.py tests/unit/test_parquet_participant_identity.py tests/unit/test_csv_processing_service.py tests/unit/test_fixation_v2_pipeline.py tests/unit/test_ingestion_generation_repository.py tests/unit/test_gdrive_client.py -q
 ```
 
-An overlapping data-boundary run also passed 112 tests, including ingestion-unit and media-probe tests. These are overlapping suites, not 230 distinct tests. Existing tests predominantly use synthetic data and mocked repositories/Drive calls; they do not prove actual replacement transactions or remote recovery.
+Qué no prueban: las pruebas de SQL de reemplazo, metadatos y diario ejecutan SQL real contra SQLite con
+claves ajenas activadas, no contra el PostgreSQL migrado. Las pruebas de reintento de Drive ejercitan
+el `HttpRequest` reanudable real de la SDK con transportes controlados, no una cuenta real. No
+sustituyen una prueba de integración con PostgreSQL y Drive en vivo: la concurrencia real de bloqueos
+asesores, la aplicación de migraciones en vivo, la recuperación tras matar un proceso y el uso de
+recursos en un pico realista siguen sin ejercitarse.
 
-Additional isolated probes established the cancellation flag transitions, equivalent self-referencing foreign-key failure, scenario filename overwrite, numeric-label collapse, duplicate-member mismatch, Acquisition selection leakage, and real-hook cleanup failures. No production database or Drive objects were changed. The existing golden corpus is explicitly synthetic; no goldens were regenerated.
-
-Not verified here: live PostgreSQL schema/index inventory, a real Drive round trip, deployed proxy limits, realistic peak memory/disk/load, process-kill recovery, and complete browser-to-Docker upload. Those gaps are explicit acceptance work in the proposed plan.
-
-This replaces the previous current-flow narrative. In particular, OAuth setup precedes ZIP validation; UploadFile copying is not pre-parser network enforcement; extraction failures can mutate ingestion status; SHA-256 is a separate read; old Drive deletion follows commit; all-CSV failure and generation-aware cache freshness are already fixed. Historical rationale remains available in Git (`git show 7c21bc8:docs/cleanup/LEDGER.md`) and the [change log](CHANGELOG.md).
+Antes de aceptar un despliegue conviene usar un PostgreSQL y un proyecto de Drive aislados para
+verificar una primera subida, un reemplazo con los mismos datos, un reemplazo con participantes o
+escenarios distintos, el rechazo de una mutación simultánea, la cancelación durante el CSV y durante
+la subida, la búsqueda por UUID de una respuesta perdida, y la terminación del worker antes y después
+de publicar. Confirmar que los datos viejos siguen legibles y que las raíces diferidas se recuperan
+tras un barrido. No usar experimentos reales como material de prueba destructivo.
