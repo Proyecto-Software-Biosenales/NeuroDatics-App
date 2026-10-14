@@ -1,14 +1,35 @@
 # Manual de Usuario de NeuroDatics
 
-**Público:** investigadores, docentes y estudiantes
+> **Universidad Nacional de Colombia**
+>
+> **Laboratorio de Finanzas y Toma de Decisiones**
+
+## Ficha de control del documento
+
+| Campo | Información |
+| --- | --- |
+| Nombre | Manual de Usuario de NeuroDatics |
+| Versión | 1.0 |
+| Fecha | 14 de octubre de 2026 |
+| Autores/responsables | Equipo de desarrollo de NeuroDatics |
+| Público objetivo | Investigadores, docentes y estudiantes |
+| Fuente principal | Código actual de frontend, backend y documentación operativa del proyecto |
+
+### Historial de versiones
+
+| Versión | Fecha | Descripción | Responsable |
+| --- | --- | --- | --- |
+| 1.0 | 14 de octubre de 2026 | Edición inicial y reorganización del manual de usuario | Equipo de desarrollo de NeuroDatics |
+
 **Idioma:** español
+
 **Alcance:** funcionalidades accesibles en la versión actual del proyecto
 
 > Este manual se elaboró a partir de la interfaz y los flujos implementados actualmente en NeuroDatics. Las pantallas, opciones y mensajes pueden variar ligeramente según la edición instalada y los sensores disponibles en cada proyecto.
 
 ## 1. Introducción
 
-NeuroDatics es una aplicación para organizar experimentos de neuromarketing y analizar datos de bioseñales. Permite cargar experimentos, asociar participantes y sensores, procesar archivos de adquisición y consultar visualizaciones de Eye Tracker, EEG y GSR.
+NeuroDatics es una aplicación para organizar experimentos de neuromarketing y analizar datos de bioseñales. Permite cargar experimentos, asociar participantes y sensores, procesar archivos de adquisición y consultar visualizaciones de Eye Tracker (rastreo ocular), EEG y GSR o sensor galvánico. El **Dashboard** es el panel de análisis donde se seleccionan el proyecto, el sensor, el participante y el escenario.
 
 La aplicación dispone de dos formas de uso:
 
@@ -17,7 +38,26 @@ La aplicación dispone de dos formas de uso:
 
 NeuroDatics no sustituye la interpretación científica del investigador. Sus gráficas y métricas deben analizarse junto con el diseño experimental, la calidad de los datos y la metodología utilizada.
 
-## 2. Objetivo del manual
+## 2. Flujo general de uso
+
+El uso normal de NeuroDatics sigue este recorrido:
+
+`Acceder → Crear proyecto → Cargar experimento → Configurar sensores/participantes/AOIs → Procesar → Analizar en Dashboard → Comparar → Generar reporte`
+
+1. **Acceder:** abrir la edición servidor o local y entrar a la aplicación.
+2. **Crear proyecto:** registrar el nombre, la descripción y, si corresponde, la carpeta del experimento.
+3. **Cargar experimento:** seleccionar la carpeta, resolver su estructura y enviarla al almacenamiento configurado.
+4. **Configurar sensores, participantes y AOIs:** confirmar EEG, GSR y/o Eye Tracker, completar participantes y delimitar AOIs en los escenarios de imagen.
+5. **Procesar:** esperar la validación, el procesamiento de CSV y la publicación de los datos.
+6. **Analizar en Dashboard:** seleccionar proyecto, sensor, participante y escenario para consultar las visualizaciones.
+7. **Comparar:** revisar varios participantes o varias señales con los mismos filtros.
+8. **Generar reporte:** elegir alcance y dispositivo y descargar el PDF o ZIP correspondiente.
+
+Las instrucciones detalladas de cada etapa se encuentran en las secciones 9 a 21. Para un primer recorrido, consulte también la sección 6, **Inicio rápido**.
+
+`[CAPTURA: 01 — diagrama o franja horizontal con las ocho etapas del flujo general de uso]`
+
+## 3. Objetivo del manual
 
 Este manual explica cómo:
 
@@ -32,37 +72,29 @@ Este manual explica cómo:
 
 Las instrucciones están escritas para usuarios finales y no requieren conocimientos de programación.
 
-## 3. Alcance de la versión
+## 4. Alcance de la versión
 
 La versión documentada permite trabajar con los siguientes sensores:
 
 | Sensor | Funcionalidades principales |
 | --- | --- |
-| Eye Tracker | Dilatación pupilar, gaze point, distancia al dispositivo, fijaciones, mapa de calor, mapa de recorridos y AOIs |
-| EEG | Señal por canal, densidad espectral de potencia, espectrograma, topografía y avisos de calidad |
-| GSR | Señal galvánica cruda y suavizada, estadísticas y selección de puntos |
+| Eye Tracker (rastreo ocular) | Dilatación pupilar, punto de mirada (gaze point), distancia al dispositivo, fijaciones, mapa de calor, mapa de recorridos (scanpath) y AOI (Área de interés) |
+| EEG | Señal por canal, densidad espectral de potencia (PSD), espectrograma, topografía y avisos de calidad |
+| GSR o sensor galvánico | Señal cruda y suavizada, estadísticas y selección de puntos |
 
 La disponibilidad de una vista depende de que el proyecto contenga datos compatibles y de que el sensor esté registrado o detectado.
 
 La edición servidor requiere conexión con Google para iniciar sesión y, para guardar archivos de experimentos, una conexión autorizada con Google Drive. La edición local está diseñada para trabajar sin esos servicios.
 
-## 4. Requisitos
+## 5. Requisitos
 
-### 4.1. Requisitos para la edición servidor
+### 5.1. Requisitos para la edición servidor
 
-En el paquete de distribución para Windows se requiere:
+Para utilizar la edición servidor se necesita un equipo compatible, Docker Desktop preparado por el paquete de distribución, conexión a Internet para el primer acceso y una cuenta autorizada de Google. Los requisitos técnicos completos y el procedimiento de puesta en marcha están en el [Anexo A: Instalación y puesta en marcha](#anexo-a-instalación-y-puesta-en-marcha).
 
-- Windows x64 en procesador Intel o AMD.
-- Windows 11 23H2 o posterior, o Windows 10 22H2 con soporte vigente.
-- Windows con virtualización habilitada en BIOS/UEFI.
-- Mínimo 8 GB de RAM; se recomiendan 16 GB.
-- Al menos 15 GB libres para la instalación, además del espacio de los experimentos.
-- Docker Desktop.
-- Conexión a Internet para el primer uso, Google y Google Drive.
+El paquete distribuido prepara o comprueba WSL y Docker Desktop. El usuario final no necesita instalar Node.js, Python, PostgreSQL ni Redis por separado.
 
-La instalación entregada para Windows prepara o comprueba WSL y Docker Desktop. No es necesario instalar Node.js, Python, PostgreSQL ni Redis para utilizar el paquete distribuido.
-
-### 4.2. Requisitos para la edición local o de estudiantes
+### 5.2. Requisitos para la edición local o de estudiantes
 
 La edición local se entrega como una aplicación para Windows que incluye sus componentes de ejecución. Requiere:
 
@@ -72,7 +104,7 @@ La edición local se entrega como una aplicación para Windows que incluye sus c
 
 No requiere inicio de sesión con Google ni conexión a Internet para realizar el análisis local.
 
-### 4.3. Recomendaciones para los datos
+### 5.3. Recomendaciones para los datos
 
 - Mantenga una copia de respaldo de las carpetas originales.
 - Verifique que los CSV correspondan a las grabaciones que desea analizar.
@@ -80,11 +112,39 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - Evite cargar carpetas con archivos innecesarios o duplicados.
 - Para cargas grandes, cierre aplicaciones que consuman mucha memoria.
 
-`[CAPTURA: pantalla o ficha con los requisitos de la edición servidor y la edición local]`
+`[CAPTURA: 02 — ficha con los requisitos de la edición servidor y la edición local]`
 
-## 5. Acceso a NeuroDatics
+## 6. Inicio rápido
 
-### 5.1. Iniciar la edición servidor
+**Propósito:** completar el primer análisis con el recorrido mínimo, sin sustituir las explicaciones de las secciones técnicas.
+
+**Ruta para acceder:** iniciar NeuroDatics y abrir `/proyectos`.
+
+**Pasos:**
+
+1. Inicie NeuroDatics. En la edición servidor, consulte el resumen de acceso de la sección 7 y, si es necesario, el [Anexo A](#anexo-a-instalación-y-puesta-en-marcha). En la edición local, abra el lanzador o la dirección local indicada.
+2. Inicie sesión con Google si utiliza la edición servidor.
+3. Abra **Proyectos** y pulse **Crear proyecto**.
+4. Introduzca el nombre y la descripción del proyecto.
+5. Seleccione la carpeta del experimento. La carpeta no debe superar 500 MB.
+6. Resuelva las preguntas sobre la estructura detectada y confirme qué archivos corresponden a CSV, imágenes, vídeos o adquisición.
+7. Confirme los sensores disponibles: EEG, GSR y/o Eye Tracker (rastreo ocular).
+8. Complete la información de los participantes y revise los escenarios y estímulos detectados.
+9. Cree AOI (Área de interés) cuando el análisis visual lo requiera; consulte la sección 18 para su definición y consulta.
+10. Guarde el proyecto y espere a que el procesamiento alcance el estado `READY`.
+11. Abra **Dashboard** y seleccione proyecto, sensor, participante y escenario.
+12. Abra una visualización, por ejemplo una señal temporal, un mapa de calor o una vista de EEG.
+13. Si no aparecen datos, consulte la sección 23, **Solución de problemas**, antes de repetir la carga.
+
+**Resultado esperado:** el primer proyecto queda procesado y puede explorarse desde el Dashboard con los filtros disponibles.
+
+**Posibles errores:** una carpeta ambigua, incompleta o mayor de 500 MB; participantes sin todos los campos requeridos; sensores sin columnas compatibles; o un procesamiento que termine en `FAILED`. Consulte las secciones 11, 12, 22 y 23 según el caso.
+
+`[CAPTURA: 03 — recorrido mínimo desde Proyectos hasta una visualización del Dashboard]`
+
+## 7. Acceso a NeuroDatics
+
+### 7.1. Iniciar la edición servidor
 
 **Propósito:** abrir la aplicación disponible en el equipo o red institucional.
 
@@ -92,23 +152,20 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 
 **Pasos:**
 
-1. Inicie Docker Desktop.
-2. Abra el grupo de contenedores `neurodatics`.
-3. Pulse **Iniciar** en el grupo completo.
-4. Espere a que los servicios aparezcan activos.
-5. Abra `http://localhost:3000` o el acceso directo creado por el instalador.
+1. Si la instalación aún no está preparada, siga el [Anexo A: Instalación y puesta en marcha](#anexo-a-instalación-y-puesta-en-marcha).
+2. Abra `http://localhost:3000` o el acceso directo creado por el instalador.
+3. Continúe con el inicio de sesión descrito en la sección 7.2.
 
 **Resultado esperado:** se muestra la página de inicio de NeuroDatics.
 
 **Posibles errores:**
 
-- Si Docker Desktop no está abierto, la aplicación puede no responder.
-- Si algún servicio no está saludable, espere unos instantes y vuelva a cargar la página.
-- Si el puerto está ocupado, solicite al responsable de la instalación que revise la configuración.
+- Si la página no responde, consulte la sección 23.1 y el Anexo A.
+- Si el puerto está ocupado o un servicio no está disponible, solicite al responsable de la instalación que revise la configuración técnica.
 
-`[CAPTURA: página de inicio de NeuroDatics en la edición servidor]`
+`[CAPTURA: 04 — página de inicio de NeuroDatics en la edición servidor]`
 
-### 5.2. Iniciar sesión con Google
+### 7.2. Iniciar sesión con Google
 
 **Propósito:** acceder a los proyectos protegidos de la edición servidor.
 
@@ -130,9 +187,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - Si la autorización falla, compruebe que la cuenta esté permitida en la configuración de la instalación.
 - Si se cierra la sesión, vuelva a iniciar sesión con Google.
 
-`[CAPTURA: pantalla de acceso con el botón Continuar con Google]`
+`[CAPTURA: 05 — pantalla de acceso con el botón Continuar con Google]`
 
-### 5.3. Acceder a la edición local
+### 7.3. Acceder a la edición local
 
 **Propósito:** abrir la aplicación local sin autenticación externa.
 
@@ -151,11 +208,11 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - Si aparece que NeuroDatics no está disponible, compruebe que la ventana o proceso del lanzador siga abierto.
 - Pulse **Reintentar** después de volver a iniciar el lanzador.
 
-`[CAPTURA: pantalla de disponibilidad o acceso de la edición local]`
+`[CAPTURA: 06 — pantalla de disponibilidad o acceso de la edición local]`
 
-## 6. Interfaz general
+## 8. Interfaz general
 
-### 6.1. Barra de navegación
+### 8.1. Barra de navegación
 
 **Propósito:** desplazarse entre las áreas principales.
 
@@ -176,9 +233,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - Si una sección protegida redirige a `/login`, la sesión no está disponible.
 - Si la carga tarda, espere a que desaparezca el indicador de carga.
 
-`[CAPTURA: barra de navegación con Inicio, Proyectos, Dashboard, Reportes y Configuración]`
+`[CAPTURA: 07 — barra de navegación con Inicio, Proyectos, Dashboard, Reportes y Configuración]`
 
-### 6.2. Cambiar el tema visual
+### 8.2. Cambiar el tema visual
 
 **Propósito:** cambiar entre tema claro y oscuro.
 
@@ -193,9 +250,44 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 
 **Posibles errores:** no hay errores funcionales conocidos; el cambio puede tardar un instante en reflejarse durante la carga inicial.
 
-## 7. Gestión de proyectos
+### 8.3. Pre-experimentos y cuestionarios
 
-### 7.1. Consultar la lista de proyectos
+**Propósito:** preparar un proyecto antes de disponer de la carpeta de adquisición, organizar participantes y pantalla, y aplicar cuestionarios antes o después del experimento.
+
+**Ruta para acceder:** **Proyectos** > **Crear nuevo proyecto** > **Pre-experimento**, o `/configuracion` > seleccionar proyecto > **Pre-experimento y cuestionarios**.
+
+**Pasos:**
+
+1. En **Crear nuevo proyecto**, seleccione **Pre-experimento**. Solo el nombre del proyecto es obligatorio; puede agregar la información restante durante la creación o después.
+2. Abra **Configuración** y seleccione el proyecto.
+3. Registre participantes. Cada participante debe tener un código estable y un nombre; documento, género, edad y notas son opcionales.
+4. Registre la información de la pantalla y los datos relevantes del experimento.
+5. Habilite el cuestionario **Antes del experimento**, **Después del experimento** o ambos.
+6. Agregue y ordene preguntas abiertas, de selección múltiple —con una o varias opciones— o de verdadero/falso. Marque como obligatorias las preguntas que deban responderse.
+7. Guarde la configuración antes de aplicar un cuestionario.
+8. Seleccione un participante y el momento del cuestionario, abra **Responder cuestionario** y registre las respuestas en la sesión del investigador.
+9. Consulte las respuestas desde la misma configuración. Cada envío conserva la identidad, las preguntas, las opciones y las respuestas vigentes en el momento del envío.
+10. Cuando disponga de la carpeta, use **Agregar carpeta** en el proyecto para continuar con el asistente de carga de la sección 11.
+11. Si necesita conservar la preparación y sus respuestas fuera de la interfaz, use la descarga JSON disponible en **Configuración**.
+
+**Resultado esperado:** el proyecto queda preparado con participantes, información de pantalla y cuestionarios; las respuestas guardadas permanecen disponibles aunque después se edite la configuración.
+
+La preparación se guarda en la base de datos del proyecto, no en el almacenamiento del navegador ni en Google Drive; por eso puede configurarse sin carpeta de experimento ni conexión de Drive. La descarga JSON incluye la configuración, la preparación y el historial con sus copias originales. Solo el propietario autenticado del proyecto puede consultar, modificar, responder o exportar estos datos.
+
+**Posibles errores:**
+
+- El nombre, el código de participante y las preguntas obligatorias deben estar completos.
+- Un cuestionario habilitado debe tener preguntas válidas; las preguntas de selección múltiple necesitan al menos dos opciones con texto.
+- Si otra sesión modificó la configuración, recargue antes de guardar o responder.
+- La primera versión usa la sesión del investigador: no crea cuentas de participantes ni enlaces públicos.
+- Los participantes de preparación se conservan independientemente de los participantes detectados en los archivos y no se enlazan automáticamente.
+- Las respuestas ya guardadas no se sobrescriben; una nueva aplicación produce un nuevo envío. Si elimina el proyecto, también elimina su preparación e historial.
+
+`[CAPTURA: 08 — configuración de pre-experimento con participantes, cuestionarios y acción Responder cuestionario]`
+
+## 9. Gestión de proyectos
+
+### 9.1. Consultar la lista de proyectos
 
 **Propósito:** ver los experimentos disponibles y su estado.
 
@@ -214,9 +306,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - **No se pudieron cargar los proyectos del servidor:** revise que NeuroDatics esté iniciado.
 - Si no hay proyectos, aparece una invitación para crear el primero.
 
-`[CAPTURA: lista de proyectos con tarjetas y estados]`
+`[CAPTURA: 09 — lista de proyectos con tarjetas y estados]`
 
-### 7.2. Filtrar por estado
+### 9.2. Filtrar por estado
 
 **Propósito:** encontrar proyectos por su etapa de trabajo.
 
@@ -232,7 +324,7 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 
 **Posibles errores:** si no hay proyectos en ese estado, aparece **No hay proyectos en este estado**.
 
-### 7.3. Ver la información de un proyecto
+### 9.3. Ver la información de un proyecto
 
 **Propósito:** consultar los metadatos, sensores, participantes y escenarios sin editar.
 
@@ -252,9 +344,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - **No se pudo cargar la información del proyecto:** vuelva a abrir el diálogo o recargue la página.
 - Si una imagen o vídeo no está disponible, se muestra un aviso en la previsualización.
 
-`[CAPTURA: diálogo de información detallada de un proyecto]`
+`[CAPTURA: 10 — diálogo de información detallada de un proyecto]`
 
-### 7.4. Editar un proyecto
+### 9.4. Editar un proyecto
 
 **Propósito:** actualizar la información, sensores, participantes, AOIs o carpeta de un proyecto.
 
@@ -278,7 +370,7 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - **No se pudo guardar la edición del proyecto:** compruebe la conexión y vuelva a intentar.
 - Si no cambió nada, se informa **No hay cambios por guardar**.
 
-### 7.5. Archivar y restaurar un proyecto
+### 9.5. Archivar y restaurar un proyecto
 
 **Propósito:** retirar temporalmente un proyecto de la vista activa sin eliminarlo.
 
@@ -303,7 +395,7 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - **No se pudo archivar el proyecto:** revise la conexión y vuelva a intentarlo.
 - **No se pudo desarchivar el proyecto:** confirme que el proyecto siga disponible.
 
-### 7.6. Eliminar un proyecto
+### 9.6. Eliminar un proyecto
 
 **Propósito:** eliminar un proyecto y sus registros asociados.
 
@@ -325,11 +417,11 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - **No se pudo eliminar el proyecto:** compruebe la conexión o que los archivos no estén siendo procesados.
 - Si la carpeta de almacenamiento no puede confirmarse, el proyecto puede eliminarse aunque el sistema avise que la carpeta no fue confirmada.
 
-`[CAPTURA: diálogo de confirmación de eliminación de un proyecto]`
+`[CAPTURA: 11 — diálogo de confirmación de eliminación de un proyecto]`
 
-## 8. Creación de proyectos
+## 10. Creación de proyectos
 
-### 8.1. Crear un proyecto con carpeta de experimento
+### 10.1. Crear un proyecto con carpeta de experimento
 
 **Propósito:** crear un proyecto completo a partir de una carpeta que contiene los archivos del experimento.
 
@@ -350,9 +442,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - El botón **Siguiente** permanece deshabilitado si el paso actual está incompleto.
 - Si se cierra el asistente después de procesar la carpeta, el borrador puede conservarse para retomarlo.
 
-`[CAPTURA: diálogo Crear nuevo proyecto mostrando el asistente de cuatro pasos]`
+`[CAPTURA: 12 — diálogo Crear nuevo proyecto mostrando el asistente de cuatro pasos]`
 
-### 8.2. Paso 1: datos y carpeta
+### 10.2. Paso 1: datos y carpeta
 
 **Propósito:** registrar el nombre, descripción, calibración opcional y carpeta del experimento.
 
@@ -379,9 +471,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - Si la estructura es ambigua, responda las preguntas mostradas antes de continuar.
 - Si se activa la geometría, todos sus valores deben ser positivos.
 
-`[CAPTURA: Paso 1 con nombre, descripción, geometría física y selector de carpeta]`
+`[CAPTURA: 13 — Paso 1 con nombre, descripción, geometría física y selector de carpeta]`
 
-### 8.3. Ubicar estímulos en la pantalla
+### 10.3. Ubicar estímulos en la pantalla
 
 **Propósito:** indicar cómo se mostraron imágenes o vídeos dentro de la pantalla de adquisición cuando se dispone de esa información.
 
@@ -405,9 +497,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - Los modos que ocupan o recortan toda la pantalla pueden desactivar algunos campos de posición.
 - Si no se conoce la colocación, deje esta información sin activar y documente la limitación del experimento.
 
-`[CAPTURA: editor de colocación de estímulos con la imagen y los controles de pantalla]`
+`[CAPTURA: 14 — editor de colocación de estímulos con la imagen y los controles de pantalla]`
 
-### 8.4. Paso 2: sensores
+### 10.4. Paso 2: sensores
 
 **Propósito:** indicar qué dispositivos se utilizaron en el proyecto.
 
@@ -425,9 +517,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 
 **Posibles errores:** si no selecciona sensores o los archivos no contienen columnas compatibles, algunas vistas no tendrán datos.
 
-`[CAPTURA: Paso 2 con las tres tarjetas de sensores y una etiqueta Auto-detectado]`
+`[CAPTURA: 15 — Paso 2 con las tres tarjetas de sensores y una etiqueta Auto-detectado]`
 
-### 8.5. Paso 3: participantes
+### 10.5. Paso 3: participantes
 
 **Propósito:** completar los datos demográficos que acompañan a los participantes detectados.
 
@@ -448,9 +540,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - La aplicación muestra cuántos participantes requieren sexo y edad.
 - **Completa sexo y edad de todos los participantes antes de guardar:** revise los paneles marcados como **Completar**.
 
-`[CAPTURA: Paso 3 con un participante expandido y sus campos demográficos]`
+`[CAPTURA: 16 — Paso 3 con un participante expandido y sus campos demográficos]`
 
-### 8.6. Paso 4: AOIs
+### 10.6. Paso 4: AOIs
 
 **Propósito:** delimitar las áreas de interés de cada escenario de imagen.
 
@@ -465,16 +557,16 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 5. Repita la operación para los demás escenarios.
 6. Pulse **Guardar proyecto**.
 
-**Resultado esperado:** las AOIs quedan asociadas con cada escenario y pueden utilizarse en el Dashboard.
+**Resultado esperado:** las AOI (Áreas de interés) quedan asociadas con cada escenario y pueden utilizarse en el Dashboard. Para consultar o superponer AOIs durante el análisis, consulte la sección 18.
 
 **Posibles errores:**
 
 - Si no hay escenarios de imagen, aparece **No hay escenarios de imagen disponibles para definir AOIs**.
 - Los escenarios de vídeo no muestran este editor de AOIs en este paso.
 
-`[CAPTURA: editor de AOIs sobre la imagen de un escenario]`
+`[CAPTURA: 17 — editor de AOIs sobre la imagen de un escenario]`
 
-### 8.7. Guardar el proyecto
+### 10.7. Guardar el proyecto
 
 **Propósito:** finalizar la creación después de completar los cuatro pasos.
 
@@ -493,9 +585,9 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - **No hay un proyecto borrador para finalizar:** regrese al Paso 1 y procese la carpeta.
 - **No se pudo guardar el proyecto:** vuelva a comprobar los datos obligatorios y la conexión.
 
-## 9. Carga de experimentos
+## 11. Carga de experimentos
 
-### 9.1. Seleccionar y cargar la carpeta
+### 11.1. Seleccionar y cargar la carpeta
 
 **Propósito:** enviar los archivos del experimento para que NeuroDatics los valide, procese y almacene.
 
@@ -509,7 +601,7 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 4. Confirme la selección cuando la estructura tenga varias alternativas.
 5. Avance por el asistente y guarde el proyecto.
 
-**Resultado esperado:** la carpeta se empaqueta y se inicia la carga al almacenamiento correspondiente.
+**Resultado esperado:** la carpeta se empaqueta y se inicia la carga al almacenamiento correspondiente. Para los límites y el diagnóstico de una carga rechazada, consulte la sección 23.4.
 
 **Posibles errores:**
 
@@ -517,7 +609,7 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 - Una carpeta vacía, demasiado grande o con estructura no resoluble no puede cargarse.
 - Si falta una carpeta de imágenes o vídeos, NeuroDatics puede solicitar una confirmación explícita.
 
-### 9.2. Qué archivos reconoce la aplicación
+### 11.2. Qué archivos reconoce la aplicación
 
 La carga puede detectar y contabilizar:
 
@@ -529,15 +621,15 @@ La carga puede detectar y contabilizar:
 
 La carpeta `Acquisition`, cuando existe, se utiliza para obtener posibles códigos de participantes y nombres de escenarios. Sus datos sirven como referencia para la organización; no reemplazan los archivos de adquisición seleccionados.
 
-### 9.3. Almacenamiento según la edición
+### 11.3. Almacenamiento según la edición
 
 En la edición servidor, el proyecto y sus archivos se sincronizan con Google Drive. En la edición local, los archivos se guardan en el equipo.
 
 La interfaz cambia sus mensajes para indicar **Google Drive** o **este equipo**, según la edición activa.
 
-## 10. Procesamiento de datos
+## 12. Procesamiento de datos
 
-### 10.1. Seguir el procesamiento
+### 12.1. Seguir el procesamiento
 
 **Propósito:** conocer el avance de la transferencia y del procesamiento de CSV.
 
@@ -558,9 +650,9 @@ La interfaz cambia sus mensajes para indicar **Google Drive** o **este equipo**,
 - Si se cancela la carga, el proyecto puede quedar como borrador para retomarlo.
 - Si el procesamiento falla, revise el resumen de errores y vuelva a cargar una carpeta corregida.
 
-`[CAPTURA: tarjeta de progreso con porcentaje, velocidad, tiempo restante y botón Cancelar]`
+`[CAPTURA: 18 — tarjeta de progreso con porcentaje, velocidad, tiempo restante y botón Cancelar]`
 
-### 10.2. Resultado de la ingesta
+### 12.2. Resultado de la ingesta
 
 Al terminar, NeuroDatics muestra un resumen con cantidades de:
 
@@ -574,7 +666,7 @@ Al terminar, NeuroDatics muestra un resumen con cantidades de:
 
 También puede mostrar sensores y participantes detectados, advertencias de procesamiento y un enlace a la carpeta raíz de Google Drive en la edición servidor.
 
-**Resultado esperado:** un procesamiento correcto deja el proyecto preparado para el Dashboard.
+**Resultado esperado:** un procesamiento correcto deja el proyecto preparado para el Dashboard. Antes de analizar, confirme las recomendaciones de la sección 24.
 
 **Posibles errores:**
 
@@ -582,11 +674,11 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **La ingesta no se completó en backend. Verifica estructura y contenido:** corrija la estructura o el contenido de la carpeta y vuelva a procesar.
 - Si un CSV contiene bloques no válidos, la aplicación puede procesar otros bloques y registrar advertencias.
 
-`[CAPTURA: resumen de carpeta procesada con conteos, sensores y participantes detectados]`
+`[CAPTURA: 19 — resumen de carpeta procesada con conteos, sensores y participantes detectados]`
 
-## 11. Dashboard
+## 13. Dashboard
 
-### 11.1. Abrir y seleccionar un proyecto
+### 13.1. Abrir y seleccionar un proyecto
 
 **Propósito:** consultar los análisis disponibles para un proyecto.
 
@@ -607,9 +699,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - Si un sensor no está registrado en el proyecto, no aparece como opción.
 - Un proyecto sin datos puede mostrar vistas vacías o avisos de ausencia de datos.
 
-`[CAPTURA: Dashboard con panel lateral, proyecto expandido y sensores disponibles]`
+`[CAPTURA: 20 — Dashboard con panel lateral, proyecto expandido y sensores disponibles]`
 
-### 11.2. Navegar entre vistas
+### 13.2. Navegar entre vistas
 
 **Propósito:** cambiar entre las visualizaciones disponibles para el sensor activo.
 
@@ -624,9 +716,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 
 **Resultado esperado:** la vista cambia sin salir del Dashboard.
 
-## 12. Eye Tracker
+## 14. Eye Tracker (rastreo ocular)
 
-### 12.1. Dilatación pupilar
+### 14.1. Dilatación pupilar
 
 **Propósito:** observar el diámetro pupilar a lo largo del tiempo y sus estadísticas.
 
@@ -648,9 +740,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **No se pudo cargar la imagen del escenario:** compruebe que el estímulo se haya cargado correctamente.
 - Si hay AOIs, el sistema informa si el punto cae dentro de una de ellas.
 
-`[CAPTURA: vista de dilatación pupilar con serie temporal, estadísticas y estímulo]`
+`[CAPTURA: 21 — vista de dilatación pupilar con serie temporal, estadísticas y estímulo]`
 
-### 12.2. Gaze point
+### 14.2. Punto de mirada (gaze point)
 
 **Propósito:** revisar la posición horizontal y vertical de la mirada.
 
@@ -671,9 +763,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **No hay datos de gaze para los filtros seleccionados:** pruebe otro participante o escenario.
 - **No se pudo cargar la imagen del escenario:** revise la carga del estímulo.
 
-`[CAPTURA: vista Gaze point con coordenadas y punto de mirada sobre el estímulo]`
+`[CAPTURA: 22 — vista Punto de mirada con coordenadas y punto sobre el estímulo]`
 
-### 12.3. Distancia al dispositivo
+### 14.3. Distancia al dispositivo
 
 **Propósito:** consultar la distancia estimada entre los ojos y la pantalla.
 
@@ -694,7 +786,7 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **No hay datos de distancia para los filtros seleccionados:** cambie los filtros o revise si el CSV contiene esa señal.
 - Si no hay AOIs, el control de superposición no está disponible.
 
-### 12.4. Histograma de fijación
+### 14.4. Histograma de fijación
 
 **Propósito:** estudiar la distribución de la duración de las fijaciones.
 
@@ -716,9 +808,11 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **No hay datos de fijación para este escenario:** el CSV no contiene suficientes datos válidos.
 - **Comparación no disponible:** vuelva a procesar los archivos del proyecto para generar las variantes de duración.
 
-`[CAPTURA: histograma de fijaciones con selector de duración mínima]`
+Para elegir y documentar el umbral mínimo de fijación antes de interpretar resultados, consulte la sección 25.
 
-### 12.5. Mapa de calor
+`[CAPTURA: 23 — histograma de fijaciones con selector de duración mínima]`
+
+### 14.5. Mapa de calor
 
 **Propósito:** visualizar la concentración espacial de la atención sobre un estímulo.
 
@@ -740,9 +834,11 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **Selecciona un participante para ver el mapa de calor:** elija un participante.
 - **No se encontró imagen del escenario seleccionado:** revise los archivos de estímulo.
 
-`[CAPTURA: mapa de calor con indicadores y superposición opcional de AOIs]`
+Si la vista queda vacía después de revisar los filtros, consulte la sección 23.5.
 
-### 12.6. Mapa de recorridos
+`[CAPTURA: 24 — mapa de calor con indicadores y superposición opcional de AOIs]`
+
+### 14.6. Mapa de recorridos (scanpath)
 
 **Propósito:** observar la secuencia y duración de los objetivos visuales detectados.
 
@@ -764,11 +860,13 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **Selecciona un participante para ver el mapa de recorridos:** elija un participante.
 - **No hay datos de fijación para los filtros seleccionados:** revise la calidad o el contenido de la adquisición.
 
-`[CAPTURA: mapa de recorridos con nodos numerados, métricas y AOIs]`
+Para interpretar el mapa junto con el umbral y las AOI, consulte las secciones 18 y 25.
 
-## 13. EEG
+`[CAPTURA: 25 — mapa de recorridos con nodos numerados, métricas y AOIs]`
 
-### 13.1. EEG por canal
+## 15. EEG
+
+### 15.1. EEG por canal
 
 **Propósito:** observar la amplitud de los canales EEG a lo largo del tiempo.
 
@@ -791,9 +889,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - Si no hay suficientes datos, la vista informa que no puede calcularse.
 - Los avisos de calidad pueden indicar unidades asumidas, discontinuidades o posibles artefactos.
 
-`[CAPTURA: vista EEG por canal con selector de canales y panel de calidad]`
+`[CAPTURA: 26 — vista EEG por canal con selector de canales y panel de calidad]`
 
-### 13.2. Densidad espectral de potencia
+### 15.2. Densidad espectral de potencia (PSD)
 
 **Propósito:** analizar cómo se distribuye la potencia EEG por frecuencia.
 
@@ -816,9 +914,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - Una ventana con artefacto puede aparecer como advertencia o ser excluida según la opción seleccionada.
 - Los canales no disponibles no pueden seleccionarse.
 
-`[CAPTURA: densidad espectral de potencia con canales, zoom y estadísticas]`
+`[CAPTURA: 27 — densidad espectral de potencia con canales, zoom y estadísticas]`
 
-### 13.3. Espectrograma de frecuencias
+### 15.3. Espectrograma de frecuencias
 
 **Propósito:** observar la evolución temporal de la potencia espectral.
 
@@ -841,9 +939,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **No hay datos suficientes para calcular el espectrograma:** el tramo no contiene muestras suficientes.
 - Las ventanas con datos ausentes o discontinuidades pueden aparecer sin estimación.
 
-`[CAPTURA: espectrograma EEG con selector de canales y explicación de huecos]`
+`[CAPTURA: 28 — espectrograma EEG con selector de canales y explicación de huecos]`
 
-### 13.4. Topografía EEG
+### 15.4. Topografía EEG
 
 **Propósito:** representar la distribución espacial esquemática de potencia entre electrodos.
 
@@ -865,9 +963,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **No hay datos suficientes para calcular la topografía EEG:** se requieren al menos los datos disponibles para formar la representación.
 - La topografía es esquemática e interpolada; no localiza fuentes cerebrales.
 
-`[CAPTURA: topografía EEG con control de ventana temporal y leyenda de potencia]`
+`[CAPTURA: 29 — topografía EEG con control de ventana temporal y leyenda de potencia]`
 
-### 13.5. Calidad y artefactos EEG
+### 15.5. Calidad y artefactos EEG
 
 **Propósito:** revisar advertencias que ayudan a valorar el alcance de las señales EEG.
 
@@ -885,9 +983,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 
 **Posibles errores:** si no existe metadata de calidad, el panel puede mostrar una cantidad limitada de información.
 
-## 14. GSR
+## 16. GSR o sensor galvánico
 
-### 14.1. Consultar la respuesta galvánica
+### 16.1. Consultar la respuesta galvánica
 
 **Propósito:** analizar la conductancia de la piel a lo largo del tiempo.
 
@@ -909,9 +1007,9 @@ También puede mostrar sensores y participantes detectados, advertencias de proc
 - **No hay datos de GSR para los filtros seleccionados:** cambie participante o escenario.
 - Si el estímulo no está disponible, se muestra el análisis de la señal sin la previsualización correspondiente.
 
-`[CAPTURA: vista GSR con selector de señal, KPIs y punto seleccionado]`
+`[CAPTURA: 30 — vista GSR con selector de señal, indicadores y punto seleccionado]`
 
-### 14.2. Interpretar los indicadores GSR
+### 16.2. Interpretar los indicadores GSR
 
 Los indicadores de la vista muestran:
 
@@ -920,9 +1018,9 @@ Los indicadores de la vista muestran:
 - **Máximo:** pico de conductancia registrado.
 - **Punto seleccionado:** tiempo relativo, valor suavizado y valor crudo.
 
-## 15. Filtros
+## 17. Filtros
 
-### 15.1. Filtrar por escenario y participante
+### 17.1. Filtrar por escenario y participante
 
 **Propósito:** limitar las visualizaciones a una combinación concreta de datos.
 
@@ -944,9 +1042,9 @@ Los indicadores de la vista muestran:
 - Si el proyecto no tiene participantes, el selector aparece sin opciones.
 - Si una vista requiere un escenario específico, mostrará un aviso hasta que se seleccione uno.
 
-`[CAPTURA: barra de filtros mostrando escenario y participante seleccionados]`
+`[CAPTURA: 31 — barra de filtros mostrando escenario y participante seleccionados]`
 
-### 15.2. Ventana temporal y zoom
+### 17.2. Ventana temporal y zoom
 
 **Propósito:** examinar un tramo de la señal con mayor detalle.
 
@@ -965,9 +1063,9 @@ Los indicadores de la vista muestran:
 - Si el intervalo no es válido, la aplicación conserva la vista anterior.
 - Si se selecciona un tramo sin datos, la vista puede mostrar un estado vacío.
 
-## 16. AOIs
+## 18. AOIs (Áreas de interés)
 
-### 16.1. Definir AOIs en un escenario
+### 18.1. Definir AOIs en un escenario
 
 **Propósito:** delimitar zonas de una imagen para medir fijaciones, permanencia y transiciones.
 
@@ -988,7 +1086,7 @@ Los indicadores de la vista muestran:
 - Si el escenario no tiene imagen, no se puede dibujar una AOI.
 - Una AOI ubicada fuera del estímulo puede no recibir fijaciones.
 
-### 16.2. Consultar la comparativa de AOIs
+### 18.2. Consultar la comparativa de AOIs
 
 **Propósito:** conocer qué AOIs recibieron fijaciones y cuánto tiempo se observaron.
 
@@ -1011,9 +1109,9 @@ Los indicadores de la vista muestran:
 - **No hay AOIs definidas para este escenario:** vuelva al Paso 4 de creación o edición.
 - Si no hay fijaciones, la comparativa muestra datos vacíos.
 
-`[CAPTURA: comparativa AOIs con métricas, distribución temporal y leyenda de áreas]`
+`[CAPTURA: 32 — comparativa de AOI con métricas, distribución temporal y leyenda de áreas]`
 
-### 16.3. Mostrar AOIs sobre las visualizaciones
+### 18.3. Mostrar AOIs sobre las visualizaciones
 
 **Propósito:** relacionar mapas, recorridos y puntos de mirada con las áreas definidas.
 
@@ -1030,9 +1128,9 @@ Los indicadores de la vista muestran:
 
 **Posibles errores:** el control queda deshabilitado si el escenario no tiene AOIs o si todavía se están cargando.
 
-## 17. Comparaciones
+## 19. Comparaciones
 
-### 17.1. Comparar varios participantes
+### 19.1. Comparar varios participantes
 
 **Propósito:** visualizar una misma señal o análisis para varios participantes.
 
@@ -1056,9 +1154,9 @@ Los indicadores de la vista muestran:
 - **Preparando la comparación:** espere a que terminen las solicitudes de datos.
 - Algunas vistas requieren un escenario específico y no funcionan con **Todos los escenarios**.
 
-`[CAPTURA: diálogo de comparación con selector de participantes y tarjetas individuales]`
+`[CAPTURA: 33 — diálogo de comparación con selector de participantes y tarjetas individuales]`
 
-### 17.2. Comparativas integradas
+### 19.2. Comparativas integradas
 
 **Propósito:** reunir varias señales y visualizaciones en un mismo espacio.
 
@@ -1081,11 +1179,11 @@ Los indicadores de la vista muestran:
 - **No hay visualizaciones seleccionadas:** agregue una gráfica desde el selector.
 - Si no hay datos para una señal, la tabla indica que no está disponible o que no hay datos.
 
-`[CAPTURA: vista Comparativas con selector de gráficas, paneles y estadísticas]`
+`[CAPTURA: 34 — vista Comparativas con selector de gráficas, paneles y estadísticas]`
 
-## 18. Métricas
+## 20. Métricas
 
-### 18.1. Métricas de Eye Tracker
+### 20.1. Métricas de Eye Tracker
 
 Las vistas pueden mostrar:
 
@@ -1098,17 +1196,17 @@ Las vistas pueden mostrar:
 - Tiempo y porcentaje observado por AOI.
 - Tiempo hasta la primera fijación y transiciones entre AOIs cuando el análisis está disponible.
 
-### 18.2. Métricas de GSR
+### 20.2. Métricas de GSR
 
 La aplicación muestra media, mínimo, máximo, valor suavizado, valor crudo y estadísticas de la señal galvánica en microsiemens.
 
-### 18.3. Métricas de EEG
+### 20.3. Métricas de EEG
 
 Las vistas pueden presentar estadísticas por canal, frecuencia pico, densidad pico, potencia por bandas, nivel medio del espectrograma y mayor potencia de la ventana topográfica.
 
 Las unidades y advertencias se muestran junto a cada vista. En particular, revise el panel de calidad EEG antes de comparar valores entre grabaciones.
 
-### 18.4. Estadísticas y correlaciones
+### 20.4. Estadísticas y correlaciones
 
 **Propósito:** consultar resúmenes numéricos y relaciones entre señales continuas compatibles.
 
@@ -1125,9 +1223,11 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 
 **Posibles errores:** una visualización sin datos aparece como **Sin datos** o **No disponible** y no debe interpretarse como un valor cero.
 
-## 19. Reportes
+Para comparar señales con el mismo participante, escenario y criterio, consulte la sección 19. Para revisar unidades y advertencias antes de interpretar o exportar, consulte la sección 25.
 
-### 19.1. Seleccionar el proyecto
+## 21. Reportes
+
+### 21.1. Seleccionar el proyecto
 
 **Propósito:** elegir el proyecto del que se generará el informe.
 
@@ -1143,9 +1243,11 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 
 **Posibles errores:** si no hay proyectos, aparece un estado vacío y no se puede continuar.
 
-`[CAPTURA: página Reportes con proyecto seleccionado]`
+Para elegir el alcance correcto y revisar qué se incluirá, consulte también la sección 25. Si la descarga falla, consulte la sección 23.6.
 
-### 19.2. Elegir el alcance
+`[CAPTURA: 35 — página Reportes con proyecto seleccionado]`
+
+### 21.2. Elegir el alcance
 
 **Propósito:** decidir si el informe corresponde a una persona o al grupo completo.
 
@@ -1162,7 +1264,7 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 
 **Posibles errores:** el alcance grupal queda deshabilitado si el proyecto no tiene participantes.
 
-### 19.3. Elegir el dispositivo
+### 21.3. Elegir el dispositivo
 
 **Propósito:** seleccionar qué reporte generar.
 
@@ -1178,7 +1280,7 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 
 **Posibles errores:** si el proyecto no tiene dispositivos registrados, no se puede generar un informe.
 
-### 19.4. Configurar y descargar el reporte
+### 21.4. Configurar y descargar el reporte
 
 **Propósito:** personalizar y descargar el informe.
 
@@ -1201,11 +1303,11 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 - **No se pudo generar el informe:** revise los datos del proyecto y vuelva a intentarlo.
 - Los escenarios de vídeo pueden omitirse de las secciones que requieren imágenes.
 
-`[CAPTURA: opciones de exportación y previsualización del contenido del reporte]`
+`[CAPTURA: 36 — opciones de exportación y previsualización del contenido del reporte]`
 
-## 20. Estados y mensajes del sistema
+## 22. Estados y mensajes del sistema
 
-### 20.1. Estados del proyecto
+### 22.1. Estados del proyecto
 
 | Estado | Significado para el usuario |
 | --- | --- |
@@ -1213,7 +1315,7 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 | Activo | El proyecto está disponible para análisis |
 | Archivado | El proyecto se conserva, pero se separa de la vista activa |
 
-### 20.2. Estados de procesamiento
+### 22.2. Estados de procesamiento
 
 | Estado | Significado |
 | --- | --- |
@@ -1222,7 +1324,7 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 | `READY` | La ingesta terminó y los datos están publicados para análisis |
 | `FAILED` | El intento de ingesta terminó con errores |
 
-### 20.3. Mensajes habituales
+### 22.3. Mensajes habituales
 
 | Mensaje o situación | Acción recomendada |
 | --- | --- |
@@ -1235,11 +1337,29 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 | No se pudo comprobar la conexión de Google Drive | Verificar Docker Desktop y volver a comprobar |
 | La conexión de Google Drive no está configurada | Solicitar al responsable que configure la cuenta autorizada |
 
-`[CAPTURA: ejemplos de un estado de carga, un aviso de datos vacíos y un mensaje de error]`
+`[CAPTURA: 37 — ejemplos de un estado de carga, un aviso de datos vacíos y un mensaje de error]`
 
-## 21. Solución de problemas
+## 23. Solución de problemas
 
-### 21.1. La aplicación no abre
+La siguiente tabla centraliza el diagnóstico inicial. La columna **Tipo** distingue si el problema proviene de una entrada o acción del usuario, de los datos del experimento, del sistema o infraestructura, o del estado analítico. Use las subsecciones posteriores para los pasos detallados.
+
+| Problema | Tipo | Causa probable | Acción del usuario | Cuándo escalar a soporte |
+| --- | --- | --- | --- | --- |
+| La aplicación no abre | Sistema o infraestructura | Docker Desktop, el lanzador o un servicio no está activo; el puerto local está ocupado | Compruebe la edición utilizada, inicie la instalación según el Anexo A y vuelva a cargar la aplicación | Si el grupo `neurodatics` no inicia, un servicio permanece no saludable o el puerto sigue ocupado |
+| No puedo iniciar sesión | Sistema o infraestructura | Cuenta no autorizada, redirección bloqueada o configuración de Google incompleta | Compruebe la conexión, use la cuenta autorizada y repita `/login` | Si la cuenta correcta es rechazada o la autorización falla de forma persistente |
+| Google Drive no está conectado | Sistema o infraestructura | Cuenta no configurada, permiso revocado o configuración técnica incompleta | Abra `/configuracion`, conecte la cuenta y compruebe la conexión | Si faltan credenciales/configuración del proyecto o no se puede guardar la conexión |
+| La carpeta supera 500 MB | Entrada o acción del usuario | El tamaño de la selección excede el límite de carga | Reduzca la carpeta o divida el experimento según el protocolo; conserve los originales | Si una carpeta dentro del límite se rechaza por tamaño |
+| La estructura de la carpeta es ambigua o incompleta | Entrada o acción del usuario | No se confirmaron CSV, imágenes, vídeos o archivos de adquisición | Responda las preguntas de estructura y vuelva a cargar la carpeta completa | Si la estructura es válida y la interfaz no permite confirmarla |
+| Un sensor no tiene columnas compatibles | Datos del experimento | El archivo no corresponde al formato esperado o no contiene columnas reconocibles | Revise el archivo, el sensor seleccionado y los nombres de columnas; vuelva a cargar una fuente válida | Si el archivo cumple el formato acordado y sigue sin detectarse |
+| Falta un estímulo o imagen de escenario | Datos del experimento | La carpeta no contiene el recurso o no fue asociado al escenario | Verifique los archivos de estímulos y la configuración del escenario | Si el archivo existe y no aparece tras un procesamiento `READY` |
+| El procesamiento termina en `FAILED` | Datos del experimento o sistema | Error de validación, archivo insuficiente o fallo del servicio de ingesta | Revise el resumen, las advertencias y los archivos; intente procesar nuevamente | Si el fallo se repite con los mismos datos válidos |
+| El Dashboard muestra una vista vacía | Estado analítico | Filtros sin resultados, escenario requerido, sensor no configurado o ingesta aún no lista | Espere `READY`, revise proyecto, sensor, participante y escenario; pruebe **Todos los escenarios** | Si hay datos compatibles y la vista permanece vacía |
+| EEG muestra advertencias de calidad o artefactos | Datos del experimento | Ruido, canales incompletos o artefactos en la adquisición | Revise la calidad, documente la advertencia y evite interpretar sin contexto | Si se esperaba una señal válida y los artefactos impiden el análisis |
+| El reporte no se descarga | Estado analítico o sistema | Alcance/dispositivo no seleccionado, faltan datos o falla de almacenamiento | Seleccione proyecto, alcance y dispositivo; compruebe participantes y escenarios | Si la selección es válida y no se genera el PDF o ZIP |
+
+Para proteger los datos, no envíe contraseñas, tokens, archivos `.env` ni datos personales junto con una solicitud. Consulte la sección 27 para preparar el caso.
+
+### 23.1. La aplicación no abre
 
 **Ruta para acceder:** inicio de la aplicación.
 
@@ -1255,7 +1375,7 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 
 **Posibles errores:** si el problema continúa, registre el mensaje exacto y contacte al soporte de la instalación.
 
-### 21.2. No puedo iniciar sesión
+### 23.2. No puedo iniciar sesión
 
 **Pasos:**
 
@@ -1266,7 +1386,7 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 
 **Resultado esperado:** el usuario regresa a NeuroDatics con la sesión iniciada.
 
-### 21.3. Google Drive no está conectado
+### 23.3. Google Drive no está conectado
 
 **Ruta para acceder:** `/configuracion` > **Google Drive**.
 
@@ -1287,9 +1407,9 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 - Si el permiso expiró o fue revocado, reconecte la misma cuenta.
 - Usar otra cuenta puede impedir el acceso a archivos existentes.
 
-`[CAPTURA: sección Google Drive con conexión guardada y botones de comprobación/reconexión]`
+`[CAPTURA: 38 — sección Google Drive con conexión guardada y botones de comprobación/reconexión]`
 
-### 21.4. Una carpeta no se puede cargar
+### 23.4. Una carpeta no se puede cargar
 
 **Pasos:**
 
@@ -1301,7 +1421,7 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 
 **Resultado esperado:** se muestra el resumen de archivos que serán procesados.
 
-### 21.5. El Dashboard no muestra datos
+### 23.5. El Dashboard no muestra datos
 
 **Pasos:**
 
@@ -1313,7 +1433,7 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 
 **Resultado esperado:** la vista muestra datos o un mensaje explicativo de ausencia.
 
-### 21.6. El reporte no se descarga
+### 23.6. El reporte no se descarga
 
 **Pasos:**
 
@@ -1325,23 +1445,37 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 
 **Resultado esperado:** el navegador descarga un PDF o ZIP.
 
-## 22. Buenas prácticas
+## 24. Antes de analizar
 
 - Conserve los datos originales sin modificar.
 - Utilice códigos de participantes consistentes y no identificables cuando sea posible.
-- Complete la geometría física de pantalla cuando el experimento la tenga disponible.
-- Revise los avisos de calidad EEG antes de interpretar potencia o topografías.
-- Defina AOIs con nombres claros y relacionados con la hipótesis del experimento.
-- Seleccione escenarios específicos para mapas de calor, recorridos y comparativas AOI.
-- No interprete “Sin datos” como cero.
+- Organice las carpetas de forma consistente y evite archivos innecesarios o duplicados.
+- Verifique que los participantes y escenarios mantengan la misma identificación en todos los archivos.
+- Confirme que los sensores esperados estén registrados y que sus archivos tengan columnas compatibles.
 - Espere a que el estado de ingesta sea `READY` antes de analizar.
+- Complete la geometría física de pantalla cuando el experimento la tenga disponible.
+- Defina AOIs con nombres claros y relacionados con la hipótesis del experimento.
 - No cierre el navegador durante una carga en curso.
 - Haga copias de respaldo antes de eliminar proyectos.
 - En la edición servidor, conserve el acceso a la cuenta de Google Drive autorizada.
+
+## 25. Antes de interpretar y exportar resultados
+
+- Revise los avisos de calidad EEG antes de interpretar potencia o topografías.
+- Seleccione escenarios específicos para mapas de calor, mapas de recorridos y comparativas de AOI.
+- No interprete “Sin datos” como cero.
 - Documente las decisiones de filtrado y el umbral mínimo de fijación usado en sus resultados.
+- Use filtros consistentes al comparar participantes o escenarios.
+- Compruebe si las escalas de las visualizaciones son comunes o independientes antes de comparar magnitudes.
+- Interprete mapas de calor, mapas de recorridos, topografías y correlaciones junto con la metodología del experimento.
+- Revise unidades, métricas y el alcance seleccionado antes de descargar un reporte.
+- Verifique que el reporte no incluya datos personales innecesarios y proteja los archivos exportados.
+- Registre las decisiones metodológicas que puedan afectar la interpretación.
 - Compare participantes con la misma señal, escenario y criterio de selección.
 
-## 23. Glosario
+Estas recomendaciones complementan los pasos de las secciones 17, 19, 20 y 21. Para un diagnóstico de datos faltantes o advertencias, consulte la sección 23.
+
+## 26. Glosario
 
 | Término | Definición |
 | --- | --- |
@@ -1363,9 +1497,9 @@ Las unidades y advertencias se muestran junto a cada vista. En particular, revis
 | Topografía EEG | Representación esquemática de potencia entre electrodos |
 | Umbral mínimo de fijación | Duración mínima usada para considerar una fijación en las vistas derivadas |
 
-## 24. Soporte
+## 27. Soporte
 
-### 24.1. Información que debe incluir una solicitud
+### 27.1. Información que debe incluir una solicitud
 
 Cuando solicite ayuda, incluya:
 
@@ -1378,11 +1512,99 @@ Cuando solicite ayuda, incluya:
 7. Paso realizado antes del problema.
 8. Captura de pantalla, ocultando participantes identificables o credenciales.
 
-### 24.2. Canales y responsable
+### 27.2. Canales y responsable
 
 Para problemas de acceso, Docker Desktop, Google OAuth o Google Drive, contacte al responsable de la instalación o al administrador de la plataforma.
 
 Para problemas relacionados con la estructura de los experimentos, sensores, participantes o interpretación de resultados, contacte al equipo de investigación responsable del proyecto.
 
 No comparta contraseñas, tokens, archivos `.env`, credenciales de Google ni datos personales de participantes en una solicitud de soporte.
+
+## Anexo A: Instalación y puesta en marcha
+
+Este anexo está dirigido al responsable de instalar o administrar la edición servidor. No es necesario repetirlo para cada sesión de análisis. El usuario investigador puede remitirse a las secciones 6 y 7 una vez que la instalación esté disponible.
+
+### A.1. Requisitos técnicos completos
+
+El paquete instalable para Windows requiere:
+
+- Windows x64 sobre procesador Intel o AMD.
+- Windows 11 23H2 o posterior, o Windows 10 22H2 con soporte vigente.
+- No está destinado a Windows Server ni a Windows ARM en este paquete.
+- Al menos 8 GB de RAM; se recomiendan 16 GB.
+- Al menos 15 GB libres para la instalación, además del espacio necesario para los experimentos.
+- Virtualización habilitada en BIOS/UEFI.
+- Permisos de administrador para preparar componentes de Windows cuando falten.
+- Internet durante la instalación inicial, la preparación de WSL/Docker, el inicio de sesión con Google y el uso de Google Drive o una base externa.
+
+El paquete no requiere instalar Node.js, Python, PostgreSQL ni Redis por separado. En un equipo ya preparado, las imágenes de los servicios se cargan desde la carpeta `images/`; no se compila código ni se descargan imágenes desde un registro.
+
+### A.2. Primera instalación en Windows
+
+**Propósito:** preparar la edición servidor y dejar disponibles sus servicios.
+
+**Ruta para acceder:** carpeta entregada por el equipo de NeuroDatics.
+
+**Pasos:**
+
+1. Descargue toda la carpeta, extráigala del ZIP y guárdela en una ubicación permanente, preferiblemente `C:\NeuroDatics`. No ejecute archivos desde dentro del ZIP.
+2. Haga doble clic en `INSTALAR.bat`. No es necesario abrir una terminal ni instalar Git, Python, Node.js, PostgreSQL o Redis.
+3. Si Windows solicita permisos de administrador para preparar WSL, autorícelos. Si solicita reiniciar, guarde el trabajo y reinicie; después vuelva a abrir `INSTALAR.bat` si la instalación no continúa automáticamente.
+4. En la bienvenida de Docker Desktop, acepte sus condiciones. No se requiere una cuenta de Docker Hub.
+5. Si la entrega incluye `.env`, consérvelo y utilice esa configuración. Si no lo incluye, el asistente crea secretos locales y solicita las credenciales de Google del proyecto.
+6. Proporcione las credenciales de Google al responsable técnico autorizado. No se obtienen automáticamente desde una cuenta personal.
+7. Cuando NeuroDatics se abra, inicie sesión con Google y entre a `/configuracion` para conectar Google Drive si esa instalación todavía no tiene una cuenta configurada.
+
+**Resultado esperado:** el asistente comprueba Windows, procesador, RAM, espacio, virtualización, WSL, Docker Desktop, Docker Compose, archivos, huellas SHA256, configuración, puerto e imágenes; carga las imágenes, aplica migraciones y espera la salud de los cuatro servicios.
+
+**Posibles errores:** un requisito no disponible, falta de permisos, reinicio pendiente, configuración de Google incompleta o un puerto ocupado. Revise `instalacion.log` y escale al administrador sin eliminar volúmenes.
+
+`[CAPTURA: 39 — asistente de instalación y comprobación de requisitos técnicos]`
+
+### A.3. Inicio y detención de la edición servidor
+
+Después de la primera instalación, el procedimiento diario es:
+
+1. Abra **Docker Desktop**.
+2. En **Containers**, busque el grupo **neurodatics**.
+3. Pulse **Iniciar / ▶** en el grupo completo.
+4. Espere a que sus cuatro servicios estén activos.
+5. Abra `http://localhost:3000` o `ABRIR-NEURODATICS.url`.
+
+Para detener la aplicación, pulse **Detener / ■** en el grupo o ejecute `DETENER.bat`. Los contenedores y los datos quedan guardados. No use **Delete**, no elimine volúmenes y no restablezca Docker a valores de fábrica, porque esas acciones pueden borrar datos. Al apagar Windows con la aplicación activa, Docker puede volver a iniciarla cuando arranque su motor.
+
+### A.4. Servicios, puertos y conservación de datos
+
+La instalación contiene cuatro servicios: interfaz `frontend`, API `backend`, base de datos `db` y caché `redis`. No existe un worker separado en la edición actual. Los volúmenes de Docker conservan la base, los datos y las cachés.
+
+Solo la interfaz publica el puerto `3000` en el equipo. La API, PostgreSQL y Redis permanecen internos; la interfaz reenvía las rutas de API dentro de la red de Docker. No cambie el puerto ni exponga los servicios internos sin coordinación con el administrador de la plataforma.
+
+### A.5. Configuración de Google OAuth y Google Drive
+
+La edición servidor utiliza las variables de configuración de Google del proyecto, normalmente `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET`, junto con la configuración de almacenamiento que corresponda. El responsable técnico debe proporcionar y custodiar esas credenciales.
+
+Después del primer acceso, el propietario de la cuenta autorizada debe conectar Google Drive desde `/configuracion`. La cuenta elegida debe conservar permisos sobre los archivos existentes; cambiarla puede impedir el acceso a proyectos ya almacenados.
+
+No comparta `.env`, secretos JWT, contraseñas de base de datos, tokens ni credenciales OAuth. Para la configuración detallada de Google, consulte el archivo operativo `deployment/CONFIGURACION-GOOGLE.md` cuando esté incluido en la entrega.
+
+### A.6. Actualización, recuperación y otros sistemas
+
+Antes de actualizar, conserve una copia de seguridad de los datos y de `.env`. Sustituya los archivos del paquete por la nueva entrega conservando `.env` y vuelva a ejecutar `INSTALAR.bat`. El asistente identifica imágenes antiguas por su ID, carga las nuevas y retira contenedores obsoletos del mismo grupo sin eliminar volúmenes.
+
+No ejecute simultáneamente dos copias del paquete con configuraciones diferentes. Si la aplicación falla, revise `docker compose config --quiet`, `docker compose ps` y los registros del backend antes de recrear datos o eliminar volúmenes.
+
+El instalador automático está dirigido a Windows x64. En Linux x64 con Docker, Compose, una configuración `.env` completa y `sha256sum`, un responsable puede utilizar `sh scripts/start.sh` y `sh scripts/stop.sh`. Este paquete no instala dependencias para macOS/Linux ni ofrece imágenes ARM64 nativas.
+
+### A.7. Archivos operativos y escalamiento
+
+Los archivos principales de la entrega son:
+
+- `INSTALAR.bat` / `INICIAR.bat`: instalación, recuperación y actualización.
+- `DETENER.bat`: detención sin eliminar contenedores.
+- `.env`: configuración privada.
+- `manifest.json`, `VERSION.txt` e `images/`: versión, huellas e imágenes construidas.
+- `scripts/`: automatización compatible con Windows PowerShell 5.1.
+- `instalacion.log`: etapas y resultado general sin copiar credenciales.
+
+Si un servicio queda marcado como `unhealthy`, revise sus registros antes de borrar volúmenes. Para problemas de red universitaria o corporativa, el administrador debe revisar la configuración de proxy y publicación de la aplicación. Escale al responsable técnico cuando el problema implique WSL, Docker, puertos, OAuth, Google Drive, volúmenes o credenciales.
 
