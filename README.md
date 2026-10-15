@@ -1,130 +1,180 @@
-# NeuroDatics-App
+<div align="center">
 
-Plataforma para analisis de biosenales aplicada a neuromarketing.
+<img src="frontend/public/assets/NeuroDatics-logo.png" alt="NeuroDatics" width="96">
 
-## Guia Principal
+# NeuroDatics
 
-Si estas instalando la app por primera vez o no tienes experiencia tecnica, usa la guia paso a paso:
+**Análisis de bioseñales para estudios de neuromarketing**
 
-[Guia Docker para usuarios principiantes](./docs/DOCKER_USER_GUIDE.md)
+Convierte la sesión cruda de un laboratorio —eye tracker, EEG y sensor galvánico— en analítica consultable:
+fijaciones, mapas de calor, áreas de interés, espectros de EEG e informes en PDF.
 
-Esa guia explica como instalar Docker Desktop, descargar el proyecto, configurar Google OAuth, abrir la app desde Docker Desktop y resolver errores comunes.
+![Versión](https://img.shields.io/badge/versión-1.0.0-0f766e)
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Licencia](https://img.shields.io/badge/licencia-todos%20los%20derechos%20reservados-lightgrey)
 
-## Inicio Rapido Con Docker
+[Funciones](#qué-puede-hacer) · [Ediciones](#dos-ediciones) · [Inicio rápido](#inicio-rápido) ·
+[Documentación](#documentación) · [Desarrollo](#desarrollo)
 
-Este es el camino corto para usuarios que ya tienen Docker Desktop y Git instalados. No construye la app localmente: descarga las imagenes publicadas en GHCR.
+<img src="docs/assets/proyectos.png" alt="Lista de proyectos de NeuroDatics" width="860">
 
-### 1. Clonar el proyecto
+</div>
 
-```bash
+## Qué es
+
+En un estudio de neuromarketing, el software de adquisición exporta una carpeta por sesión: un CSV con las
+grabaciones sincronizadas de todos los participantes y las imágenes y vídeos que se les mostraron. NeuroDatics
+recibe esa carpeta, la valida, **recalcula las fijaciones desde la mirada cruda** en lugar de fiarse de las del
+fabricante, lleva cada coordenada al sistema del estímulo y guarda el resultado en un formato columnar que se
+consulta rápido. Encima de eso ofrece un tablero interactivo y genera informes por dispositivo.
+
+Tres principios guían cada número que muestra: **nada se inventa** (un dato ausente sigue ausente y una
+coordenada fuera de rango se rechaza, no se recorta), **la procedencia viaja con el resultado** (cada respuesta
+dice qué algoritmo la produjo y con qué parámetros) y **la pantalla y el PDF no pueden discrepar**, porque usan
+los mismos servicios.
+
+## Qué puede hacer
+
+| | |
+| --- | --- |
+| **Proyectos y pre-experimentos** | Registrar un estudio antes de tener datos: participantes, pantalla, cuestionarios de antes y después y notas. La carpeta del experimento se agrega cuando existe. |
+| **Ingesta del experimento** | Sube la carpeta del laboratorio desde el navegador; interpreta CSV europeos multi-participante con distintas codificaciones y frecuencias de muestreo, y publica todo en una sola operación. |
+| **Eye tracker** | Dilatación pupilar, punto de mirada, histograma de fijaciones, mapa de calor, recorrido de la mirada y distancia al dispositivo, sobre el estímulo real. |
+| **Áreas de interés** | AOIs dibujadas sobre cada estímulo, con tiempo hasta la primera fijación, permanencia, revisitas, transiciones y hallazgos clave. |
+| **EEG** | Señal por canal, densidad espectral (Welch), espectrograma y topografía, con avisos de calidad explícitos. |
+| **Sensor galvánico** | Respuesta galvánica de la piel con sus estadísticas y su línea base. |
+| **Comparar participantes** | Varias personas lado a lado, con el mismo instante marcado en todas las gráficas. |
+| **Informes** | Un PDF por dispositivo, para un participante o para el grupo, con gráficas y tablas. |
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/pupila.png" alt="Dilatación pupilar en el tablero"></td>
+    <td width="50%"><img src="docs/assets/eeg-espectrograma.png" alt="Espectrograma de EEG por canal"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Eye tracker: dilatación pupilar con sus estadísticas</sub></td>
+    <td align="center"><sub>EEG: espectrograma de frecuencias por canal</sub></td>
+  </tr>
+</table>
+
+<sub>Las capturas usan datos sintéticos.</sub>
+
+## Dos ediciones
+
+El mismo código se entrega de dos formas:
+
+| | Edición servidor | NeuroDatics Estudiantes |
+| --- | --- | --- |
+| **Para quién** | Un laboratorio o grupo que comparte proyectos | Un estudiante en su propio portátil |
+| **Cómo se usa** | Navegador contra un servidor con Docker | Un programa de Windows, sin instalación |
+| **Cuenta** | Inicio de sesión con Google | Ninguna |
+| **Archivos** | Google Drive | Una carpeta en el equipo |
+| **Red** | Red local o institucional | Ninguna: todo ocurre en `127.0.0.1` |
+
+## Inicio rápido
+
+### Edición servidor
+
+Requisitos: Docker Desktop y Git.
+
+```powershell
 git clone https://github.com/Proyecto-Software-Biosenales/NeuroDatics-App.git
 cd NeuroDatics-App
+Copy-Item .env.example .env      # completa POSTGRES_PASSWORD, AUTH_JWT_SECRET y las credenciales de Google
+docker compose up -d --build
 ```
 
-### 2. Crear configuracion local
+La aplicación queda en **http://localhost:3000** (la API en `/api` y su documentación en `/docs`). El contenedor
+del backend aplica las migraciones antes de arrancar. [`.env.example`](.env.example) documenta todas las
+opciones, y [deployment/CONFIGURACION-GOOGLE.md](deployment/CONFIGURACION-GOOGLE.md) explica cómo obtener las
+credenciales de Google y conectar Drive.
 
-```bash
-cp .env.example .env
+Para instalarla en un equipo sin entorno de desarrollo existe un instalador en español con dos botones,
+**INSTALAR** e **INICIAR**: ver [deployment/README.md](deployment/README.md).
+
+<details>
+<summary>Comandos de operación</summary>
+
+```powershell
+docker compose logs -f                 # registros de todos los servicios
+docker compose up -d --build           # reconstruir tras actualizar el código
+docker compose down                    # detener sin borrar datos
+docker compose down -v                 # borrar base de datos y cachés (destructivo)
 ```
 
-Edita `.env` y completa al menos estas variables para usar login real:
+Si un servicio aparece como `unhealthy`, revisa `docker compose logs --tail=200 backend` antes de borrar nada. El
+backend expone `/health` y `/health/ready`. Para una red universitaria o corporativa, ver
+[docs/tecnica/despliegue-en-red.md](docs/tecnica/despliegue-en-red.md).
 
-- `AUTH_JWT_SECRET`
-- `GOOGLE_OAUTH_CLIENT_ID`
-- `GOOGLE_OAUTH_CLIENT_SECRET`
+</details>
 
-El frontend ya no necesita `NEXT_PUBLIC_GOOGLE_CLIENT_ID`; pide al backend la URL de login de Google en tiempo de ejecucion.
+### NeuroDatics Estudiantes
 
-Para usar ingestion de proyectos con Google Drive, configura tambien:
+El estudiante recibe un zip; al extraerlo ve solo `neurodatics-estudiantes.exe` y `LEEME.txt`. Al abrir el
+programa, arranca su propia base de datos y abre el navegador. Los proyectos se guardan en
+`%LOCALAPPDATA%\NeuroDatics Estudiantes`, así que borrar la carpeta del programa no los borra. La guía del
+estudiante es [student/LEEME.txt](student/LEEME.txt), y cómo se construye el paquete está en
+[student/README.md](student/README.md).
 
-- `GDRIVE_FOLDER_ID` si quieres una carpeta raiz especifica.
-- La conexion OAuth de Drive desde `http://localhost:3000/api/integrations/google-drive/authorize` cuando el stack ya este corriendo.
+## Cómo funciona
 
-### 3. Levantar toda la app
-
-```bash
-docker compose up -d
+```mermaid
+flowchart LR
+    A["Carpeta del laboratorio<br/>CSV + imágenes + vídeos"] --> B["Validación<br/>y extracción"]
+    B --> C["Parseo por participante<br/>detección de fijaciones"]
+    C --> D[("Parquet por<br/>participante y escenario")]
+    D --> E["Analítica<br/>con caché"]
+    E --> F["Tablero"]
+    E --> G["Informes PDF"]
 ```
 
-La primera vez Docker intentara descargar las imagenes, creara la base de datos y ejecutara migraciones automaticamente. Si GHCR todavia no entrega alguna imagen o responde `denied`, Compose construira esa imagen localmente desde el codigo del repositorio y continuara.
+El backend es **FastAPI** con SQLAlchemy asíncrono, pandas, NumPy, SciPy y PyArrow; los informes se componen con
+**Typst**. El frontend es **Next.js** con React, TypeScript, Tailwind, shadcn/Radix y Recharts. Los datos
+relacionales viven en **PostgreSQL 16** y los bytes (estímulos y Parquet) en Google Drive o en disco. El recorrido
+completo está en [docs/tecnica/arquitectura.md](docs/tecnica/arquitectura.md).
 
-Para fijar una version publicada, edita `NEURODATICS_VERSION` en `.env`:
+## Documentación
+
+| Si quieres… | Lee |
+| --- | --- |
+| Entender la aplicación de un vistazo | [Arquitectura](docs/tecnica/arquitectura.md) |
+| Saber qué cambió | [CHANGELOG](docs/CHANGELOG.md) |
+| Preparar un estudio sin datos todavía | [Pre-experimento](docs/usuario/pre-experimento.md) |
+| Interpretar la comparación entre participantes | [Comparar participantes](docs/usuario/comparar-participantes.md) |
+| Conocer los algoritmos | [Fijaciones](docs/tecnica/deteccion-de-fijaciones.md) · [Coordenadas](docs/tecnica/coordenadas-pantalla-estimulo.md) · [EEG](docs/tecnica/eeg/metodos.md) · [Informes](docs/tecnica/informes.md) |
+| Ver el índice completo | [docs/README.md](docs/README.md) |
+
+## Estructura del repositorio
 
 ```text
-NEURODATICS_VERSION=v1.2.3
+backend/      API FastAPI: ingesta, analítica, informes, migraciones y la edición local
+frontend/     interfaz Next.js, común a las dos ediciones
+student/      construcción y comprobaciones de NeuroDatics Estudiantes, y su guía
+deployment/   instalador de la edición servidor para Windows
+docs/         documentación por público: usuario, técnica y desarrollo
+verify.ps1    la puerta de verificación del repositorio
 ```
 
-### 4. Abrir
+## Desarrollo
 
-| Recurso | URL |
-| --- | --- |
-| Aplicacion | http://localhost:3000 |
-| API por proxy | http://localhost:3000/api |
-| Swagger UI | http://localhost:3000/docs |
-
-En Docker Desktop, la fila padre `neurodatics` puede mostrar `-` en la columna de puertos. Es normal para grupos de Compose. Expande el grupo y haz click en el puerto `3000:3000` del servicio `frontend`.
-
-### 5. Detener
-
-```bash
-docker compose down
+```powershell
+cd frontend; npm ci; npx playwright install chromium; cd ..
+.\verify.ps1
 ```
 
-Para borrar tambien base de datos, usuarios locales, cache y volumenes:
+`verify.ps1` es la única puerta de verificación: pruebas del backend con resultados de referencia protegidos,
+Ruff, Vulture, deptry, contratos de importación, arranque de la aplicación, TypeScript, pruebas del frontend en
+Node y en Chromium real, y ESLint. Cómo preparar el entorno, las reglas de las dos ediciones y el detalle de cada
+prueba están en [CONTRIBUTING.md](CONTRIBUTING.md).
 
-```bash
-docker compose down -v
-```
+## Autores
 
-## Que Incluye Docker
+Desarrollado por **Jacobo D'león** y **María Alejandra Muñoz**.
 
-- Frontend Next.js.
-- Backend FastAPI.
-- PostgreSQL.
-- Redis.
-- Worker RQ.
+## Licencia
 
-No necesitas instalar Node.js, Python, PostgreSQL ni Redis para usar la app con Docker.
-
-## Auth Y Google Drive
-
-- El login real usa Google OAuth.
-- El backend genera la URL de Google OAuth y emite `access_token` y `expires_in`.
-- No hay refresh token publico en el contrato actual.
-- El backend no publica el puerto `8000` al host en el modo Docker principal. El frontend enruta `/api/*`, `/docs`, `/openapi.json` y `/redoc` hacia el backend dentro de Docker.
-
-## Desarrollo Local Con Build
-
-Solo para contributors que modifican codigo:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
-```
-
-Para desarrollo de frontend sin Docker completo:
-
-```bash
-cd frontend
-cp .env.example .env.local
-npm install
-npm run dev
-```
-
-El frontend llama `/api` en el mismo origen y Next.js usa `NEXT_INTERNAL_API_BASE_URL` para reenviar al backend.
-
-## Actualizar Imagenes
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-Si usas una version fija en `NEURODATICS_VERSION`, cambia ese valor antes de ejecutar los comandos.
-
-## Estructura
-
-- `frontend/` - UI Next.js App Router.
-- `backend/` - API FastAPI con PostgreSQL, Redis y worker.
-- `docs/` - documentacion tecnica y guias de uso.
-- `docker-compose.yml` - stack Docker recomendado con imagenes publicadas.
-- `docker-compose.dev.yml` - override para construir imagenes localmente.
+© 2026 Jacobo D'león y María Alejandra Muñoz. Todos los derechos reservados; ver [LICENSE](LICENSE). El
+software de terceros incluido conserva sus propias licencias.

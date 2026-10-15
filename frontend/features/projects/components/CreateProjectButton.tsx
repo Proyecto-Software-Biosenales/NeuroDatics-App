@@ -25,7 +25,7 @@ export const CreateProjectButton = ({
       {...props}
     >
       {showIcon && <Plus className="w-5 h-5" />}
-      Crear nuevo proyecto
+      Crear proyecto
     </Button>
   )
 }

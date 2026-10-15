@@ -1,0 +1,1036 @@
+import { expect, test, type Locator, type Page } from "@playwright/test"
+import type { ComparisonChartsResponse, ComparisonStatisticsBlock } from "@/features/analytics/types"
+
+const TEST_USER_ID = "e2e-comparison-user"
+const STORAGE_KEY_PREFIX = "neurodatics-comparison-views-v1"
+
+const projects = [
+  {
+    id: "project-alpha",
+    name: "Proyecto Alfa",
+    status: "active",
+    sensors: [
+      { id: "alpha-eye", sensor_type: "EyeTracker" },
+      { id: "alpha-gsr", sensor_type: "GSR" },
+      { id: "alpha-eeg", sensor_type: "EEG" },
+    ],
+  },
+  {
+    id: "project-beta",
+    name: "Proyecto Beta",
+    status: "active",
+    sensors: [{ id: "beta-eye", sensor_type: "EyeTracker" }],
+  },
+]
+
+const participants = [
+  { participant_code: "P01", user_index: 1 },
+  { participant_code: "P02", user_index: 2 },
+]
+
+const scenarios = [
+  { name: "Escenario concreto", type: "image", file_id: "scenario-image" },
+  { name: "Escenario alterno", type: "image", file_id: "scenario-image-2" },
+]
+
+const time = Array.from({ length: 80 }, (_, index) => index * 0.25)
+const pupilLeft = time.map((value) => 3.2 + Math.sin(value / 2) * 0.25)
+const pupilRight = time.map((value) => 3.1 + Math.cos(value / 2) * 0.2)
+
+const pupilTimeseries = {
+  time,
+  left: pupilLeft,
+  right: pupilRight,
+  average: time.map((_, index) => (pupilLeft[index] + pupilRight[index]) / 2),
+  smooth_left: pupilLeft,
+  smooth_right: pupilRight,
+}
+
+const gazeTimeseries = {
+  time,
+  gx_clean: time.map((value) => 45 + Math.sin(value / 3) * 15),
+  gy_clean: time.map((value) => 52 + Math.cos(value / 3) * 12),
+}
+
+const instructionGaze = {
+  requested_time_s: 10,
+  nearest_time_s: 10,
+  scenario: "Instrucción 01.png",
+  gx: 37.5,
+  gy: 62.5,
+  scenario_file_id: null,
+  scenario_type: null,
+  scenario_time_s: 10,
+}
+
+const emptyAoiMetrics = {
+  scenario: "Escenario concreto",
+  scenario_file_id: null,
+  aois: [],
+  transitions: [],
+  total_fixations: 0,
+  total_dwell_time_ms: 0,
+  observed_aoi_dwell_time_ms: 0,
+  observed_aoi_dwell_time_percent: 0,
+}
+
+const scanpathsByParticipant = {
+  P01: {
+    objectives: [
+      {
+        id: 1,
+        cx: 0.3,
+        cy: 0.4,
+        duration_s: 0.2,
+        radius_norm: Math.sqrt(0.1),
+        t_start: 0,
+        t_end: 0.2,
+        n_points: 12,
+      },
+      {
+        id: 2,
+        cx: 0.6,
+        cy: 0.55,
+        duration_s: 0.5,
+        radius_norm: 0.5,
+        t_start: 0.25,
+        t_end: 0.75,
+        n_points: 30,
+      },
+    ],
+    n_objectives: 2,
+    total_distance_px: 342,
+    avg_duration_s: 0.35,
+    total_duration_s: 0.7,
+    radius_scale: {
+      version: "absolute-area-v1",
+      encoding: "area",
+      cap_ms: 2_000,
+    },
+    scenario_file_id: "scenario-image",
+  },
+  P02: {
+    objectives: [
+      {
+        id: 1,
+        cx: 0.4,
+        cy: 0.3,
+        duration_s: 0.5,
+        radius_norm: 0.5,
+        t_start: 1,
+        t_end: 1.5,
+        n_points: 30,
+      },
+      {
+        id: 2,
+        cx: 0.7,
+        cy: 0.65,
+        duration_s: 2,
+        radius_norm: 1,
+        t_start: 2,
+        t_end: 4,
+        n_points: 120,
+      },
+    ],
+    n_objectives: 2,
+    total_distance_px: 510,
+    avg_duration_s: 1.25,
+    total_duration_s: 2.5,
+    radius_scale: {
+      version: "absolute-area-v1",
+      encoding: "area",
+      cap_ms: 2_000,
+    },
+    scenario_file_id: "scenario-image",
+  },
+}
+
+const onePixelPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64"
+)
+
+const distanceTimeseries = {
+  time,
+  distance_cm: time.map((value) => 61 + Math.sin(value / 4) * 3),
+}
+
+function summary(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b)
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length
+  const middle = Math.floor(values.length / 2)
+  const median = values.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+  const std = values.length > 1
+    ? Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1))
+    : 0
+  const start = Math.floor(values.length * 0.05)
+  const end = Math.max(start + 1, Math.ceil(values.length * 0.2))
+  const baselineValues = sorted.slice(start, end)
+  const baseline = baselineValues.reduce((sum, value) => sum + value, 0) / baselineValues.length
+  return { count: values.length, mean, median, std, min: sorted[0], max: sorted.at(-1)!, baseline, peak: baseline === 0 ? null : ((sorted.at(-1)! - baseline) / Math.abs(baseline)) * 100 }
+}
+
+function statisticsSource(endpoint: string): ComparisonStatisticsBlock["source"] {
+  return {
+    endpoint,
+    resolution: "legacy_timeseries_display_samples",
+    source_samples: time.length,
+    selected_samples: time.length,
+    parameters: { scenario: "request", max_points: 5000, decimation: "linspace", start_time_s: null, end_time_s: null },
+    chart_resolution: "comparison_chart_display_samples",
+    relationship: "same transformed signal; statistics preserve legacy endpoint selection/precision and are not computed from chart rows",
+  }
+}
+
+const comparisonCharts: ComparisonChartsResponse = {
+  contract_version: "comparison-charts-v3",
+  statistics_schema_version: "comparison-statistics-v1",
+  charts: [
+    {
+      id: "pupil",
+      title: "Dilatación pupilar",
+      x_label: "Tiempo (s)",
+      y_label: "Diámetro (mm)",
+      time_basis: "absolute",
+      x_domain: [time[0], time[time.length - 1]],
+      data: time.map((value, index) => ({
+        time: value,
+        sourceTime: value,
+        left: pupilLeft[index],
+        right: pupilRight[index],
+      })),
+      series: [
+        {
+          key: "left",
+          label: "Pupila izquierda",
+          color: "#2563EB",
+          unit: "mm",
+        },
+        {
+          key: "right",
+          label: "Pupila derecha",
+          color: "#7C3AED",
+          unit: "mm",
+        },
+      ],
+      legend: [
+        { label: "Pupila izquierda", color: "#2563EB" },
+        { label: "Pupila derecha", color: "#7C3AED" },
+      ],
+      peaks: [
+        {
+          kind: "min",
+          series_key: "left",
+          series_label: "Pupila izquierda",
+          value: Math.min(...pupilLeft),
+          time_s: time[pupilLeft.indexOf(Math.min(...pupilLeft))],
+          unit: "mm",
+          color: "#111827",
+          line_style: "dotted",
+          label: "Mínimo",
+        },
+        {
+          kind: "max",
+          series_key: "right",
+          series_label: "Pupila derecha",
+          value: Math.max(...pupilRight),
+          time_s: time[pupilRight.indexOf(Math.max(...pupilRight))],
+          unit: "mm",
+          color: "#F97316",
+          line_style: "dashed",
+          label: "Máximo",
+        },
+      ],
+      annotations: [],
+      synchronized: true,
+      height: 320,
+    },
+    {
+      id: "gaze",
+      title: "Gaze point",
+      x_label: "Tiempo (s)",
+      y_label: "Posición (%)",
+      time_basis: "absolute",
+      x_domain: [time[0], time[time.length - 1]],
+      data: time.map((value, index) => ({
+        time: value,
+        sourceTime: value,
+        x: gazeTimeseries.gx_clean[index],
+        y: gazeTimeseries.gy_clean[index],
+      })),
+      series: [
+        { key: "x", label: "Posición X", color: "#2563EB", unit: "%" },
+        { key: "y", label: "Posición Y", color: "#7C3AED", unit: "%" },
+      ],
+      legend: [
+        { label: "Posición X", color: "#2563EB" },
+        { label: "Posición Y", color: "#7C3AED" },
+      ],
+      peaks: [],
+      annotations: [],
+      synchronized: true,
+      height: 320,
+    },
+    {
+      id: "distance",
+      title: "Distancia al dispositivo",
+      x_label: "Tiempo (s)",
+      y_label: "Distancia (cm)",
+      time_basis: "absolute",
+      x_domain: [time[0], time[time.length - 1]],
+      data: time.map((value, index) => ({
+        time: value,
+        sourceTime: value,
+        distance: distanceTimeseries.distance_cm[index],
+      })),
+      series: [
+        { key: "distance", label: "Distancia", color: "#6366F1", unit: "cm" },
+      ],
+      legend: [{ label: "Distancia", color: "#6366F1" }],
+      peaks: [],
+      annotations: [],
+      synchronized: true,
+      height: 320,
+    },
+  ],
+  statistics: [
+    {
+      visualization_id: "pupil", status: "ok", error: null,
+      source: statisticsSource("/timeseries/pupil"),
+      series: [
+        { key: "left", label: "Izquierda suavizada", unit: "mm", summary: summary(pupilLeft) },
+        { key: "right", label: "Derecha suavizada", unit: "mm", summary: summary(pupilRight) },
+      ],
+    },
+    {
+      visualization_id: "gaze", status: "ok", error: null,
+      source: statisticsSource("/timeseries/gaze"),
+      series: [
+        { key: "x", label: "Posición X", unit: "%", summary: summary(gazeTimeseries.gx_clean) },
+        { key: "y", label: "Posición Y", unit: "%", summary: summary(gazeTimeseries.gy_clean) },
+      ],
+    },
+    {
+      visualization_id: "distance", status: "ok", error: null,
+      source: statisticsSource("/timeseries/distance"),
+      series: [{ key: "distance", label: "Distancia", unit: "cm", summary: summary(distanceTimeseries.distance_cm) }],
+    },
+    {
+      visualization_id: "gsr", status: "ok", error: null,
+      source: statisticsSource("/timeseries/gsr"),
+      series: [{ key: "gsr", label: "Señal suavizada", unit: "µS", summary: summary(time.map((value) => 2 + Math.sin(value))) }],
+    },
+    {
+      visualization_id: "eeg_timeseries", status: "ok", error: null,
+      source: statisticsSource("/timeseries/eeg"),
+      series: [{ key: "f3", label: "F3", unit: "µV", summary: summary(time.map((value) => Math.sin(value) * 20)) }],
+    },
+  ],
+}
+
+const correlationSignals = [
+  {
+    id: "pupil_avg_mm",
+    label: "Dilatación pupilar promedio",
+    unit: "mm",
+    available: true,
+    valid_bins: 80,
+    coverage: 1,
+    source_columns: ["pupil_left", "pupil_right"],
+    unavailable_reason: null,
+  },
+  {
+    id: "gaze_x_pct",
+    label: "Posición de mirada X",
+    unit: "%",
+    available: true,
+    valid_bins: 80,
+    coverage: 1,
+    source_columns: ["gaze_x"],
+    unavailable_reason: null,
+  },
+  {
+    id: "gaze_y_pct",
+    label: "Posición de mirada Y",
+    unit: "%",
+    available: true,
+    valid_bins: 80,
+    coverage: 1,
+    source_columns: ["gaze_y"],
+    unavailable_reason: null,
+  },
+  {
+    id: "distance_cm",
+    label: "Distancia al dispositivo",
+    unit: "cm",
+    available: true,
+    valid_bins: 80,
+    coverage: 1,
+    source_columns: ["distance"],
+    unavailable_reason: null,
+  },
+] as const
+
+const correlations = {
+  participant_code: "P01",
+  scenario: "Escenario concreto",
+  method: "pearson",
+  time_basis: "scenario_relative",
+  bin_size_s: 0.25,
+  min_pair_samples: 3,
+  duration_s: 20,
+  total_bins: 80,
+  signals: correlationSignals,
+  matrix: correlationSignals.map((row, rowIndex) =>
+    correlationSignals.map((column, columnIndex) => ({
+      signal_x: row.id,
+      signal_y: column.id,
+      coefficient:
+        rowIndex === columnIndex
+          ? 1
+          : Math.round((0.18 + (rowIndex + columnIndex) * 0.11) * 1000) / 1000,
+      n_samples: 80,
+      coverage: 1,
+      status: "ok",
+    }))
+  ),
+}
+
+function projectStorageKey(projectId: string) {
+  return `${STORAGE_KEY_PREFIX}:${TEST_USER_ID}:${projectId}`
+}
+
+async function installAuthenticatedSession(page: Page) {
+  await page.addInitScript(
+    ({ userId }) => {
+      window.localStorage.setItem(
+        "neurodatics-auth-session",
+        JSON.stringify({
+          user: {
+            id: userId,
+            email: "comparison-e2e@neurodatics.test",
+            name: "Comparison E2E",
+            authSource: "google-oauth",
+          },
+          session: {
+            accessToken: "comparison-e2e-token",
+            tokenType: "bearer",
+            expiresAt: "2099-01-01T00:00:00.000Z",
+          },
+        })
+      )
+    },
+    { userId: TEST_USER_ID }
+  )
+}
+
+async function mockDashboardApi(
+  page: Page,
+  gazeAtResponse = instructionGaze,
+  comparisonResponse = comparisonCharts
+) {
+  const unhandledRequests: string[] = []
+
+  await page.route("**/api/**", async (route) => {
+    const url = new URL(route.request().url())
+    const path = url.pathname.replace(/\/$/, "")
+
+    if (path === "/api/projects") {
+      await route.fulfill({ json: projects })
+      return
+    }
+    const detail = projects.find((project) => path === `/api/projects/${project.id}`)
+    if (detail) { await route.fulfill({ json: detail }); return }
+    if (/\/analytics\/participants$/.test(path)) {
+      await route.fulfill({ json: participants })
+      return
+    }
+    if (/\/analytics\/scenarios$/.test(path)) {
+      await route.fulfill({ json: scenarios })
+      return
+    }
+    if (/\/analytics\/comparison\/charts$/.test(path)) {
+      await route.fulfill({ json: comparisonResponse })
+      return
+    }
+    if (/\/analytics\/timeseries\/pupil$/.test(path)) {
+      await route.fulfill({ json: pupilTimeseries })
+      return
+    }
+    if (/\/analytics\/timeseries\/gaze$/.test(path)) {
+      await route.fulfill({ json: gazeTimeseries })
+      return
+    }
+    if (/\/analytics\/timeseries\/distance$/.test(path)) {
+      await route.fulfill({ json: distanceTimeseries })
+      return
+    }
+    if (/\/analytics\/gaze-at$/.test(path)) {
+      await route.fulfill({ json: gazeAtResponse })
+      return
+    }
+    if (/\/analytics\/scanpath$/.test(path)) {
+      const participantCode = url.searchParams.get("participant_code") ?? "P01"
+      await route.fulfill({
+        json:
+          scanpathsByParticipant[
+            participantCode as keyof typeof scanpathsByParticipant
+          ] ?? scanpathsByParticipant.P01,
+      })
+      return
+    }
+    if (/\/analytics\/aois$/.test(path)) {
+      await route.fulfill({ json: emptyAoiMetrics })
+      return
+    }
+    if (/\/analytics\/correlations$/.test(path)) {
+      await route.fulfill({ json: correlations })
+      return
+    }
+    if (/\/files\/[^/]+\/image$/.test(path)) {
+      await route.fulfill({
+        body: onePixelPng,
+        contentType: "image/png",
+      })
+      return
+    }
+
+    if (url.pathname === "/api/settings/screen") {
+      await route.fulfill({ json: { screen: { width_px: 1280, height_px: 1024, width_cm: null, height_cm: null }, confirmed: true } })
+      return
+    }
+
+    unhandledRequests.push(`${route.request().method()} ${url.pathname}`)
+    await route.fulfill({
+      status: 501,
+      json: { detail: `Unhandled Playwright mock: ${url.pathname}` },
+    })
+  })
+
+  return unhandledRequests
+}
+
+async function openProjectComparison(page: Page, projectName: string) {
+  const projectButton = page.getByRole("button", {
+    name: projectName,
+    exact: true,
+  })
+  await expect(projectButton).toBeVisible()
+
+  const project = projectButton.locator("xpath=../..")
+  const comparisonButton = project.getByRole("button", {
+    name: "Comparativas",
+    exact: true,
+  })
+
+  if ((await comparisonButton.count()) === 0) {
+    await project.getByRole("button", { name: "Expandir proyecto" }).click()
+  }
+
+  await comparisonButton.click()
+  await expect(
+    page.getByRole("heading", { name: "Comparativas", exact: true })
+  ).toBeVisible()
+}
+
+async function selectScenario(page: Page, scenarioName = "Escenario concreto") {
+  const scenarioTrigger = page.locator('[data-slot="select-trigger"]').first()
+  await scenarioTrigger.click()
+  await page.getByRole("option", { name: scenarioName, exact: true }).click()
+  await expect(scenarioTrigger).toContainText(scenarioName)
+}
+
+async function openComparisonDashboard(
+  page: Page,
+  projectName = "Proyecto Alfa",
+  concreteScenario = true
+) {
+  await page.goto("/dashboard")
+  await openProjectComparison(page, projectName)
+  if (concreteScenario) await selectScenario(page)
+
+  const charts = page.locator('[role="img"][aria-label*="observaciones"]')
+  await expect(charts).toHaveCount(3)
+  if (concreteScenario) {
+    await expect(
+      page.getByRole("table", {
+        name: /Matriz de correlaciones de Pearson para Escenario concreto/,
+      })
+    ).toBeVisible()
+  }
+}
+
+async function expectCompactGenericImage(image: Locator) {
+  const box = await image.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.width).toBeLessThanOrEqual(561)
+  expect(box!.height).toBeLessThanOrEqual(316)
+  expect(box!.width / box!.height).toBeCloseTo(16 / 9, 1)
+}
+
+test.beforeEach(async ({ page }) => {
+  await installAuthenticatedSession(page)
+})
+
+test("uses the versioned chart response for all five temporal summaries", async ({
+  page,
+}) => {
+  const analyticsRequests: URL[] = []
+  const observedComparisonBodies: Array<{ views: number; bytes: number }> = []
+  page.on("request", (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.includes("/analytics/")) analyticsRequests.push(url)
+  })
+  page.on("response", async (response) => {
+    const url = new URL(response.url())
+    if (!url.pathname.endsWith("/analytics/comparison/charts")) return
+    const views = url.searchParams.get("visualizations")?.split(",").filter(Boolean).length ?? 0
+    observedComparisonBodies.push({ views, bytes: (await response.body()).byteLength })
+  })
+  const unhandledRequests = await mockDashboardApi(page)
+  await openComparisonDashboard(page)
+  const temporalEndpointRequests = () => analyticsRequests.filter((url) =>
+    /\/analytics\/timeseries\/(pupil|gaze|distance|gsr|eeg)$/.test(url.pathname)
+  ).length
+  const legitimateRequestsBeforeSelection = temporalEndpointRequests()
+
+  await page.getByRole("button", { name: /Gráficas a comparar/ }).click()
+  await page.getByRole("checkbox", { name: "Respuesta galvánica" }).click()
+  await page.getByRole("checkbox", { name: "EEG por canal" }).click()
+  await page.getByRole("button", { name: "Aplicar selección" }).click()
+
+  await expect(page.getByRole("cell", { name: "Señal suavizada" })).toBeVisible()
+  await expect(page.getByRole("cell", { name: "F3", exact: true })).toBeVisible()
+  await expect.poll(() => analyticsRequests.filter((url) =>
+    url.pathname.endsWith("/analytics/comparison/charts") &&
+    url.searchParams.get("visualizations")?.split(",").length === 5
+  ).length).toBe(1)
+  await expect.poll(() => observedComparisonBodies.filter((item) => item.views === 5).length).toBe(1)
+  expect(temporalEndpointRequests()).toBe(legitimateRequestsBeforeSelection)
+  const finalBody = observedComparisonBodies.find((item) => item.views === 5)!
+  console.log(`G10 observed E2E: 1 comparison response, ${finalBody.bytes} decoded JSON bytes, 0 added summary timeseries requests.`)
+  expect(unhandledRequests).toEqual([])
+})
+
+test("keeps valid statistics visible beside failed and empty temporal signals", async ({
+  page,
+}) => {
+  const partialResponse = {
+    ...comparisonCharts,
+    statistics: comparisonCharts.statistics.map((block): ComparisonStatisticsBlock => {
+      if (block.visualization_id === "gaze") {
+        return { ...block, status: "error", error: "computation_failed", series: [] }
+      }
+      if (block.visualization_id === "distance") {
+        return { ...block, status: "empty", error: null, series: [] }
+      }
+      return block
+    }),
+  }
+  const unhandledRequests = await mockDashboardApi(
+    page,
+    instructionGaze,
+    partialResponse
+  )
+  await openComparisonDashboard(page)
+
+  await expect(page.getByRole("cell", { name: "Izquierda suavizada" })).toBeVisible()
+  const numericStatistics = page.getByRole("table").filter({
+    has: page.getByRole("columnheader", { name: "Serie", exact: true }),
+  })
+  await expect(
+    numericStatistics.getByRole("row", {
+      name: "Eye tracker Punto de mirada Estado No disponible: No se pudo calcular esta señal",
+      exact: true,
+    })
+  ).toBeVisible()
+  await expect(
+    numericStatistics.getByRole("row", {
+      name: "Eye tracker Distancia al dispositivo Estado Sin datos",
+      exact: true,
+    })
+  ).toBeVisible()
+  expect(unhandledRequests).toEqual([])
+})
+
+test("uses comparable absolute fixation sizes across participants", async ({
+  page,
+}) => {
+  const unhandledRequests = await mockDashboardApi(page)
+  await openComparisonDashboard(page)
+
+  await page.getByRole("button", { name: /Gráficas a comparar/ }).click()
+  await page.getByRole("button", { name: "Limpiar", exact: true }).click()
+  await page.getByRole("checkbox", { name: "Mapa de recorridos" }).click()
+  await page.getByRole("button", { name: "Aplicar selección" }).click()
+
+  const panel = page.locator("#comparison-panel-scanpath")
+  await expect(panel.getByText("Tiempo fijado", { exact: true })).toBeVisible()
+  await expect(panel).toContainText("0.70 s")
+  await expect(panel.getByTestId("scanpath-duration-legend")).toContainText(
+    "≥ 2 s"
+  )
+
+  const participantOneHalfSecond = panel.getByTestId("scanpath-fixation-2")
+  await expect(participantOneHalfSecond).toHaveAttribute(
+    "aria-label",
+    "Fijación 2: 500 ms; inicio 0.250 s; fin 0.750 s."
+  )
+  await expect(participantOneHalfSecond.locator("title")).toHaveText(
+    "Fijación 2: 500 ms; inicio 0.250 s; fin 0.750 s."
+  )
+  await participantOneHalfSecond.hover()
+  await participantOneHalfSecond.focus()
+  await expect(participantOneHalfSecond).toBeFocused()
+
+  const participantOneRadius = Number(
+    await participantOneHalfSecond.getAttribute("data-radius")
+  )
+  expect(participantOneRadius).toBeLessThan(40)
+  // Same look as the "Mapa de recorridos" tab.
+  await expect(participantOneHalfSecond.locator("circle")).toHaveAttribute(
+    "fill",
+    "rgba(26, 115, 232, 0.9)"
+  )
+
+  const participantTrigger = page
+    .locator('[data-slot="select-trigger"]')
+    .nth(1)
+  await participantTrigger.click()
+  await page.getByRole("option", { name: "Participante P02", exact: true }).click()
+
+  await expect(panel).toContainText("2.50 s")
+  const participantTwoHalfSecond = panel.getByTestId("scanpath-fixation-1")
+  await expect(participantTwoHalfSecond).toHaveAttribute(
+    "data-duration-ms",
+    "500"
+  )
+  const participantTwoRadius = Number(
+    await participantTwoHalfSecond.getAttribute("data-radius")
+  )
+  expect(participantTwoRadius).toBeCloseTo(participantOneRadius, 10)
+  await expect(panel.getByTestId("scanpath-fixation-2")).toHaveAttribute(
+    "data-radius",
+    "40"
+  )
+  expect(unhandledRequests).toEqual([])
+})
+
+test("renders a generic stimulus in the single-sensor view for a fileless moment", async ({
+  page,
+}) => {
+  const stimulusFileRequests: string[] = []
+  page.on("request", (request) => {
+    if (/\/files\/[^/]+\/(?:preview|image)(?:\?|$)/.test(request.url())) {
+      stimulusFileRequests.push(request.url())
+    }
+  })
+  const unhandledRequests = await mockDashboardApi(page, {
+    ...instructionGaze,
+    gx: 0,
+    gy: 0,
+  })
+
+  await page.goto("/dashboard")
+  await page.getByRole("button", { name: "Proyecto Alfa", exact: true }).click()
+
+  const minimumCard = page.getByRole("button", { name: /^Mínimo:/ })
+  await expect(minimumCard).toBeVisible()
+  await minimumCard.click()
+
+  const genericImage = page.getByRole("img", {
+    name: "Pantalla genérica: INSTRUCCIONES",
+  })
+  await expect(genericImage).toBeVisible()
+  await expectCompactGenericImage(genericImage)
+  await expect(genericImage.locator("rect").first()).toHaveAttribute(
+    "fill",
+    "#000000"
+  )
+
+  const gazeMarker = genericImage.getByTestId("missing-stimulus-gaze-marker")
+  await expect(gazeMarker).toBeVisible()
+  await expect(gazeMarker).toHaveAttribute("data-gaze-marker", "cyan")
+  await expect(gazeMarker).toHaveAttribute("data-gaze-x", "0")
+  await expect(gazeMarker).toHaveAttribute("data-gaze-y", "0")
+
+  const stimulusBlock = genericImage.locator("xpath=..")
+  await expect(stimulusBlock).toContainText("t = 10.00s")
+  await expect(stimulusBlock).toContainText("Posición de mirada: (0.0, 0.0)")
+  await expect(page.getByText(/no hay estímulo visual asociado/)).toHaveCount(0)
+  expect(stimulusFileRequests).toEqual([])
+  expect(unhandledRequests).toEqual([])
+})
+
+test("renders a generic stimulus and gaze point when the selected moment has no file", async ({
+  page,
+}) => {
+  const stimulusFileRequests: string[] = []
+  page.on("request", (request) => {
+    if (/\/files\/[^/]+\/(?:preview|image)(?:\?|$)/.test(request.url())) {
+      stimulusFileRequests.push(request.url())
+    }
+  })
+  const unhandledRequests = await mockDashboardApi(page)
+  await openComparisonDashboard(page)
+
+  const pupilChart = page.getByRole("img", {
+    name: /Diámetro \(mm\).*Haz clic en un punto/,
+  })
+  const chartBox = await pupilChart.boundingBox()
+  expect(chartBox).not.toBeNull()
+  const chartPosition = {
+    x: chartBox!.width / 2,
+    y: chartBox!.height / 2,
+  }
+  await pupilChart.hover({ position: chartPosition })
+  const activePoint = pupilChart.locator(".recharts-active-dot").first()
+  await expect(activePoint).toBeVisible()
+  await activePoint.click()
+
+  const pointHeading = page.getByRole("heading", {
+    name: "Punto sobre estímulo",
+  })
+  await expect(pointHeading).toBeVisible()
+  const pointPanel = pointHeading.locator("xpath=../../..")
+  await expect(
+    pointPanel.getByRole("img", {
+      name: "Pantalla genérica: INSTRUCCIONES",
+    })
+  ).toBeVisible()
+  await expectCompactGenericImage(
+    pointPanel.getByRole("img", {
+      name: "Pantalla genérica: INSTRUCCIONES",
+    })
+  )
+  const gazeMarker = pointPanel.getByTestId("missing-stimulus-gaze-marker")
+  await expect(gazeMarker).toBeVisible()
+  await expect(gazeMarker).toHaveAttribute("data-gaze-marker", "rose")
+  await expect(gazeMarker).toHaveAttribute("data-gaze-x", "37.5")
+  await expect(gazeMarker).toHaveAttribute("data-gaze-y", "62.5")
+  await expect(pointPanel).toContainText("Tiempo: 10.00 s")
+  await expect(pointPanel).toContainText("X: 37.5%")
+  await expect(pointPanel).toContainText("Y: 62.5%")
+  await expect(pointPanel).not.toContainText(
+    "no hay estímulo visual asociado a este escenario"
+  )
+
+  const aoiToggle = pointPanel.getByRole("button", { name: "Ocultar AOIs" })
+  const pointToggle = pointPanel.getByRole("button", {
+    name: "Ocultar punto de fijación",
+  })
+  await expect(aoiToggle).toBeDisabled()
+  await expect(pointToggle).toBeEnabled()
+  await expect(pointToggle).toHaveAttribute("aria-pressed", "true")
+  await pointToggle.click()
+  await expect(gazeMarker).toHaveCount(0)
+  await expect(
+    pointPanel.getByRole("button", { name: "Mostrar punto de fijación" })
+  ).toHaveAttribute("aria-pressed", "false")
+  expect(stimulusFileRequests).toEqual([])
+  expect(unhandledRequests).toEqual([])
+})
+
+test("keeps the document fixed while the comparison shell consumes extra scroll", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  const unhandledRequests = await mockDashboardApi(page)
+  await openComparisonDashboard(page)
+
+  const shell = page.locator("main.analytics-shell")
+  const table = page.getByRole("table", {
+    name: /Matriz de correlaciones de Pearson para Escenario concreto/,
+  })
+  const charts = page.locator('[role="img"][aria-label*="observaciones"]')
+
+  const centered = await table.evaluate((element) => {
+    const tableRect = element.getBoundingClientRect()
+    const containerRect = element.parentElement!.getBoundingClientRect()
+    return {
+      leftGap: tableRect.left - containerRect.left,
+      rightGap: containerRect.right - tableRect.right,
+    }
+  })
+  expect(centered.leftGap).toBeGreaterThan(20)
+  expect(Math.abs(centered.leftGap - centered.rightGap)).toBeLessThanOrEqual(2)
+
+  const beforeGeometry = await charts.evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect()
+      return { width: Math.round(rect.width), height: Math.round(rect.height) }
+    })
+  )
+
+  await shell.evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+  })
+  await shell.hover({ position: { x: 20, y: 20 } })
+  for (let index = 0; index < 8; index += 1) {
+    await page.mouse.wheel(0, 1_200)
+  }
+
+  await expect(table).toBeInViewport()
+  const afterGeometry = await charts.evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect()
+      return { width: Math.round(rect.width), height: Math.round(rect.height) }
+    })
+  )
+  expect(afterGeometry).toEqual(beforeGeometry)
+
+  const layout = await shell.evaluate((element) => ({
+    bodyScrollHeight: document.body.scrollHeight,
+    documentScrollHeight: document.documentElement.scrollHeight,
+    innerHeight: window.innerHeight,
+    shellBottom: element.getBoundingClientRect().bottom,
+    shellClientHeight: element.clientHeight,
+    shellScrollHeight: element.scrollHeight,
+    shellScrollTop: element.scrollTop,
+    windowScrollY: window.scrollY,
+  }))
+
+  expect(layout.windowScrollY).toBe(0)
+  expect(layout.documentScrollHeight).toBeLessThanOrEqual(
+    layout.innerHeight + 1
+  )
+  expect(layout.bodyScrollHeight).toBeLessThanOrEqual(layout.innerHeight + 1)
+  expect(Math.abs(layout.shellBottom - layout.innerHeight)).toBeLessThanOrEqual(
+    1
+  )
+  expect(
+    layout.shellScrollTop + layout.shellClientHeight
+  ).toBeGreaterThanOrEqual(layout.shellScrollHeight - 1)
+  expect(unhandledRequests).toEqual([])
+})
+
+test("contains the correlation matrix horizontal scroll on a narrow viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 900, height: 900 })
+  const unhandledRequests = await mockDashboardApi(page)
+  await openComparisonDashboard(page)
+
+  const table = page.getByRole("table", {
+    name: /Matriz de correlaciones de Pearson para Escenario concreto/,
+  })
+  const container = table.locator("xpath=..")
+  const firstColumn = table.locator("thead th").first()
+
+  const overflow = await container.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }))
+  expect(overflow.scrollWidth).toBeGreaterThan(overflow.clientWidth)
+
+  await container.evaluate((element) => {
+    element.scrollLeft = element.scrollWidth
+  })
+  await expect
+    .poll(() => container.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(0)
+
+  const stickyPosition = await firstColumn.evaluate((element) => {
+    const columnRect = element.getBoundingClientRect()
+    const containerRect =
+      element.parentElement!.parentElement!.parentElement!.parentElement!.getBoundingClientRect()
+    return {
+      columnLeft: columnRect.left,
+      containerLeft: containerRect.left,
+      position: window.getComputedStyle(element).position,
+    }
+  })
+  expect(stickyPosition.position).toBe("sticky")
+  expect(
+    Math.abs(stickyPosition.columnLeft - stickyPosition.containerLeft)
+  ).toBeLessThanOrEqual(2)
+
+  const horizontalLayout = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    innerWidth: window.innerWidth,
+    windowScrollX: window.scrollX,
+  }))
+  expect(horizontalLayout.windowScrollX).toBe(0)
+  expect(horizontalLayout.documentWidth).toBeLessThanOrEqual(
+    horizontalLayout.innerWidth + 1
+  )
+  expect(unhandledRequests).toEqual([])
+})
+
+test("restores applied views per user and project across filters, navigation, and reload", async ({
+  page,
+}) => {
+  const unhandledRequests = await mockDashboardApi(page)
+  await openComparisonDashboard(page)
+
+  await page.getByRole("button", { name: /Gráficas a comparar/ }).click()
+  await page.getByRole("checkbox", { name: "Distancia al dispositivo" }).click()
+  await page.getByRole("button", { name: "Aplicar selección" }).click()
+
+  await expect(
+    page.locator('button[aria-controls="comparison-panel-pupil"]')
+  ).toBeVisible()
+  await expect(
+    page.locator('button[aria-controls="comparison-panel-gaze"]')
+  ).toBeVisible()
+  await expect(
+    page.locator('button[aria-controls="comparison-panel-distance"]')
+  ).toHaveCount(0)
+
+  const alphaKey = projectStorageKey("project-alpha")
+  await expect
+    .poll(() =>
+      page.evaluate((key) => {
+        const raw = window.localStorage.getItem(key)
+        return raw ? JSON.parse(raw) : null
+      }, alphaKey)
+    )
+    .toMatchObject({ version: 1, selectedIds: ["pupil", "gaze"] })
+
+  const participantTrigger = page
+    .locator('[data-slot="select-trigger"]')
+    .nth(1)
+  await participantTrigger.click()
+  await page.getByRole("option", { name: "Participante P02", exact: true }).click()
+  await expect(
+    page.locator('button[aria-controls="comparison-panel-distance"]')
+  ).toHaveCount(0)
+
+  await selectScenario(page, "Escenario alterno")
+  await expect(
+    page.locator('button[aria-controls="comparison-panel-distance"]')
+  ).toHaveCount(0)
+
+  await page.getByRole("link", { name: "Informes", exact: true }).click()
+  await expect(
+    page.getByRole("heading", { name: "Informes", exact: true })
+  ).toBeVisible()
+  await page.getByRole("link", { name: "Dashboard", exact: true }).click()
+  await openProjectComparison(page, "Proyecto Alfa")
+  await expect(
+    page.locator('button[aria-controls="comparison-panel-distance"]')
+  ).toHaveCount(0)
+
+  await page.reload()
+  await openProjectComparison(page, "Proyecto Alfa")
+  await expect(
+    page.locator('button[aria-controls="comparison-panel-distance"]')
+  ).toHaveCount(0)
+
+  await openProjectComparison(page, "Proyecto Beta")
+  await expect(
+    page.locator('button[aria-controls="comparison-panel-distance"]')
+  ).toBeVisible()
+  expect(
+    await page.evaluate(
+      (key) => window.localStorage.getItem(key),
+      projectStorageKey("project-beta")
+    )
+  ).toBeNull()
+
+  await openProjectComparison(page, "Proyecto Alfa")
+  await expect(
+    page.locator('button[aria-controls="comparison-panel-distance"]')
+  ).toHaveCount(0)
+  expect(unhandledRequests).toEqual([])
+})

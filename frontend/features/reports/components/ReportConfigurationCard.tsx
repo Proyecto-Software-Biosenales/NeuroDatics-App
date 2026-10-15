@@ -1,115 +1,75 @@
-import { Card } from "../../../components/ui/Card"
-import { SensorBadge } from "../../projects/components/SensorBadge"
+import { Brain, Eye, Files, Zap } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { cn } from "@/lib/utils"
 import type { SensorType } from "@/features/projects/types"
-import type { ReportType } from "@/features/reports/types"
+import { DEVICE_REPORTS } from "@/features/reports/reportContents"
+import type { ReportDevice } from "@/features/reports/types"
+import { ReportStepCard } from "./ReportStepCard"
+import { FieldHint } from "@/components/FieldHint"
 
 interface ReportConfigurationCardProps {
-  reportType: ReportType
-  onReportTypeChange: (type: ReportType) => void
   availableSensors: SensorType[]
-  selectedSensors: SensorType[]
-  onSensorToggle: (sensor: SensorType) => void
+  selectedDevice: ReportDevice | null
+  onDeviceChange: (device: ReportDevice) => void
 }
 
-const reportOptions = [
-  {
-    id: "complete" as const,
-    title: "Reporte completo del proyecto",
-    description:
-      "Incluye todos los sensores y análisis disponibles del proyecto seleccionado",
-  },
-  {
-    id: "by-sensor" as const,
-    title: "Reporte por sensor",
-    description:
-      "Selecciona uno o más sensores específicos para incluir en el reporte",
-  },
-  {
-    id: "comparative" as const,
-    title: "Reporte comparativo",
-    description: "Análisis comparativo entre sensores, gráficas y métricas",
-  },
-]
+const DEVICE_ICONS = { EyeTracker: Eye, GSR: Zap, EEG: Brain } satisfies Record<SensorType, typeof Eye>
 
 export const ReportConfigurationCard = ({
-  reportType,
-  onReportTypeChange,
   availableSensors,
-  selectedSensors,
-  onSensorToggle,
+  selectedDevice,
+  onDeviceChange,
 }: ReportConfigurationCardProps) => {
+  const options = [
+    ...availableSensors.map((sensor) => ({
+      id: sensor as ReportDevice,
+      title: DEVICE_REPORTS[sensor].title,
+      description: DEVICE_REPORTS[sensor].summary,
+      Icon: DEVICE_ICONS[sensor],
+    })),
+    ...(availableSensors.length > 1
+      ? [{
+          id: "all" as ReportDevice,
+          title: "Todos los dispositivos",
+          description: "Un informe PDF por dispositivo, juntos en un archivo ZIP.",
+          Icon: Files,
+        }]
+      : []),
+  ]
+
   return (
-    <Card className="p-8 transition-all duration-300">
-      <div className="flex items-start gap-4 mb-6">
-        <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-          <span className="text-foreground font-semibold text-lg">2</span>
-        </div>
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Configuración del reporte
-          </h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Define el tipo y alcance del reporte a generar
-          </p>
-        </div>
-      </div>
-
-      <div className="pl-14 space-y-3">
-        {reportOptions.map((option) => (
-          <div key={option.id}>
-            <label
-              className={`flex items-start gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
-                reportType === option.id
-                  ? "border-foreground/40 bg-muted"
-                  : "hover:border-border hover:bg-muted/50"
-              }`}
-            >
-              <input
-                type="radio"
-                name="report-type"
-                value={option.id}
-                checked={reportType === option.id}
-                onChange={() => onReportTypeChange(option.id)}
-                className="mt-1 w-4 h-4 accent-gray-950"
-              />
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-foreground mb-1">
-                  {option.title}
-                </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {option.description}
-                </p>
-              </div>
-            </label>
-
-            {reportType === "by-sensor" &&
-              option.id === "by-sensor" &&
-              availableSensors.length > 0 && (
-                <div className="ml-7 mt-3 p-4 bg-muted/50 rounded-xl border border-border animate-in fade-in slide-in-from-top-2 duration-300">
-                  <p className="text-xs font-medium text-foreground mb-3">
-                    Selecciona los sensores a incluir:
-                  </p>
-                  <div className="space-y-2">
-                    {availableSensors.map((sensor) => (
-                      <label
-                        key={sensor}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedSensors.includes(sensor)}
-                          onChange={() => onSensorToggle(sensor)}
-                          className="w-4 h-4 accent-neutral-900"
-                        />
-                        <SensorBadge sensor={sensor} size="sm" />
-                      </label>
-                    ))}
-                  </div>
-                </div>
+    <ReportStepCard step={3} title="Dispositivo">
+      {options.length === 0 ? (
+        <p className="text-sm text-muted-foreground sm:pl-14">
+          El proyecto no tiene dispositivos registrados.
+        </p>
+      ) : (
+        <RadioGroup
+          value={selectedDevice ?? ""}
+          onValueChange={(value) => onDeviceChange(value as ReportDevice)}
+          aria-label="Dispositivo del informe"
+          className="grid gap-3 sm:grid-cols-2 sm:pl-14"
+        >
+          {options.map(({ id, title, description, Icon }) => (
+            <Label
+              key={id}
+              htmlFor={`report-device-${id}`}
+              className={cn(
+                "flex cursor-pointer items-center gap-3 rounded-xl border border-border p-4 transition-all duration-200",
+                selectedDevice === id ? "border-foreground/40 bg-muted" : "hover:bg-muted/50"
               )}
-          </div>
-        ))}
-      </div>
-    </Card>
+            >
+              <RadioGroupItem id={`report-device-${id}`} value={id} />
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-foreground">
+                <Icon className="size-4 shrink-0" aria-hidden="true" />
+                {title}
+                <FieldHint>{description}</FieldHint>
+              </span>
+            </Label>
+          ))}
+        </RadioGroup>
+      )}
+    </ReportStepCard>
   )
 }

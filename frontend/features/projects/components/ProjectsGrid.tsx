@@ -1,12 +1,14 @@
+
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar, Clock3, Folder, Users, MoreVertical, Edit, Trash2, Archive, Loader2 } from "lucide-react"
 import { useState } from "react"
-import { Card } from "../../../components/ui/Card"
-import { SensorBadge } from "../../../features/projects/components/SensorBadge"
-import { DeleteProjectDialog } from "../../../features/projects/components/DeleteProjectDialog"
-import { EditProjectDialog } from "../../../features/projects/components/EditProjectDialog"
-import { ViewProjectDialog } from "../../../features/projects/components/ViewProjectDialog"
-import { ProjectsApi } from "../api/projectsApi"
-import type { DeleteProjectResult } from "@/features/projects/api/projectsApi"
+import { Card } from "@/components/ui/card"
+import { SensorBadge } from "./SensorBadge"
+import { DeleteProjectDialog } from "./DeleteProjectDialog"
+import { ViewProjectDialog } from "./ViewProjectDialog"
+import { ProjectsApi, type DeleteProjectResult } from "../api/projectsApi"
 import type { Project, ProjectStatus } from "@/features/projects/types"
 import { toast } from "sonner"
 import {
@@ -23,6 +25,12 @@ interface ProjectsGridProps {
   onContinueDraft?: (project: Project) => void
 }
 
+const editHref = (projectId: string) =>
+  `/proyectos/editar?proyecto=${encodeURIComponent(projectId)}`
+
+const dashboardHref = (projectId: string) =>
+  `/dashboard?proyecto=${encodeURIComponent(projectId)}`
+
 const statusLabel: Record<ProjectStatus, string> = {
   draft: "Borrador",
   active: "Activo",
@@ -36,9 +44,9 @@ const statusColorClass: Record<ProjectStatus, string> = {
 }
 
 export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: ProjectsGridProps) => {
+  const router = useRouter()
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [editOpenId, setEditOpenId] = useState<string | null>(null)
   const [deleteOpenId, setDeleteOpenId] = useState<string | null>(null)
   const [viewOpenId, setViewOpenId] = useState<string | null>(null)
 
@@ -56,10 +64,10 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
       setArchivingId(projectId)
       await ProjectsApi.update(projectId, { status: "archived" })
       onEdit({ ...project, status: "archived" })
-      toast.success("Proyecto archivado correctamente")
+      toast.success("Proyecto archivado.")
     } catch (error) {
       console.error("[ProjectsGrid] Archive failed", { projectId, error })
-      toast.error("No se pudo archivar el proyecto")
+      toast.error("No se pudo archivar el proyecto.")
     } finally {
       setArchivingId(null)
     }
@@ -68,47 +76,74 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
   const handleUnarchiveProject = async (projectId: string, project: Project) => {
     try {
       setArchivingId(projectId)
-      await ProjectsApi.update(projectId, { status: "active" })
-      onEdit({ ...project, status: "active" })
-      toast.success("Proyecto desarchivado correctamente")
+      const status = project.isPreExperiment ? "draft" : "active"
+      await ProjectsApi.update(projectId, { status })
+      onEdit({ ...project, status })
+      toast.success("Proyecto desarchivado.")
     } catch (error) {
       console.error("[ProjectsGrid] Unarchive failed", { projectId, error })
-      toast.error("No se pudo desarchiva el proyecto")
+      toast.error("No se pudo desarchivar el proyecto.")
     } finally {
       setArchivingId(null)
     }
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
       {projects.map((project) => {
         const projectStatus = (project.status || "active") as ProjectStatus
-        const participants = project.participants ?? 0
+        const participants = project.isPreExperiment ? project.planningParticipantsCount ?? 0 : project.participants ?? 0
         const isDeleting = deletingId === project.id
         const isDraftProcessing =
           project.status === "draft" && project.ingestionStatus === "PROCESSING"
 
         // PENDING = upload never completed (interrupted or never started).
         // No backend work is running for these — show a "Retomar" footer.
+        // A pre-experiment has no folder by definition, so it uses the common card and footer.
         const isDraftPending =
           project.status === "draft" &&
+          !project.isPreExperiment &&
           (!project.ingestionStatus || project.ingestionStatus === "PENDING")
 
         const canContinueDraft =
           project.status === "draft" &&
-          project.ingestionStatus === "READY"
+          (project.isPreExperiment || project.ingestionStatus === "READY")
+
+        // The card and its footer button read the same state: pre-experiment edits, draft resumes, active opens its dashboard.
+        const openProject = () => {
+          if (isDraftProcessing) return
+          if (project.isPreExperiment) router.push(editHref(project.id))
+          else if (canContinueDraft || isDraftPending) onContinueDraft?.(project)
+          else if (projectStatus === "active") router.push(dashboardHref(project.id))
+          else setViewOpenId(project.id)
+        }
+
+        // One button in the footer, the same size on every card: what the card does next.
+        const footerAction = isDraftProcessing || isDraftPending
+          ? null
+          : canContinueDraft
+            ? { label: project.isPreExperiment ? "Subir" : "Continuar", run: () => onContinueDraft?.(project) }
+            : project.isPreExperiment
+              ? { label: "Editar", run: () => router.push(editHref(project.id)) }
+              : { label: "Ver proyecto", run: () => setViewOpenId(project.id) }
 
         return (
         <Card
           key={project.id}
-          className={`group relative cursor-pointer rounded-2xl border p-6 transition-all duration-200 ${
+          onClick={(event) => {
+            // Dialogs and the menu render in portals but their clicks still bubble here through React.
+            const target = event.target as HTMLElement
+            if (!event.currentTarget.contains(target) || target.closest("button, a")) return
+            openProject()
+          }}
+          className={`group relative flex flex-col rounded-2xl border p-4 transition-all duration-200 xl:p-6 ${
             isDeleting ? "animate-pulse scale-[0.99] opacity-70 pointer-events-none" : ""
           } ${
             isDraftProcessing
-              ? "border-border shadow-none bg-muted/40 pb-16"
+              ? "border-border shadow-none bg-muted/40 pb-16 xl:pb-16"
               : isDraftPending
-              ? "border-border shadow-sm bg-card pb-14"
-              : "border-border shadow-sm bg-card hover:-translate-y-0.5 hover:shadow-lg"
+              ? "cursor-pointer border-border shadow-sm bg-card pb-14 xl:pb-16 hover:-translate-y-0.5 hover:shadow-lg"
+              : "cursor-pointer border-border shadow-sm bg-card hover:-translate-y-0.5 hover:shadow-lg"
           }`}
         >
           <DeleteProjectDialog
@@ -117,13 +152,6 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             onDelete={handleDeleteProject}
             isOpen={deleteOpenId === project.id}
             onOpenChange={(open) => setDeleteOpenId(open ? project.id : null)}
-          />
-          <EditProjectDialog
-            projectId={project.id}
-            projectName={project.name}
-            onProjectUpdated={onEdit}
-            isOpen={editOpenId === project.id}
-            onOpenChange={(open) => setEditOpenId(open ? project.id : null)}
           />
           <ViewProjectDialog
             projectId={project.id}
@@ -136,20 +164,18 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           <div className="absolute top-4 right-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild disabled={isDraftProcessing}>
-                <button
+                <Button size="icon-sm" variant="ghost"
                   type="button"
-                  className={`rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
-                    isDraftProcessing ? "cursor-not-allowed opacity-40" : ""
-                  }`}
+                  className="text-muted-foreground"
                   disabled={isDraftProcessing}
                   aria-label="Opciones del proyecto"
                 >
                   <MoreVertical className="h-5 w-5" />
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => setEditOpenId(project.id)}
+                  onClick={() => router.push(editHref(project.id))}
                   disabled={isDraftProcessing}
                 >
                   <Edit className="h-4 w-4" />
@@ -187,15 +213,15 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             </DropdownMenu>
           </div>
 
-          <div className="mb-5 flex items-center gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors ${
+          <div className="mb-4 flex items-center gap-3 xl:mb-5 xl:gap-4">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted transition-colors xl:h-12 xl:w-12 ${
                 isDraftProcessing ? "animate-pulse" : "group-hover:bg-accent"
               }`}>
-              <Folder className={`h-6 w-6 ${isDraftProcessing ? "text-muted-foreground" : "text-foreground"}`} />
+              <Folder className={`h-5 w-5 xl:h-6 xl:w-6 ${isDraftProcessing ? "text-muted-foreground" : "text-foreground"}`} />
             </div>
 
             <div className="min-w-0 flex-1 pr-24">
-              <h3 className="mb-0.5 truncate text-lg font-semibold leading-tight text-foreground">
+              <h3 className="mb-0.5 truncate text-base font-semibold leading-tight text-foreground xl:text-lg">
                 {project.name}
               </h3>
 
@@ -204,7 +230,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                   className={`h-2.5 w-2.5 rounded-full ${statusColorClass[projectStatus]}`}
                   aria-hidden="true"
                 />
-                <span>{statusLabel[projectStatus]}</span>
+                <span>{project.isPreExperiment && projectStatus !== "archived" ? "Pre-experimento" : statusLabel[projectStatus]}</span>
               </div>
             </div>
           </div>
@@ -225,14 +251,15 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             )}
           </div>
 
-          <div className="mb-5 mt-4 flex flex-wrap gap-2">
+          <div className="mb-4 mt-3 flex min-h-6 flex-wrap gap-2 xl:mb-5 xl:mt-4">
             {project.sensors.map((sensor) => (
               <SensorBadge key={sensor} sensor={sensor} size="sm" />
             ))}
           </div>
 
-          <div className="border-t border-border pt-4">
-            <div className="flex items-center justify-between text-sm">
+          {/* The footer sits at the bottom of the card, so its line is at the same height on every card of a row. */}
+          <div className="mt-auto border-t border-border pt-4">
+            <div className="flex min-h-7 items-center justify-between text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium text-foreground">
@@ -240,43 +267,28 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                 </span>
               </div>
 
-              <div className="flex items-center gap-1">
-                {!isDraftProcessing && !isDraftPending && !canContinueDraft && (
-                  <button
-                    type="button"
-                    className="rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    onClick={() => setViewOpenId(project.id)}
-                  >
-                    Ver proyecto
-                  </button>
-                )}
-                {canContinueDraft && (
-                  <button
-                    type="button"
-                    className="rounded-md px-2 py-1 text-sm font-medium text-gray-800 dark:text-gray-200 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white"
-                    onClick={() => onContinueDraft?.(project)}
-                  >
-                    Continuar
-                  </button>
-                )}
-              </div>
+              {footerAction && (
+                <Button size="sm" variant="outline" type="button" onClick={footerAction.run}>
+                  {footerAction.label}
+                </Button>
+              )}
             </div>
           </div>
 
           {isDraftProcessing && (
             <>
               {/* Pulsing border */}
-              <div className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-gray-300 dark:border-gray-600 animate-pulse z-[5]" />
+              <Skeleton className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-border animate-pulse z-[5]" />
               {/* Content dimming overlay */}
-              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-white/40 dark:bg-gray-900/40 z-[6]" />
+              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-background/40 z-[6]" />
             </>
           )}
 
           {isDeleting && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 dark:bg-gray-900/70 backdrop-blur-[1px]">
-              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm">
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/70 backdrop-blur-[1px]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Eliminando proyecto...
+                Eliminando proyecto…
               </div>
             </div>
           )}
@@ -284,41 +296,41 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           {isDraftProcessing && (
             <div className="absolute bottom-0 left-0 right-0 rounded-b-2xl overflow-hidden z-[10]">
               {/* Animated shimmer line */}
-              <div className="relative h-0.5 w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-                <div className="absolute inset-y-0 left-0 w-2/3 animate-pulse bg-gradient-to-r from-transparent via-gray-500 to-transparent" />
+              <div className="relative h-0.5 w-full overflow-hidden bg-muted">
+                <Skeleton className="absolute inset-y-0 left-0 w-2/3 animate-pulse bg-gradient-to-r from-transparent via-gray-500 to-transparent" />
               </div>
               {/* Footer body */}
-              <div className="flex items-center gap-3 bg-gray-100/95 dark:bg-gray-800/95 backdrop-blur-sm px-4 py-4">
+              <div className="flex items-center gap-3 bg-muted/95 backdrop-blur-sm px-4 py-4">
                 {/* Custom spinner */}
-                <div className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 animate-spin" />
+                <div className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-border border-t-foreground animate-spin" />
                 {/* Text */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold leading-tight text-gray-700 dark:text-gray-200">Procesando archivos</p>
+                  <p className="text-sm font-semibold leading-tight text-foreground">Procesando archivos</p>
                 </div>
                 {/* Bouncing dots */}
                 <div className="flex flex-shrink-0 items-end gap-1 pb-0.5">
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" style={{ animationDelay: "0ms" }} />
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" style={{ animationDelay: "150ms" }} />
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" style={{ animationDelay: "300ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "0ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "150ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             </div>
           )}
 
           {isDraftPending && (
-            <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 rounded-b-2xl z-[10]">
-              <div className="flex items-center justify-between bg-white dark:bg-gray-800 px-4 py-2.5">
+            <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-border rounded-b-2xl z-[10]">
+              <div className="flex items-center justify-between bg-card px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Paso 1 incompleto</p>
+                  <p className="text-xs text-muted-foreground">Carpeta sin procesar</p>
                 </div>
-                <button
+                <Button variant="link"
                   type="button"
-                  className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white underline underline-offset-2 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); onContinueDraft?.(project) }}
+                  className="text-xs"
+                  onClick={() => onContinueDraft?.(project)}
                 >
                   Retomar
-                </button>
+                </Button>
               </div>
             </div>
           )}

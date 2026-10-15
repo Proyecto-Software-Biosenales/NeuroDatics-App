@@ -1,0 +1,599 @@
+"use client"
+
+import { useEffect, useRef, useState, type MouseEvent } from "react"
+import { cn } from "@/lib/utils"
+import { formatChannel, nearestTimeIndex, interpolateTopographyValue, spectrogramColumns, topographyValueAt, viridisPixel, type TopographyFrameRow } from "../../eegPresentation"
+import { StimulusPreviewSurface } from "../StimulusFixationCard"
+import { usePointerDragZoom, ZoomControls } from "../ChartDragZoom"
+import { CHANNEL_COLORS } from "./eegViewShared"
+
+interface SpectrogramHover {
+  x: number
+  y: number
+  time: number
+  frequency: number
+  value: number
+}
+
+interface TopographyHover {
+  x: number
+  y: number
+  value: number
+  nearestChannel: string
+  nearestValue: number
+}
+
+export function SpectrogramPanel({
+  channel,
+  time,
+  frequency,
+  matrix,
+  colorDomain,
+  unit,
+  selectedTime,
+  onTimeSelect,
+  onTimeZoom,
+  onZoomReset,
+  onZoomBack,
+  hopS,
+  interpolate = false,
+  compact = false,
+}: {
+  /** Shorter panel for grids of many participants. */
+  compact?: boolean
+  hopS?: number
+  channel: string
+  time: number[]
+  frequency: number[]
+  matrix: Array<Array<number | null>>
+  colorDomain: { min: number; max: number }
+  unit: string
+  selectedTime?: number | null
+  onTimeSelect?: (time: number) => void
+  onTimeZoom?: (start: number, end: number) => void
+  onZoomReset?: () => void
+  onZoomBack?: () => void
+  /** Blend adjacent windows and frequency bins instead of drawing one flat
+   *  cell each. A display choice: the tooltip keeps reading the real window. */
+  interpolate?: boolean
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [hover, setHover] = useState<SpectrogramHover | null>(null)
+  const minTime = time[0] ?? 0
+  const maxTime = time[time.length - 1] ?? 0
+  const minFrequency = frequency[0] ?? 0
+  const maxFrequency = frequency[frequency.length - 1] ?? 0
+  // A selection outside a zoomed range has no place on this axis.
+  const selectedTimeRatio =
+    selectedTime != null && maxTime > minTime && selectedTime >= minTime && selectedTime <= maxTime
+      ? (selectedTime - minTime) / (maxTime - minTime)
+      : null
+  const dragZoom = usePointerDragZoom(
+    onTimeZoom
+      ? (from, to) => onTimeZoom(minTime + from * (maxTime - minTime), minTime + to * (maxTime - minTime))
+      : undefined
+  )
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const draw = () => {
+      const widthCss = Math.max(1, canvas.clientWidth)
+      const heightCss = Math.max(1, canvas.clientHeight)
+      const dpr = window.devicePixelRatio || 1
+      const width = Math.max(1, Math.floor(widthCss * dpr))
+      const height = Math.max(1, Math.floor(heightCss * dpr))
+      const ctx = canvas.getContext("2d")
+      if (!ctx) return
+
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width
+        canvas.height = height
+      }
+
+      const freqCount = matrix.length
+      const timeCount = matrix[0]?.length ?? 0
+      if (freqCount === 0 || timeCount === 0) {
+        ctx.clearRect(0, 0, width, height)
+        return
+      }
+
+      const image = ctx.createImageData(width, height)
+      // One 32-bit write per pixel instead of four 8-bit ones.
+      const pixels = new Uint32Array(image.data.buffer)
+
+      // A column's windows depend on x alone. Hit-testing per pixel meant
+      // ~440,000 searches of the time axis per panel, which froze the tab.
+      const { left, right, weight } = spectrogramColumns(time, width, hopS, interpolate)
+
+      if (!interpolate) {
+        // Rows landing on the same frequency bin are identical, and there are
+        // height/freqCount of them (~13 at 38 bins on a 256 px panel at dpr 2):
+        // shade the first and copy it down.
+        let sourceFreqIndex = -1
+        let sourceRowStart = 0
+        for (let y = 0; y < height; y += 1) {
+          const freqRatio = height > 1 ? 1 - y / (height - 1) : 1
+          const freqIndex = Math.min(freqCount - 1, Math.max(0, Math.round(freqRatio * (freqCount - 1))))
+          const rowStart = y * width
+          if (freqIndex === sourceFreqIndex) {
+            pixels.copyWithin(rowStart, sourceRowStart, sourceRowStart + width)
+            continue
+          }
+
+          const row = matrix[freqIndex]
+          if (row) {
+            for (let x = 0; x < width; x += 1) {
+              const timeIndex = left[x]
+              // A gap stays transparent so the panel background shows through.
+              if (timeIndex < 0) continue
+              const value = row[timeIndex]
+              if (typeof value !== "number" || !Number.isFinite(value)) continue
+              pixels[rowStart + x] = viridisPixel(value, colorDomain)
+            }
+          }
+          sourceFreqIndex = freqIndex
+          sourceRowStart = rowStart
+        }
+      } else {
+        for (let y = 0; y < height; y += 1) {
+          const freqPosition = height > 1 ? (1 - y / (height - 1)) * (freqCount - 1) : freqCount - 1
+          const lowFreq = Math.min(freqCount - 1, Math.max(0, Math.floor(freqPosition)))
+          const highFreq = Math.min(freqCount - 1, lowFreq + 1)
+          const freqWeight = freqPosition - lowFreq
+          const lowRow = matrix[lowFreq]
+          const highRow = matrix[highFreq]
+          // The cell the pixel sits in decides whether it is a gap, so the
+          // bands stay where they are whether or not this is switched on.
+          const nearRow = freqWeight < 0.5 ? lowRow : highRow
+          const rowStart = y * width
+          for (let x = 0; x < width; x += 1) {
+            const lowTime = left[x]
+            if (lowTime < 0) continue
+            const highTime = right[x]
+            const timeWeight = weight[x]
+            const nearest = nearRow?.[timeWeight < 0.5 ? lowTime : highTime]
+            if (typeof nearest !== "number" || !Number.isFinite(nearest)) continue
+
+            // Bilinear over the four neighbours, renormalised so a missing one
+            // is left out rather than pulled in as a zero.
+            let total = 0
+            let shareTotal = 0
+            let share = (1 - freqWeight) * (1 - timeWeight)
+            let value = lowRow?.[lowTime]
+            if (share > 0 && typeof value === "number" && Number.isFinite(value)) {
+              total += value * share
+              shareTotal += share
+            }
+            share = (1 - freqWeight) * timeWeight
+            value = lowRow?.[highTime]
+            if (share > 0 && typeof value === "number" && Number.isFinite(value)) {
+              total += value * share
+              shareTotal += share
+            }
+            share = freqWeight * (1 - timeWeight)
+            value = highRow?.[lowTime]
+            if (share > 0 && typeof value === "number" && Number.isFinite(value)) {
+              total += value * share
+              shareTotal += share
+            }
+            share = freqWeight * timeWeight
+            value = highRow?.[highTime]
+            if (share > 0 && typeof value === "number" && Number.isFinite(value)) {
+              total += value * share
+              shareTotal += share
+            }
+            pixels[rowStart + x] = viridisPixel(
+              shareTotal > 0 ? total / shareTotal : nearest,
+              colorDomain
+            )
+          }
+        }
+      }
+      ctx.putImageData(image, 0, 0)
+    }
+
+    // ResizeObserver fires once on observe, so the first paint would otherwise
+    // draw every panel twice. Coalescing into a frame also collapses the burst
+    // a layout change sends.
+    let frame: number | null = null
+    const schedule = () => {
+      if (frame != null) return
+      frame = requestAnimationFrame(() => {
+        frame = null
+        draw()
+      })
+    }
+
+    schedule()
+    const observer = new ResizeObserver(schedule)
+    observer.observe(canvas)
+
+    return () => {
+      if (frame != null) cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [colorDomain, matrix, time, minTime, maxTime, hopS, interpolate])
+
+  const getPointFromEvent = (event: MouseEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    if (time.length === 0 || frequency.length === 0) return null
+
+    const x = event.clientX - rect.left
+    const y = event.clientY - rect.top
+    const xRatio = Math.max(0, Math.min(1, x / rect.width))
+    const yRatio = Math.max(0, Math.min(1, y / rect.height))
+    const timeIndex = nearestTimeIndex(time, minTime + xRatio * (maxTime - minTime), hopS)
+    const frequencyIndex = Math.min(
+      frequency.length - 1,
+      Math.max(0, Math.round((1 - yRatio) * (frequency.length - 1)))
+    )
+    const value = matrix[frequencyIndex]?.[timeIndex]
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return null
+    }
+
+    return {
+      x,
+      y,
+      time: time[timeIndex],
+      frequency: frequency[frequencyIndex],
+      value,
+    }
+  }
+
+  const handleMove = (event: MouseEvent<HTMLCanvasElement>) => {
+    const point = getPointFromEvent(event)
+    if (!point) {
+      setHover(null)
+      return
+    }
+
+    setHover({
+      x: point.x,
+      y: point.y,
+      time: point.time,
+      frequency: point.frequency,
+      value: point.value,
+    })
+  }
+
+  const handleClick = (event: MouseEvent<HTMLCanvasElement>) => {
+    if (dragZoom.consumeDragClick()) return
+    const point = getPointFromEvent(event)
+    if (!point) return
+    onTimeSelect?.(point.time)
+  }
+
+  return (
+    <div className={cn("rounded-lg border border-border bg-card", compact ? "p-2" : "p-4")}>
+      <div className={cn("flex items-center justify-between gap-3", compact ? "mb-1" : "mb-3")}>
+        <div className="flex items-center gap-2">
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: CHANNEL_COLORS[channel] ?? "#4B5563" }}
+          />
+          <span className="text-sm font-semibold text-foreground">{formatChannel(channel)}</span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {matrix.length} x {matrix[0]?.length ?? 0}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-[44px_1fr] gap-2">
+        <div className="flex flex-col items-end justify-between py-1 text-[11px] text-muted-foreground">
+          <span>{maxFrequency.toFixed(1)} Hz</span>
+          <span>{minFrequency.toFixed(1)} Hz</span>
+        </div>
+        <div className={cn("relative select-none overflow-hidden rounded-md bg-gray-950", compact ? "h-14" : "h-64")}>
+          <canvas
+            ref={canvasRef}
+            className={cn("h-full w-full", (onTimeSelect || onTimeZoom) && "cursor-crosshair")}
+            onMouseMove={handleMove}
+            onMouseLeave={() => setHover(null)}
+            onClick={handleClick}
+            {...dragZoom.handlers}
+          />
+          {dragZoom.bandElement}
+          <ZoomControls onBack={onZoomBack} onReset={onZoomReset} />
+          {selectedTimeRatio != null ? (
+            <div
+              className="pointer-events-none absolute inset-y-0 w-px bg-emerald-300 shadow-[0_0_0_1px_rgba(16,185,129,0.25)]"
+              style={{ left: `${selectedTimeRatio * 100}%` }}
+            />
+          ) : null}
+          {hover ? (
+            <div
+              className="pointer-events-none absolute z-10 min-w-40 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-lg"
+              style={{
+                left: Math.min(hover.x + 12, 230),
+                top: Math.max(8, hover.y - 74),
+              }}
+            >
+              <p className="font-semibold">{formatChannel(channel)}</p>
+              <p>Tiempo: {hover.time.toFixed(2)}s</p>
+              <p>Frecuencia: {hover.frequency.toFixed(2)} Hz</p>
+              <p>
+                Nivel: {hover.value.toFixed(4)} {unit}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="ml-[52px] mt-2 flex justify-between text-[11px] text-muted-foreground">
+        <span>{minTime.toFixed(1)}s</span>
+        <span>{maxTime.toFixed(1)}s</span>
+      </div>
+    </div>
+  )
+}
+
+export function TopographyPanel({
+  rows,
+  colorDomain,
+  unit,
+  className,
+}: {
+  rows: TopographyFrameRow[]
+  colorDomain: { min: number; max: number }
+  unit: string
+  className?: string
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [hover, setHover] = useState<TopographyHover | null>(null)
+  const range = 1.15
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const draw = () => {
+      const widthCss = Math.max(1, canvas.clientWidth)
+      const heightCss = Math.max(1, canvas.clientHeight)
+      const dpr = window.devicePixelRatio || 1
+      const width = Math.max(1, Math.floor(widthCss * dpr))
+      const height = Math.max(1, Math.floor(heightCss * dpr))
+      const ctx = canvas.getContext("2d")
+      if (!ctx) return
+
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width
+        canvas.height = height
+      }
+
+      ctx.clearRect(0, 0, width, height)
+      if (rows.length === 0) return
+
+      const image = ctx.createImageData(width, height)
+      const pixels = new Uint32Array(image.data.buffer)
+      for (let py = 0; py < height; py += 1) {
+        const y = range - (py / Math.max(1, height - 1)) * range * 2
+        const rowStart = py * width
+        for (let px = 0; px < width; px += 1) {
+          const x = (px / Math.max(1, width - 1)) * range * 2 - range
+          // Outside the head outline the pixel stays transparent.
+          if (x * x + y * y > 1) continue
+          pixels[rowStart + px] = viridisPixel(topographyValueAt(x, y, rows), colorDomain)
+        }
+      }
+      ctx.putImageData(image, 0, 0)
+
+      const toCanvas = (x: number, y: number) => ({
+        x: ((x + range) / (range * 2)) * width,
+        y: ((range - y) / (range * 2)) * height,
+      })
+
+      ctx.save()
+      ctx.lineWidth = 2 * dpr
+      ctx.strokeStyle = "#111827"
+      ctx.fillStyle = "#111827"
+
+      const center = toCanvas(0, 0)
+      const radius = (1 / (range * 2)) * Math.min(width, height)
+      ctx.beginPath()
+      ctx.arc(center.x, center.y, radius, 0, Math.PI * 2)
+      ctx.stroke()
+
+      const topEar = toCanvas(0, 1)
+      const bottomEar = toCanvas(0, -1)
+      ctx.beginPath()
+      ctx.ellipse(topEar.x, topEar.y, 0.15 * width, 0.08 * height, 0, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.ellipse(bottomEar.x, bottomEar.y, 0.15 * width, 0.08 * height, 0, 0, Math.PI * 2)
+      ctx.stroke()
+
+      const noseTip = toCanvas(1.08, 0)
+      const noseTop = toCanvas(0.92, 0.07)
+      const noseBottom = toCanvas(0.92, -0.07)
+      ctx.beginPath()
+      ctx.moveTo(noseTop.x, noseTop.y)
+      ctx.lineTo(noseTip.x, noseTip.y)
+      ctx.lineTo(noseBottom.x, noseBottom.y)
+      ctx.stroke()
+
+      ctx.font = `${12 * dpr}px sans-serif`
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      for (const row of rows) {
+        const point = toCanvas(row.x, row.y)
+        ctx.beginPath()
+        ctx.fillStyle = "#111827"
+        ctx.arc(point.x, point.y, 4.5 * dpr, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.lineWidth = 2 * dpr
+        ctx.strokeStyle = "#FFFFFF"
+        ctx.stroke()
+        ctx.fillStyle = "#111827"
+        ctx.fillText(formatChannel(row.channel), point.x, point.y + 16 * dpr)
+      }
+      ctx.restore()
+    }
+
+    // As in the spectrogram: the manual call and the observer's first callback
+    // would otherwise shade the head twice.
+    let frame: number | null = null
+    const schedule = () => {
+      if (frame != null) return
+      frame = requestAnimationFrame(() => {
+        frame = null
+        draw()
+      })
+    }
+
+    schedule()
+    const observer = new ResizeObserver(schedule)
+    observer.observe(canvas)
+
+    return () => {
+      if (frame != null) cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [colorDomain, rows])
+
+  const handleMove = (event: MouseEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const xRatio = (event.clientX - rect.left) / Math.max(1, rect.width)
+    const yRatio = (event.clientY - rect.top) / Math.max(1, rect.height)
+    const x = xRatio * range * 2 - range
+    const y = range - yRatio * range * 2
+    if (x * x + y * y > 1 || rows.length === 0) {
+      setHover(null)
+      return
+    }
+
+    const { value, nearest } = interpolateTopographyValue(x, y, rows)
+    setHover({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+      value,
+      nearestChannel: nearest?.channel ?? "",
+      nearestValue: nearest?.value ?? value,
+    })
+  }
+
+  return (
+    <div className={cn("relative aspect-square w-full overflow-hidden", className)}>
+      <canvas
+        ref={canvasRef}
+        className="h-full w-full"
+        onMouseMove={handleMove}
+        onMouseLeave={() => setHover(null)}
+      />
+      {hover ? (
+        <div
+          className="pointer-events-none absolute z-10 min-w-44 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-lg"
+          style={{
+            left: Math.min(hover.x + 12, 330),
+            top: Math.max(8, hover.y - 74),
+          }}
+        >
+          <p className="font-semibold">Topografía EEG</p>
+          <p>
+            Potencia: {hover.value.toFixed(4)} {unit}
+          </p>
+          {hover.nearestChannel ? (
+            <p>
+              Electrodo cercano: {formatChannel(hover.nearestChannel)} ({hover.nearestValue.toFixed(4)} {unit})
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function TelevisionFrame({
+  projectId,
+  participantCode,
+  selectedTime,
+}: {
+  projectId: string
+  participantCode: string | null
+  selectedTime: number | null
+}) {
+  return (
+    <div className="relative mx-auto w-full max-w-[700px] px-4 pb-7 pt-7">
+      <svg
+        className="pointer-events-none absolute left-1/2 top-0 h-9 w-32 -translate-x-1/2 text-gray-900 dark:text-gray-100"
+        viewBox="0 0 112 40"
+        aria-hidden="true"
+      >
+        <path
+          d="M56 39 L35 4 M56 39 L77 4"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </svg>
+
+      <div className="relative rounded-md border-2 border-gray-900 bg-gray-950 p-2.5 shadow-sm dark:border-gray-100">
+        <div className="aspect-video overflow-hidden rounded-sm bg-gray-950">
+          <StimulusPreviewSurface
+            projectId={projectId}
+            participantCode={participantCode}
+            selectedTime={selectedTime}
+            emptyText="Sin ventana seleccionada."
+            className="min-h-0 text-xs"
+          />
+        </div>
+      </div>
+
+      <svg
+        className="pointer-events-none absolute bottom-0 left-1/2 h-7 w-40 -translate-x-1/2 text-gray-900 dark:text-gray-100"
+        viewBox="0 0 144 32"
+        aria-hidden="true"
+      >
+        <path
+          d="M48 1 L35 30 M96 1 L109 30 M31 30 H50 M94 30 H113"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </svg>
+    </div>
+  )
+}
+
+export function TopographyScene({
+  rows,
+  colorDomain,
+  unit,
+  projectId,
+  participantCode,
+  selectedTime,
+}: {
+  rows: TopographyFrameRow[]
+  colorDomain: { min: number; max: number }
+  unit: string
+  projectId: string
+  participantCode: string | null
+  selectedTime: number | null
+}) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-muted/30 p-2 sm:p-3">
+      {/* Heights follow the viewport so, once scrolled to, head and stimulus fit a laptop screen. */}
+      <div className="grid min-h-[360px] grid-cols-1 items-center gap-4 lg:h-[clamp(360px,calc(100svh-12rem),560px)] lg:min-h-0 lg:grid-cols-[minmax(300px,0.46fr)_minmax(360px,0.54fr)] xl:h-[clamp(360px,calc(100svh-12rem),600px)] 2xl:h-[clamp(360px,calc(100svh-12rem),620px)]">
+        <div className="flex min-w-0 items-center justify-center">
+          <TopographyPanel
+            rows={rows}
+            colorDomain={colorDomain}
+            unit={unit}
+            className="max-w-[550px] lg:max-w-[min(550px,calc(100svh-13rem))]"
+          />
+        </div>
+        <div className="flex min-w-0 items-center justify-center">
+          <TelevisionFrame
+            projectId={projectId}
+            participantCode={participantCode}
+            selectedTime={selectedTime}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}

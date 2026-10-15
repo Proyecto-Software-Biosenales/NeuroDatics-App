@@ -1,11 +1,16 @@
 'use client'
 
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { LoaderCircle, Moon, Sun, User } from 'lucide-react'
+import { ChevronDown, LoaderCircle, Menu, Moon, Settings, Sun, User } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
+import { IS_LOCAL_MODE } from '@/lib/appMode'
 import { useAuth } from '@/lib/providers/AuthProvider'
 import { cn } from '@/lib/utils'
 
@@ -19,63 +24,67 @@ const navItems: NavItem[] = [
   { path: '/', label: 'Inicio', protected: false },
   { path: '/proyectos', label: 'Proyectos', protected: true },
   { path: '/dashboard', label: 'Dashboard', protected: true },
-  { path: '/reportes', label: 'Reportes', protected: true },
+  { path: '/reportes', label: 'Informes', protected: true },
 ]
 
 export const NavBar = () => {
   const pathname = usePathname()
   const router = useRouter()
   const { currentUser, loading, signOut } = useAuth()
-  const isLoginPage = pathname === "/login"
-  const isRegisterPage = pathname === '/register'
-  const isAuthPage = isLoginPage || isRegisterPage
+  const isLoginPage = pathname === '/login'
 
   const handleProtectedNavigation = (event: React.MouseEvent<HTMLAnchorElement>, item: NavItem) => {
     if (item.protected && !currentUser) {
       event.preventDefault()
-      toast.error('Debes iniciar sesion para acceder a esta seccion.')
+      toast.error('Inicia sesión para acceder a esta sección.')
       router.push('/login')
     }
   }
 
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   const handleSignOut = async () => {
     try {
       await signOut()
-      toast.success('Sesion cerrada correctamente.')
+      toast.success('Sesión cerrada.')
       router.push('/')
       router.refresh()
     } catch {
-      toast.error('No se pudo cerrar sesion.')
+      toast.error('No se pudo cerrar la sesión.')
     }
   }
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md bg-background/90 border-b border-border">
-      <div className="max-w-7xl mx-auto px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-10">
-            <Link href="/" className="flex items-center gap-3 group">
-              <img
-                src="assets/NeuroDatics-logo.png"
-                alt="NeuroDatics Logo"
-                className="h-10 w-auto transition-transform group-hover:scale-105"
+    <header className="sticky top-0 z-50 h-[var(--app-nav-height)] backdrop-blur-md bg-background/90 border-b border-border">
+      <div className="mx-auto h-full max-w-[var(--app-page-max-width)] px-4 sm:px-5 lg:px-6 2xl:px-8">
+        <div className="flex h-full items-center justify-between">
+          <div className="flex min-w-0 items-center gap-4 2xl:gap-10">
+            <Link href="/" className="group flex shrink-0 items-center gap-3">
+              <Image
+                src="/assets/NeuroDatics-logo.png"
+                alt="Logotipo de NeuroDatics"
+                width={30}
+                height={32}
+                className="h-8 w-auto transition-transform group-hover:scale-105 2xl:h-10"
               />
-              <span className="text-lg font-semibold text-foreground tracking-tight">
+              <span className="text-base font-semibold tracking-tight text-foreground 2xl:text-lg">
                 NeuroDatics
               </span>
             </Link>
 
-            <nav className="flex items-center gap-1">
+            <nav aria-label="Navegación principal" className="hidden min-w-0 items-center gap-0.5 md:flex 2xl:gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   href={item.path}
+                  aria-current={pathname === item.path ? "page" : undefined}
                   onClick={(event) => handleProtectedNavigation(event, item)}
-                  className={`px-4 py-2 text-sm font-medium transition-all duration-200 relative ${
+                  className={`relative shrink-0 px-3 py-2 text-sm font-medium transition-all duration-200 2xl:px-4 ${
                     pathname === item.path
                       ? 'text-foreground after:absolute after:bottom-0 after:left-4 after:right-4 after:h-px after:bg-foreground after:rounded-full'
                       : 'text-muted-foreground hover:text-foreground'
@@ -87,19 +96,49 @@ export const NavBar = () => {
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" className="md:hidden" aria-label="Abrir navegación"><Menu /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {navItems.map((item) => (
+                  <DropdownMenuItem key={item.path} asChild>
+                    <Link href={item.path} aria-current={pathname === item.path ? "page" : undefined} onClick={(event) => handleProtectedNavigation(event, item)}>{item.label}</Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button size="icon-sm" variant="ghost"
               type="button"
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              className="rounded-lg p-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="text-muted-foreground"
               aria-label="Cambiar tema"
             >
-              {mounted && resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
+              {mounted && resolvedTheme === 'dark' ? <Sun className="h-4 w-4 2xl:h-5 2xl:w-5" /> : <Moon className="h-4 w-4 2xl:h-5 2xl:w-5" />}
+            </Button>
             {currentUser ? (
-              <div className="hidden items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground sm:flex">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                <span className="max-w-44 truncate">{currentUser.name ?? currentUser.email ?? 'Usuario'}</span>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-label="Menú de usuario"
+                    className="h-auto gap-2 bg-muted px-2.5 py-1.5 font-normal text-muted-foreground hover:text-foreground 2xl:px-3 2xl:py-2"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="hidden max-w-36 truncate sm:inline 2xl:max-w-44">{currentUser.name ?? currentUser.email ?? 'Usuario'}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/configuracion" aria-current={pathname === '/configuracion' ? 'page' : undefined}>
+                      <Settings aria-hidden="true" />
+                      Configuración
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : null}
 
             {loading ? (
@@ -107,21 +146,22 @@ export const NavBar = () => {
                 <LoaderCircle className="h-5 w-5 animate-spin" />
               </div>
             ) : currentUser ? (
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-foreground',
-                )}
-              >
-                Salir
-              </button>
+              // The student edition has one fixed user and nothing to sign out of.
+              IS_LOCAL_MODE ? null : (
+                <Button variant="outline"
+                  type="button"
+                  onClick={handleSignOut}
+                  className="gap-2"
+                >
+                  Salir
+                </Button>
+              )
             ) : (
               <Link
                 href="/login"
                 className={cn(
                   'p-2 rounded-lg transition-all duration-200',
-                  isAuthPage
+                  isLoginPage
                     ? 'text-foreground bg-muted'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted',
                 )}

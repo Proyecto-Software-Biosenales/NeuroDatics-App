@@ -1,62 +1,38 @@
 # NeuroDatics Frontend
 
-Frontend de NeuroDatics construido con Next.js App Router, TypeScript y Tailwind CSS.
+Interfaz de NeuroDatics: Next.js (App Router), React, TypeScript, Tailwind CSS, shadcn sobre Radix y Recharts.
+El mismo código sirve a las dos ediciones; lo que cambia entre ellas se decide con `IS_LOCAL_MODE`
+(`lib/appMode.ts`), que se fija al compilar a partir de `NEXT_PUBLIC_APP_MODE`.
 
-## Requisitos
+| | Edición servidor | NeuroDatics Estudiantes |
+| --- | --- | --- |
+| Cómo se sirve | Servidor de Next en su propio contenedor del [stack Docker](../README.md) | Exportación estática (`frontend/.next-local`) que sirve el backend |
+| Llamadas a la API | `/api` en el mismo origen; Next las reenvía al backend interno (`NEXT_INTERNAL_API_BASE_URL`) | `/api` en el mismo origen, atendido directamente por el backend |
+| Sesión | Inicio de sesión con Google; el callback es `/authorize` | Sin cuenta: una sesión local fija |
 
-- Node.js 20+
-- npm 10+
-- Backend disponible en http://localhost:8000
+## Estructura
 
-## Variables De Entorno
-
-Crear archivo frontend/.env.local con:
-
-```env
-NEXT_INTERNAL_API_BASE_URL=http://localhost:8000
-
-# Opcional (modo admin local para desarrollo)
-NEXT_PUBLIC_DEV_ADMIN_EMAIL=
-NEXT_PUBLIC_DEV_ADMIN_PASSWORD=
-NEXT_PUBLIC_DEV_ADMIN_DISPLAY_NAME=Administrador NeuroDatics
+```text
+app/          páginas: inicio, proyectos (y su editor), dashboard, reportes, configuracion, login, authorize
+features/     módulos por función: analytics, auth, home, projects, reports, settings
+components/   controles compartidos (components/ui) y ayudas como FieldHint y HintTooltip
+lib/          cliente de API, sesión, modo de la aplicación y proveedores
+public/       logo y fuentes (Poppins se sirve desde aquí en las dos ediciones)
+tests/        pruebas de hooks y componentes en Chromium, Playwright (e2e) y la prueba sin conexión (local)
 ```
 
-## Ejecutar En Desarrollo
+Las convenciones de interfaz están en [docs/desarrollo/interfaz.md](../docs/desarrollo/interfaz.md).
 
-```bash
-cd frontend
-npm install
-npm run dev
+## Comandos
+
+```powershell
+npm ci                          # instalar dependencias
+npm run dev                     # servidor de desarrollo (necesita un backend en marcha)
+npm test                        # typecheck + pruebas unitarias + pruebas en navegador
+npm run lint                    # ESLint
+npm run test:e2e                # Playwright con la API simulada
+$env:NEXT_PUBLIC_APP_MODE = 'local'; npx next build   # exportación estática de la edición de estudiantes
 ```
 
-## Scripts Disponibles
-
-```bash
-npm run dev
-npm run build
-npm run start
-npm run lint
-npm run typecheck
-npm run format
-```
-
-## Autenticacion
-
-- Login principal: Google OAuth.
-- Callback de autorizacion: /authorize.
-- El frontend guarda accessToken y expiresAt en localStorage.
-- El access token dura 2 semanas; al expirar, el wrapper de API limpia la sesion y redirige a login.
-
-## Estructura Principal
-
-- app: rutas App Router (login, dashboard, proyectos, reportes, authorize).
-- features: logica por dominio (auth, projects, reports, home).
-- components/ui: componentes reutilizables.
-- lib/api: wrapper HTTP central.
-- lib/providers: contexto de autenticacion y helpers OAuth.
-
-## Integracion Con Backend
-
-- El navegador llama `/api` en el mismo origen.
-- Next.js reenvia esas solicitudes al backend usando `NEXT_INTERNAL_API_BASE_URL`.
-- Endpoints principales consumidos desde features/projects/api/projectsApi.ts.
+La verificación completa del repositorio es `./verify.ps1` desde la raíz; el detalle de cada prueba está en
+[CONTRIBUTING.md](../CONTRIBUTING.md).

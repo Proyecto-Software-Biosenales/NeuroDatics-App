@@ -1,9 +1,13 @@
 "use client"
+import { AnalyticsModeSelector } from "@/features/analytics/components/AnalyticsModeSelector"
+
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ReferenceLine,
@@ -18,7 +22,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
+} from "@/components/ui/card"
 import {
   Activity,
   Clock,
@@ -32,17 +36,17 @@ import {
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { getStimulusPreviewUrl } from "@/features/projects/api/stimulusUrls"
 import { cn } from "@/lib/utils"
-import { KpiCard } from "@/components/ui/KpiCard"
-import { StatisticsTable } from "@/components/ui/StatisticsTable"
-import type { StatRow } from "@/components/ui/StatisticsTable"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
+import { StatisticsTable } from "@/features/analytics/components/StatisticsTable"
+import type { StatRow } from "@/features/analytics/components/StatisticsTable"
 import {
   useAoiMetrics,
   useGazeAt,
   usePupilTimeseries,
 } from "../hooks/useAnalyticsData"
 import {
-  AoiContextPanel,
   AoiLegend,
   AoiOverlay,
   AoiToggleButton,
@@ -51,14 +55,12 @@ import {
   imagePointToContainerPercent,
   type ContainedImageBox,
 } from "./AoiOverlay"
-import {
-  EMPTY_TIME_WINDOW,
-  EMPTY_TIME_WINDOW_DRAFT,
-  TimeWindowControls,
-  validateTimeWindowDraft,
-  type TimeWindow,
-  type TimeWindowDraft,
-} from "./TimeWindowControls"
+import { TimeWindowControls } from "./TimeWindowControls"
+import { useTimeWindow } from "../hooks/useZoomHistory"
+import { MissingStimulusImage } from "./MissingStimulusImage"
+import { AnalyticsChartShell, LINE_CHART_MARGIN } from "./AnalyticsChartShell"
+import { useChartDragZoom } from "./ChartDragZoom"
+import { axisTickDecimals, formatAxisTick } from "../chartZoom"
 
 type ViewMode = "both" | "left" | "right"
 
@@ -113,6 +115,15 @@ interface PupilTooltipProps {
 function PupilTooltip({ active, payload, label }: PupilTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
 
+  // Instantaneous binocular average, same rule as the "Promedio" series:
+  // only shown when both pupils are plotted and have a valid value.
+  const validValues = payload
+    .map((entry) => Number(entry.value))
+    .filter((value) => isValidPupilValue(value))
+  const average = payload.length >= 2 && validValues.length === payload.length
+    ? validValues.reduce((sum, value) => sum + value, 0) / validValues.length
+    : null
+
   return (
     <div className="rounded-lg bg-gray-800 px-3 py-2 text-xs text-white shadow-lg">
       {typeof label === "number" && (
@@ -127,24 +138,13 @@ function PupilTooltip({ active, payload, label }: PupilTooltipProps) {
           <span>{entry.name}: {Number(entry.value).toFixed(2)} mm</span>
         </div>
       ))}
+      {average != null && (
+        <div className="mt-1 flex items-center gap-2 border-t border-gray-600 pt-1">
+          <span className="inline-block h-2 w-2 rounded-full bg-gray-400" />
+          <span className="font-medium">Promedio: {average.toFixed(2)} mm</span>
+        </div>
+      )}
     </div>
-  )
-}
-
-/** Returns true if the scenario name looks like an instruction/non-stimulus screen. */
-function isNoImageScenario(name: string | null): boolean {
-  if (!name) return false
-  const lower = name.toLowerCase().trim()
-  return (
-    lower.startsWith("instruction") ||
-    lower.startsWith("instruccion") ||
-    lower.startsWith("instrucción") ||
-    lower.startsWith("practice") ||
-    lower.startsWith("practica") ||
-    lower.startsWith("intro") ||
-    lower.startsWith("blank") ||
-    lower.startsWith("rest") ||
-    lower.startsWith("fixation")
   )
 }
 
@@ -273,9 +273,17 @@ export function PupilDilationTab({
   const [scenarioPreviewLoading, setScenarioPreviewLoading] = useState(false)
   const [scenarioPreviewError, setScenarioPreviewError] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
-  const [timeWindowDraft, setTimeWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
-  const [timeWindowError, setTimeWindowError] = useState<string | null>(null)
+  const {
+    data: gazeData,
+    loading: gazeLoading,
+    fetchGaze,
+    clear: clearGaze,
+  } = useGazeAt(projectId, participantCode)
+  const windowState = useTimeWindow(() => {
+    setSelectedTime(null)
+    clearGaze()
+  })
+  const timeWindow = windowState.window
   // Refs for letterbox-corrected gaze positioning
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
@@ -290,17 +298,11 @@ export function PupilDilationTab({
     timeWindow.start,
     timeWindow.end
   )
-  const {
-    data: gazeData,
-    loading: gazeLoading,
-    fetchGaze,
-    clear: clearGaze,
-  } = useGazeAt(projectId, participantCode)
   const isVideoScenario = String(gazeData?.scenario_type || "").toLowerCase() === "video"
   const aoiScenario = isVideoScenario
     ? "all"
     : scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
-  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
+  const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
     projectId,
     participantCode,
     aoiScenario
@@ -360,6 +362,14 @@ export function PupilDilationTab({
     if (chartData.length === 0) return ["dataMin", "dataMax"]
     return [chartData[0].time, chartData[chartData.length - 1].time]
   }, [chartData])
+  const chartLegend = [
+    ...(viewMode === "both" || viewMode === "right"
+      ? [{ label: "Pupila derecha", color: "#F87171" }]
+      : []),
+    ...(viewMode === "both" || viewMode === "left"
+      ? [{ label: "Pupila izquierda", color: "#818CF8" }]
+      : []),
+  ]
 
   const minTime = useMemo(() => {
     return getExtremeSample(activeModeData.samples, "min")?.time ?? null
@@ -477,13 +487,11 @@ export function PupilDilationTab({
       setScenarioPreviewError(null)
     })
 
-    const params = new URLSearchParams({
-      time_s: String(gazeData.nearest_time_s),
-    })
-    if (participantCode) params.set("participant_code", participantCode)
-    if (gazeData.scenario) params.set("scenario", gazeData.scenario)
-
-    apiFetchBlob(`/api/projects/${projectId}/files/${gazeData.scenario_file_id}/preview?${params}`)
+    apiFetchBlob(getStimulusPreviewUrl(projectId, gazeData.scenario_file_id, {
+      timeS: gazeData.nearest_time_s,
+      participantCode,
+      scenario: gazeData.scenario,
+    }))
       .then((blob) => {
         if (cancelled) return
         currentUrl = URL.createObjectURL(blob)
@@ -529,84 +537,61 @@ export function PupilDilationTab({
     fetchGaze(time)
   }
 
-  const handleApplyTimeWindow = () => {
-    const { window, error } = validateTimeWindowDraft(timeWindowDraft)
-    if (error || !window) {
-      setTimeWindowError(error)
-      return
-    }
-
-    setTimeWindow(window)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    clearGaze()
-  }
-
-  const handleResetTimeWindow = () => {
-    setTimeWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
-    setTimeWindow(EMPTY_TIME_WINDOW)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    clearGaze()
-  }
+  // A dragged range behaves exactly like typing it into the window controls.
+  const dragZoom = useChartDragZoom(windowState.zoomTo)
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
             <CardTitle className="text-xl">Dilatación pupilar</CardTitle>
             <CardDescription>
               Diámetro pupilar a lo largo del tiempo (mm), {activeModeLabel}.
             </CardDescription>
           </div>
 
-          <div className="inline-flex overflow-hidden rounded-lg border border-border">
-            {[
-              { key: "both", label: "Ambas pupilas" },
-              { key: "left", label: "Izquierda" },
-              { key: "right", label: "Derecha" },
-            ].map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setViewMode(option.key as ViewMode)}
-                className={cn(
-                  "px-3 py-1.5 text-sm",
-                  viewMode === option.key
-                    ? "bg-foreground text-background"
-                    : "bg-background text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
+                { key: "both", label: "Ambas pupilas" },
+                { key: "left", label: "Izquierda" },
+                { key: "right", label: "Derecha" },
+              ]} />
+            <TimeWindowControls
+              draftStart={windowState.draft.start}
+              draftEnd={windowState.draft.end}
+              appliedWindow={timeWindow}
+              error={windowState.error}
+              loading={timeseriesLoading}
+              onDraftStartChange={(value) =>
+                windowState.setDraft((current) => ({ ...current, start: value }))
+              }
+              onDraftEndChange={(value) =>
+                windowState.setDraft((current) => ({ ...current, end: value }))
+              }
+              onApply={windowState.apply}
+              onReset={windowState.reset}
+            />
+            <CompareParticipantsButton
+              spec={() => ({
+                kind: "pupil",
+                title: "Dilatación pupilar",
+                scenario,
+                sourceParticipant: participantCode,
+                origin: "individual",
+                params: { eyes: viewMode, window: timeWindow },
+              })}
+            />
           </div>
         </CardHeader>
 
         <CardContent>
-          <TimeWindowControls
-            draftStart={timeWindowDraft.start}
-            draftEnd={timeWindowDraft.end}
-            appliedWindow={timeWindow}
-            error={timeWindowError}
-            loading={timeseriesLoading}
-            onDraftStartChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, start: value }))
-            }
-            onDraftEndChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, end: value }))
-            }
-            onApply={handleApplyTimeWindow}
-            onReset={handleResetTimeWindow}
-          />
-
-          <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
+          <div className="analytics-kpi-grid">
             {[
               {
                 label: "Media",
                 value: activeStats?.mean,
-                description: `Promedio ${activeModeLabel}`,
+                description: `${activeModeLabel.charAt(0).toUpperCase()}${activeModeLabel.slice(1)}`,
                 tooltip: "Promedio del diámetro pupilar en el intervalo visualizado",
                 tooltipExtra: activeStats?.raw_mean != null ? `Valor real: ${activeStats.raw_mean.toFixed(4)} mm` : undefined,
                 Icon: Activity,
@@ -621,8 +606,7 @@ export function PupilDilationTab({
               {
                 label: "Mínimo",
                 value: activeStats?.min,
-                description: "Valor más bajo registrado",
-                tooltip: "Valor mínimo registrado en la señal suavizada",
+                tooltip: "En la señal suavizada",
                 tooltipExtra: activeStats?.raw_min != null ? `Valor real: ${activeStats.raw_min.toFixed(4)} mm` : undefined,
                 Icon: TrendingDown,
                 iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
@@ -636,8 +620,7 @@ export function PupilDilationTab({
               {
                 label: "Máximo",
                 value: activeStats?.max,
-                description: "Pico de dilatación",
-                tooltip: "Valor máximo o pico de dilatación registrado",
+                tooltip: "En la señal suavizada",
                 tooltipExtra: activeStats?.raw_max != null ? `Valor real: ${activeStats.raw_max.toFixed(4)} mm` : undefined,
                 Icon: TrendingUp,
                 iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
@@ -654,33 +637,33 @@ export function PupilDilationTab({
           </div>
 
           {timeseriesLoading ? (
-            <div className="h-[400px] w-full animate-pulse rounded-lg bg-muted" />
+            <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
           ) : chartData.length === 0 ? (
-            <div className="flex h-[400px] items-center justify-center text-sm text-muted-foreground">
+            <div className="analytics-state-frame flex items-center justify-center text-sm text-muted-foreground">
               No hay datos de dilatación pupilar para los filtros seleccionados.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={460}>
-              <LineChart data={chartData} onClick={handleChartClick} margin={{ top: 8, right: 24, left: 16, bottom: 80 }}>
+            <AnalyticsChartShell
+              legend={chartLegend}
+              dragZoom={dragZoom}
+              onZoomReset={windowState.isZoomed ? windowState.reset : undefined}
+              onZoomBack={windowState.canGoBack ? windowState.back : undefined}
+            >
+            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
+              <LineChart data={chartData} {...dragZoom.chartProps(handleChartClick)} margin={LINE_CHART_MARGIN}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
                   dataKey="time"
                   type="number"
                   domain={chartDomain}
-                  tickFormatter={(value) => String(Math.round(Number(value)))}
+                  tickFormatter={(value) => formatAxisTick(value, axisTickDecimals(chartDomain))}
                   tickMargin={8}
-                  label={{ value: "Tiempo (s)", position: "insideBottom", offset: -8 }}
                 />
                 <YAxis
                   width={72}
                   label={{ value: "Amplitud pupilar (mm)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
                 />
                 <RechartsTooltip content={<PupilTooltip />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={52}
-                  wrapperStyle={{ paddingTop: "36px" }}
-                />
 
                 {typeof activeStats?.mean === "number" ? (
                   <ReferenceLine y={activeStats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
@@ -689,6 +672,7 @@ export function PupilDilationTab({
                 {selectedTime != null ? (
                   <ReferenceLine
                     x={selectedTime}
+                    className="analytics-selected-time"
                     stroke="#374151"
                     strokeWidth={1.5}
                     strokeDasharray="4 3"
@@ -719,6 +703,7 @@ export function PupilDilationTab({
                 ) : null}
               </LineChart>
             </ResponsiveContainer>
+            </AnalyticsChartShell>
           )}
         </CardContent>
         </Card>
@@ -749,14 +734,14 @@ export function PupilDilationTab({
                   count={aois.length}
                 />
               ) : null}
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={() => { clearGaze(); setSelectedTime(null) }}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="gap-1.5 text-muted-foreground"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Limpiar selección
-              </button>
+              </Button>
             </div>
           )}
         </CardHeader>
@@ -801,16 +786,16 @@ export function PupilDilationTab({
               ].map(({ label, value, sub, Icon, bg, iconColor }) => (
                 <div
                   key={label}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm roomy:p-4"
                 >
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", bg)}>
-                    <Icon className={cn("h-5 w-5", iconColor)} />
+                  <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg roomy:h-10 roomy:w-10 roomy:rounded-xl", bg)}>
+                    <Icon className={cn("h-4 w-4 roomy:h-5 roomy:w-5", iconColor)} />
                   </div>
                   <div className="min-w-0 flex flex-col">
                     <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
                       {label}
                     </p>
-                    <p className="mt-2 text-3xl font-bold leading-tight text-foreground">{value}</p>
+                    <p className="mt-0.5 text-xl font-bold leading-tight text-foreground roomy:mt-2 roomy:text-3xl">{value}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
                   </div>
                 </div>
@@ -824,7 +809,7 @@ export function PupilDilationTab({
               Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante
             </div>
           ) : gazeLoading ? (
-            <div className="h-48 animate-pulse rounded-xl bg-muted" />
+            <Skeleton className="h-48 animate-pulse rounded-xl bg-muted" />
           ) : gazeData && (gazeData.gx == null || gazeData.gy == null) ? (
             <div className="flex h-48 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
               <span>Sin coordenadas de mirada registradas para t = {gazeData.nearest_time_s.toFixed(1)}s</span>
@@ -833,20 +818,24 @@ export function PupilDilationTab({
               )}
             </div>
           ) : gazeData && !gazeData.scenario_file_id ? (
-            <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
-              <span className="text-sm font-medium text-foreground">
-                {isNoImageScenario(gazeData.scenario)
-                  ? "Pantalla de instrucción — no hay estímulo visual asociado a este escenario"
-                  : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene estímulo visual registrado`}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
-              </span>
+            <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-xl bg-card">
+              <MissingStimulusImage
+                scenario={gazeData.scenario}
+                gazeX={gazeData.gx}
+                gazeY={gazeData.gy}
+                showGazePoint
+                markerTone="cyan"
+                className="w-full"
+              />
+              <div className="px-4 py-2 text-center text-xs text-muted-foreground">
+                t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada:
+                ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
+              </div>
             </div>
           ) : gazeData ? (
             <div className="overflow-hidden rounded-xl bg-card">
               {scenarioPreviewLoading ? (
-                <div className="h-48 animate-pulse rounded-xl bg-muted" />
+                <Skeleton className="h-48 animate-pulse rounded-xl bg-muted" />
               ) : scenarioImageUrl ? (
                 <div className="relative" ref={imageContainerRef}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -889,7 +878,7 @@ export function PupilDilationTab({
               ) : (
                 <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
                   {isVideoScenario
-                    ? "No se pudo cargar el frame del video."
+                    ? "No se pudo cargar el fotograma del vídeo."
                     : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
                 </div>
               )}
@@ -908,8 +897,8 @@ export function PupilDilationTab({
                 <p className="text-base font-medium text-slate-900 dark:text-slate-100">Punto de atención</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">
                   {selectedValue != null
-                    ? `El indicador de alto contraste marca la ubicación exacta donde se registró la dilatación pupilar (${selectedValue.toFixed(2)} mm) en el segundo ${Math.round(gazeData.nearest_time_s)} de la visualización.`
-                    : "El indicador de alto contraste marca la ubicación exacta donde se registró la fijación en el instante seleccionado sobre el estímulo visual."}
+                    ? `Mirada en el segundo ${Math.round(gazeData.nearest_time_s)} · ${selectedValue.toFixed(2)} mm`
+                    : "Mirada en el instante seleccionado."}
                   {aoiStatusText}
                 </p>
               </div>
@@ -936,15 +925,6 @@ export function PupilDilationTab({
         </CardContent>
       </Card>
 
-      {participantCode && scenario !== "all" && canUseAois ? (
-        <AoiContextPanel
-          data={aoiData}
-          loading={aoiLoading}
-          error={aoiError}
-          title="AOIs en dilatación pupilar"
-          description="Cruza la fijación espacial por AOI con la respuesta pupilar del participante."
-        />
-      ) : null}
     </div>
   )
 }

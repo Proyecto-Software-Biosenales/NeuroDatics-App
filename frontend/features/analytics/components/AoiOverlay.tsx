@@ -1,60 +1,22 @@
 "use client"
 
-import { Eye, Layers, Target } from "lucide-react"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/Card"
+import { HintTooltip } from "@/components/HintTooltip"
+import { Button } from "@/components/ui/button"
+
+import { Layers } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { AoiMetricItem, AoiMetricsData } from "../types"
+import type { AoiMetricItem } from "../types"
+import type { ContainedImageBox } from "./stimulusGeometry"
 
-export type ContainedImageBox = {
-  cW: number
-  cH: number
-  renderedW: number
-  renderedH: number
-  offsetX: number
-  offsetY: number
-}
-
-export function getContainedImageBox(
-  img: HTMLImageElement | null,
-  container: HTMLElement | null
-): ContainedImageBox | null {
-  if (!img || !container) return null
-
-  const cW = container.clientWidth
-  const cH = container.clientHeight
-  const iW = img.naturalWidth
-  const iH = img.naturalHeight
-  if (!cW || !cH || !iW || !iH) return null
-
-  const scale = Math.min(cW / iW, cH / iH)
-  const renderedW = iW * scale
-  const renderedH = iH * scale
-  return {
-    cW,
-    cH,
-    renderedW,
-    renderedH,
-    offsetX: (cW - renderedW) / 2,
-    offsetY: (cH - renderedH) / 2,
-  }
-}
-
-export function imagePointToContainerPercent(
-  box: ContainedImageBox,
-  xPercent: number,
-  yPercent: number
-) {
-  return {
-    x: ((box.offsetX + (xPercent / 100) * box.renderedW) / box.cW) * 100,
-    y: ((box.offsetY + (yPercent / 100) * box.renderedH) / box.cH) * 100,
-  }
-}
+// The stimulus geometry lives in a JSX-free module so it can be unit tested,
+// and is re-exported here because every overlay already reaches for it through
+// this file.
+export {
+  containedImageBoxStyle,
+  getContainedImageBox,
+  imagePointToContainerPercent,
+} from "./stimulusGeometry"
+export type { ContainedImageBox } from "./stimulusGeometry"
 
 function normalizedShapePoints(aoi: AoiMetricItem) {
   const points = aoi.shape.points || []
@@ -247,21 +209,17 @@ export function AoiToggleButton({
   count?: number
 }) {
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={disabled}
-      className={cn(
-        "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-        enabled
-          ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-          : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-        disabled && "cursor-not-allowed opacity-50"
-      )}
-    >
-      <Layers className="h-3.5 w-3.5" />
-      AOIs{typeof count === "number" ? ` (${count})` : ""}
-    </button>
+    <HintTooltip hint="Muestra u oculta las áreas de interés (AOI): zonas del estímulo marcadas para medir cuánto se miraron.">
+      <Button aria-pressed={enabled} size="sm" variant="selection"
+        type="button"
+        onClick={onToggle}
+        disabled={disabled}
+        className="gap-2"
+      >
+        <Layers className="h-3.5 w-3.5" />
+        AOIs{typeof count === "number" ? ` (${count})` : ""}
+      </Button>
+    </HintTooltip>
   )
 }
 
@@ -283,100 +241,3 @@ export function AoiLegend({ aois, className }: { aois: AoiMetricItem[]; classNam
   )
 }
 
-export function AoiContextPanel({
-  data,
-  loading,
-  error,
-  title = "Resumen AOI",
-  description = "Lectura contextual de las areas delimitadas para el escenario seleccionado.",
-}: {
-  data: AoiMetricsData | null
-  loading?: boolean
-  error?: string | null
-  title?: string
-  description?: string
-}) {
-  const aois = data?.aois ?? []
-  const topAoi = aois.length > 0
-    ? aois.reduce((best, item) => (
-        item.total_dwell_time_percent > best.total_dwell_time_percent ? item : best
-      ))
-    : null
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div>
-          <CardTitle className="text-lg">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </div>
-        <Target className="mt-1 h-5 w-5 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="h-24 animate-pulse rounded-lg bg-muted" />
-        ) : error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50/50 px-4 py-3 text-sm text-red-500 dark:border-red-900/50 dark:bg-red-900/10">
-            {error}
-          </div>
-        ) : !data || aois.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-5 text-sm text-muted-foreground">
-            No hay AOIs definidas para este escenario.
-          </div>
-        ) : (
-          <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-            <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                  <Eye className="h-5 w-5 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Mas observada</p>
-                  <p className="text-sm font-semibold text-foreground">{topAoi?.name ?? "-"}</p>
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Tiempo AOI</p>
-                  <p className="font-semibold text-foreground">
-                    {data.observed_aoi_dwell_time_percent.toFixed(1)}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Fijaciones</p>
-                  <p className="font-semibold text-foreground">{data.total_fixations}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {aois.map((aoi) => (
-                <div key={aoi.id} className="grid grid-cols-[120px_minmax(0,1fr)_64px] items-center gap-3 text-sm">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-sm"
-                      style={{ backgroundColor: aoi.color }}
-                    />
-                    <span className="truncate font-medium text-foreground">{aoi.name}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.min(100, Math.max(0, aoi.total_dwell_time_percent))}%`,
-                        backgroundColor: aoi.color,
-                      }}
-                    />
-                  </div>
-                  <span className="text-right text-xs font-medium text-muted-foreground">
-                    {aoi.total_dwell_time_percent.toFixed(1)}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}

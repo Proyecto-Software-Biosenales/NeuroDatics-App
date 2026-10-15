@@ -1,11 +1,36 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { ProjectFormData, SensorType, ParticipantData } from "./types";
-import type { Project, DetectedParticipant } from "@/features/projects/types";
-import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
+import type {
+  ProjectFormData,
+  SensorType,
+  ParticipantData,
+  ParticipantField,
+  FixationScreenGeometryInput,
+} from "./types";
+import {
+  createEmptyFixationScreenGeometry,
+  participantDataFromApi,
+  participantToApi,
+  resolveFixationGeometry,
+} from "./types";
+import { useScreenSettings } from "@/features/settings/screenSettings";
+import type { Project } from "@/features/projects/types";
+import { ProjectsApi, asUploadClarification, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
 import { apiAoiToFormAoi, serializeScenaryAois } from "./aoiUtils";
+import { getFileRelativePath, type FolderSelection } from "./folderStructure";
+import {
+  createEmptyStimulusPlacementDraft,
+  isStimulusPlacementDraftValid,
+  serializeStimulusPlacements,
+  type StimulusPlacementDraft,
+} from "./stimulusPlacement";
 import { toast } from "sonner";
+import { useZipUploadAttempt } from "./useZipUploadAttempt";
+import { packageExperimentFolder } from "./packageExperimentFolder";
+import { detectedUploadMetadata } from "./uploadMetadata";
+import { resolveScenarioImageUrl } from "../driveFallbackUrl";
+import { storageCopy } from "../storageCopy";
 
 const STEP1_LOADING_TOAST_ID = "create-project-step1-drive-sync";
 
@@ -50,27 +75,11 @@ const isGoogleSessionExpiredError = (message: string): boolean => {
   return /google drive|oauth|invalid_grant|refresh token|token has expired|no se pudo configurar google drive/i.test(message);
 };
 
-const extractDriveFileId = (url?: string | null): string | null => {
-  if (!url) return null;
-  const filePathMatch = url.match(/\/d\/([^/]+)/i);
-  if (filePathMatch?.[1]) return filePathMatch[1];
-  const queryMatch = url.match(/[?&]id=([^&]+)/i);
-  if (queryMatch?.[1]) return queryMatch[1];
-  return null;
-};
-
-const resolveScenarioImageUrl = (file?: {
-  drive_download_link?: string | null;
-  external_id?: string | null;
-  drive_web_view_link?: string | null;
-}): string | null => {
-  if (!file) return null;
-  if (file.drive_download_link) return file.drive_download_link;
-  const driveFileId = file.external_id || extractDriveFileId(file.drive_web_view_link);
-  if (driveFileId) {
-    return `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w2000`;
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error !== null && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
   }
-  return file.drive_web_view_link ?? null;
+  return fallback;
 };
 
 const buildStep4ImageScenaries = (detail: ApiProjectDetail): ProjectFormData["scenaries"] => {
@@ -103,6 +112,7 @@ export const useCreateProjectWizard = (
   onProjectCreated?: (project: Project) => void,
   onStep1Complete?: () => void,
 ) => {
+  const savedScreen = useScreenSettings()?.screen ?? null;
   const [currentStep, setCurrentStep] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
@@ -119,8 +129,10 @@ export const useCreateProjectWizard = (
   const [zipDriveProcessingSeconds, setZipDriveProcessingSeconds] = useState<number | null>(null);
   const [isZipUploadInProgress, setIsZipUploadInProgress] = useState(false);
   const [isResumedDraft, setIsResumedDraft] = useState(false);
-  const uploadAbortControllerRef = useRef<AbortController | null>(null);
-  const activeZipUploadProjectIdRef = useRef<string | null>(null);
+  const uploadAttempt = useZipUploadAttempt();
+  const preserveDraftRef = useRef(false);
+  const resumeLoadIdRef = useRef(0);
+  const [folderSelection, setFolderSelection] = useState<FolderSelection | null>(null);
 
   const clearStep1RetryState = () => {
     setSaveError(null);
@@ -128,15 +140,8 @@ export const useCreateProjectWizard = (
   };
 
   const cancelZipUpload = () => {
-    if (uploadAbortControllerRef.current) {
-      uploadAbortControllerRef.current.abort();
-    }
-    if (activeZipUploadProjectIdRef.current) {
-      void ProjectsApi.cancelZipUpload(activeZipUploadProjectIdRef.current).catch((error: unknown) => {
-        console.warn("[CreateProjectWizard] backend cancel request failed", error);
-      });
-    }
-    setSaveProgressMessage("Cancelando subida a Google Drive...");
+    uploadAttempt.cancel();
+    setSaveProgressMessage(storageCopy.cancellingUpload);
   };
 
   const [formData, setFormData] = useState<ProjectFormData>({
@@ -149,6 +154,8 @@ export const useCreateProjectWizard = (
     participants: initialParticipants,
     scenaries: initialscenaries,
     experimentFolderFiles: null,
+    fixationGeometry: createEmptyFixationScreenGeometry(),
+    stimulusPlacements: [],
   });
 
   const updateProjectName = (name: string) => {
@@ -161,6 +168,41 @@ export const useCreateProjectWizard = (
     setFormData(prev => ({ ...prev, description }));
   };
 
+  const updateFixationGeometry = (fixationGeometry: FixationScreenGeometryInput) => {
+    clearStep1RetryState();
+    setFormData((prev) => ({ ...prev, fixationGeometry }));
+  };
+
+  const syncStimulusPlacementPaths = (paths: string[]) => {
+    clearStep1RetryState();
+    setFormData((prev) => {
+      const existing = new Map(
+        prev.stimulusPlacements.map((placement) => [placement.sourceEntryPath, placement]),
+      );
+      return {
+        ...prev,
+        stimulusPlacements: paths.map(
+          (path) => existing.get(path) ?? createEmptyStimulusPlacementDraft(path),
+        ),
+      };
+    });
+  };
+
+  const updateStimulusPlacement = (
+    sourceEntryPath: string,
+    update: Partial<StimulusPlacementDraft>,
+  ) => {
+    clearStep1RetryState();
+    setFormData((prev) => ({
+      ...prev,
+      stimulusPlacements: prev.stimulusPlacements.map((placement) =>
+        placement.sourceEntryPath === sourceEntryPath
+          ? { ...placement, ...update, sourceEntryPath }
+          : placement,
+      ),
+    }));
+  };
+
   const updateFolderPath = (path: string) => {
     clearStep1RetryState();
     setFormData(prev => ({ ...prev, folderPath: path }));
@@ -171,17 +213,17 @@ export const useCreateProjectWizard = (
     setFormData((prev) => ({
       ...prev,
       experimentFolderFiles: files,
-      folderPath: files?.[0] ? ((files[0] as any)._relativePath || files[0].webkitRelativePath || files[0].name).split("/")[0] : "",
+      uploadedZip: null,
+      folderPath: files?.[0] ? getFileRelativePath(files[0]).split("/")[0] : "",
     }))
   }
 
-  const normalizeParticipants = (participants: ParticipantData[]) => {
-    return participants.map(p => ({
-      participant_code: p.id,
-      age: p.age && !isNaN(Number(p.age)) ? Number(p.age) : null,
-      sex: ["male", "female", "other"].includes(p.sex || "") ? p.sex : null
-    }))
+  const setFolderStructureSelection = (selection: FolderSelection | null) => {
+    clearStep1RetryState();
+    setFolderSelection(selection);
   }
+
+  const normalizeParticipants = (participants: ParticipantData[]) => participants.map(participantToApi)
 
   const hasValidParticipants = () => {
     if (formData.participants.length === 0) return false
@@ -201,7 +243,7 @@ export const useCreateProjectWizard = (
     }));
   };
 
-  const updateParticipant = (id: string, field: "sex" | "age", value: string) => {
+  const updateParticipant = (id: string, field: ParticipantField, value: string) => {
     setFormData(prev => ({
       ...prev,
       participants: prev.participants.map(p => (p.id === id ? { ...p, [field]: value } : p)),
@@ -218,9 +260,28 @@ export const useCreateProjectWizard = (
   };
 
   const canGoNext = () => {
+    const geometry = formData.fixationGeometry;
+    const geometryIsValid = !geometry?.enabled || [
+      geometry.widthPx,
+      geometry.heightPx,
+      geometry.widthCm,
+      geometry.heightCm,
+    ].every((value) => Number.isFinite(Number(value)) && Number(value) > 0);
+    const placementsAreValid = formData.stimulusPlacements.every(
+      isStimulusPlacementDraftValid,
+    );
+
     switch (currentStep) {
       case 1:
-        return formData.projectName.trim() !== "" && !!formData.experimentFolderFiles?.length
+        // `experimentFolderFiles` stays null while Step 1 still has unanswered
+        // structure questions, so this also gates on the clarification flow.
+        return (
+          formData.projectName.trim() !== "" &&
+          !!formData.experimentFolderFiles?.length &&
+          !!folderSelection &&
+          geometryIsValid &&
+          placementsAreValid
+        )
       case 2:
         return formData.sensors.length > 0;
       case 3:
@@ -236,13 +297,15 @@ export const useCreateProjectWizard = (
       return;
     }
 
+    const attempt = uploadAttempt.begin();
+    if (!attempt) return;
     setIsSaving(true);
     setSaveError(null);
     setSaveNotice(null);
-    setSaveProgressMessage("Creando proyecto borrador...");
+    setSaveProgressMessage("Creando el proyecto…");
 
     let projectIdForUpload = draftProjectId;
-    let keepDraftOnFailure = false;
+    let uploadCommitted = formData.uploadedZip?.ingestion_status === "READY";
 
     const updateProgress = (message: string) => {
       setSaveProgressMessage(message);
@@ -256,6 +319,8 @@ export const useCreateProjectWizard = (
           status: "draft",
         });
         projectIdForUpload = created.id;
+        if (!attempt.isCurrent()) return;
+        attempt.assertActive();
         setDraftProjectId(created.id);
       } else {
         await ProjectsApi.update(projectIdForUpload, {
@@ -265,226 +330,139 @@ export const useCreateProjectWizard = (
         });
       }
 
-      // Package folder into ZIP for backend upload
-      updateProgress("Empaquetando carpeta del experimento...");
-      let zipFile: File;
-      try {
-        const JSZip = (await import("jszip")).default;
-        const zip = new JSZip();
-        const getFilePath = (file: File): string =>
-          (file as any)._relativePath || file.webkitRelativePath || file.name;
+      attempt.assertActive();
+      let uploadedZipResult = uploadCommitted ? formData.uploadedZip! : null;
+      if (!uploadedZipResult) {
+        updateProgress("Preparando la carpeta…");
+        const zipFile = await packageExperimentFolder(formData.experimentFolderFiles, attempt.signal);
+        attempt.assertActive();
 
-        const folderName = getFilePath(formData.experimentFolderFiles[0]).split("/")[0];
-        for (const file of formData.experimentFolderFiles) {
-          const fullPath = getFilePath(file);
-          // Strip the root folder name from the path so entries are relative
-          const relativePath = fullPath.startsWith(folderName + "/")
-            ? fullPath.slice(folderName.length + 1)
-            : fullPath || file.name;
-          zip.file(relativePath, file, { compression: "STORE" });
-        }
-        const zipBlob = await zip.generateAsync({ type: "blob" });
-        zipFile = new File([zipBlob], `${folderName}.zip`, { type: "application/zip" });
-      } catch (packError: any) {
-        console.error("[CreateProjectWizard] JSZip packaging failed", packError);
-        throw new Error("Error al empaquetar la carpeta. Verifica que no exceda 500MB.");
-      }
+        // Lock inputs immediately by setting ingestion_status to PROCESSING
+        setFormData((prev) => ({
+          ...prev,
+          uploadedZip: {
+            project_id: projectIdForUpload || "",
+            ingestion_status: "PROCESSING",
+            zip_saved: false,
+            zip_file: null,
+            counts: { folders_created: 0, files_uploaded: 0, images: 0, videos: 0, csv: 0, other: 0, scenaries_created: 0 },
+            files: [],
+            csv_processing: { detected: 0, processed: 0, failed: 0 },
+            manifest: { total_detected: 0, images: 0, videos: 0, csv: 0, other: 0 },
+          },
+        }));
 
-      // Lock inputs immediately by setting ingestion_status to PROCESSING
-      setFormData((prev) => ({
-        ...prev,
-        uploadedZip: {
-          project_id: projectIdForUpload || "",
-          ingestion_status: "PROCESSING",
-          zip_saved: false,
-          zip_file: null,
-          counts: { folders_created: 0, files_uploaded: 0, images: 0, videos: 0, csv: 0, other: 0, scenaries_created: 0 },
-          files: [],
-          csv_processing: { detected: 0, processed: 0, failed: 0 },
-          manifest: { total_detected: 0, images: 0, videos: 0, csv: 0, other: 0 },
-        },
-      }));
+        setZipUploadPercent(null);
+        setZipUploadBytes(null);
+        setZipUploadSpeedMbps(null);
+        setZipUploadEtaSeconds(null);
+        setZipDriveProcessingSeconds(null);
+        updateProgress("Subiendo datos del experimento…");
+        setIsZipUploadInProgress(true);
 
-      setZipUploadPercent(null);
-      setZipUploadBytes(null);
-      setZipUploadSpeedMbps(null);
-      setZipUploadEtaSeconds(null);
-      setZipDriveProcessingSeconds(null);
-      updateProgress("Enviando experimento al backend...");
-      setIsZipUploadInProgress(true);
+        attempt.startPolling(projectIdForUpload, (snapshot) => {
+          const totalBytes = Math.max(0, snapshot.total_bytes || 0);
+          const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0);
 
-      const uploadAbortController = new AbortController();
-      uploadAbortControllerRef.current = uploadAbortController;
-      activeZipUploadProjectIdRef.current = projectIdForUpload;
-
-      let driveProgressPollTimer: ReturnType<typeof setInterval> | null = null;
-      let lastDriveSampleAt: number | null = null;
-      let lastDriveUploadedBytes: number | null = null;
-
-      const clearDriveProgressPolling = () => {
-        if (driveProgressPollTimer) {
-          clearInterval(driveProgressPollTimer);
-          driveProgressPollTimer = null;
-        }
-      };
-
-      const pollDriveProgress = async () => {
-        if (!projectIdForUpload) return;
-        const snapshot = await ProjectsApi.getZipUploadProgress(projectIdForUpload);
-        const totalBytes = Math.max(0, snapshot.total_bytes || 0);
-        const uploadedBytes = Math.max(0, snapshot.uploaded_bytes || 0);
-
-        if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
-          updateProgress("Preparando sincronización en Google Drive...");
-          return;
-        }
-
-        const percent = Math.max(
-          0,
-          Math.min(
-            100,
-            Number.isFinite(snapshot.percent)
-              ? snapshot.percent
-              : totalBytes > 0
-                ? Math.round((uploadedBytes / totalBytes) * 100)
-                : 0
-          )
-        );
-
-        const now = Date.now();
-        let speedMbps = snapshot.speed_mbps ?? null;
-        if ((speedMbps === null || !Number.isFinite(speedMbps)) && lastDriveSampleAt !== null && lastDriveUploadedBytes !== null) {
-          const deltaSeconds = Math.max(0.001, (now - lastDriveSampleAt) / 1000);
-          const deltaBytes = Math.max(0, uploadedBytes - lastDriveUploadedBytes);
-          const sampledSpeed = deltaBytes / deltaSeconds / (1024 * 1024);
-          speedMbps = Number.isFinite(sampledSpeed) && sampledSpeed > 0 ? sampledSpeed : null;
-        }
-
-        const speedBytesPerSecond = speedMbps !== null ? speedMbps * 1024 * 1024 : null;
-        const etaSeconds = snapshot.eta_seconds ?? (
-          speedBytesPerSecond && speedBytesPerSecond > 0
-            ? Math.max(0, Math.round((totalBytes - uploadedBytes) / speedBytesPerSecond))
-            : null
-        );
-
-        lastDriveSampleAt = now;
-        lastDriveUploadedBytes = uploadedBytes;
-
-        setZipUploadPercent(percent);
-        setZipUploadBytes({ loaded: uploadedBytes, total: totalBytes });
-        setZipUploadSpeedMbps(speedMbps !== null && Number.isFinite(speedMbps) ? speedMbps : null);
-        setZipUploadEtaSeconds(etaSeconds !== null && Number.isFinite(etaSeconds) ? etaSeconds : null);
-        setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0);
-        if (snapshot.phase === "canceling") {
-          updateProgress("Cancelando subida en backend...");
-        } else if (percent >= 99 && snapshot.phase !== "completed") {
-          updateProgress("Finalizando sincronización con Google Drive...");
-        } else {
-          toast.loading(`Procesando archivos de ${formData.projectName} - ${percent}%`, {
-            id: STEP1_LOADING_TOAST_ID,
-            position: "bottom-center",
-            duration: Infinity,
-          });
-        }
-
-        if (snapshot.phase === "completed") {
-          clearDriveProgressPolling();
-        }
-        if (snapshot.phase === "failed") {
-          clearDriveProgressPolling();
-          if (snapshot.error) {
-            throw new Error(snapshot.error);
-          }
-        }
-      };
-
-      void pollDriveProgress().catch((error: unknown) => {
-        console.warn("[CreateProjectWizard] initial Drive progress poll failed", error);
-      });
-      driveProgressPollTimer = setInterval(() => {
-        void pollDriveProgress().catch((error: unknown) => {
-          console.warn("[CreateProjectWizard] Drive progress poll failed", error);
-        });
-      }, 1000);
-
-      const uploadedZipResult = await ProjectsApi.uploadZipWithProgress(
-        projectIdForUpload,
-        zipFile,
-        (progress) => {
-          if (progress.phase === "uploading") {
-            updateProgress(`Enviando experimento al backend... ${progress.percent}%`);
+          if (totalBytes <= 0 && snapshot.phase !== "completed" && snapshot.phase !== "failed") {
+            updateProgress(storageCopy.preparingSync);
             return;
           }
 
-          if (progress.phase === "processing") {
-            return;
-          }
+          const { percent, speed_mbps: speedMbps = null, eta_seconds: etaSeconds = null } = snapshot;
 
-          if (progress.phase === "completed") {
-            clearDriveProgressPolling();
-            void pollDriveProgress().catch((error: unknown) => {
-              console.warn("[CreateProjectWizard] final Drive progress poll failed", error);
+          setZipUploadPercent(percent);
+          setZipUploadBytes({ loaded: uploadedBytes, total: totalBytes });
+          setZipUploadSpeedMbps(speedMbps);
+          setZipUploadEtaSeconds(etaSeconds);
+          setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0);
+          if (snapshot.phase === "canceling") {
+            updateProgress("Cancelando la subida…");
+          } else if (percent >= 99 && snapshot.phase !== "completed") {
+            updateProgress(storageCopy.finalizingSync);
+          } else {
+            toast.loading(`Procesando archivos de «${formData.projectName}» · ${percent}%`, {
+              id: STEP1_LOADING_TOAST_ID,
+              position: "bottom-center",
+              duration: Infinity,
             });
           }
-        },
-        uploadAbortController.signal,
-      );
 
-      clearDriveProgressPolling();
-      await pollDriveProgress().catch((error: unknown) => {
-        console.warn("[CreateProjectWizard] post-upload Drive progress poll failed", error);
-      });
+        });
 
-      if (uploadedZipResult.ingestion_status === "FAILED") {
-        throw new Error("La ingesta falló en backend. Verifica estructura y contenido.");
+        preserveDraftRef.current = true;
+        attempt.markRequestStarted(projectIdForUpload);
+        uploadedZipResult = await ProjectsApi.uploadZipWithProgress(
+          projectIdForUpload,
+          zipFile,
+          (progress) => {
+            if (!attempt.isCurrent() || attempt.signal.aborted) return;
+            if (progress.phase === "uploading") {
+              updateProgress(`Subiendo datos del experimento… ${progress.percent}%`);
+              return;
+            }
+
+            if (progress.phase === "processing") {
+              return;
+            }
+
+          },
+          attempt.signal,
+          folderSelection,
+          resolveFixationGeometry(formData.fixationGeometry, savedScreen),
+          serializeStimulusPlacements(formData.stimulusPlacements),
+          attempt.id,
+        );
+
+        attempt.markRequestCompleted();
+        if (!attempt.isCurrent()) return;
+        if (uploadedZipResult.ingestion_status !== "READY") {
+          throw new Error("No se pudieron procesar los datos. Revisa la carpeta.");
+        }
+        uploadCommitted = true;
+        setFormData((prev) => ({ ...prev, uploadedZip: uploadedZipResult }));
       }
 
       const detail = await ProjectsApi.get(projectIdForUpload);
 
-      // Auto-populate detected sensors from CSV analysis
-      const detectedSensors = (uploadedZipResult.detected_sensors ?? []).filter(
-        (s: string): s is SensorType => ["EEG", "GSR", "EyeTracker"].includes(s)
-      );
-
-      // Auto-populate participants from CSV recording numbers
-      const csvParticipants: ParticipantData[] = (uploadedZipResult.participants ?? [])
-        .sort((a: DetectedParticipant, b: DetectedParticipant) => a.user_index - b.user_index)
-        .map((p: DetectedParticipant) => ({
-          id: p.participant_code,
-          sex: null as ParticipantData["sex"],
-          age: "",
-        }));
+      if (!attempt.isCurrent()) return;
+      const { sensors: detectedSensors, participants: detectedParticipants } =
+        detectedUploadMetadata(uploadedZipResult, formData.participants);
 
       setFormData((prev) => ({
         ...prev,
         uploadedZip: uploadedZipResult,
         scenaries: buildStep4ImageScenaries(detail),
-        sensors: detectedSensors.length > 0 ? detectedSensors : prev.sensors,
-        participants: csvParticipants.length > 0 ? csvParticipants : prev.participants,
+        sensors: detectedSensors,
+        participants: detectedParticipants,
       }));
 
-      // Immediately persist detected sensors and participants to DB so they are
-      // available when the user closes the wizard and resumes via "Continuar".
-      if (detectedSensors.length > 0) {
-        await ProjectsApi.setSensors(projectIdForUpload!, detectedSensors as string[]).catch((err: unknown) => {
-          console.warn("[CreateProjectWizard] could not save detected sensors to DB", err);
-        });
-      }
-      if (csvParticipants.length > 0) {
-        await ProjectsApi.setParticipants(
-          projectIdForUpload!,
-          csvParticipants.map((p) => ({ participant_code: p.id, age: null, sex: null }))
-        ).catch((err: unknown) => {
-          console.warn("[CreateProjectWizard] could not save detected participants to DB", err);
-        });
+      // The ingestion transaction already persisted the detected metadata.
+      if (!attempt.isCurrent()) return;
+      setCurrentStep(2);
+      setSaveProgressMessage(null);
+      setSaveNotice("Carpeta procesada.");
+    } catch (error) {
+      if (!attempt.isCurrent()) return;
+      // A rejected request or a failed follow-up read never proves that the
+      // server has not published data. Retain the draft for recovery.
+      if (!uploadCommitted) setFormData((prev) => ({ ...prev, uploadedZip: null }));
+      // The backend re-validates structure independently. If it still finds the
+      // archive ambiguous, surface its questions instead of a generic failure
+      // and send the user back to Step 1 to answer them.
+      const clarification = asUploadClarification(error);
+      if (clarification) {
+        setSaveNotice(null);
+        setSaveError(
+          [clarification.message, ...clarification.questions.map((q) => q.message)].join(" ")
+        );
+        setFolderSelection(null);
+        setFormData((prev) => ({ ...prev, uploadedZip: null, experimentFolderFiles: null }));
+        setCurrentStep(1);
+        return;
       }
 
-      setCurrentStep(2);
-      keepDraftOnFailure = true;
-      setSaveProgressMessage(null);
-      setSaveNotice("Carpeta procesada correctamente. Puedes continuar con la configuración.");
-    } catch (error: any) {
-      const rawErrorMessage = error?.message ?? "Error procesando carpeta";
+      const rawErrorMessage = getErrorMessage(error, "No se pudo procesar la carpeta.");
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
         .replace(/^Error subiendo archivo:\s*/i, "");
@@ -501,29 +479,24 @@ export const useCreateProjectWizard = (
       );
 
       if (wasCanceled) {
-        setSaveNotice("Subida cancelada por el usuario.");
+        setSaveNotice("Subida cancelada.");
       }
 
-      if (!keepDraftOnFailure && projectIdForUpload) {
-        try {
-          await ProjectsApi.delete(projectIdForUpload);
-          setDraftProjectId(null);
-        } catch (cleanupError) {
-          console.warn("[CreateProjectWizard] could not delete draft project after failed step 1", cleanupError);
-        }
-      }
     } finally {
-      setIsSaving(false);
-      setIsZipUploadInProgress(false);
-      uploadAbortControllerRef.current = null;
-      activeZipUploadProjectIdRef.current = null;
-      setZipUploadPercent(null);
-      setZipUploadBytes(null);
-      setZipUploadSpeedMbps(null);
-      setZipUploadEtaSeconds(null);
-      setZipDriveProcessingSeconds(null);
-      toast.dismiss(STEP1_LOADING_TOAST_ID);
-      onStep1Complete?.();
+      const isCurrent = attempt.isCurrent();
+      uploadAttempt.finish(attempt);
+      if (isCurrent) {
+        setIsSaving(false);
+        setSaveProgressMessage(null);
+        setIsZipUploadInProgress(false);
+        setZipUploadPercent(null);
+        setZipUploadBytes(null);
+        setZipUploadSpeedMbps(null);
+        setZipUploadEtaSeconds(null);
+        setZipDriveProcessingSeconds(null);
+        toast.dismiss(STEP1_LOADING_TOAST_ID);
+        onStep1Complete?.();
+      }
     }
   };
 
@@ -544,6 +517,12 @@ export const useCreateProjectWizard = (
   };
 
   const reset = () => {
+    resumeLoadIdRef.current += 1;
+    uploadAttempt.reset();
+    preserveDraftRef.current = false;
+    setIsSaving(false);
+    setIsZipUploadInProgress(false);
+    toast.dismiss(STEP1_LOADING_TOAST_ID);
     setCurrentStep(1);
     setSaveError(null);
     setSaveNotice(null);
@@ -564,16 +543,19 @@ export const useCreateProjectWizard = (
       participants: initialParticipants,
       scenaries: initialscenaries,
       experimentFolderFiles: null,
+      fixationGeometry: createEmptyFixationScreenGeometry(),
+      stimulusPlacements: [],
     });
     setDraftProjectId(null);
     setIsResumedDraft(false);
+    setFolderSelection(null);
   };
 
   const discardDraftProject = async () => {
     if (!draftProjectId) return;
 
     // Never delete a project that is being resumed from the cards list.
-    if (isResumedDraft) {
+    if (isResumedDraft || preserveDraftRef.current) {
       setDraftProjectId(null);
       return;
     }
@@ -596,12 +578,14 @@ export const useCreateProjectWizard = (
   };
 
   const openForResume = async (project: Project) => {
+    reset();
+    const resumeLoadId = resumeLoadIdRef.current;
     setDraftProjectId(project.id);
 
     // Step 1 was never completed (upload interrupted or never started) —
     // open the wizard at step 1 so the user can re-upload the folder.
     const ing = String(project.ingestionStatus || "").toUpperCase();
-    if (ing === "PENDING" || ing === "") {
+    if (ing !== "READY") {
       setFormData({
         projectName: project.name,
         description: project.description || "",
@@ -612,6 +596,8 @@ export const useCreateProjectWizard = (
         sensors: [],
         participants: initialParticipants,
         scenaries: initialscenaries,
+        fixationGeometry: createEmptyFixationScreenGeometry(),
+        stimulusPlacements: [],
       });
       setCurrentStep(1);
       // isResumedDraft=true prevents deletion on cancel (project already existed)
@@ -639,20 +625,21 @@ export const useCreateProjectWizard = (
       sensors: [],
       participants: [],
       scenaries: [],
+      fixationGeometry: createEmptyFixationScreenGeometry(),
+      stimulusPlacements: [],
     };
 
     try {
       const detail = await ProjectsApi.get(project.id);
+      if (resumeLoadId !== resumeLoadIdRef.current) return;
 
       const detectedSensors = (detail.sensors || [])
         .map((sensor) => sensor.sensor_type)
         .filter((sensorType): sensorType is SensorType => ["EEG", "GSR", "EyeTracker"].includes(sensorType));
 
-      const detectedParticipants: ParticipantData[] = (detail.participants || []).map((p) => ({
-        id: p.participant_code,
-        sex: (p.sex as ParticipantData["sex"] | null) ?? null,
-        age: p.age !== null && p.age !== undefined ? String(p.age) : "",
-      }));
+      const detectedParticipants: ParticipantData[] = (detail.participants || []).map((p) =>
+        participantDataFromApi(p, (p.sex as ParticipantData["sex"] | null) ?? null),
+      );
 
       const detectedScenaries = buildStep4ImageScenaries(detail);
 
@@ -677,6 +664,7 @@ export const useCreateProjectWizard = (
       setIsResumedDraft(true);
       setIsOpen(true);
     } catch (error) {
+      if (resumeLoadId !== resumeLoadIdRef.current) return;
       console.warn("[CreateProjectWizard] openForResume could not load full project detail", {
         projectId: project.id,
         error,
@@ -695,7 +683,7 @@ export const useCreateProjectWizard = (
     }
 
     if (!draftProjectId) {
-      setSaveError("No hay un proyecto borrador para finalizar. Regresa al Paso 1 y procesa la carpeta.");
+      setSaveError("Primero sube y procesa la carpeta del experimento.");
       return;
     }
 
@@ -709,23 +697,19 @@ export const useCreateProjectWizard = (
     };
 
     try {
-      updateProgress("Guardando sensores y participantes...");
-      const updates: Promise<void>[] = [];
-
+      updateProgress("Guardando sensores y participantes…");
       if (formData.sensors.length > 0) {
-        updates.push(ProjectsApi.setSensors(draftProjectId, formData.sensors as string[]));
+        await ProjectsApi.setSensors(draftProjectId, formData.sensors as string[]);
       }
 
       if (formData.participants.length > 0) {
         const normalizedParticipants = normalizeParticipants(formData.participants);
-        updates.push(ProjectsApi.setParticipants(draftProjectId, normalizedParticipants));
+        await ProjectsApi.setParticipants(draftProjectId, normalizedParticipants);
       }
 
-      updates.push(ProjectsApi.setAois(draftProjectId, serializeScenaryAois(formData.scenaries)));
+      await ProjectsApi.setAois(draftProjectId, serializeScenaryAois(formData.scenaries));
 
-      await Promise.all(updates);
-
-      updateProgress("Finalizando configuración del proyecto...");
+      updateProgress("Finalizando la configuración del proyecto…");
       await ProjectsApi.finalize(draftProjectId);
 
       const finalized = await ProjectsApi.get(draftProjectId);
@@ -745,13 +729,13 @@ export const useCreateProjectWizard = (
 
       onProjectCreated?.(newProject);
       setIsSaveCompleted(true);
-      setSaveProgressMessage("Proceso completado. Cerrando...");
+      setSaveProgressMessage("Listo. Cerrando…");
       await new Promise((resolve) => setTimeout(resolve, 900));
-      toast.success(`Proyecto "${finalized.name}" creado correctamente.`);
+      toast.success(`Proyecto «${finalized.name}» creado.`);
       setIsOpen(false);
       reset();
-    } catch (e: any) {
-      const rawErrorMessage = e?.message ?? "Error guardando proyecto";
+    } catch (e) {
+      const rawErrorMessage = getErrorMessage(e, "No se pudo guardar el proyecto.");
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
         .replace(/^Error subiendo archivo:\s*/i, "");
@@ -768,7 +752,7 @@ export const useCreateProjectWizard = (
         showSessionHint
           ? `${errorMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
           : (saveProgressMessage
-              ? `Error guardando proyecto. Paso fallido: ${saveProgressMessage}`
+              ? `No se pudo guardar el proyecto. Falló el paso: ${saveProgressMessage}`
               : errorMessage)
       );
       toast.error("No se pudo guardar el proyecto.");
@@ -782,8 +766,7 @@ export const useCreateProjectWizard = (
       setZipUploadEtaSeconds(null);
       setZipDriveProcessingSeconds(null);
       setIsZipUploadInProgress(false);
-      uploadAbortControllerRef.current = null;
-      activeZipUploadProjectIdRef.current = null;
+
     }
   };
 
@@ -794,6 +777,9 @@ export const useCreateProjectWizard = (
     setIsOpen,
     updateProjectName,
     updateDescription,
+    updateFixationGeometry,
+    syncStimulusPlacementPaths,
+    updateStimulusPlacement,
     updateFolderPath,
     toggleSensor,
     updateParticipant,
@@ -816,8 +802,10 @@ export const useCreateProjectWizard = (
     isZipUploadInProgress,
     cancelZipUpload,
     setExperimentFolder,
+    setFolderStructureSelection,
     discardDraftProject,
     openForResume,
+    hasDraftProject: !!draftProjectId,
     isResumedDraft,
   };
 };

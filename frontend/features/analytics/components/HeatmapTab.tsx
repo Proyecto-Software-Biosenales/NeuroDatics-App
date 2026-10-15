@@ -1,6 +1,11 @@
 "use client"
 
+import { Skeleton } from "@/components/ui/skeleton"
+import { HintTooltip } from "@/components/HintTooltip"
+import { Button } from "@/components/ui/button"
+
 import { useCallback, useEffect, useRef, useState } from "react"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
 import { Clock, Flame, Hash, Timer } from "lucide-react"
 import {
   Card,
@@ -8,19 +13,20 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
-import { KpiCard } from "@/components/ui/KpiCard"
-import { apiFetchBlob } from "@/lib/api/apiFetch"
+} from "@/components/ui/card"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
+import { useStimulusImage } from "../participantComparison/cardHooks"
 import {
   useAoiMetrics,
   useFixationData,
   useHeatmapOverlay,
 } from "../hooks/useAnalyticsData"
+import type { FixationDurationMs } from "../types"
 import {
-  AoiContextPanel,
   AoiLegend,
   AoiOverlay,
   AoiToggleButton,
+  containedImageBoxStyle,
   getContainedImageBox,
   type ContainedImageBox,
 } from "./AoiOverlay"
@@ -29,14 +35,15 @@ interface HeatmapTabProps {
   projectId: string
   participantCode: string | null
   scenario: string
+  minFixationDurationMs: FixationDurationMs
 }
 
 export function HeatmapTab({
   projectId,
   participantCode,
   scenario,
+  minFixationDurationMs,
 }: HeatmapTabProps) {
-  const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showPurple, setShowPurple] = useState(false)
   const [showAois, setShowAois] = useState(true)
   const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
@@ -44,60 +51,52 @@ export function HeatmapTab({
   const imageRef = useRef<HTMLImageElement>(null)
 
   // Fixation stats (for KPI cards)
-  const { data: fixData, loading: fixLoading } = useFixationData(projectId, participantCode, scenario)
+  const { data: fixData, loading: fixLoading } = useFixationData(
+    projectId,
+    participantCode,
+    scenario,
+    minFixationDurationMs
+  )
+  const transformToken =
+    fixData?.coordinate_transform?.contract_fingerprint ??
+    fixData?.coordinate_transform?.status ??
+    "screen-stimulus-v1"
+  // null means "not resolved yet", which gates the overlay request. A loaded
+  // response missing the field is an older backend, not an unresolved one, so it
+  // falls back to 0 rather than blocking the heatmap forever.
+  const cacheGeneration = fixData ? (fixData.cache_generation ?? 0) : null
 
   // PNG heatmap overlay from backend
-  const { overlayUrl, loading: heatmapLoading, error: heatmapError } = useHeatmapOverlay(
+  const {
+    overlayUrl,
+    loading: heatmapLoading,
+    error: heatmapError,
+  } = useHeatmapOverlay(
     projectId,
     participantCode,
-    scenario
+    scenario,
+    transformToken,
+    cacheGeneration,
+    minFixationDurationMs
   )
-  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
-    projectId,
-    participantCode,
-    scenario
-  )
+  const {
+    data: aoiData,
+    loading: aoiLoading,
+  } = useAoiMetrics(projectId, participantCode, scenario, minFixationDurationMs)
 
   const loading = fixLoading || heatmapLoading
   const aois = aoiData?.aois ?? []
 
   const computeLetterbox = useCallback(() => {
-    setLetterbox(getContainedImageBox(imageRef.current, imageContainerRef.current))
+    setLetterbox(
+      getContainedImageBox(imageRef.current, imageContainerRef.current)
+    )
   }, [])
 
   // Load scenario background image
-  useEffect(() => {
-    const fileId = fixData?.scenario_file_id
 
-    let cancelled = false
-    let currentUrl: string | null = null
 
-    Promise.resolve().then(() => {
-      if (!cancelled) setScenarioImageUrl(null)
-    })
-
-    if (!fileId) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    apiFetchBlob(`/api/projects/${projectId}/files/${fileId}/image`)
-      .then((blob) => {
-        if (cancelled) return
-        currentUrl = URL.createObjectURL(blob)
-        setScenarioImageUrl(currentUrl)
-      })
-      .catch(() => {
-        if (!cancelled) setScenarioImageUrl(null)
-      })
-
-    return () => {
-      cancelled = true
-      if (currentUrl) URL.revokeObjectURL(currentUrl)
-    }
-  }, [projectId, fixData?.scenario_file_id])
-
+  const scenarioImageUrl = useStimulusImage(projectId, fixData?.scenario_file_id ?? null).url
   useEffect(() => {
     const frame = requestAnimationFrame(() => computeLetterbox())
     const container = imageContainerRef.current
@@ -114,18 +113,22 @@ export function HeatmapTab({
 
   if (scenario === "all") {
     return (
-      <div className="space-y-6 py-6">
+      <div className="analytics-stack">
         <Card>
           <CardHeader>
             <CardTitle>Mapa de calor</CardTitle>
             <CardDescription>
-              Representación visual de la densidad de atención sobre el estímulo basada en la duración y frecuencia de las fijaciones.
+              Representación visual de la densidad de atención sobre el estímulo
+              basada en la duración y frecuencia de las fijaciones.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
               <Flame className="h-8 w-8 text-muted-foreground/40" />
-              <span>Selecciona un escenario específico para visualizar el mapa de calor</span>
+              <span>
+                Selecciona un escenario específico para visualizar el mapa de
+                calor
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -134,13 +137,26 @@ export function HeatmapTab({
   }
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       <Card>
-        <CardHeader>
-          <CardTitle>Mapa de calor</CardTitle>
-          <CardDescription>
-            Representación visual de la densidad de atención sobre el estímulo basada en la duración y frecuencia de las fijaciones.
-          </CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
+            <CardTitle>Mapa de calor</CardTitle>
+            <CardDescription>
+              Representación visual de la densidad de atención sobre el estímulo
+              basada en la duración y frecuencia de las fijaciones.
+            </CardDescription>
+          </div>
+          <CompareParticipantsButton
+            spec={() => ({
+              kind: "heatmap",
+              title: "Mapa de calor",
+              scenario,
+              sourceParticipant: participantCode,
+              origin: "individual",
+              params: { minFixationDurationMs, showAois },
+            })}
+          />
         </CardHeader>
         <CardContent>
           {!participantCode ? (
@@ -150,13 +166,12 @@ export function HeatmapTab({
           ) : (
             <>
               {/* KPI Cards */}
-              <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
+              <div className="analytics-kpi-grid">
                 <KpiCard
                   label="Fijaciones"
                   value={fixData?.stats?.n_fixations}
                   unit=""
-                  description="Total de fijaciones en el escenario"
-                  tooltip="Número total de puntos de fijación detectados"
+                  description="Total en el escenario"
                   Icon={Hash}
                   loading={fixLoading}
                   bgClass="bg-card"
@@ -169,9 +184,7 @@ export function HeatmapTab({
                   label="Fijación más larga"
                   value={fixData ? fixData.stats.max_duration_s * 1000 : null}
                   unit="ms"
-                  description="Duración de la fijación más prolongada"
-                  tooltip="Duración en milisegundos de la fijación más larga"
-                  Icon={Timer}
+                                    Icon={Timer}
                   loading={fixLoading}
                   bgClass="bg-card"
                   iconBgClass="bg-rose-100 dark:bg-rose-900/30"
@@ -183,9 +196,7 @@ export function HeatmapTab({
                   label="Duración media"
                   value={fixData ? fixData.stats.avg_duration_s * 1000 : null}
                   unit="ms"
-                  description="Promedio de duración por fijación"
-                  tooltip="Duración media de cada punto de fijación"
-                  Icon={Clock}
+                                    Icon={Clock}
                   loading={fixLoading}
                   bgClass="bg-card"
                   iconBgClass="bg-amber-100 dark:bg-amber-900/30"
@@ -197,7 +208,7 @@ export function HeatmapTab({
 
               {/* Image + overlay area */}
               {loading ? (
-                <div className="h-[500px] w-full animate-pulse rounded-lg bg-muted" />
+                <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
               ) : heatmapError ? (
                 <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
                   Error al cargar el mapa de calor: {heatmapError}
@@ -212,28 +223,34 @@ export function HeatmapTab({
                 </div>
               ) : (
                 <>
-                  <div className="relative overflow-hidden rounded-lg" ref={imageContainerRef}>
+                  <div
+                    className="relative overflow-hidden rounded-lg"
+                    ref={imageContainerRef}
+                  >
                     {/* Background scenario image */}
                     {!scenarioImageUrl ? (
-                      <div className="h-[500px] w-full animate-pulse rounded-lg bg-muted" />
+                      <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
                     ) : (
                       <img
                         ref={imageRef}
                         src={scenarioImageUrl}
                         alt="Escenario"
-                        className="max-h-[580px] w-full object-contain"
+                        className="analytics-visual-image"
                         onLoad={computeLetterbox}
                       />
                     )}
 
-                    {/* Heatmap PNG overlay — matches image exactly via object-contain */}
-                    {overlayUrl && scenarioImageUrl && (
+                    {/* Heatmap PNG overlay, pinned to the measured stimulus box */}
+                    {overlayUrl && scenarioImageUrl && letterbox && (
                       <img
                         src={overlayUrl}
                         alt="Mapa de calor"
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 h-full w-full object-contain"
-                        style={{ opacity: 0.82 }}
+                        className="pointer-events-none z-10"
+                        style={{
+                          ...containedImageBoxStyle(letterbox),
+                          opacity: 0.82,
+                        }}
                       />
                     )}
 
@@ -248,9 +265,7 @@ export function HeatmapTab({
                       />
                     )}
 
-                    {showAois && (
-                      <AoiOverlay aois={aois} box={letterbox} />
-                    )}
+                    {showAois && <AoiOverlay aois={aois} box={letterbox} />}
                   </div>
 
                   {/* Controls bar */}
@@ -263,17 +278,15 @@ export function HeatmapTab({
                         disabled={aois.length === 0 || aoiLoading}
                         count={aois.length}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPurple((p) => !p)}
-                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                          showPurple
-                            ? "border-violet-500 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
-                            : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        Filtro violeta
-                      </button>
+                      <HintTooltip hint="Tiñe de violeta la imagen de fondo para que el mapa de calor destaque más.">
+                        <Button aria-pressed={showPurple} size="sm" variant="selection"
+                          type="button"
+                          onClick={() => setShowPurple((p) => !p)}
+                          className=""
+                        >
+                          Filtro violeta
+                        </Button>
+                      </HintTooltip>
                     </div>
                   </div>
                 </>
@@ -283,15 +296,6 @@ export function HeatmapTab({
         </CardContent>
       </Card>
 
-      {participantCode && scenario !== "all" ? (
-        <AoiContextPanel
-          data={aoiData}
-          loading={aoiLoading}
-          error={aoiError}
-          title="AOIs en mapa de calor"
-          description="Relaciona la densidad del mapa de calor con las areas delimitadas del escenario."
-        />
-      ) : null}
     </div>
   )
 }

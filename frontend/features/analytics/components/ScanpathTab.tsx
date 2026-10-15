@@ -1,19 +1,36 @@
 "use client"
+import { Slider } from "@/components/ui/slider"
+
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { MapPin, Route, Ruler, Clock } from "lucide-react"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import { Clock, MapPin, Route, Ruler, Timer } from "lucide-react"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
-import { KpiCard } from "@/components/ui/KpiCard"
-import { apiFetchBlob } from "@/lib/api/apiFetch"
+} from "@/components/ui/card"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
+import { useStimulusImage } from "../participantComparison/cardHooks"
 import { useAoiMetrics, useScanpathData } from "../hooks/useAnalyticsData"
 import {
-  AoiContextPanel,
+  formatScanpathObjectiveDetails,
+  resolveScanpathRadiusCapMs,
+  resolveScanpathTotalDurationS,
+  scanpathRadiusForDuration,
+} from "../scanpathScale"
+import {
+  ACTIVE_SCANPATH_STYLE,
+  SCANPATH_STYLES,
+  scanpathGeometry,
+  scanpathLabelFontSize,
+} from "../scanpathStyle"
+import type { FixationDurationMs } from "../types"
+import {
   AoiLegend,
   AoiOverlay,
   AoiToggleButton,
@@ -21,18 +38,22 @@ import {
   type ContainedImageBox,
 } from "./AoiOverlay"
 
+// Switch presets in scanpathStyle.ts ("legacy" restores the previous look).
+const scanpathStyle = SCANPATH_STYLES[ACTIVE_SCANPATH_STYLE]
+
 interface ScanpathTabProps {
   projectId: string
   participantCode: string | null
   scenario: string
+  minFixationDurationMs: FixationDurationMs
 }
 
 export function ScanpathTab({
   projectId,
   participantCode,
   scenario,
+  minFixationDurationMs,
 }: ScanpathTabProps) {
-  const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
   
   const imageContainerRef = useRef<HTMLDivElement>(null)
@@ -41,49 +62,33 @@ export function ScanpathTab({
   const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
   const [visibleCount, setVisibleCount] = useState<number | null>(null)
 
-  const { data, loading, error } = useScanpathData(projectId, participantCode, scenario)
-  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
+  const { data, loading, error } = useScanpathData(
     projectId,
     participantCode,
-    scenario
+    scenario,
+    minFixationDurationMs
+  )
+  const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
+    projectId,
+    participantCode,
+    scenario,
+    minFixationDurationMs
   )
   const aois = aoiData?.aois ?? []
+  const radiusCapMs = resolveScanpathRadiusCapMs(data?.radius_scale)
+  const totalDurationS = data
+    ? resolveScanpathTotalDurationS(data.total_duration_s, data.objectives)
+    : null
 
   const computeLetterbox = useCallback(() => {
     setLetterbox(getContainedImageBox(imageRef.current, imageContainerRef.current))
   }, [])
 
   // Image load / revocation
-  useEffect(() => {
-    let cancelled = false
-    let currentUrl: string | null = null
 
-    if (!data?.scenario_file_id) {
-      Promise.resolve().then(() => {
-        if (!cancelled) setScenarioImageUrl(null)
-      })
-      return () => {
-        cancelled = true
-      }
-    }
-
-    apiFetchBlob(`/api/projects/${projectId}/files/${data.scenario_file_id}/image`)
-      .then((blob) => {
-        if (cancelled) return
-        currentUrl = URL.createObjectURL(blob)
-        setScenarioImageUrl(currentUrl)
-      })
-      .catch(() => {
-        if (!cancelled) setScenarioImageUrl(null)
-      })
-
-    return () => {
-      cancelled = true
-      if (currentUrl) URL.revokeObjectURL(currentUrl)
-    }
-  }, [projectId, data?.scenario_file_id])
 
   // Recalculate on window resize
+  const scenarioImageUrl = useStimulusImage(projectId, data?.scenario_file_id ?? null).url
   useEffect(() => {
     window.addEventListener("resize", computeLetterbox)
     return () => window.removeEventListener("resize", computeLetterbox)
@@ -98,12 +103,13 @@ export function ScanpathTab({
 
   if (scenario === "all") {
     return (
-      <div className="space-y-6 py-6">
+      <div className="analytics-stack">
         <Card>
           <CardHeader>
             <CardTitle>Mapa de recorridos</CardTitle>
             <CardDescription>
-              Recorrido visual del participante sobre el estímulo: nodos numerados por orden de fijación, tamaño proporcional a la duración.
+              Recorrido visual con nodos numerados por orden de fijación. El
+              mismo tamaño representa la misma duración entre participantes.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -118,13 +124,26 @@ export function ScanpathTab({
   }
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       <Card>
-        <CardHeader>
-          <CardTitle>Mapa de recorridos</CardTitle>
-          <CardDescription>
-            Recorrido visual del participante sobre el estímulo: nodos numerados por orden de fijación, tamaño proporcional a la duración.
-          </CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
+            <CardTitle>Mapa de recorridos</CardTitle>
+            <CardDescription>
+              Recorrido visual con nodos numerados por orden de fijación. El mismo
+              tamaño representa la misma duración entre participantes.
+            </CardDescription>
+          </div>
+          <CompareParticipantsButton
+            spec={() => ({
+              kind: "scanpath",
+              title: "Mapa de recorridos",
+              scenario,
+              sourceParticipant: participantCode,
+              origin: "individual",
+              params: { minFixationDurationMs, showAois },
+            })}
+          />
         </CardHeader>
         <CardContent>
           {!participantCode ? (
@@ -133,7 +152,7 @@ export function ScanpathTab({
             </div>
           ) : (
             <>
-              <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
+              <div className="analytics-kpi-grid analytics-kpi-grid-four">
                 <KpiCard
                   label="Recorridos"
                   value={data?.n_objectives}
@@ -152,8 +171,7 @@ export function ScanpathTab({
                   label="Distancia"
                   value={data?.total_distance_px}
                   unit="px"
-                  description="Longitud total del recorrido"
-                  tooltip="Distancia total en píxeles entre fijaciones consecutivas asumiendo resolución 1920×1080"
+                                    tooltip="Distancia total en píxeles entre fijaciones consecutivas asumiendo resolución 1920×1080"
                   Icon={Ruler}
                   loading={loading}
                   bgClass="bg-card"
@@ -167,7 +185,6 @@ export function ScanpathTab({
                   value={data ? data.avg_duration_s * 1000 : null}
                   unit="ms"
                   description="Duración media por fijación"
-                  tooltip="Duración promedio de cada punto de fijación agrupado"
                   Icon={Clock}
                   loading={loading}
                   bgClass="bg-card"
@@ -176,10 +193,24 @@ export function ScanpathTab({
                   labelColorClass="text-rose-600 dark:text-rose-400"
                   decimals={0}
                 />
+                <KpiCard
+                  label="Tiempo fijado"
+                  value={totalDurationS}
+                  unit="s"
+                  description="Suma de fijaciones válidas"
+                  tooltip="Tiempo total de permanencia en fijaciones válidas; excluye sacadas, mirada inválida y tiempo fuera del estímulo"
+                  Icon={Timer}
+                  loading={loading}
+                  bgClass="bg-card"
+                  iconBgClass="bg-sky-100 dark:bg-sky-900/30"
+                  iconColorClass="text-sky-500"
+                  labelColorClass="text-sky-600 dark:text-sky-400"
+                  decimals={2}
+                />
               </div>
 
               {loading ? (
-                <div className="h-[500px] w-full animate-pulse rounded-lg bg-muted" />
+                <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
               ) : error ? (
                 <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
                   Error al cargar los datos: {error}
@@ -197,18 +228,31 @@ export function ScanpathTab({
                   const total = data.objectives.length
                   const shown = visibleCount ?? total
                   const visibleObjectives = data.objectives.slice(0, shown)
+                  const geometry = scanpathGeometry(
+                    scanpathStyle,
+                    letterbox?.renderedW ?? 0,
+                    letterbox?.renderedH ?? 0
+                  )
+                  const radiusFor = (durationS: number) => {
+                    return scanpathRadiusForDuration(
+                      durationS,
+                      geometry.minRadius,
+                      geometry.maxRadius,
+                      radiusCapMs
+                    )
+                  }
 
                   return (
                     <>
                       <div className="relative" ref={imageContainerRef}>
                         {!scenarioImageUrl ? (
-                          <div className="h-[500px] w-full animate-pulse rounded-lg bg-muted" />
+                          <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
                         ) : (
                           <img
                             ref={imageRef}
                             src={scenarioImageUrl}
                             alt="Escenario"
-                            className="max-h-[580px] w-full object-contain"
+                            className="analytics-visual-image"
                             onLoad={computeLetterbox}
                           />
                         )}
@@ -233,55 +277,60 @@ export function ScanpathTab({
                                   y1={letterbox.offsetY + prev.cy * letterbox.renderedH}
                                   x2={letterbox.offsetX + obj.cx * letterbox.renderedW}
                                   y2={letterbox.offsetY + obj.cy * letterbox.renderedH}
-                                  stroke="rgba(0, 122, 255, 0.7)"
-                                  strokeWidth={2.5}
+                                  stroke={scanpathStyle.lineStroke}
+                                  strokeWidth={geometry.lineWidth}
                                   strokeLinecap="round"
                                 />
                               )
                             })}
                             {/* Nodes */}
-                            {(() => {
-                              const durations = visibleObjectives.map((o) => o.duration_s)
-                              const sorted = [...durations].sort((a, b) => a - b)
-                              const p5 = sorted[Math.max(0, Math.floor(sorted.length * 0.05))]
-                              const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]
-                              const range = p95 - p5
-                              return visibleObjectives.map((obj) => {
-                                const cx = letterbox.offsetX + obj.cx * letterbox.renderedW
-                                const cy = letterbox.offsetY + obj.cy * letterbox.renderedH
-                                const norm = range > 0 ? Math.max(0, Math.min(1, (obj.duration_s - p5) / range)) : 0.5
-                                const r = Math.round(12 + norm * 28)
-                                const fontSize = Math.max(9, Math.min(Math.round(r * 0.55), 16))
-                                return (
-                                  <g key={`node-${obj.id}`}>
-                                    <circle
-                                      cx={cx}
-                                      cy={cy}
-                                      r={r}
-                                      fill="rgba(0, 122, 255, 0.55)"
-                                      stroke="rgba(255,255,255,0.95)"
-                                      strokeWidth={2.5}
-                                    />
-                                    <text
-                                      x={cx}
-                                      y={cy}
-                                      textAnchor="middle"
-                                      dominantBaseline="central"
-                                      fill="white"
-                                      fontSize={fontSize}
-                                      fontWeight="bold"
-                                      style={{
-                                        paintOrder: "stroke",
-                                        stroke: "rgba(0,0,0,0.5)",
-                                        strokeWidth: 2,
-                                      }}
-                                    >
-                                      {obj.id}
-                                    </text>
-                                  </g>
-                                )
-                              })
-                            })()}
+                            {visibleObjectives.map((obj) => {
+                              const cx = letterbox.offsetX + obj.cx * letterbox.renderedW
+                              const cy = letterbox.offsetY + obj.cy * letterbox.renderedH
+                              const r = radiusFor(obj.duration_s)
+                              const fontSize = scanpathLabelFontSize(scanpathStyle, r)
+                              const details = formatScanpathObjectiveDetails(obj)
+                              return (
+                                <g
+                                  key={`node-${obj.id}`}
+                                  data-testid={`scanpath-fixation-${obj.id}`}
+                                  data-duration-ms={Math.round(obj.duration_s * 1_000)}
+                                  data-radius={r}
+                                  role="img"
+                                  tabIndex={0}
+                                  aria-label={details}
+                                  className="group pointer-events-auto cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                >
+                                  <title>{details}</title>
+                                  <circle
+                                    cx={cx}
+                                    cy={cy}
+                                    r={r}
+                                    fill={scanpathStyle.nodeFill}
+                                    stroke={scanpathStyle.nodeStroke}
+                                    strokeWidth={geometry.nodeStrokeWidth}
+                                    className={scanpathStyle.nodeClassName}
+                                  />
+                                  <text
+                                    x={cx}
+                                    y={cy}
+                                    textAnchor="middle"
+                                    dominantBaseline="central"
+                                    fill={scanpathStyle.labelFill}
+                                    fontSize={fontSize}
+                                    fontWeight="bold"
+                                    style={{
+                                      paintOrder: "stroke",
+                                      stroke: scanpathStyle.labelHalo,
+                                      strokeWidth: scanpathStyle.labelHaloWidth,
+                                      strokeLinejoin: scanpathStyle.labelHaloLineJoin,
+                                    }}
+                                  >
+                                    {obj.id}
+                                  </text>
+                                </g>
+                              )
+                            })}
                           </svg>
                         )}
                       </div>
@@ -302,22 +351,22 @@ export function ScanpathTab({
                           <span className="shrink-0 text-sm font-medium text-foreground">
                             Fijación {shown} de {total}
                           </span>
-                          <input
-                            type="range"
+                          <Slider
+                            aria-label="Fijaciones visibles"
                             min={1}
                             max={total}
-                            value={shown}
-                            onChange={(e) => setVisibleCount(Number(e.target.value))}
-                            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-200 accent-blue-500 dark:bg-gray-700"
+                            step={1}
+                            value={[shown]}
+                            onValueChange={([value]) => setVisibleCount(value)}
                           />
                           {shown < total && (
-                            <button
+                            <Button size="sm" variant="outline"
                               type="button"
                               onClick={() => setVisibleCount(total)}
-                              className="shrink-0 rounded-lg border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                              className="shrink-0"
                             >
                               Ver todos
-                            </button>
+                            </Button>
                           )}
                         </div>
                       )}
@@ -330,15 +379,6 @@ export function ScanpathTab({
         </CardContent>
       </Card>
 
-      {participantCode && scenario !== "all" ? (
-        <AoiContextPanel
-          data={aoiData}
-          loading={aoiLoading}
-          error={aoiError}
-          title="AOIs en mapa de recorridos"
-          description="Compara el orden de fijaciones del recorrido con las areas delimitadas."
-        />
-      ) : null}
     </div>
   )
 }

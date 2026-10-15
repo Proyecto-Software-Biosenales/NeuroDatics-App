@@ -1,12 +1,26 @@
 export interface AnalyticsParticipant {
+  /** Key for every analytics request. Display text comes from participantLabel. */
   participant_code: string
   user_index: number
+  /** Optional name entered when configuring the project. */
+  name?: string | null
+  /** Corrected document, or participant_code when never corrected. */
+  document?: string | null
 }
 
 export interface AnalyticsScenario {
   name: string
   type: string
   file_id: string | null
+}
+
+/** GET /analytics/scenario-timing: recording seconds of one scenario. */
+export interface ScenarioTimingData {
+  scenario: string
+  time_basis: "scenario_onset" | "recording"
+  onset_s: number | null
+  end_s: number | null
+  gsr_origin_s: number | null
 }
 
 export interface PupilTimeseriesData {
@@ -33,7 +47,40 @@ export interface PupilStatistics {
   raw_baseline: number | null
 }
 
-export interface GazeAtData {
+export interface CoordinateTransformDetails {
+  status: "applied" | "legacy_passthrough_missing" | "mixed"
+  applied: boolean | null
+  contract_version: string | null
+  source_space: "screen_px" | "legacy_screen" | "mixed"
+  output_space: "stimulus_normalized" | "legacy_screen_normalized" | "mixed"
+  contract_fingerprint: string | null
+  rejected_outside_count: number | null
+  rejected_outside_by_reason: Record<string, number> | null
+  warning_codes: string[]
+}
+
+export interface ScenarioCoordinateTransform extends CoordinateTransformDetails {
+  scenario: string
+}
+
+export interface CoordinateTransformProvenance extends CoordinateTransformDetails {
+  scenario_transforms?: ScenarioCoordinateTransform[] | null
+}
+
+export interface StimulusCoordinateResponse {
+  warnings?: string[]
+  coordinate_transform?: CoordinateTransformProvenance | null
+}
+
+export interface HeatmapTransformHeaders {
+  status: "applied" | "legacy_passthrough_missing" | "mixed" | null
+  coordinateSpace: string | null
+  contractVersion: string | null
+  contractFingerprint: string | null
+  warningCodes: string[]
+}
+
+export interface GazeAtData extends StimulusCoordinateResponse {
   requested_time_s: number
   nearest_time_s: number
   scenario: string | null
@@ -44,13 +91,13 @@ export interface GazeAtData {
   scenario_time_s?: number | null
 }
 
-export interface GazeTimeseriesData {
+export interface GazeTimeseriesData extends StimulusCoordinateResponse {
   time: number[]
   gx_clean: number[]
   gy_clean: number[]
 }
 
-export interface GazeStatistics {
+export interface GazeStatistics extends StimulusCoordinateResponse {
   gx_mean: number
   gx_min: number
   gx_max: number
@@ -100,23 +147,87 @@ export interface GsrStatistics {
   raw_baseline: number | null
 }
 
+/** One place a detector fired, so the chart can show where instead of how many. */
+export interface EegArtifactSpan {
+  channel: string
+  start_s: number
+  end_s: number
+  peak_uV: number | null
+  z: number | null
+  detector: "amplitude" | "step" | "peak_to_peak"
+}
+
+/** Per-channel data-quality record. Describes the export, never a correction. */
+export interface EegChannelQuality {
+  transient_candidates: number
+  transient_step_threshold_uV_assumed: number
+  max_absolute_step: number | null
+  median_offset: number | null
+  valid_samples: number
+  missing_samples: number
+  repeated_adjacent_samples: number
+  quantization_step_uV: number | null
+  constant: boolean
+  amplitude_outlier_samples: number
+  amplitude_z_max: number | null
+  amplitude_z_threshold: number
+  step_threshold_ceiling_uV_assumed: number
+  peak_to_peak_window_s: number
+  peak_to_peak_max_uV: number | null
+  peak_to_peak_threshold_uV_assumed: number
+  peak_to_peak_excursions: number
+}
+
+export interface EegMetadata {
+  version: string
+  warnings: string[]
+  channels?: Record<string, EegChannelQuality>
+  artifact_spans?: EegArtifactSpan[]
+  artifact_spans_total?: number
+  source_units?: Record<string, string | null>
+  assumed_uV_channels?: string[]
+  excluded_channels?: string[]
+  reference?: string
+  incomplete_channels?: string[]
+  channel_unavailable_reason?: Record<string, string>
+  windows_total?: Record<string, number>
+  windows_flagged?: Record<string, number>
+  display_reduction?: string
+  [key: string]: unknown
+}
+
+export interface EegChannelStatistics {
+  count: number
+  mean: number
+  std: number
+  median: number
+  min: number
+  max: number
+  rms: number
+}
+
 export interface EegTimeseriesData {
   time: number[]
   channels: string[]
   available_channels: string[]
   sampling_rate_hz: number
-  raw: Record<string, number[]>
-  smooth: Record<string, number[]>
+  metadata?: EegMetadata
+  raw: Record<string, Array<number | null>>
+  smooth: Record<string, Array<number | null>>
+  statistics?: { raw: Record<string, EegChannelStatistics | null>; smooth: Record<string, EegChannelStatistics | null> }
 }
 
 export interface EegPsdData {
+  band_power?: Record<string, Record<"delta" | "theta" | "alpha" | "beta" | "gamma", number | null>>
+  total_power?: Record<string, number | null>
   frequency: number[]
   channels: string[]
   available_channels: string[]
   sampling_rate_hz: number
+  metadata?: EegMetadata
   use_db: boolean
   unit: string
-  power: Record<string, number[]>
+  power: Record<string, Array<number | null>>
 }
 
 export interface ColorDomain {
@@ -130,11 +241,15 @@ export interface EegSpectrogramData {
   channels: string[]
   available_channels: string[]
   sampling_rate_hz: number
+  metadata?: EegMetadata
   use_db: boolean
   normalize: string
   unit: string
-  power: Record<string, number[][]>
+  power: Record<string, Array<Array<number | null>>>
   color_domain: ColorDomain
+  /** Empty unless per-channel limits were requested; one channel 25 dB above
+   *  its neighbours flattens all of them onto a shared ramp. */
+  channel_color_domain?: Record<string, ColorDomain>
 }
 
 export interface EegTopographyData {
@@ -142,39 +257,157 @@ export interface EegTopographyData {
   channels: string[]
   available_channels: string[]
   sampling_rate_hz: number
+  metadata?: EegMetadata
   unit: string
   positions: Record<string, number[]>
-  power: Record<string, number[]>
+  power: Record<string, Array<number | null>>
   color_domain: ColorDomain
   window_s: number
   overlap_ratio: number
   remove_dc: boolean
 }
 
+export interface ComparisonChartSeries {
+  key: string
+  label: string
+  color: string
+  unit: string
+}
+
+export interface ComparisonChartLegendItem {
+  label: string
+  color: string
+}
+
+export interface ComparisonChartPeak {
+  kind: "min" | "max"
+  series_key: string
+  series_label: string
+  value: number
+  time_s: number
+  unit: string
+  color: string
+  line_style: "dotted" | "dashed"
+  label: string
+}
+
+export interface ComparisonChartConfig {
+  id: string
+  title: string
+  x_label: string
+  y_label: string
+  time_basis: "absolute"
+  x_domain: [number, number] | null
+  data: Array<Record<string, number | null>>
+  series: ComparisonChartSeries[]
+  legend: ComparisonChartLegendItem[]
+  peaks: ComparisonChartPeak[]
+  annotations: Array<Record<string, unknown>>
+  synchronized: boolean
+  height: number
+}
+
+export interface ComparisonNumericSummary {
+  count: number
+  mean: number | null
+  median: number | null
+  std: number | null
+  min: number | null
+  max: number | null
+  baseline: number | null
+  peak: number | null
+}
+
+export interface ComparisonStatisticsSeries {
+  key: string
+  label: string
+  unit: string
+  summary: ComparisonNumericSummary
+}
+
+export interface ComparisonStatisticsBlock {
+  visualization_id: string
+  status: "ok" | "empty" | "error"
+  source: {
+    endpoint: string
+    resolution: "legacy_timeseries_display_samples"
+    source_samples: number
+    selected_samples: number
+    parameters: Record<string, unknown>
+    chart_resolution: "comparison_chart_display_samples"
+    relationship: string
+  }
+  series: ComparisonStatisticsSeries[]
+  error: string | null
+}
+
+export interface ComparisonChartsResponse {
+  contract_version: "comparison-charts-v3"
+  statistics_schema_version: "comparison-statistics-v1"
+  charts: ComparisonChartConfig[]
+  statistics: ComparisonStatisticsBlock[]
+}
+
+export const FIXATION_DURATION_OPTIONS_MS = [100, 150, 200, 250, 300] as const
+
+export type FixationDurationMs = (typeof FIXATION_DURATION_OPTIONS_MS)[number]
+
+export const DEFAULT_FIXATION_DURATION_MS: FixationDurationMs = 200
+
 export interface ScanpathObjective {
   id: number
-  cx: number            // normalized 0-1 (horizontal position)
-  cy: number            // normalized 0-1 (vertical position)
-  duration_s: number    // fixation duration in seconds
-  radius_norm: number   // normalized radius (0-1 scale, for rendering)
+  cx: number // normalized 0-1 (horizontal position)
+  cy: number // normalized 0-1 (vertical position)
+  duration_s: number // fixation duration in seconds
+  radius_norm: number // sqrt(clamp(duration / cap, 0-1)); absolute area scale
   t_start: number
   t_end: number
   n_points: number
 }
 
-export interface ScanpathData {
+export interface ScanpathRadiusScale {
+  version: "absolute-area-v1"
+  encoding: "area"
+  cap_ms: number
+}
+
+export interface FixationAlgorithmProvenance extends StimulusCoordinateResponse {
+  algorithm_version?: string | null
+  method?: string | null
+  source?: string | null
+  /** True when the events were rebuilt by the legacy adapter, so every event
+   *  and duration is an estimate rather than detector output. */
+  estimated?: boolean
+  effective_sampling_rate_hz?: number | null
+  available_min_fixation_durations_ms?: FixationDurationMs[]
+}
+
+export interface FixationProvenance extends FixationAlgorithmProvenance {
+  min_fixation_duration_ms?: FixationDurationMs | null
+}
+
+export interface ScanpathData extends FixationProvenance {
   objectives: ScanpathObjective[]
   n_objectives: number
-  total_distance_px: number    // in pixels at 1920x1080 reference resolution
-  avg_duration_s: number       // average fixation duration in seconds
+  total_distance_px: number // in pixels at 1920x1080 reference resolution
+  avg_duration_s: number // average fixation duration in seconds
+  /** Summed valid fixation dwell. Optional while older API instances roll out. */
+  total_duration_s?: number
+  /** Absolute duration encoding metadata. Missing metadata falls back to 2 s. */
+  radius_scale?: ScanpathRadiusScale | null
   scenario_file_id: string | null
 }
 
 export interface FixationPoint {
+  id?: string | null
   x_norm: number
   y_norm: number
   time_s: number
+  t_end_s?: number | null
   duration_s: number
+  detector_sample_count?: number | null
+  source_row_count?: number | null
+  segment_id?: string | null
 }
 
 export interface FixationStats {
@@ -183,10 +416,11 @@ export interface FixationStats {
   avg_duration_s: number
 }
 
-export interface FixationData {
+export interface FixationData extends FixationProvenance {
   fixations: FixationPoint[]
   stats: FixationStats
   scenario_file_id: string | null
+  cache_generation?: number
 }
 
 export interface FixationHistogramBin {
@@ -198,13 +432,29 @@ export interface FixationHistogramBin {
   promedio_ms: number
 }
 
-export interface FixationHistogramData {
+export interface FixationHistogramData extends FixationProvenance {
   bins: FixationHistogramBin[]
   n_fixations: number
   total_duration_ms: number
   mean_duration_ms: number
   min_duration_ms: number
   max_duration_ms: number
+}
+
+export interface FixationSensitivityPoint {
+  min_fixation_duration_ms: FixationDurationMs
+  n_fixations: number
+  total_duration_ms: number
+  mean_duration_ms: number
+  median_duration_ms: number
+  max_duration_ms: number
+  retained_dwell_percent: number
+}
+
+export interface FixationSensitivityData extends FixationAlgorithmProvenance {
+  default_min_fixation_duration_ms: FixationDurationMs
+  available_min_fixation_durations_ms: FixationDurationMs[]
+  points: FixationSensitivityPoint[]
 }
 
 export interface AoiShape {
@@ -259,7 +509,7 @@ export interface AoiEventItem {
   aoi_color: string | null
 }
 
-export interface AoiMetricsData {
+export interface AoiMetricsData extends FixationProvenance {
   scenario: string
   scenario_file_id: string | null
   aois: AoiMetricItem[]
@@ -269,4 +519,51 @@ export interface AoiMetricsData {
   total_dwell_time_ms: number
   observed_aoi_dwell_time_ms: number
   observed_aoi_dwell_time_percent: number
+}
+
+export type CorrelationSignalId =
+  | "pupil_avg_mm"
+  | "gaze_x_pct"
+  | "gaze_y_pct"
+  | "distance_cm"
+  | "gsr_smoothed_us"
+  | "eeg_broadband_power_db"
+
+export type CorrelationCellStatus =
+  | "ok"
+  | "unavailable"
+  | "insufficient_overlap"
+  | "constant_signal"
+
+export interface CorrelationSignal {
+  id: CorrelationSignalId
+  label: string
+  unit: string
+  available: boolean
+  valid_bins: number
+  coverage: number
+  source_columns: string[]
+  unavailable_reason: string | null
+}
+
+export interface CorrelationCell {
+  signal_x: CorrelationSignalId
+  signal_y: CorrelationSignalId
+  coefficient: number | null
+  n_samples: number
+  coverage: number
+  status: CorrelationCellStatus
+}
+
+export interface CorrelationResponse {
+  participant_code: string
+  scenario: string
+  method: "pearson"
+  time_basis: "scenario_relative"
+  bin_size_s: number
+  min_pair_samples: number
+  duration_s: number
+  total_bins: number
+  signals: CorrelationSignal[]
+  matrix: CorrelationCell[][]
 }

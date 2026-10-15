@@ -1,32 +1,39 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+
 import { useState } from "react"
 import { ChevronDown, ChevronRight } from "lucide-react"
+import { FieldHint } from "@/components/FieldHint"
 import type { scenaries } from "./types"
 import { AoiEditor } from "./components/AoiEditor"
 
 interface CreateProjectStep4Props {
   scenaries: scenaries[]
   onScenaryAoisChange?: (scenaryId: string, aois: scenaries["aois"]) => void
+  /** The section already has its title elsewhere (the editor's tab). */
+  hideTitle?: boolean
 }
 
 export const CreateProjectStep4 = ({
   scenaries,
   onScenaryAoisChange,
+  hideTitle = false,
 }: CreateProjectStep4Props) => {
   const imageScenaries = scenaries.filter((scenary) => (scenary.type || "image") === "image")
   const [openScenaryId, setOpenScenaryId] = useState<string>(imageScenaries[0]?.id || "")
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="mb-2 text-xl font-semibold text-foreground">
-          Areas de Interes (AOIs)
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Delimita las zonas relevantes de cada escenario para analizarlas en Eye Tracker.
-        </p>
-      </div>
+      {!hideTitle && (
+        <div className="flex items-center gap-2">
+          <h3 className="text-xl font-semibold text-foreground">
+            Áreas de interés (AOI)
+          </h3>
+          <FieldHint>Delimita las zonas relevantes de cada escenario para analizarlas con el eye tracker.</FieldHint>
+        </div>
+      )}
 
       <div className="space-y-3">
         {imageScenaries.map((scenary) => {
@@ -34,14 +41,15 @@ export const CreateProjectStep4 = ({
           const scenaryAois = scenary.aois || []
 
           return (
-            <div
+            <Collapsible
               key={scenary.id}
+              open={isOpen}
+              onOpenChange={(open) => setOpenScenaryId(open ? scenary.id : "")}
               className="overflow-hidden rounded-xl border border-border bg-card"
             >
-              <button
+              <CollapsibleTrigger asChild><Button variant="ghost"
                 type="button"
-                onClick={() => setOpenScenaryId(isOpen ? "" : scenary.id)}
-                className="flex w-full items-center justify-between p-4 transition-colors hover:bg-muted/50"
+                className="h-auto w-full justify-between p-4"
               >
                 <span className="font-medium text-foreground">{scenary.name}</span>
                 {isOpen ? (
@@ -49,10 +57,9 @@ export const CreateProjectStep4 = ({
                 ) : (
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 )}
-              </button>
+              </Button></CollapsibleTrigger>
 
-              {isOpen && (
-                <div className="border-t border-border px-4 pb-4">
+                <CollapsibleContent className="border-t border-border px-4 pb-4">
                   <div className="pt-4">
                     <AoiEditor
                       projectId={scenary.projectId}
@@ -63,15 +70,14 @@ export const CreateProjectStep4 = ({
                       onAoisChange={(nextAois) => onScenaryAoisChange?.(scenary.id, nextAois)}
                     />
                   </div>
-                </div>
-              )}
-            </div>
+                </CollapsibleContent>
+            </Collapsible>
           )
         })}
 
         {imageScenaries.length === 0 && (
           <div className="rounded-xl border border-border bg-muted p-4 text-sm text-muted-foreground">
-            No hay escenarios de imagen disponibles para definir AOIs.
+            No hay escenarios de imagen para definir áreas de interés.
           </div>
         )}
       </div>

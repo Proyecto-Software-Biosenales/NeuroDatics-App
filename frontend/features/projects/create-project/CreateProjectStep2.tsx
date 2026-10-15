@@ -1,12 +1,19 @@
 "use client"
 
-import { Brain, Zap, Eye, Check } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { FieldHint } from "@/components/FieldHint"
+
+import { Brain, Zap, Eye } from "lucide-react"
 import type { SensorType } from "./types"
 
 interface CreateProjectStep2Props {
   selectedSensors: SensorType[]
   onToggleSensor: (sensor: SensorType) => void
   autoDetectedSensors?: SensorType[]
+  /** The section already has its title elsewhere (the editor's tab). */
+  hideTitle?: boolean
 }
 
 const sensors = [
@@ -18,14 +25,14 @@ const sensors = [
   },
   {
     id: "GSR" as const,
-    title: "Sensor Galvánico",
+    title: "Sensor galvánico",
     description: "Registra la conductancia de la piel.",
     icon: Zap,
   },
   {
     id: "EyeTracker" as const,
     title: "Eye tracker",
-    description: "Rastreo mirada y fijaciones en pantalla.",
+    description: "Rastreo de la mirada y las fijaciones en pantalla.",
     icon: Eye,
   },
 ]
@@ -34,17 +41,15 @@ export const CreateProjectStep2 = ({
   selectedSensors,
   onToggleSensor,
   autoDetectedSensors = [],
+  hideTitle = false,
 }: CreateProjectStep2Props) => {
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">
+      {!hideTitle && (
+        <h3 className="text-xl font-semibold text-foreground">
           Sensores utilizados
         </h3>
-        <p className="text-sm text-muted-foreground">
-          Selecciona los sensores utilizados en este proyecto
-        </p>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {sensors.map((sensor) => {
@@ -52,40 +57,34 @@ export const CreateProjectStep2 = ({
           const Icon = sensor.icon
 
           return (
-            <button
+            <Label
               key={sensor.id}
-              type="button"
-              onClick={() => onToggleSensor(sensor.id)}
-              className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+              htmlFor={`project-sensor-${sensor.id}`}
+              className={`relative block cursor-pointer p-6 rounded-xl border-2 transition-colors text-left ${
                 isSelected
                   ? "border-foreground bg-muted"
                   : "border-border bg-card hover:border-foreground/40"
               }`}
             >
-              {isSelected && (
-                <div className="absolute top-3 right-3 w-6 h-6 bg-foreground rounded-full flex items-center justify-center">
-                  <Check className="w-4 h-4 text-white" strokeWidth={3} />
-                </div>
-              )}
+              <Checkbox id={`project-sensor-${sensor.id}`} checked={isSelected} onCheckedChange={() => onToggleSensor(sensor.id)} aria-label={sensor.title} className="absolute right-3 top-3" />
 
               <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mb-4">
                 <Icon className="w-6 h-6 text-foreground" strokeWidth={2} />
               </div>
 
-              <h4 className="text-base font-semibold text-foreground mb-2">
-                {sensor.title}
-              </h4>
-
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {sensor.description}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-base font-semibold text-foreground">
+                  {sensor.title}
+                </h4>
+                <FieldHint>{sensor.description}</FieldHint>
+              </div>
 
               {autoDetectedSensors.includes(sensor.id) && (
-                <span className="mt-2 inline-block text-xs font-medium text-green-500 bg-green-500/15 px-2 py-0.5 rounded-full">
-                  Auto-detectado
-                </span>
+                <Badge variant="secondary" className="mt-2">
+                  Detectado
+                </Badge>
               )}
-            </button>
+            </Label>
           )
         })}
       </div>

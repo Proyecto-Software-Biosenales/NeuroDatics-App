@@ -1,5 +1,10 @@
+
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
-import { Card } from "../../../components/ui/Card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ReportStepCard } from "./ReportStepCard"
+import { FieldHint } from "@/components/FieldHint"
 import type { ExportOptions } from "@/features/reports/types"
 
 interface ExportOptionsCardProps {
@@ -8,18 +13,20 @@ interface ExportOptionsCardProps {
   onToggleOption: (key: keyof ExportOptions) => void
   onDownload: () => void
   canDownload: boolean
+  loading?: boolean
+  downloadLabel?: string
 }
 
 const exportOptions = [
   {
     key: "includeCover" as keyof ExportOptions,
     title: "Incluir portada",
-    description: "Página inicial con logo y título del proyecto",
+    description: "Página inicial con el dispositivo, el proyecto y el alcance del informe",
   },
   {
     key: "includeMetadata" as keyof ExportOptions,
     title: "Incluir fecha y nombre del proyecto",
-    description: "Metadatos en encabezado y pie de página",
+    description: "Fecha de generación y proyecto en la portada y el pie de página",
   },
 ]
 
@@ -29,32 +36,17 @@ export const ExportOptionsCard = ({
   onToggleOption,
   onDownload,
   canDownload,
+  loading = false,
+  downloadLabel = "Descargar informe PDF",
 }: ExportOptionsCardProps) => {
   return (
-    <Card
-      className={`p-8 transition-all duration-300 ${
-        enabled ? "opacity-100" : "opacity-50 pointer-events-none"
-      }`}
-    >
-      <div className="flex items-start gap-4 mb-6">
-        <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-          <span className="text-foreground font-semibold text-lg">4</span>
-        </div>
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Opciones de exportación
-          </h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Personaliza el formato y metadatos del documento PDF
-          </p>
-        </div>
-      </div>
-
-      <div className="pl-14 space-y-3">
+    <ReportStepCard step={4} title="Opciones del informe" disabled={!enabled}>
+      <div className="sm:pl-14 space-y-3">
         {exportOptions.map((option) => (
-          <label
+          <Label
             key={option.key}
-            className={`flex items-start gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
+            htmlFor={`export-${option.key}`}
+            className={`flex items-center gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
               enabled
                 ? options[option.key]
                   ? "border-foreground/40 bg-muted"
@@ -62,37 +54,30 @@ export const ExportOptionsCard = ({
                 : ""
             }`}
           >
-            <input
-              type="checkbox"
+            <Checkbox
+              id={`export-${option.key}`}
               checked={options[option.key]}
-              onChange={() => onToggleOption(option.key)}
+              onCheckedChange={() => onToggleOption(option.key)}
               disabled={!enabled}
-              className="mt-1 w-4 h-4 accent-gray-950"
             />
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-foreground mb-1">
+            <div className="flex flex-1 items-center gap-1.5">
+              <h3 className="text-sm font-semibold text-foreground">
                 {option.title}
               </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {option.description}
-              </p>
+              <FieldHint>{option.description}</FieldHint>
             </div>
-          </label>
+          </Label>
         ))}
 
-        <button
+        <Button size="lg"
           onClick={onDownload}
-          disabled={!canDownload}
-          className={`w-full mt-6 flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-semibold text-white transition-all duration-200 ${
-            canDownload
-              ? "bg-gray-950 hover:bg-gray-700 hover:scale-[1.02] active:scale-[0.98]"
-              : "bg-gray-400 cursor-not-allowed"
-          }`}
+          disabled={!canDownload || loading}
+          className="mt-6 w-full"
         >
-          <Download className="w-5 h-5" />
-          Descargar reporte PDF
-        </button>
+          <Download className={`w-5 h-5 ${loading ? "animate-pulse" : ""}`} />
+          {loading ? "Generando informe…" : downloadLabel}
+        </Button>
       </div>
-    </Card>
+    </ReportStepCard>
   )
 }

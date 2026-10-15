@@ -1,0 +1,365 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { getStimulusImageUrl, getStimulusPreviewUrl } from "@/features/projects/api/stimulusUrls"
+import { requestAnalytics } from "../analyticsCache"
+import { useAnalyticsRevision } from "../hooks/useAnalyticsContext"
+import { AnalyticsApi } from "../api/analyticsApi"
+import {
+  useAoiMetrics,
+  useComparisonCharts,
+  useEegPsd,
+  useEegSpectrogram,
+  useFixationData,
+  useFixationHistogram,
+  useHeatmapOverlay,
+  useScanpathData,
+} from "../hooks/useAnalyticsData"
+import type { GazeAtData } from "../types"
+import { isComparisonPointActive } from "./chartInteraction"
+import type { VisualizationId } from "./registry"
+
+interface ObjectUrlState {
+  sourceUrl: string | null
+  url: string | null
+  loading: boolean
+  error: string | null
+}
+
+const EMPTY_OBJECT_URL_STATE: ObjectUrlState = {
+  sourceUrl: null,
+  url: null,
+  loading: false,
+  error: null,
+}
+
+function scenarioKey(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .replace(/\.[^./\\]+$/, "")
+    .toLowerCase()
+    .replace(/\s+/g, "")
+}
+
+function useComparisonGazeAt(
+  projectId: string | null,
+  participantCode: string | null,
+  scenario: string | null,
+  activeTimeS: number | null
+) {
+  const revision = useAnalyticsRevision()
+  const [data, setData] = useState<GazeAtData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [requestedKey, setRequestedKey] = useState<string | null>(null)
+  const requestId = useRef(0)
+  const abortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => { abortRef.current?.abort() }, [projectId, participantCode, scenario, revision])
+  const activeRequestKey =
+    projectId && participantCode && scenario && activeTimeS != null
+      ? JSON.stringify([projectId, participantCode, scenario, activeTimeS, revision])
+      : null
+
+  const clear = useCallback(() => {
+    abortRef.current?.abort()
+    requestId.current += 1
+    setRequestedKey(null)
+    setData(null)
+    setLoading(false)
+  }, [])
+
+  const fetchGaze = useCallback(
+    async (timeS: number) => {
+      if (!projectId || !participantCode || !scenario) return
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+      const currentRequest = ++requestId.current
+      setRequestedKey(
+        JSON.stringify([projectId, participantCode, scenario, timeS, revision])
+      )
+      setData(null)
+      setLoading(true)
+      try {
+        const result = await requestAnalytics(projectId, "gaze-at", [participantCode, timeS, scenario],
+          (signal) => AnalyticsApi.getGazeAt(projectId, participantCode, timeS, scenario, signal), controller.signal)
+        if (!controller.signal.aborted && requestId.current === currentRequest) setData(result)
+      } catch {
+        if (!controller.signal.aborted && requestId.current === currentRequest) setData(null)
+      } finally {
+        if (!controller.signal.aborted && requestId.current === currentRequest) setLoading(false)
+      }
+    },
+    [participantCode, projectId, scenario, revision]
+  )
+
+  const matchesActiveRequest =
+    activeRequestKey != null && requestedKey === activeRequestKey
+
+  return {
+    data: matchesActiveRequest ? data : null,
+    loading: activeRequestKey != null && (!matchesActiveRequest || loading),
+    clear,
+    fetchGaze,
+  }
+}
+
+function useObjectUrl(url: string | null, enabled: boolean, projectId: string, retain = false): ObjectUrlState {
+  const revision = useAnalyticsRevision()
+  const identity = JSON.stringify([url, projectId, revision])
+  const [state, setState] = useState<ObjectUrlState>(EMPTY_OBJECT_URL_STATE)
+
+  useEffect(() => {
+    let cancelled = false
+    let objectUrl: string | null = null
+    const controller = new AbortController()
+
+    if (!enabled || !url) {
+      Promise.resolve().then(() => {
+        if (!cancelled) setState(EMPTY_OBJECT_URL_STATE)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        setState({ sourceUrl: identity, url: null, loading: true, error: null })
+      }
+    })
+
+    const fetchBlob = (signal: AbortSignal) => apiFetchBlob(url, { signal, cache: "no-store" })
+    const pending = retain ? requestAnalytics(projectId, "stimulus-image", [url], fetchBlob, controller.signal) : fetchBlob(controller.signal)
+    pending
+      .then((blob) => {
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setState({
+          sourceUrl: identity,
+          url: objectUrl,
+          loading: false,
+          error: null,
+        })
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        setState({
+          sourceUrl: identity,
+          url: null,
+          loading: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "No se pudo cargar el estímulo.",
+        })
+      })
+
+    return () => {
+      cancelled = true
+      controller.abort()
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [enabled, url, identity, projectId, retain])
+
+  if (!enabled || !url) return EMPTY_OBJECT_URL_STATE
+  if (state.sourceUrl !== identity) {
+    return { sourceUrl: identity, url: null, loading: true, error: null }
+  }
+  return state
+}
+
+export interface UseComparisonDataOptions {
+  projectId: string
+  participantCode: string | null
+  scenario: string
+  selectedIds: VisualizationId[]
+  pinnedSourceTime: number | null
+}
+
+/**
+ * One fixed-order orchestration point for the comparison screen. A dataset is
+ * enabled by passing the project id only when at least one selected panel needs
+ * it. Collapsing a panel never changes this list; removing it does.
+ */
+export function useComparisonData({
+  projectId,
+  participantCode,
+  scenario,
+  selectedIds,
+  pinnedSourceTime,
+}: UseComparisonDataOptions) {
+  const selected = useMemo(() => new Set(selectedIds), [selectedIds])
+  const temporalChartIds = useMemo(
+    () =>
+      selectedIds.filter((id) =>
+        ["pupil", "distance", "gaze", "gsr", "eeg_timeseries"].includes(id)
+      ),
+    [selectedIds]
+  )
+  const concreteScenario = Boolean(scenario && scenario.toLowerCase() !== "all")
+  const enabledProject = (enabled: boolean) => (enabled ? projectId : null)
+
+  const comparisonCharts = useComparisonCharts(
+    temporalChartIds.length ? projectId : null,
+    participantCode,
+    scenario,
+    temporalChartIds,
+    5000
+  )
+
+  // Distribution and frequency views.
+  const fixationHistogram = useFixationHistogram(
+    enabledProject(selected.has("fixation_histogram")),
+    participantCode,
+    scenario
+  )
+  const eegPsd = useEegPsd(
+    enabledProject(selected.has("eeg_psd")),
+    participantCode,
+    scenario,
+    [],
+    45,
+    true,
+    5000
+  )
+  const eegSpectrogram = useEegSpectrogram(
+    enabledProject(selected.has("eeg_spectrogram")),
+    participantCode,
+    scenario,
+    [],
+    45,
+    true,
+    "none",
+    360,
+    160
+  )
+
+  // Spatial views are intentionally gated before their hooks issue requests.
+  const pointActive = isComparisonPointActive(
+    participantCode,
+    scenario,
+    pinnedSourceTime
+  )
+  const heatmapEnabled = concreteScenario && selected.has("heatmap")
+  const scanpathEnabled = concreteScenario && selected.has("scanpath")
+  const aoiEnabled =
+    concreteScenario &&
+    (pointActive || heatmapEnabled || scanpathEnabled || selected.has("aoi"))
+
+  const fixation = useFixationData(
+    enabledProject(heatmapEnabled),
+    participantCode,
+    scenario
+  )
+  const heatmap = useHeatmapOverlay(
+    enabledProject(heatmapEnabled),
+    participantCode,
+    scenario,
+    fixation.data?.coordinate_transform?.contract_fingerprint ??
+      fixation.data?.coordinate_transform?.status ??
+      "screen-stimulus-v1",
+    fixation.data ? fixation.data.cache_generation ?? 0 : null
+  )
+  const scanpath = useScanpathData(
+    enabledProject(scanpathEnabled),
+    participantCode,
+    scenario
+  )
+  const aoi = useAoiMetrics(
+    enabledProject(aoiEnabled),
+    participantCode,
+    scenario
+  )
+  const gazeAt = useComparisonGazeAt(
+    pointActive ? projectId : null,
+    pointActive ? participantCode : null,
+    pointActive ? scenario : null,
+    pointActive ? pinnedSourceTime : null
+  )
+  const { clear: clearGazeAt, fetchGaze: fetchGazeAt } = gazeAt
+
+  useEffect(() => {
+    if (!pointActive || pinnedSourceTime == null) {
+      clearGazeAt()
+      return
+    }
+    void fetchGazeAt(pinnedSourceTime)
+  }, [clearGazeAt, fetchGazeAt, pinnedSourceTime, pointActive])
+
+  // When the global filter is active, gaze-at resolves the concrete scenario
+  // for the selected timestamp. Use that result to load the matching AOIs
+  // without enabling aggregate spatial panels for `all`.
+  const resolvedPointScenario =
+    !concreteScenario && pointActive
+      ? gazeAt.data?.scenario?.trim() || "all"
+      : "all"
+  const allScenarioPointAoi = useAoiMetrics(
+    enabledProject(
+      !concreteScenario &&
+        pointActive &&
+        resolvedPointScenario.toLowerCase() !== "all"
+    ),
+    participantCode,
+    resolvedPointScenario
+  )
+  const allScenarioPointAoiData =
+    allScenarioPointAoi.data &&
+    scenarioKey(allScenarioPointAoi.data.scenario) ===
+      scenarioKey(resolvedPointScenario)
+      ? allScenarioPointAoi.data
+      : null
+  const concretePointAoiData =
+    aoi.data && scenarioKey(aoi.data.scenario) === scenarioKey(scenario)
+      ? aoi.data
+      : null
+  const pointAoi = concreteScenario
+    ? { ...aoi, data: concretePointAoiData }
+    : { ...allScenarioPointAoi, data: allScenarioPointAoiData }
+
+  const staticFileId =
+    fixation.data?.scenario_file_id ??
+    scanpath.data?.scenario_file_id ??
+    aoi.data?.scenario_file_id ??
+    null
+  const staticImage = useObjectUrl(
+    staticFileId
+      ? getStimulusImageUrl(projectId, staticFileId)
+      : null,
+    concreteScenario &&
+      Boolean(staticFileId) &&
+      (heatmapEnabled || scanpathEnabled || selected.has("aoi")),
+    projectId, true
+  )
+
+  const pointPreviewParams = useMemo(() => {
+    if (!gazeAt.data?.scenario_file_id) return null
+    return getStimulusPreviewUrl(projectId, gazeAt.data.scenario_file_id, {
+      timeS: gazeAt.data.nearest_time_s,
+      participantCode,
+      scenario: gazeAt.data.scenario,
+    })
+  }, [gazeAt.data, participantCode, projectId])
+  const pointPreview = useObjectUrl(
+    pointPreviewParams,
+    pointActive && Boolean(pointPreviewParams),
+    projectId
+  )
+
+  return {
+    fixationHistogram,
+    eegPsd,
+    eegSpectrogram,
+    comparisonCharts,
+    fixation,
+    heatmap,
+    scanpath,
+    aoi,
+    pointAoi,
+    gazeAt,
+    staticImage,
+    pointPreview,
+  }
+}
+
+export type ComparisonData = ReturnType<typeof useComparisonData>

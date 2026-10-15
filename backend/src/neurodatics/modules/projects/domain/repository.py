@@ -70,11 +70,24 @@ class ProjectRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def reconcile_ingestion_metadata(self, project_id: UUID, participant_codes: List[str], sensors: List[str]) -> None:
+        """Replace detected identities without committing or losing matching demographics."""
+        raise NotImplementedError
+
+    @abstractmethod
     async def update_project_ingestion(
         self,
         project_id: UUID,
         updates: Dict[str, Any],
     ) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def bump_ingestion_generation(self, project_id: UUID) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_ingestion_generation(self, project_id: UUID) -> int:
         raise NotImplementedError
 
     @abstractmethod

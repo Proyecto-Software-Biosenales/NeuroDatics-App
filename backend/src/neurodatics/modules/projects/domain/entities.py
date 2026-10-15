@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, Enum, ForeignKey, Integer, JSON, DateTime, func
+from sqlalchemy import Column, String, Text, Enum, ForeignKey, Index, Integer, JSON, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -23,31 +23,59 @@ class JobStatus(str, enum.Enum):
 class Project(BaseModel):
     """Project entity"""
     __tablename__ = "projects"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_id = Column(UUID(as_uuid=True), nullable=False)  # FK to auth.users(id)
+    owner_id = Column(UUID(as_uuid=True), nullable=False, index=True)  # FK to auth.users(id)
     name = Column(String(255), nullable=False)
     description = Column(Text)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE, nullable=False)
     ingestion_status = Column(String(20), nullable=False, default="PENDING")
+    # Analytics cache identity: bumped only when an ingestion commits successfully, so a crashed
+    # re-ingest leaves the old generation (and therefore every cached artifact) still valid.
+    ingestion_generation = Column(Integer, nullable=False, default=0, server_default="0")
+    # Lazily populated analytics provenance, keyed by participant and generation.
+    analytics_transform_tokens = Column(JSON, nullable=True)
     ingestion_error = Column(Text, nullable=True)
     last_ingested_at = Column(DateTime, nullable=True)
     storage_provider = Column(String(20), nullable=False, default="gdrive")
     drive_root_folder_id = Column(String(255), nullable=True)
     drive_root_folder_name = Column(String(255), nullable=True)
     drive_root_folder_url = Column(String(500), nullable=True)
-    
+    # Name of the folder the user picked; the browser-built ZIP is not stored.
+    source_folder_name = Column(String(255), nullable=True)
+    pre_experiment = Column(JSON, nullable=True)
+    pre_experiment_revision = Column(Integer, nullable=False, default=0, server_default="0")
+
     # Relationships
     files = relationship("ProjectFile", back_populates="project", cascade="all, delete-orphan")
     sensors = relationship("ProjectSensor", back_populates="project", cascade="all, delete-orphan")
     participants = relationship("Participant", back_populates="project", cascade="all, delete-orphan")
     scenaries = relationship("Scenaries", back_populates="project", cascade="all, delete-orphan")
+    planning_responses = relationship("PreExperimentResponse", back_populates="project", cascade="all, delete-orphan")
+
+
+class PreExperimentResponse(BaseModel):
+    """Immutable submitted answers with the participant and questions as presented."""
+    __tablename__ = "pre_experiment_responses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    revision = Column(Integer, nullable=False)
+    participant_id = Column(UUID(as_uuid=True), nullable=False)
+    phase = Column(String(10), nullable=False)
+    participant_snapshot = Column(JSON, nullable=False)
+    questionnaire_snapshot = Column(JSON, nullable=False)
+    answers = Column(JSON, nullable=False)
+    submitted_at = Column(DateTime(timezone=True), nullable=False)
+    project = relationship("Project", back_populates="planning_responses")
 
 
 class ProjectFile(BaseModel):
     """Project files entity"""
     __tablename__ = "project_files"
-    
+    # Parquet resolution filters on exactly this pair.
+    __table_args__ = (Index("ix_project_files_project_id_kind", "project_id", "kind"),)
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
     source_zip_id = Column(UUID(as_uuid=True), ForeignKey("project_files.id"), nullable=True)
@@ -62,11 +90,11 @@ class ProjectFile(BaseModel):
     extension = Column(String(20), nullable=True)
     size_bytes = Column(Integer)
     checksum_sha256 = Column(String(64))
-    
+
     # Storage URLs and metadata
     drive_web_view_link = Column(String(500), nullable=True)  # Link to view in Drive
     drive_download_link = Column(String(500), nullable=True)  # Direct download link
-    
+
     # ZIP validation and processing
     validation_status = Column(String(20), nullable=True)  # 'valid', 'invalid'
     validation_errors = Column(JSON, nullable=True)  # Array of error messages
@@ -74,27 +102,49 @@ class ProjectFile(BaseModel):
     processing_errors = Column(JSON, nullable=True)
     processed_at = Column(DateTime, nullable=True)
     file_metadata = Column(JSON, nullable=True)
-    
+
     # ZIP manifest and metadata
     zip_manifest = Column(JSON, nullable=True)  # Structured info about ZIP contents
     entry_count = Column(Integer, nullable=True)  # Total entries in ZIP
     root_folder_name = Column(String(255), nullable=True)  # Root folder name if exists
-    
+
     # Soft delete for handling ZIP replacement
     deleted_at = Column(DateTime, nullable=True)
-    
+
     # Relationships
     project = relationship("Project", back_populates="files")
+
+
+class DriveCleanupTask(BaseModel):
+    """Committed cleanup intent that survives deletion of the owning project."""
+    __tablename__ = "drive_cleanup_tasks"
+
+    external_id = Column(String(255), primary_key=True)
+    project_id = Column(UUID(as_uuid=True), nullable=False)
+
+
+class UploadAttempt(BaseModel):
+    """Durable outcome and root-folder journal for a single HTTP upload."""
+    __tablename__ = "upload_attempts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    phase = Column(String(20), nullable=False, default="processing")
+    cancel_requested = Column(Boolean, nullable=False, default=False)
+    root_folder_id = Column(String(255), nullable=True)
+    cleanup_root_id = Column(String(255), nullable=True)
+    progress = Column(JSON, nullable=True)
+    error = Column(Text, nullable=True)
 
 
 class ProjectSensor(BaseModel):
     """Project sensors entity"""
     __tablename__ = "project_sensors"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
     sensor_type = Column(String(50), nullable=False)  # 'EEG', 'GSR', 'EyeTracker', etc.
-    
+
     # Relationships
     project = relationship("Project", back_populates="sensors")
 

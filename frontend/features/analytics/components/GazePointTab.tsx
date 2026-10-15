@@ -1,9 +1,13 @@
 "use client"
+import { AnalyticsModeSelector } from "@/features/analytics/components/AnalyticsModeSelector"
+
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ReferenceLine,
@@ -18,7 +22,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
+} from "@/components/ui/card"
 import {
   Activity,
   Clock,
@@ -36,11 +40,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { useStimulusImage } from "../participantComparison/cardHooks"
 import { cn } from "@/lib/utils"
-import { KpiCard } from "@/components/ui/KpiCard"
-import { StatisticsTable } from "@/components/ui/StatisticsTable"
-import type { StatRow } from "@/components/ui/StatisticsTable"
+import { KpiCard } from "@/features/analytics/components/KpiCard"
+import { StatisticsTable } from "@/features/analytics/components/StatisticsTable"
+import type { StatRow } from "@/features/analytics/components/StatisticsTable"
 import {
   useAoiMetrics,
   useGazeAt,
@@ -48,7 +52,6 @@ import {
   useGazeTimeseries,
 } from "../hooks/useAnalyticsData"
 import {
-  AoiContextPanel,
   AoiLegend,
   AoiOverlay,
   AoiToggleButton,
@@ -57,14 +60,12 @@ import {
   imagePointToContainerPercent,
   type ContainedImageBox,
 } from "./AoiOverlay"
-import {
-  EMPTY_TIME_WINDOW,
-  EMPTY_TIME_WINDOW_DRAFT,
-  TimeWindowControls,
-  validateTimeWindowDraft,
-  type TimeWindow,
-  type TimeWindowDraft,
-} from "./TimeWindowControls"
+import { TimeWindowControls } from "./TimeWindowControls"
+import { useTimeWindow } from "../hooks/useZoomHistory"
+import { MissingStimulusImage } from "./MissingStimulusImage"
+import { AnalyticsChartShell, LINE_CHART_MARGIN } from "./AnalyticsChartShell"
+import { useChartDragZoom } from "./ChartDragZoom"
+import { axisTickDecimals, formatAxisTick } from "../chartZoom"
 
 type ViewMode = "both" | "x" | "y"
 
@@ -115,23 +116,6 @@ function GazeTooltip({ active, payload, label }: GazeTooltipProps) {
   )
 }
 
-/** Returns true if the scenario name looks like an instruction/non-stimulus screen. */
-function isNoImageScenario(name: string | null): boolean {
-  if (!name) return false
-  const lower = name.toLowerCase().trim()
-  return (
-    lower.startsWith("instruction") ||
-    lower.startsWith("instruccion") ||
-    lower.startsWith("instrucción") ||
-    lower.startsWith("practice") ||
-    lower.startsWith("practica") ||
-    lower.startsWith("intro") ||
-    lower.startsWith("blank") ||
-    lower.startsWith("rest") ||
-    lower.startsWith("fixation")
-  )
-}
-
 export function GazePointTab({
   projectId,
   participantCode,
@@ -139,11 +123,18 @@ export function GazePointTab({
 }: GazePointTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("both")
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
-  const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [showAois, setShowAois] = useState(true)
-  const [timeWindowDraft, setTimeWindowDraft] = useState<TimeWindowDraft>(EMPTY_TIME_WINDOW_DRAFT)
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>(EMPTY_TIME_WINDOW)
-  const [timeWindowError, setTimeWindowError] = useState<string | null>(null)
+  const {
+    data: gazeData,
+    loading: gazeLoading,
+    fetchGaze,
+    clear: clearGaze,
+  } = useGazeAt(projectId, participantCode)
+  const windowState = useTimeWindow(() => {
+    setSelectedTime(null)
+    clearGaze()
+  })
+  const timeWindow = windowState.window
   // Refs for letterbox-corrected gaze positioning
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
@@ -165,14 +156,8 @@ export function GazePointTab({
     timeWindow.start,
     timeWindow.end
   )
-  const {
-    data: gazeData,
-    loading: gazeLoading,
-    fetchGaze,
-    clear: clearGaze,
-  } = useGazeAt(projectId, participantCode)
   const aoiScenario = scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
-  const { data: aoiData, loading: aoiLoading, error: aoiError } = useAoiMetrics(
+  const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
     projectId,
     participantCode,
     aoiScenario
@@ -196,6 +181,14 @@ export function GazePointTab({
     if (chartData.length === 0) return ["dataMin", "dataMax"]
     return [chartData[0].time, chartData[chartData.length - 1].time]
   }, [chartData])
+  const chartLegend = [
+    ...(viewMode === "both" || viewMode === "x"
+      ? [{ label: "Mirada X (%)", color: "#818CF8" }]
+      : []),
+    ...(viewMode === "both" || viewMode === "y"
+      ? [{ label: "Mirada Y (%)", color: "#22C55E" }]
+      : []),
+  ]
 
   const minTime = useMemo(() => {
     if (chartData.length === 0) return null
@@ -241,7 +234,7 @@ export function GazePointTab({
 
   const tableRows = useMemo<StatRow[]>(() => {
     const gazeXRow: StatRow = {
-      serie: "Gaze X",
+      serie: "Mirada X",
       count: chartData.length > 0 ? chartData.length : null,
       baseline: stats?.gx_baseline ?? null,
       std: stats?.gx_std ?? null,
@@ -256,7 +249,7 @@ export function GazePointTab({
           : null,
     }
     const gazeYRow: StatRow = {
-      serie: "Gaze Y",
+      serie: "Mirada Y",
       count: chartData.length > 0 ? chartData.length : null,
       baseline: stats?.gy_baseline ?? null,
       std: stats?.gy_std ?? null,
@@ -293,6 +286,7 @@ export function GazePointTab({
   }, [gazeX, gazeY])
 
   // Recompute offset when gazeData changes (image may already be loaded)
+  const scenarioImageUrl = useStimulusImage(projectId, gazeData?.scenario_file_id ?? null).url
   useEffect(() => {
     computeGazeOffset()
   }, [computeGazeOffset])
@@ -318,31 +312,7 @@ export function GazePointTab({
     if (next !== null) fetchGaze(next)
   }
 
-  useEffect(() => {
-    if (!gazeData?.scenario_file_id) {
-      return
-    }
 
-    let cancelled = false
-    let currentUrl: string | null = null
-
-    apiFetchBlob(`/api/projects/${projectId}/files/${gazeData.scenario_file_id}/image`)
-      .then((blob) => {
-        if (cancelled) return
-        currentUrl = URL.createObjectURL(blob)
-        setScenarioImageUrl(currentUrl)
-      })
-      .catch(() => {
-        if (!cancelled) setScenarioImageUrl(null)
-      })
-
-    return () => {
-      cancelled = true
-      if (currentUrl) {
-        URL.revokeObjectURL(currentUrl)
-      }
-    }
-  }, [gazeData?.scenario_file_id, projectId])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChartClick = (state: any) => {
@@ -360,85 +330,61 @@ export function GazePointTab({
     fetchGaze(time)
   }
 
-  const handleApplyTimeWindow = () => {
-    const { window, error } = validateTimeWindowDraft(timeWindowDraft)
-    if (error || !window) {
-      setTimeWindowError(error)
-      return
-    }
-
-    setTimeWindow(window)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    clearGaze()
-  }
-
-  const handleResetTimeWindow = () => {
-    setTimeWindowDraft(EMPTY_TIME_WINDOW_DRAFT)
-    setTimeWindow(EMPTY_TIME_WINDOW)
-    setTimeWindowError(null)
-    setSelectedTime(null)
-    clearGaze()
-  }
+  // A dragged range behaves exactly like typing it into the window controls.
+  const dragZoom = useChartDragZoom(windowState.zoomTo)
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="analytics-stack">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-xl">Gaze point</CardTitle>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
+            <CardTitle className="text-xl">Punto de mirada</CardTitle>
             <CardDescription>
               Posición de la mirada en pantalla (%) a lo largo del tiempo.
             </CardDescription>
           </div>
 
-          <div className="inline-flex overflow-hidden rounded-lg border border-border">
-            {[
-              { key: "both", label: "Ambos ejes" },
-              { key: "x", label: "Eje X" },
-              { key: "y", label: "Eje Y" },
-            ].map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setViewMode(option.key as ViewMode)}
-                className={cn(
-                  "px-3 py-1.5 text-sm",
-                  viewMode === option.key
-                    ? "bg-foreground text-background"
-                    : "bg-background text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
+                { key: "both", label: "Ambos ejes", hint: "Posición horizontal y vertical de la mirada juntas." },
+                { key: "x", label: "Eje X", hint: "Solo la posición horizontal de la mirada (izquierda y derecha)." },
+                { key: "y", label: "Eje Y", hint: "Solo la posición vertical de la mirada (arriba y abajo)." },
+              ]} />
+            <TimeWindowControls
+              draftStart={windowState.draft.start}
+              draftEnd={windowState.draft.end}
+              appliedWindow={timeWindow}
+              error={windowState.error}
+              loading={timeseriesLoading || statsLoading}
+              onDraftStartChange={(value) =>
+                windowState.setDraft((current) => ({ ...current, start: value }))
+              }
+              onDraftEndChange={(value) =>
+                windowState.setDraft((current) => ({ ...current, end: value }))
+              }
+              onApply={windowState.apply}
+              onReset={windowState.reset}
+            />
+            <CompareParticipantsButton
+              spec={() => ({
+                kind: "gaze",
+                title: "Punto de mirada",
+                scenario,
+                sourceParticipant: participantCode,
+                origin: "individual",
+                params: { axes: viewMode, window: timeWindow },
+              })}
+            />
           </div>
         </CardHeader>
 
         <CardContent>
-          <TimeWindowControls
-            draftStart={timeWindowDraft.start}
-            draftEnd={timeWindowDraft.end}
-            appliedWindow={timeWindow}
-            error={timeWindowError}
-            loading={timeseriesLoading || statsLoading}
-            onDraftStartChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, start: value }))
-            }
-            onDraftEndChange={(value) =>
-              setTimeWindowDraft((current) => ({ ...current, end: value }))
-            }
-            onApply={handleApplyTimeWindow}
-            onReset={handleResetTimeWindow}
-          />
-
-          <div className="mb-6 grid grid-cols-3 gap-15 mr-6 ml-20">
+          <div className="analytics-kpi-grid">
             {[
               {
                 label: "Media",
                 value: stats?.gx_mean,
-                description: "Promedio gaze X",
-                tooltip: "Promedio de la posición de gaze en el eje X",
+                description: "Mirada X",
                 Icon: Activity,
                 unit: "%",
                 iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
@@ -452,8 +398,7 @@ export function GazePointTab({
               {
                 label: "Mínimo",
                 value: stats?.gx_min,
-                description: "Valor más bajo registrado",
-                tooltip: "Valor mínimo registrado en la señal suavizada de gaze X",
+                tooltip: "En la señal suavizada de mirada X",
                 Icon: TrendingDown,
                 unit: "%",
                 iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
@@ -467,8 +412,7 @@ export function GazePointTab({
               {
                 label: "Máximo",
                 value: stats?.gx_max,
-                description: "Pico de posición",
-                tooltip: "Valor máximo registrado en la señal suavizada de gaze X",
+                tooltip: "En la señal suavizada de mirada X",
                 Icon: TrendingUp,
                 unit: "%",
                 iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
@@ -485,26 +429,31 @@ export function GazePointTab({
           </div>
 
           {timeseriesLoading ? (
-            <div className="h-[400px] w-full animate-pulse rounded-lg bg-muted" />
+            <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
           ) : chartData.length === 0 ? (
-            <div className="flex h-[400px] items-center justify-center text-sm text-muted-foreground">
-              No hay datos de gaze para los filtros seleccionados.
+            <div className="analytics-state-frame flex items-center justify-center text-sm text-muted-foreground">
+              No hay datos de mirada para los filtros seleccionados.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={460}>
+            <AnalyticsChartShell
+              legend={chartLegend}
+              dragZoom={dragZoom}
+              onZoomReset={windowState.isZoomed ? windowState.reset : undefined}
+              onZoomBack={windowState.canGoBack ? windowState.back : undefined}
+            >
+            <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
               <LineChart
                 data={chartData}
-                onClick={handleChartClick}
-                margin={{ top: 8, right: 24, left: 16, bottom: 80 }}
+                {...dragZoom.chartProps(handleChartClick)}
+                margin={LINE_CHART_MARGIN}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
                   dataKey="time"
                   type="number"
                   domain={chartDomain}
-                  tickFormatter={(value) => String(Math.round(Number(value)))}
+                  tickFormatter={(value) => formatAxisTick(value, axisTickDecimals(chartDomain))}
                   tickMargin={8}
-                  label={{ value: "Tiempo (s)", position: "insideBottom", offset: -8 }}
                 />
                 <YAxis
                   width={72}
@@ -517,11 +466,6 @@ export function GazePointTab({
                   }}
                 />
                 <RechartsTooltip content={<GazeTooltip />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={52}
-                  wrapperStyle={{ paddingTop: "36px" }}
-                />
 
                 {typeof stats?.gx_mean === "number" ? (
                   <ReferenceLine y={stats.gx_mean} stroke="#9CA3AF" strokeDasharray="4 4" />
@@ -530,6 +474,7 @@ export function GazePointTab({
                 {selectedTime != null ? (
                   <ReferenceLine
                     x={selectedTime}
+                    className="analytics-selected-time"
                     stroke="#374151"
                     strokeWidth={1.5}
                     strokeDasharray="4 3"
@@ -546,7 +491,7 @@ export function GazePointTab({
                   <Line
                     type="monotone"
                     dataKey="gx_clean"
-                    name="Gaze X (%) filtrado"
+                    name="Mirada X (%)"
                     stroke="#818CF8"
                     strokeWidth={1.5}
                     dot={false}
@@ -557,7 +502,7 @@ export function GazePointTab({
                   <Line
                     type="monotone"
                     dataKey="gy_clean"
-                    name="Gaze Y (%) filtrado"
+                    name="Mirada Y (%)"
                     stroke="#22C55E"
                     strokeWidth={1.5}
                     dot={false}
@@ -565,6 +510,7 @@ export function GazePointTab({
                 ) : null}
               </LineChart>
             </ResponsiveContainer>
+            </AnalyticsChartShell>
           )}
         </CardContent>
       </Card>
@@ -583,7 +529,7 @@ export function GazePointTab({
               )}
             </div>
             <CardDescription>
-              Ubicación del punto de dilatación pupilar durante la visualización del estímulo.
+              Dónde miraba el participante en el instante seleccionado.
             </CardDescription>
           </div>
           {gazeData && (
@@ -594,17 +540,17 @@ export function GazePointTab({
                 disabled={aois.length === 0 || aoiLoading}
                 count={aois.length}
               />
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={() => {
                   clearGaze()
                   setSelectedTime(null)
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="gap-1.5 text-muted-foreground"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Limpiar selección
-              </button>
+              </Button>
             </div>
           )}
         </CardHeader>
@@ -649,21 +595,21 @@ export function GazePointTab({
               ].map(({ label, value, sub, Icon, bg, iconColor }) => (
                 <div
                   key={label}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm roomy:p-4"
                 >
                   <div
                     className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg roomy:h-10 roomy:w-10 roomy:rounded-xl",
                       bg
                     )}
                   >
-                    <Icon className={cn("h-5 w-5", iconColor)} />
+                    <Icon className={cn("h-4 w-4 roomy:h-5 roomy:w-5", iconColor)} />
                   </div>
                   <div className="min-w-0 flex flex-col">
                     <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
                       {label}
                     </p>
-                    <p className="mt-2 text-3xl font-bold leading-tight text-foreground">{value}</p>
+                    <p className="mt-0.5 text-xl font-bold leading-tight text-foreground roomy:mt-2 roomy:text-3xl">{value}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
                   </div>
                 </div>
@@ -677,7 +623,7 @@ export function GazePointTab({
               Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante
             </div>
           ) : gazeLoading ? (
-            <div className="h-48 animate-pulse rounded-xl bg-muted" />
+            <Skeleton className="h-48 animate-pulse rounded-xl bg-muted" />
           ) : gazeData && (gazeData.gx == null || gazeData.gy == null) ? (
             <div className="flex h-48 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
               <span>
@@ -688,15 +634,19 @@ export function GazePointTab({
               )}
             </div>
           ) : gazeData && !gazeData.scenario_file_id ? (
-            <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
-              <span className="text-sm font-medium text-foreground">
-                {isNoImageScenario(gazeData.scenario)
-                  ? "Pantalla de instrucción — no hay imagen de estímulo asociada a este escenario"
-                  : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene imagen de estímulo registrada`}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
-              </span>
+            <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-xl bg-card">
+              <MissingStimulusImage
+                scenario={gazeData.scenario}
+                gazeX={gazeData.gx}
+                gazeY={gazeData.gy}
+                showGazePoint
+                markerTone="cyan"
+                className="w-full"
+              />
+              <div className="px-4 py-2 text-center text-xs text-muted-foreground">
+                t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada:
+                ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
+              </div>
             </div>
           ) : gazeData ? (
             <div className="overflow-hidden rounded-xl bg-card">
@@ -758,7 +708,7 @@ export function GazePointTab({
               <div>
                 <p className="text-base font-medium text-slate-900 dark:text-slate-100">Punto de atención</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">
-                  El indicador de alto contraste marca la ubicación exacta donde se registró la posición de gaze en el segundo {Math.round(gazeData.nearest_time_s)} de la visualización.
+                  Mirada en el segundo {Math.round(gazeData.nearest_time_s)}.
                   {currentAoi ? ` Cae dentro del AOI "${currentAoi.name}".` : aois.length > 0 ? " No cae dentro de un AOI delimitado." : ""}
                 </p>
               </div>
@@ -772,7 +722,7 @@ export function GazePointTab({
         <CardHeader>
           <CardTitle className="text-lg">Estadísticas</CardTitle>
           <CardDescription>
-            Resumen numérico de la señal de gaze suavizada: posición, variabilidad y extremos.
+            Resumen numérico de la señal de mirada suavizada: posición, variabilidad y extremos.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
@@ -785,15 +735,6 @@ export function GazePointTab({
         </CardContent>
       </Card>
 
-      {participantCode && scenario !== "all" ? (
-        <AoiContextPanel
-          data={aoiData}
-          loading={aoiLoading}
-          error={aoiError}
-          title="AOIs en gaze point"
-          description="Resume cuantas fijaciones y cuanto tiempo observado caen en cada area delimitada."
-        />
-      ) : null}
     </div>
   )
 }

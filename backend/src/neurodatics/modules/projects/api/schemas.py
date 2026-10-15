@@ -1,8 +1,11 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 from enum import Enum
+
+from ...scenaries.api.schemas import scenariesResponse
+from .pre_experiment_schemas import PreExperimentConfigInput
 
 
 class ProjectStatus(str, Enum):
@@ -15,6 +18,7 @@ class CreateProjectRequest(BaseModel):
     name: str
     description: Optional[str] = None
     status: Optional[ProjectStatus] = ProjectStatus.DRAFT
+    pre_experiment: Optional[PreExperimentConfigInput] = None
 
     @field_validator("name")
     @classmethod
@@ -55,7 +59,7 @@ class ProjectFileResponse(BaseModel):
     drive_web_view_link: Optional[str] = None
     drive_download_link: Optional[str] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -84,6 +88,8 @@ class UploadedProjectCsvProcessingResponse(BaseModel):
     detected: int
     processed: int
     failed: int
+    block_metadata: List[Dict[str, Any]] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
 
 
 class DetectedParticipantResponse(BaseModel):
@@ -91,7 +97,35 @@ class DetectedParticipantResponse(BaseModel):
     user_index: int
 
 
+class ResolvedUploadSelectionResponse(BaseModel):
+    """Which parts of an ambiguous archive were actually ingested."""
+
+    csv_entry_path: Optional[str] = None
+    images_folder: Optional[str] = None
+    videos_folder: Optional[str] = None
+    acquisition_folder: Optional[str] = None
+
+
+class AcquisitionRecordingResponse(BaseModel):
+    folder_name: str
+    subject_code: Optional[str] = None
+    scenario_name: Optional[str] = None
+    recording_index: Optional[int] = None
+    documents: List[str] = []
+
+
+class AcquisitionSummaryResponse(BaseModel):
+    """Reference-only metadata read from `Acquisition/`. Never persisted."""
+
+    present: bool = False
+    folder_path: Optional[str] = None
+    recordings: List[AcquisitionRecordingResponse] = []
+    default_participant_codes: List[str] = []
+    default_scenario_names: List[str] = []
+
+
 class UploadedProjectZipSummaryResponse(BaseModel):
+    upload_id: Optional[UUID] = None
     project_id: UUID
     ingestion_status: str
     drive_root_folder_id: Optional[str] = None
@@ -105,9 +139,38 @@ class UploadedProjectZipSummaryResponse(BaseModel):
     manifest: Dict[str, int]
     detected_sensors: List[str] = []
     participants: List[DetectedParticipantResponse] = []
+    selection: ResolvedUploadSelectionResponse = ResolvedUploadSelectionResponse()
+    acquisition: AcquisitionSummaryResponse = AcquisitionSummaryResponse()
+    excluded_entries: List[str] = []
+    stimulus_placements: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+
+
+class UploadClarificationQuestionResponse(BaseModel):
+    code: str
+    field: str
+    kind: str
+    message: str
+    options: List[str] = []
+
+
+class UploadClarificationDetectedResponse(BaseModel):
+    csv_files: List[str] = []
+    images_folders: List[str] = []
+    videos_folders: List[str] = []
+    acquisition_folders: List[str] = []
+
+
+class UploadClarificationResponse(BaseModel):
+    """409 body returned when the archive needs a decision from the user."""
+
+    error: str = "structure_clarification_required"
+    message: str
+    questions: List[UploadClarificationQuestionResponse] = []
+    detected: UploadClarificationDetectedResponse = UploadClarificationDetectedResponse()
 
 
 class DriveUploadProgressResponse(BaseModel):
+    upload_id: Optional[UUID] = None
     phase: str
     uploaded_bytes: int
     total_bytes: int
@@ -121,7 +184,7 @@ class DriveUploadProgressResponse(BaseModel):
 class ProjectSensorResponse(BaseModel):
     id: UUID
     sensor_type: str
-    
+
     class Config:
         from_attributes = True
 
@@ -131,7 +194,7 @@ class ParticipantResponse(BaseModel):
     participant_code: str
     age: Optional[int]
     sex: Optional[str]
-    
+
     class Config:
         from_attributes = True
 
@@ -143,13 +206,16 @@ class ProjectResponse(BaseModel):
     status: ProjectStatus
     created_at: datetime
     ingestion_status: Optional[str] = None
+    ingestion_generation: int = 0
     ingestion_error: Optional[str] = None
     drive_root_folder_id: Optional[str] = None
     drive_root_folder_name: Optional[str] = None
     drive_root_folder_url: Optional[str] = None
     sensors: List[ProjectSensorResponse] = []
     participants_count: int = 0
-    
+    is_pre_experiment: bool = False
+    planning_participants_count: int = 0
+
     class Config:
         from_attributes = True
 
@@ -161,15 +227,19 @@ class ProjectDetailResponse(BaseModel):
     status: ProjectStatus
     created_at: datetime
     ingestion_status: Optional[str] = None
+    ingestion_generation: int = 0
     ingestion_error: Optional[str] = None
     drive_root_folder_id: Optional[str] = None
     drive_root_folder_name: Optional[str] = None
     drive_root_folder_url: Optional[str] = None
+    source_folder_name: Optional[str] = None
+    is_pre_experiment: bool = False
+    planning_participants_count: int = 0
     files: List[ProjectFileResponse] = []
     sensors: List[ProjectSensorResponse] = []
     participants: List[ParticipantResponse] = []
-    scenaries: List[dict] = []
-    
+    scenaries: List[scenariesResponse] = Field(default_factory=list)
+
     class Config:
         from_attributes = True
 

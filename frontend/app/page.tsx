@@ -14,7 +14,10 @@ import LineWaves from "@/components/LineWaves"
 export default function HomePage() {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
   const isDark = !mounted || resolvedTheme === 'dark'
 
   return (

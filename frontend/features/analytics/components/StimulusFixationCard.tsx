@@ -1,5 +1,8 @@
 "use client"
 
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Clock,
@@ -15,9 +18,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/Card"
+} from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
+import { getStimulusPreviewUrl } from "@/features/projects/api/stimulusUrls"
 import { cn } from "@/lib/utils"
 import { useAoiMetrics, useGazeAt } from "../hooks/useAnalyticsData"
 import {
@@ -29,6 +33,11 @@ import {
   imagePointToContainerPercent,
   type ContainedImageBox,
 } from "./AoiOverlay"
+import {
+  getPreviewFailureMessage,
+  supportsStimulusAois,
+} from "./stimulusState"
+import { MissingStimulusImage } from "./MissingStimulusImage"
 
 interface StimulusFixationCardProps {
   projectId: string
@@ -43,27 +52,9 @@ interface StimulusFixationCardProps {
   title?: string
   description?: string
   emptyText?: string
-  metricDescription?: string
   onClearSelection?: () => void
   canClearSelection?: boolean
   enableAois?: boolean
-}
-
-/** Returns true if the scenario name looks like an instruction/non-stimulus screen. */
-function isNoImageScenario(name: string | null): boolean {
-  if (!name) return false
-  const lower = name.toLowerCase().trim()
-  return (
-    lower.startsWith("instruction") ||
-    lower.startsWith("instruccion") ||
-    lower.startsWith("instrucción") ||
-    lower.startsWith("practice") ||
-    lower.startsWith("practica") ||
-    lower.startsWith("intro") ||
-    lower.startsWith("blank") ||
-    lower.startsWith("rest") ||
-    lower.startsWith("fixation")
-  )
 }
 
 function formatMetricValue(value: number | null | undefined, decimals: number) {
@@ -103,7 +94,6 @@ function useStimulusPreview({
     fetchGaze(selectedTime)
   }, [clearGaze, fetchGaze, participantCode, selectedTime])
 
-  const isVideoScenario = String(gazeData?.scenario_type || "").toLowerCase() === "video"
   const gazeX = gazeData?.gx
   const gazeY = gazeData?.gy
 
@@ -160,13 +150,11 @@ function useStimulusPreview({
       setScenarioPreviewError(null)
     })
 
-    const params = new URLSearchParams({
-      time_s: String(gazeData.nearest_time_s),
-    })
-    if (participantCode) params.set("participant_code", participantCode)
-    if (gazeData.scenario) params.set("scenario", gazeData.scenario)
-
-    apiFetchBlob(`/api/projects/${projectId}/files/${gazeData.scenario_file_id}/preview?${params}`)
+    apiFetchBlob(getStimulusPreviewUrl(projectId, gazeData.scenario_file_id, {
+      timeS: gazeData.nearest_time_s,
+      participantCode,
+      scenario: gazeData.scenario,
+    }))
       .then((blob) => {
         if (cancelled) return
         currentUrl = URL.createObjectURL(blob)
@@ -208,136 +196,9 @@ function useStimulusPreview({
     gazeLoading,
     clearGaze,
     computeGazeOffset,
-    isVideoScenario,
     gazeX,
     gazeY,
   }
-}
-
-export function StimulusPreviewScreen({
-  projectId,
-  participantCode,
-  selectedTime,
-  title = "Pantalla observada",
-  description = "Estímulo visual en el instante seleccionado.",
-  emptyText = "Selecciona una ventana para ver el estímulo observado.",
-  className,
-}: {
-  projectId: string
-  participantCode: string | null
-  selectedTime: number | null
-  title?: string
-  description?: string
-  emptyText?: string
-  className?: string
-}) {
-  const {
-    scenarioImageUrl,
-    scenarioPreviewLoading,
-    scenarioPreviewError,
-    imageContainerRef,
-    imageRef,
-    gazeOffset,
-    gazeData,
-    gazeLoading,
-    computeGazeOffset,
-    isVideoScenario,
-  } = useStimulusPreview({ projectId, participantCode, selectedTime })
-  const hasSelection = selectedTime != null && Boolean(participantCode)
-
-  return (
-    <div className={cn("overflow-hidden rounded-lg border border-border bg-card", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
-        <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold text-foreground">{title}</p>
-            {gazeData?.scenario ? (
-              <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                <MapPin className="h-3 w-3 shrink-0" />
-                <span className="truncate">{gazeData.scenario}</span>
-              </span>
-            ) : null}
-          </div>
-          <p className="text-xs text-muted-foreground">{description}</p>
-        </div>
-        {gazeData ? (
-          <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-            t = {gazeData.nearest_time_s.toFixed(2)}s
-          </span>
-        ) : null}
-      </div>
-
-      {!hasSelection ? (
-        <div className="flex min-h-[260px] items-center justify-center bg-muted/30 px-6 text-center text-sm text-muted-foreground">
-          {emptyText}
-        </div>
-      ) : gazeLoading ? (
-        <div className="min-h-[260px] animate-pulse bg-muted" />
-      ) : !gazeData ? (
-        <div className="flex min-h-[260px] items-center justify-center bg-muted/30 px-6 text-center text-sm text-muted-foreground">
-          No se pudo ubicar la mirada para este instante.
-        </div>
-      ) : !gazeData.scenario_file_id ? (
-        <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 bg-muted/30 px-6 text-center">
-          <span className="text-sm font-medium text-foreground">
-            {isNoImageScenario(gazeData.scenario)
-              ? "Pantalla de instrucción - no hay estímulo visual asociado a este escenario"
-              : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene estímulo visual registrado`}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            Posición de mirada: ({gazeData.gx?.toFixed(1) ?? "—"}, {gazeData.gy?.toFixed(1) ?? "—"})
-          </span>
-        </div>
-      ) : scenarioPreviewLoading ? (
-        <div className="min-h-[260px] animate-pulse bg-muted" />
-      ) : scenarioImageUrl ? (
-        <div
-          className="relative flex min-h-[260px] items-center justify-center bg-gray-950"
-          ref={imageContainerRef}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={imageRef}
-            src={scenarioImageUrl}
-            alt="Escenario"
-            className="max-h-[380px] w-full object-contain"
-            onLoad={computeGazeOffset}
-          />
-          {gazeOffset ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className="absolute -translate-x-1/2 -translate-y-1/2 cursor-crosshair"
-                    style={{ left: `${gazeOffset.x}%`, top: `${gazeOffset.y}%` }}
-                  >
-                    <div className="h-8 w-8 rounded-full border-[5px] border-cyan-400 bg-cyan-400/20 shadow-[0_6px_20px_rgba(6,182,212,0.35)]" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="flex items-center gap-3 px-3 py-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-950">
-                    <Crosshair className="h-4 w-4 text-cyan-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold leading-none">Punto de atención</p>
-                    <p className="mt-1 text-xs leading-none text-muted-foreground">
-                      ({gazeData.gx?.toFixed(0)}, {gazeData.gy?.toFixed(0)})
-                    </p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : null}
-        </div>
-      ) : (
-        <div className="flex min-h-[260px] items-center justify-center bg-muted/30 px-6 text-center text-sm text-muted-foreground">
-          {isVideoScenario
-            ? "No se pudo cargar el frame del video."
-            : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
-        </div>
-      )}
-    </div>
-  )
 }
 
 export function StimulusPreviewSurface({
@@ -363,7 +224,6 @@ export function StimulusPreviewSurface({
     gazeData,
     gazeLoading,
     computeGazeOffset,
-    isVideoScenario,
   } = useStimulusPreview({ projectId, participantCode, selectedTime })
   const hasSelection = selectedTime != null && Boolean(participantCode)
   const surfaceClassName = cn(
@@ -385,13 +245,15 @@ export function StimulusPreviewSurface({
 
   if (!gazeData.scenario_file_id) {
     return (
-      <div className={cn(surfaceClassName, "flex-col gap-2")}>
-        <span className="font-medium text-gray-100">
-          {isNoImageScenario(gazeData.scenario)
-            ? "Pantalla de instrucción"
-            : `Sin estímulo visual para "${gazeData.scenario ?? "escenario"}"`}
-        </span>
-        <span className="text-xs text-gray-400">
+      <div className={cn(surfaceClassName, "p-0")}>
+        <MissingStimulusImage
+          scenario={gazeData.scenario}
+          gazeX={gazeData.gx}
+          gazeY={gazeData.gy}
+          markerTone="cyan"
+          className="h-full min-h-0 w-full max-w-none rounded-none"
+        />
+        <span className="absolute inset-x-0 bottom-0 z-10 bg-black/70 px-3 py-1.5 text-xs text-gray-300">
           Mirada: ({gazeData.gx?.toFixed(1) ?? "—"}, {gazeData.gy?.toFixed(1) ?? "—"})
         </span>
       </div>
@@ -405,9 +267,7 @@ export function StimulusPreviewSurface({
   if (!scenarioImageUrl) {
     return (
       <div className={surfaceClassName}>
-        {isVideoScenario
-          ? "No se pudo cargar el frame del video."
-          : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
+        {getPreviewFailureMessage(gazeData, scenarioPreviewError)}
       </div>
     )
   }
@@ -464,7 +324,6 @@ export function StimulusFixationCard({
   title = "Punto de fijación sobre estímulo visual",
   description = "Ubicación de la mirada del participante durante el estímulo visual.",
   emptyText = "Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante",
-  metricDescription = "la métrica seleccionada",
   onClearSelection,
   canClearSelection = true,
   enableAois = true,
@@ -482,11 +341,10 @@ export function StimulusFixationCard({
     gazeLoading,
     clearGaze,
     computeGazeOffset,
-    isVideoScenario,
     gazeX,
     gazeY,
   } = useStimulusPreview({ projectId, participantCode, selectedTime })
-  const canUseAois = enableAois && !isVideoScenario
+  const canUseAois = enableAois && supportsStimulusAois(gazeData)
   const canShowAois = canUseAois && showAois
   const aoiScenario = canUseAois
     ? scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
@@ -540,14 +398,14 @@ export function StimulusFixationCard({
               />
             ) : null}
             {canClearSelection ? (
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={clearSelection}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="gap-1.5 text-muted-foreground"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Limpiar selección
-              </button>
+              </Button>
             ) : null}
           </div>
         )}
@@ -592,16 +450,16 @@ export function StimulusFixationCard({
             ].map(({ label, value, sub, Icon, bg, iconColor }) => (
               <div
                 key={label}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm roomy:p-4"
               >
-                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", bg)}>
-                  <Icon className={cn("h-5 w-5", iconColor)} />
+                <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg roomy:h-10 roomy:w-10 roomy:rounded-xl", bg)}>
+                  <Icon className={cn("h-4 w-4 roomy:h-5 roomy:w-5", iconColor)} />
                 </div>
                 <div className="min-w-0 flex flex-col">
                   <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground">
                     {label}
                   </p>
-                  <p className="mt-2 text-3xl font-bold leading-tight text-foreground">{value}</p>
+                  <p className="mt-0.5 text-xl font-bold leading-tight text-foreground roomy:mt-2 roomy:text-3xl">{value}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>
                 </div>
               </div>
@@ -614,7 +472,7 @@ export function StimulusFixationCard({
             {emptyText}
           </div>
         ) : gazeLoading ? (
-          <div className="h-48 animate-pulse rounded-xl bg-muted" />
+          <Skeleton className="h-48 animate-pulse rounded-xl bg-muted" />
         ) : gazeData && (gazeData.gx == null || gazeData.gy == null) ? (
           <div className="flex h-48 flex-col items-center justify-center gap-1 rounded-xl border border-border bg-muted/30 text-sm text-muted-foreground">
             <span>Sin coordenadas de mirada registradas para t = {gazeData.nearest_time_s.toFixed(1)}s</span>
@@ -623,20 +481,22 @@ export function StimulusFixationCard({
             )}
           </div>
         ) : gazeData && !gazeData.scenario_file_id ? (
-          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-6 text-center">
-            <span className="text-sm font-medium text-foreground">
-              {isNoImageScenario(gazeData.scenario)
-                ? "Pantalla de instrucción - no hay estímulo visual asociado a este escenario"
-                : `El escenario "${gazeData.scenario ?? "desconocido"}" no tiene estímulo visual registrado`}
-            </span>
-            <span className="text-xs text-muted-foreground">
+          <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-xl border border-border bg-gray-950">
+            <MissingStimulusImage
+              scenario={gazeData.scenario}
+              gazeX={gazeData.gx}
+              gazeY={gazeData.gy}
+              markerTone="cyan"
+              className="rounded-none"
+            />
+            <div className="border-t border-white/10 px-4 py-2 text-center text-xs text-gray-300">
               t = {gazeData.nearest_time_s.toFixed(2)}s · Posición de mirada: ({gazeData.gx?.toFixed(1)}, {gazeData.gy?.toFixed(1)})
-            </span>
+            </div>
           </div>
         ) : gazeData ? (
           <div className="overflow-hidden rounded-xl bg-card">
             {scenarioPreviewLoading ? (
-              <div className="h-48 animate-pulse rounded-xl bg-muted" />
+              <Skeleton className="h-48 animate-pulse rounded-xl bg-muted" />
             ) : scenarioImageUrl ? (
               <div className="relative" ref={imageContainerRef}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -678,9 +538,7 @@ export function StimulusFixationCard({
               </div>
             ) : (
               <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-                {isVideoScenario
-                  ? "No se pudo cargar el frame del video."
-                  : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
+                {getPreviewFailureMessage(gazeData, scenarioPreviewError)}
               </div>
             )}
           </div>
@@ -697,8 +555,8 @@ export function StimulusFixationCard({
               <p className="text-base font-medium text-slate-900 dark:text-slate-100">Punto de atención</p>
               <p className="text-sm text-slate-700 dark:text-slate-300">
                 {selectedValue != null
-                  ? `El indicador de alto contraste marca la ubicación exacta donde se registró ${metricDescription} (${metricValueText}) en el segundo ${Math.round(gazeData.nearest_time_s)} de la visualización.`
-                  : "El indicador de alto contraste marca la ubicación exacta donde se registró la fijación en el instante seleccionado sobre el estímulo visual."}
+                  ? `Mirada en el segundo ${Math.round(gazeData.nearest_time_s)} · ${metricValueText}`
+                  : "Mirada en el instante seleccionado."}
                 {aoiStatusText}
               </p>
             </div>

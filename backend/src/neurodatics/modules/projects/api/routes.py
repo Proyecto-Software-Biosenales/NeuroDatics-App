@@ -1,105 +1,259 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile, File, Request, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List, Optional, Tuple
-from uuid import UUID
+from typing import List, Optional
+from uuid import UUID, uuid4
 from datetime import datetime, timezone
-from collections import OrderedDict
-from pathlib import Path
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
 import asyncio
 import hashlib
-import io
+import json
 import logging
 import os
 import subprocess
-import time
+import tempfile
 
 import anyio
 
 from ....api.deps import get_db, get_current_user
-from ....infra.storage.gdrive_oauth_credentials import build_google_drive_oauth_credentials
-from ....infra.storage.gdrive_client import gdrive_client
-from ...integrations.google_drive.infrastructure.configure_client import configure_gdrive_client_with_oauth
-from ...integrations.google_drive.infrastructure.repository import SystemIntegrationRepository
-from ....infra.storage.gdrive_client import GoogleDriveClient
+from neurodatics.shared.scenario_identity import is_all_scenarios
+from ...analytics.application.services.parquet_reader_service import ParquetReaderService
+from ...analytics.domain.parquet_projection import ParquetProjection
+from ...analytics.infrastructure.singleflight import settled_thread
+from ....config.settings import settings
+from ...integrations.storage_provider import (
+    build_isolated_drive_client,
+    configure_gdrive_client_with_oauth,
+    gdrive_client,
+)
 from ..infrastructure.repository_impl import SQLProjectRepository
 from ..application.use_cases.create_project import CreateProjectUseCase
 from ..application.use_cases.list_projects import ListProjectsUseCase
 from ..application.use_cases.delete_project import DeleteProjectUseCase
-from ..application.use_cases.upload_experiment_zip import UploadExperimentZipUseCase, UploadCanceledError
+from ..application.use_cases.upload_experiment_zip import (
+    GoogleDriveConfigurationError,
+    GoogleDriveReconnectRequiredError,
+    ProjectUploadNotFoundError,
+    CsvIngestionError,
+    ParticipantIdentityError,
+    StimulusPlacementUploadError,
+    UploadCanceledError,
+    UploadExperimentZipUseCase,
+)
 from ..application.services.drive_upload_progress_registry import drive_upload_progress_registry
+from ..application.services.fixation_detection_service import ScreenGeometry
+from ..application.use_cases.ingestion_lifecycle import finish_upload_on_disconnect, progress_key
+from ..infrastructure.upload_attempt_store import UploadAttemptStore, UploadAttemptConflict
+from ..infrastructure.drive_cleanup import enqueue_drive_cleanup, drain_drive_cleanup
+from ..infrastructure.image_cache import (
+    build_image_etag as _build_image_etag,
+    get_cached_project_image,
+    load_project_image,
+    project_file_cache_key as _project_file_cache_key,
+    project_image_ref,
+)
+from ..infrastructure.video_preview_metadata import (
+    cache_preview_onset,
+    compute_preview_scenario_onset_s,
+    get_cached_preview_onset,
+    get_video_duration_s,
+    invalidate_project_video_metadata,
+    observe_project_generation,
+)
+from ..application.services.zip_extraction_service import ZipExtractionService
+from ..application.services.zip_validation_service import UploadSelection, ZipValidationService
 from ..domain.entities import Project, ProjectFile, ProjectStatus
+from .dependencies import lock_project_for_write
+from .upload_route import ProjectUploadRoute
 from .schemas import (
     CreateProjectRequest, UpdateProjectRequest, UpdateSensorsRequest,
     ProjectResponse, ProjectDetailResponse, ProjectFileResponse, UploadedProjectZipSummaryResponse,
-    DeleteProjectResponse, DriveUploadProgressResponse,
+    DeleteProjectResponse, DriveUploadProgressResponse, UploadClarificationResponse,
 )
 
+from .pre_experiment_routes import router as pre_experiment_router, planning_summary
+
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/projects", tags=["projects"])
+router = APIRouter(prefix="/projects", tags=["projects"], route_class=ProjectUploadRoute)
+router.include_router(pre_experiment_router)
 
-
-_IMAGE_CACHE_TTL_SECONDS = 300
-_IMAGE_CACHE_MAX_ITEMS = 256
-_IMAGE_CACHE_MAX_BYTES = 64 * 1024 * 1024
-_image_cache_lock = asyncio.Lock()
-_image_cache_total_bytes = 0
-_image_cache_store: "OrderedDict[str, Tuple[float, bytes, str, str]]" = OrderedDict()
-_image_cache_download_locks: dict[str, asyncio.Lock] = {}
 
 # Persistent disk cache for images - survives in-memory eviction, cleared on container restart
-_IMAGE_DISK_CACHE_DIR = os.environ.get("IMAGE_CACHE_DIR", "/data/image_cache")
 _VIDEO_DISK_CACHE_DIR = os.environ.get("VIDEO_CACHE_DIR", "/data/video_cache")
 _VIDEO_FRAME_CACHE_DIR = os.environ.get("VIDEO_FRAME_CACHE_DIR", "/data/video_frame_cache")
 _VIDEO_FRAME_MIME_TYPE = "image/jpeg"
 _VIDEO_FRAME_TIME_DECIMALS = 1
 _FFMPEG_TIMEOUT_SECONDS = 45
-_video_preview_locks: dict[str, asyncio.Lock] = {}
+_VIDEO_PREVIEW_TIMING_PROJECTION = ParquetProjection(
+    "video-preview-timing", optional=("time", "scenario")
+)
+
+
+@dataclass
+class _VideoPreviewLockEntry:
+    lock: asyncio.Lock
+    users: int = 0
+
+
+_video_preview_lock_guard = asyncio.Lock()
+_video_preview_locks: dict[str, _VideoPreviewLockEntry] = {}
+
+_UPLOAD_SPOOL_CHUNK_SIZE = 1024 * 1024
+
+
+def _clean_form_value(value: Optional[str]) -> Optional[str]:
+    """Normalise an optional multipart field to `None` when it carries no answer."""
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _build_screen_geometry(
+    screen_width_px: Optional[int],
+    screen_height_px: Optional[int],
+    screen_width_mm: Optional[float],
+    screen_height_mm: Optional[float],
+    viewing_distance_mm: Optional[float],
+) -> Optional[ScreenGeometry]:
+    """Build physical screen geometry only when the screen tuple is supplied.
+
+    The viewing distance is optional: the CSV's per-sample distance is the
+    measured one, so a typed distance only backs it up.
+    """
+
+    screen = (
+        screen_width_px,
+        screen_height_px,
+        screen_width_mm,
+        screen_height_mm,
+    )
+    supplied = tuple(value is not None for value in screen)
+    if not any(supplied) and viewing_distance_mm is None:
+        return None
+    if not all(supplied):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Screen geometry requires screen_width_px, screen_height_px, "
+                "screen_width_mm and screen_height_mm together"
+            ),
+        )
+    if any(value <= 0 for value in (*screen, viewing_distance_mm) if value is not None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="All screen geometry values must be greater than zero",
+        )
+
+    return ScreenGeometry(
+        width_px=screen_width_px,
+        height_px=screen_height_px,
+        width_mm=screen_width_mm,
+        height_mm=screen_height_mm,
+        viewing_distance_mm=viewing_distance_mm,
+    )
+
+
+def _parse_stimulus_placements_json(value: Optional[str]) -> List[dict]:
+    """Parse the versioned per-media placement envelope from multipart input."""
+
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return []
+    if not isinstance(value, str):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "invalid_stimulus_placements",
+                "message": "stimulus_placements_json must be a JSON array",
+            },
+        )
+
+    try:
+        payload = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "invalid_stimulus_placements",
+                "message": f"stimulus_placements_json is not valid JSON: {exc.msg}",
+            },
+        ) from exc
+
+    if not isinstance(payload, list):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "invalid_stimulus_placements",
+                "message": "stimulus_placements_json must be a JSON array",
+            },
+        )
+
+    parsed: List[dict] = []
+    seen_paths: set[str] = set()
+    for index, item in enumerate(payload):
+        if not isinstance(item, dict):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"placement entry {index} must be an object",
+                },
+            )
+        source_entry_path = item.get("source_entry_path")
+        placement = item.get("placement")
+        if not isinstance(source_entry_path, str) or not source_entry_path.strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"placement entry {index} requires source_entry_path",
+                },
+            )
+        if not isinstance(placement, dict):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"placement entry {index} requires a placement object",
+                },
+            )
+        if "source" in placement or "contract_fingerprint" in placement:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": "source and contract_fingerprint are backend-assigned",
+                },
+            )
+
+        normalized_path = ZipValidationService.normalize_entry_path(source_entry_path)
+        if not normalized_path or any(part == ".." for part in PurePosixPath(normalized_path).parts):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"placement entry {index} has an invalid source_entry_path",
+                },
+            )
+        path_key = normalized_path.casefold()
+        if path_key in seen_paths:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "invalid_stimulus_placements",
+                    "message": f"duplicate stimulus placement path: {normalized_path}",
+                },
+            )
+        seen_paths.add(path_key)
+        parsed.append({"source_entry_path": normalized_path, "placement": placement})
+
+    return parsed
 
 
 def _hashed_cache_id(cache_key: str) -> str:
     return hashlib.sha1(cache_key.encode("utf-8")).hexdigest()
-
-
-def _disk_cache_path(file_id: UUID) -> "Path":
-    """Return the path for the disk-cached image file."""
-    from pathlib import Path
-    base = Path(_IMAGE_DISK_CACHE_DIR)
-    base.mkdir(parents=True, exist_ok=True)
-    return base / str(file_id)
-
-
-def _disk_cache_mime_path(file_id: UUID) -> "Path":
-    """Return the path for the disk-cached mime type file."""
-    from pathlib import Path
-    base = Path(_IMAGE_DISK_CACHE_DIR)
-    return base / f"{file_id}.mime"
-
-
-def _read_disk_cache(file_id: UUID) -> "Optional[Tuple[bytes, str]]":
-    """Read image bytes + mime type from disk. Returns None on miss."""
-    try:
-        img_path = _disk_cache_path(file_id)
-        mime_path = _disk_cache_mime_path(file_id)
-        if img_path.exists() and mime_path.exists():
-            content = img_path.read_bytes()
-            mime_type = mime_path.read_text(encoding="utf-8").strip()
-            return content, mime_type
-    except OSError:
-        pass
-    return None
-
-
-def _write_disk_cache(file_id: UUID, content: bytes, mime_type: str) -> None:
-    """Write image bytes + mime type to disk cache. Silently ignores errors."""
-    try:
-        img_path = _disk_cache_path(file_id)
-        mime_path = _disk_cache_mime_path(file_id)
-        img_path.write_bytes(content)
-        mime_path.write_text(mime_type, encoding="utf-8")
-    except OSError as exc:
-        logger.warning("Failed to write image disk cache for %s: %s", file_id, exc)
 
 
 def _video_source_cache_path(project_file: ProjectFile, cache_key: str) -> Path:
@@ -125,101 +279,33 @@ def _read_video_frame_cache(frame_path: Path) -> Optional[bytes]:
     return None
 
 
-def _build_image_etag(cache_key: str) -> str:
-    return f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+def _video_frame_cache_exists(frame_path: Path) -> bool:
+    try:
+        return frame_path.is_file() and frame_path.stat().st_size > 0
+    except OSError:
+        return False
 
 
-async def _get_cached_image(cache_key: str) -> Optional[Tuple[bytes, str, str]]:
-    global _image_cache_total_bytes
-
-    now = time.time()
-    async with _image_cache_lock:
-        cached = _image_cache_store.get(cache_key)
-        if not cached:
-            return None
-
-        expires_at, content, mime_type, etag = cached
-        if expires_at <= now:
-            _image_cache_total_bytes -= len(content)
-            _image_cache_store.pop(cache_key, None)
-            return None
-
-        _image_cache_store.move_to_end(cache_key)
-        return content, mime_type, etag
+async def _get_video_preview_lock(cache_key: str) -> _VideoPreviewLockEntry:
+    async with _video_preview_lock_guard:
+        entry = _video_preview_locks.get(cache_key)
+        if entry is None:
+            entry = _VideoPreviewLockEntry(lock=asyncio.Lock())
+            _video_preview_locks[cache_key] = entry
+        entry.users += 1
+        return entry
 
 
-async def _set_cached_image(cache_key: str, content: bytes, mime_type: str, etag: str) -> None:
-    global _image_cache_total_bytes
-
-    if len(content) > (_IMAGE_CACHE_MAX_BYTES // 2):
-        return
-
-    expires_at = time.time() + _IMAGE_CACHE_TTL_SECONDS
-
-    async with _image_cache_lock:
-        previous = _image_cache_store.pop(cache_key, None)
-        if previous:
-            _image_cache_total_bytes -= len(previous[1])
-
-        _image_cache_store[cache_key] = (expires_at, content, mime_type, etag)
-        _image_cache_total_bytes += len(content)
-
-        while _image_cache_store and (
-            len(_image_cache_store) > _IMAGE_CACHE_MAX_ITEMS
-            or _image_cache_total_bytes > _IMAGE_CACHE_MAX_BYTES
-        ):
-            _, evicted = _image_cache_store.popitem(last=False)
-            _image_cache_total_bytes -= len(evicted[1])
-
-
-async def _get_image_download_lock(cache_key: str) -> asyncio.Lock:
-    async with _image_cache_lock:
-        lock = _image_cache_download_locks.get(cache_key)
-        if lock is None:
-            lock = asyncio.Lock()
-            _image_cache_download_locks[cache_key] = lock
-        return lock
-
-
-async def _cleanup_image_download_lock(cache_key: str, lock: asyncio.Lock) -> None:
-    async with _image_cache_lock:
-        existing = _image_cache_download_locks.get(cache_key)
-        if existing is lock and not lock.locked():
-            _image_cache_download_locks.pop(cache_key, None)
-
-
-async def _get_video_preview_lock(cache_key: str) -> asyncio.Lock:
-    async with _image_cache_lock:
-        lock = _video_preview_locks.get(cache_key)
-        if lock is None:
-            lock = asyncio.Lock()
-            _video_preview_locks[cache_key] = lock
-        return lock
-
-
-async def _cleanup_video_preview_lock(cache_key: str, lock: asyncio.Lock) -> None:
-    async with _image_cache_lock:
+async def _cleanup_video_preview_lock(
+    cache_key: str, entry: _VideoPreviewLockEntry
+) -> None:
+    async with _video_preview_lock_guard:
         existing = _video_preview_locks.get(cache_key)
-        if existing is lock and not lock.locked():
+        if existing is not entry:
+            return
+        entry.users = max(0, entry.users - 1)
+        if entry.users == 0 and not entry.lock.locked():
             _video_preview_locks.pop(cache_key, None)
-
-
-async def _build_isolated_drive_client(db: AsyncSession) -> Optional["GoogleDriveClient"]:
-    """Create a fresh GoogleDriveClient without touching the global singleton."""
-    repository = SystemIntegrationRepository(db)
-    integration = await repository.get_by_provider("google_drive")
-    if not integration:
-        return None
-    refresh_token = integration.get("refresh_token")
-    if not refresh_token:
-        return None
-    credentials = build_google_drive_oauth_credentials(
-        refresh_token=refresh_token,
-        scope=integration.get("scope"),
-    )
-    client = GoogleDriveClient()
-    client.set_oauth_credentials(credentials)
-    return client
 
 
 async def _load_project_file(
@@ -248,11 +334,6 @@ async def _load_project_file(
     return project_file
 
 
-def _project_file_cache_key(project_file: ProjectFile) -> str:
-    updated_at_part = int(project_file.updated_at.timestamp()) if project_file.updated_at else 0
-    return f"{project_file.id}:{project_file.external_id}:{updated_at_part}"
-
-
 def _is_image_file(project_file: ProjectFile) -> bool:
     return bool(project_file.mime_type and project_file.mime_type.startswith("image/"))
 
@@ -271,19 +352,20 @@ async def _serve_project_file_image(
 ) -> Response:
     """Serve an image ProjectFile through the existing authenticated cache path."""
 
-    if not project_file.mime_type or not project_file.mime_type.startswith("image/"):
+    try:
+        image_ref = project_image_ref(project_file)
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Requested file is not an image"
         )
-
-    if not project_file.external_id:
+    except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="File storage reference not found"
         )
 
-    cache_key = _project_file_cache_key(project_file)
+    cache_key = image_ref.cache_key
     etag = _build_image_etag(cache_key)
 
     response_headers = {
@@ -291,81 +373,37 @@ async def _serve_project_file_image(
         "ETag": etag,
     }
 
-    # Tier 0: disk cache (session-persistent, no TTL)
-    disk_cached = await anyio.to_thread.run_sync(
-        lambda: _read_disk_cache(project_file.id)
-    )
-    if disk_cached:
-        disk_content, disk_mime = disk_cached
-        # Also populate in-memory cache for hot path
-        await _set_cached_image(cache_key, disk_content, disk_mime, etag)
-        if request.headers.get("if-none-match") == etag:
-            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
-        return Response(
-            content=disk_content,
-            media_type=disk_mime,
-            headers={**response_headers, "X-Image-Cache": "DISK"},
-        )
-
-    cached_image = await _get_cached_image(cache_key)
-    if cached_image:
-        cached_content, cached_mime_type, cached_etag = cached_image
-        if request.headers.get("if-none-match") == cached_etag:
-            return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
-
-        return Response(
-            content=cached_content,
-            media_type=cached_mime_type,
-            headers={**response_headers, "X-Image-Cache": "HIT"},
-        )
-
-    download_lock = await _get_image_download_lock(cache_key)
-    try:
-        async with download_lock:
-            cached_after_lock = await _get_cached_image(cache_key)
-            if cached_after_lock:
-                cached_content, cached_mime_type, cached_etag = cached_after_lock
-                if request.headers.get("if-none-match") == cached_etag:
-                    return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
-
-                return Response(
-                    content=cached_content,
-                    media_type=cached_mime_type,
-                    headers={**response_headers, "X-Image-Cache": "HIT"},
-                )
-
-            drive_client = await _build_isolated_drive_client(db)
-            if not drive_client:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="No se pudo configurar Google Drive para servir la imagen"
-                )
-
-            try:
-                # Drive client is synchronous; offload to worker thread to avoid blocking event loop.
-                content = await anyio.to_thread.run_sync(drive_client.download_file_content, project_file.external_id)
-            except Exception as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="No se pudo descargar la imagen desde Google Drive"
-                ) from exc
-
-            # Persist to disk for session-level caching
-            await anyio.to_thread.run_sync(
-                lambda: _write_disk_cache(project_file.id, content, project_file.mime_type)
-            )
-
-            await _set_cached_image(cache_key, content, project_file.mime_type, etag)
-    finally:
-        await _cleanup_image_download_lock(cache_key, download_lock)
-
+    # The ETag derives from file identity, not content, so a revalidation is
+    # answered before any cache tier reads bytes it would never send.
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
 
+    cached = await get_cached_project_image(image_ref)
+    if cached is not None:
+        return Response(
+            content=cached.content,
+            media_type=cached.mime_type,
+            headers={**response_headers, "X-Image-Cache": cached.cache_status},
+        )
+
+    drive_client = await build_isolated_drive_client(db)
+    if not drive_client:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo configurar Google Drive para servir la imagen"
+        )
+    try:
+        loaded = await load_project_image(image_ref, drive_client)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo descargar la imagen desde Google Drive"
+        ) from exc
+
     return Response(
-        content=content,
-        media_type=project_file.mime_type,
-        headers={**response_headers, "X-Image-Cache": "MISS"},
+        content=loaded.content,
+        media_type=loaded.mime_type,
+        headers={**response_headers, "X-Image-Cache": loaded.cache_status},
     )
 
 
@@ -376,26 +414,46 @@ async def _compute_video_frame_time_s(
     scenario: Optional[str],
     absolute_time_s: float,
 ) -> float:
-    if not participant_code or not scenario or scenario == "all":
+    if not participant_code or is_all_scenarios(scenario):
         return max(0.0, absolute_time_s)
 
     try:
-        from ...analytics.application.services.analytics_service import PupilAnalyticsService
-        from ...analytics.application.services.parquet_reader_service import ParquetReaderService
-
         reader = ParquetReaderService(db)
-        df = await reader.read_from_cache_only(project_id, participant_code)
-        if df is None:
-            df = await reader.read(project_id, participant_code)
-        relative_time = await anyio.to_thread.run_sync(
-            lambda: PupilAnalyticsService.compute_scenario_relative_time(
-                df,
-                scenario,
-                absolute_time_s,
-            )
+        # Resolved once and passed to both reads: a re-ingestion landing between
+        # them would otherwise have the miss fall back onto a different generation
+        # than the lookup that missed.
+        generation = await reader.resolve_cache_generation(project_id)
+        cacheable = observe_project_generation(project_id, generation)
+        hit, onset_s = get_cached_preview_onset(
+            project_id, generation, participant_code, str(scenario)
         )
-        if relative_time is not None:
-            return max(0.0, float(relative_time))
+        if not hit:
+            df = await reader.read_from_cache_only(
+                project_id,
+                participant_code,
+                generation,
+                projection=_VIDEO_PREVIEW_TIMING_PROJECTION,
+            )
+            if df is None:
+                df = await reader.read(
+                    project_id,
+                    participant_code,
+                    generation,
+                    projection=_VIDEO_PREVIEW_TIMING_PROJECTION,
+                )
+            onset_s = await settled_thread(
+                lambda: compute_preview_scenario_onset_s(df, scenario)
+            )
+            if cacheable:
+                cache_preview_onset(
+                    project_id,
+                    generation,
+                    participant_code,
+                    str(scenario),
+                    onset_s,
+                )
+        if onset_s is not None:
+            return round(max(0.0, float(absolute_time_s) - onset_s), 4)
     except Exception as exc:
         logger.warning(
             "Falling back to absolute video preview time for project_id=%s scenario=%r: %s",
@@ -419,7 +477,7 @@ async def _ensure_video_source_cached(
     except OSError:
         pass
 
-    drive_client = await _build_isolated_drive_client(db)
+    drive_client = await build_isolated_drive_client(db)
     if not drive_client:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -427,10 +485,11 @@ async def _ensure_video_source_cached(
         )
 
     try:
-        await anyio.to_thread.run_sync(
-            drive_client.download_file_to_path,
-            project_file.external_id,
-            str(video_path),
+        await settled_thread(
+            lambda: drive_client.download_file_to_path(
+                project_file.external_id,
+                str(video_path),
+            )
         )
     except Exception as exc:
         raise HTTPException(
@@ -522,8 +581,15 @@ def _run_ffmpeg_frame_extract(video_path: Path, frame_path: Path, time_s: float)
     temp_frame_path.replace(frame_path)
 
 
-def _extract_video_frame(video_path: Path, frame_path: Path, frame_time_s: float) -> bytes:
-    duration_s = _probe_video_duration_s(video_path)
+def _extract_video_frame(
+    video_path: Path,
+    frame_path: Path,
+    frame_time_s: float,
+    video_identity: str,
+) -> None:
+    duration_s = get_video_duration_s(
+        video_identity, video_path, _probe_video_duration_s
+    )
     safe_time_s = max(0.0, frame_time_s)
     if duration_s is not None:
         safe_time_s = min(safe_time_s, max(0.0, duration_s - 0.05))
@@ -534,8 +600,6 @@ def _extract_video_frame(video_path: Path, frame_path: Path, frame_time_s: float
         if safe_time_s <= 0:
             raise
         _run_ffmpeg_frame_extract(video_path, frame_path, 0.0)
-
-    return frame_path.read_bytes()
 
 
 @router.get("/{project_id}/files/{file_id}/preview")
@@ -584,44 +648,54 @@ async def get_project_file_preview(
         "ETag": etag,
     }
 
-    cached_frame = await anyio.to_thread.run_sync(lambda: _read_video_frame_cache(frame_path))
-    if cached_frame:
+    frame_exists = await settled_thread(lambda: _video_frame_cache_exists(frame_path))
+    if frame_exists:
         if request.headers.get("if-none-match") == etag:
             return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
-        return Response(
-            content=cached_frame,
-            media_type=_VIDEO_FRAME_MIME_TYPE,
-            headers={
-                **response_headers,
-                "X-Video-Frame-Cache": "DISK",
-                "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
-            },
-        )
+        cached_frame = await settled_thread(lambda: _read_video_frame_cache(frame_path))
+        if cached_frame is not None:
+            return Response(
+                content=cached_frame,
+                media_type=_VIDEO_FRAME_MIME_TYPE,
+                headers={
+                    **response_headers,
+                    "X-Video-Frame-Cache": "DISK",
+                    "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
+                },
+            )
 
-    preview_lock = await _get_video_preview_lock(cache_key)
+    preview_entry = await _get_video_preview_lock(cache_key)
     try:
-        async with preview_lock:
-            cached_after_lock = await anyio.to_thread.run_sync(lambda: _read_video_frame_cache(frame_path))
-            if cached_after_lock:
+        async with preview_entry.lock:
+            exists_after_lock = await settled_thread(
+                lambda: _video_frame_cache_exists(frame_path)
+            )
+            if exists_after_lock:
                 if request.headers.get("if-none-match") == etag:
                     return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
-                return Response(
-                    content=cached_after_lock,
-                    media_type=_VIDEO_FRAME_MIME_TYPE,
-                    headers={
-                        **response_headers,
-                        "X-Video-Frame-Cache": "DISK",
-                        "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
-                    },
+                cached_after_lock = await settled_thread(
+                    lambda: _read_video_frame_cache(frame_path)
                 )
+                if cached_after_lock is not None:
+                    return Response(
+                        content=cached_after_lock,
+                        media_type=_VIDEO_FRAME_MIME_TYPE,
+                        headers={
+                            **response_headers,
+                            "X-Video-Frame-Cache": "DISK",
+                            "X-Video-Frame-Time": f"{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}",
+                        },
+                    )
 
             video_path = await _ensure_video_source_cached(project_file, db, cache_key)
             try:
-                frame_content = await anyio.to_thread.run_sync(
-                    _extract_video_frame,
-                    video_path,
-                    frame_path,
-                    frame_time_s,
+                await settled_thread(
+                    lambda: _extract_video_frame(
+                        video_path,
+                        frame_path,
+                        frame_time_s,
+                        cache_key,
+                    )
                 )
             except RuntimeError as exc:
                 logger.warning(
@@ -635,10 +709,17 @@ async def get_project_file_preview(
                     detail="No se pudo generar el frame del video"
                 ) from exc
     finally:
-        await _cleanup_video_preview_lock(cache_key, preview_lock)
+        await _cleanup_video_preview_lock(cache_key, preview_entry)
 
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=response_headers)
+
+    frame_content = await settled_thread(lambda: _read_video_frame_cache(frame_path))
+    if frame_content is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No se pudo leer el frame del video",
+        )
 
     return Response(
         content=frame_content,
@@ -680,14 +761,15 @@ async def create_project(
             status_code=status.HTTP_409_CONFLICT,
             detail="Ya existe un proyecto con ese nombre"
         )
-    
+
     project = await use_case.execute(
         owner_id=UUID(current_user),
         name=request.name,
         description=request.description,
-        status=request.status or ProjectStatus.DRAFT,
+        status=ProjectStatus.DRAFT if request.pre_experiment is not None else request.status or ProjectStatus.DRAFT,
+        pre_experiment=request.pre_experiment.model_dump(mode="json") if request.pre_experiment is not None else None,
     )
-    
+
     return ProjectResponse(
         id=project.id,
         name=project.name,
@@ -700,7 +782,8 @@ async def create_project(
         drive_root_folder_name=project.drive_root_folder_name,
         drive_root_folder_url=project.drive_root_folder_url,
         sensors=[],
-        participants_count=0
+        participants_count=0,
+        **planning_summary(project),
     )
 
 
@@ -712,9 +795,9 @@ async def list_projects(
     """List all projects for current user"""
     repository = SQLProjectRepository(db)
     use_case = ListProjectsUseCase(repository)
-    
+
     projects = await use_case.execute(owner_id=UUID(current_user))
-    
+
     return [
         ProjectResponse(
             id=project.id,
@@ -728,7 +811,8 @@ async def list_projects(
             drive_root_folder_name=project.drive_root_folder_name,
             drive_root_folder_url=project.drive_root_folder_url,
             sensors=[{"id": s.id, "sensor_type": s.sensor_type} for s in project.sensors],
-            participants_count=len(project.participants)
+            participants_count=len(project.participants),
+            **planning_summary(project),
         )
         for project in projects
     ]
@@ -743,13 +827,13 @@ async def get_project(
     """Get project details"""
     repository = SQLProjectRepository(db)
     project = await repository.get_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     return ProjectDetailResponse(
         id=project.id,
         name=project.name,
@@ -761,6 +845,8 @@ async def get_project(
         drive_root_folder_id=project.drive_root_folder_id,
         drive_root_folder_name=project.drive_root_folder_name,
         drive_root_folder_url=project.drive_root_folder_url,
+        source_folder_name=project.source_folder_name,
+        **planning_summary(project),
         files=[
             ProjectFileResponse(
                 id=f.id,
@@ -781,7 +867,9 @@ async def get_project(
                 "id": p.id,
                 "participant_code": p.participant_code,
                 "age": p.age,
-                "sex": p.sex.value if p.sex else None
+                "sex": p.sex.value if p.sex else None,
+                "name": p.name,
+                "document": p.effective_document,
             }
             for p in project.participants
         ],
@@ -796,9 +884,15 @@ async def get_project(
                 "height": s.height,
                 "fps": s.fps,
                 "duration_ms": s.duration_ms,
+                "stimulus_placement": (
+                    s.stimulus_placement.to_contract().to_snapshot()
+                    if s.stimulus_placement is not None
+                    else None
+                ),
                 "aois": [
                     {
                         "id": a.id,
+                        "scenaries_id": a.scenaries_id,
                         "name": a.name,
                         "color": a.color,
                         "shape_type": a.shape_type,
@@ -812,7 +906,7 @@ async def get_project(
     )
 
 
-@router.patch("/{project_id}", response_model=ProjectResponse)
+@router.patch("/{project_id}", response_model=ProjectResponse, dependencies=[Depends(lock_project_for_write)])
 async def update_project(
     project_id: UUID,
     request: UpdateProjectRequest,
@@ -822,13 +916,13 @@ async def update_project(
     """Update project"""
     repository = SQLProjectRepository(db)
     project = await repository.get_basic_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     if request.name is not None:
         existing = await repository.get_by_owner_and_name(UUID(current_user), request.name)
         if existing and existing.id != project.id:
@@ -863,7 +957,7 @@ async def update_project(
         project.description = request.description
     if request.status is not None:
         project.status = request.status
-    
+
     await repository.update(project)
 
     # Re-load only lightweight relationships needed by ProjectResponse.
@@ -886,11 +980,12 @@ async def update_project(
         drive_root_folder_name=updated_project.drive_root_folder_name,
         drive_root_folder_url=updated_project.drive_root_folder_url,
         sensors=[{"id": s.id, "sensor_type": s.sensor_type} for s in updated_project.sensors],
-        participants_count=len(updated_project.participants)
+        participants_count=len(updated_project.participants),
+        **planning_summary(updated_project),
     )
 
 
-@router.delete("/{project_id}", response_model=DeleteProjectResponse)
+@router.delete("/{project_id}", response_model=DeleteProjectResponse, dependencies=[Depends(lock_project_for_write)])
 async def delete_project(
     project_id: UUID,
     current_user: str = Depends(get_current_user),
@@ -899,7 +994,7 @@ async def delete_project(
     """Delete project"""
     repository = SQLProjectRepository(db)
     use_case = DeleteProjectUseCase(repository, db=db)
-    
+
     try:
         result = await use_case.execute(project_id, UUID(current_user))
     except Exception as exc:
@@ -907,12 +1002,14 @@ async def delete_project(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo eliminar el proyecto en base de datos"
         ) from exc
-    
+
     if not result.get("deleted"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
+
+    invalidate_project_video_metadata(project_id)
 
     return DeleteProjectResponse(
         message="Project deleted successfully",
@@ -921,34 +1018,149 @@ async def delete_project(
     )
 
 
-@router.post("/{project_id}/files/experiment-zip", response_model=UploadedProjectZipSummaryResponse)
+async def _spool_upload_to_disk(file: UploadFile, destination: Path) -> int:
+    """Stream the multipart part to disk, refusing to exceed the configured cap.
+
+    `await file.read()` would materialise the whole archive as one `bytes`
+    object and keep it alive for the entire ingestion. Streaming keeps peak
+    memory at one chunk and lets an oversized body be cut off mid-transfer
+    instead of after it has already been buffered.
+    """
+    max_bytes = ZipValidationService.get_max_file_size_bytes()
+    total = 0
+
+    with destination.open("wb") as buffer:
+        while True:
+            chunk = await file.read(_UPLOAD_SPOOL_CHUNK_SIZE)
+            if not chunk:
+                break
+
+            total += len(chunk)
+            if total > max_bytes:
+                raise ZipValidationService.ValidationError(
+                    f"ZIP excede el máximo permitido de {settings.project_zip_max_size_mb}MB"
+                )
+
+            await anyio.to_thread.run_sync(buffer.write, chunk)
+
+    return total
+
+
+@router.post(
+    "/{project_id}/files/experiment-zip",
+    dependencies=[Depends(lock_project_for_write)],
+    response_model=UploadedProjectZipSummaryResponse,
+    responses={
+        409: {
+            "model": UploadClarificationResponse,
+            "description": (
+                "The archive is ambiguous and needs a decision from the user, or the "
+                "upload was canceled. Clarifications carry "
+                "`detail.error == 'structure_clarification_required'`."
+            ),
+        }
+    },
+)
 async def upload_experiment_zip(
     project_id: UUID,
     file: UploadFile = File(...),
+    selected_csv_path: Optional[str] = Form(default=None),
+    selected_images_folder: Optional[str] = Form(default=None),
+    selected_videos_folder: Optional[str] = Form(default=None),
+    selected_acquisition_folder: Optional[str] = Form(default=None),
+    allow_missing_images: bool = Form(default=False),
+    allow_missing_videos: bool = Form(default=False),
+    stimulus_placements_json: Optional[str] = Form(default=None),
+    screen_width_px: Optional[int] = Form(default=None, gt=0),
+    screen_height_px: Optional[int] = Form(default=None, gt=0),
+    screen_width_mm: Optional[float] = Form(default=None, gt=0),
+    screen_height_mm: Optional[float] = Form(default=None, gt=0),
+    viewing_distance_mm: Optional[float] = Form(default=None, gt=0),
+    upload_id: Optional[UUID] = Form(default=None),
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Upload experiment ZIP and execute full project ingestion flow."""
-    
-    file_content = await file.read()
+    """Upload experiment ZIP and execute full project ingestion flow.
+
+    When the archive is structurally ambiguous — several `.csv` files, several
+    or zero `Images`/`Videos` folders — the request is answered with **409** and
+    a machine-readable list of questions. The client re-sends the same archive
+    with the matching `selected_*` / `allow_missing_*` fields filled in.
+    """
+
     owner_id = UUID(current_user)
+    upload_id = upload_id or uuid4()
     mime_type = file.content_type or "application/zip"
     filename = file.filename or "experiment.zip"
+    selection = UploadSelection(
+        csv_entry_path=_clean_form_value(selected_csv_path),
+        images_folder=_clean_form_value(selected_images_folder),
+        videos_folder=_clean_form_value(selected_videos_folder),
+        acquisition_folder=_clean_form_value(selected_acquisition_folder),
+        allow_missing_images=bool(allow_missing_images),
+        allow_missing_videos=bool(allow_missing_videos),
+    )
+    screen_geometry = _build_screen_geometry(
+        screen_width_px=screen_width_px,
+        screen_height_px=screen_height_px,
+        screen_width_mm=screen_width_mm,
+        screen_height_mm=screen_height_mm,
+        viewing_distance_mm=viewing_distance_mm,
+    )
+    stimulus_placements = _parse_stimulus_placements_json(stimulus_placements_json)
+
     logger.info("Processing ZIP upload for project %s, file: %s", project_id, filename)
-    
-    # Execute upload use case
+
     repository = SQLProjectRepository(db)
     use_case = UploadExperimentZipUseCase(repository, db=db)
 
     try:
-        summary = await use_case.execute(
-            project_id=project_id,
-            owner_id=owner_id,
-            file_content=file_content,
-            filename=filename,
-            mime_type=mime_type
-        )
-    except ValueError as e:
+        with tempfile.TemporaryDirectory(prefix="neurodatics-upload-") as spool_dir:
+            zip_path = Path(spool_dir) / "experiment.zip"
+
+            try:
+                await _spool_upload_to_disk(file, zip_path)
+            except ZipValidationService.ValidationError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=str(exc),
+                ) from exc
+
+            summary = await finish_upload_on_disconnect(use_case.execute(
+                project_id=project_id,
+                owner_id=owner_id,
+                zip_path=str(zip_path),
+                filename=filename,
+                mime_type=mime_type,
+                selection=selection,
+                screen_geometry=screen_geometry,
+                stimulus_placements=stimulus_placements,
+                upload_id=upload_id,
+            ), project_id, upload_id)
+    except HTTPException:
+        raise
+    except ZipValidationService.ClarificationRequired as exc:
+        # 409: the archive is fine, the user just has to disambiguate it.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=exc.to_dict(),
+        ) from exc
+    except ZipValidationService.ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except ZipExtractionService.ExtractionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except StimulusPlacementUploadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": exc.code, "message": str(exc)},
+        ) from exc
+    except ProjectUploadNotFoundError as e:
         logger.error(f"Project access denied: {e}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -959,25 +1171,24 @@ async def upload_experiment_zip(
             status_code=status.HTTP_409_CONFLICT,
             detail="Upload canceled by user"
         )
-    except Exception as e:
-        from ..application.services.zip_validation_service import ZipValidationService
-        
+    except UploadAttemptConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except (CsvIngestionError, ParticipantIdentityError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except (GoogleDriveConfigurationError, GoogleDriveReconnectRequiredError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e)
+        )
+    except Exception:
         logger.exception("ZIP upload failed")
-        
-        # Return user-friendly error messages for validation errors
-        if isinstance(e, ZipValidationService.ValidationError):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
-        
-        # Generic error message for other exceptions
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error procesando el archivo: {e}"
+            detail="No se pudo completar la carga. Consulta el estado del proyecto antes de reintentar."
         )
 
     return UploadedProjectZipSummaryResponse(
+        upload_id=summary.get("upload_id", upload_id),
         project_id=summary["project_id"],
         ingestion_status=summary["ingestion_status"],
         drive_root_folder_id=summary.get("drive_root_folder_id"),
@@ -991,12 +1202,17 @@ async def upload_experiment_zip(
         detected_sensors=summary.get("detected_sensors", []),
         participants=summary.get("participants", []),
         manifest=summary["manifest"],
+        selection=summary.get("selection", {}),
+        acquisition=summary.get("acquisition", {}),
+        excluded_entries=summary.get("excluded_entries", []),
+        stimulus_placements=summary.get("stimulus_placements", {}),
     )
 
 
 @router.post("/{project_id}/files/experiment-zip/cancel")
 async def cancel_experiment_zip_upload(
     project_id: UUID,
+    upload_id: Optional[UUID] = None,
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -1009,13 +1225,15 @@ async def cancel_experiment_zip_upload(
             detail="Project not found"
         )
 
-    drive_upload_progress_registry.request_cancel(project_id)
+    await UploadAttemptStore(db).request_cancel(project_id, upload_id)
+    drive_upload_progress_registry.request_cancel(progress_key(project_id, upload_id))
     return {"message": "Cancel requested"}
 
 
 @router.get("/{project_id}/files/experiment-zip/progress", response_model=DriveUploadProgressResponse)
 async def get_experiment_zip_upload_progress(
     project_id: UUID,
+    upload_id: Optional[UUID] = None,
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -1028,9 +1246,18 @@ async def get_experiment_zip_upload_progress(
             detail="Project not found"
         )
 
-    progress = drive_upload_progress_registry.get(project_id)
+    attempt = await UploadAttemptStore(db).get(project_id, upload_id)
+    scoped_id = upload_id or (attempt.id if attempt is not None else None)
+    progress = drive_upload_progress_registry.get(progress_key(project_id, scoped_id))
+    if attempt is not None:
+        progress = dict(progress or attempt.progress or {})
+        progress["phase"] = "canceling" if attempt.cancel_requested and attempt.phase not in {"completed", "failed"} else attempt.phase
+        progress["error"] = attempt.error
+        if attempt.phase == "completed":
+            progress["percent"] = 100
     if progress:
         return DriveUploadProgressResponse(
+            upload_id=scoped_id,
             phase=str(progress.get("phase") or "idle"),
             uploaded_bytes=int(progress.get("uploaded_bytes") or 0),
             total_bytes=int(progress.get("total_bytes") or 0),
@@ -1055,7 +1282,7 @@ async def get_experiment_zip_upload_progress(
             error=None,
         )
 
-    if project.ingestion_status and str(project.ingestion_status).upper() == "FAILED":
+    if upload_id is None and project.ingestion_status and str(project.ingestion_status).upper() == "FAILED":
         return DriveUploadProgressResponse(
             phase="failed",
             uploaded_bytes=0,
@@ -1079,7 +1306,7 @@ async def get_experiment_zip_upload_progress(
     )
 
 
-@router.delete("/{project_id}/files/experiment-zip")
+@router.delete("/{project_id}/files/experiment-zip", dependencies=[Depends(lock_project_for_write)])
 async def delete_experiment_zip(
     project_id: UUID,
     current_user: str = Depends(get_current_user),
@@ -1088,26 +1315,33 @@ async def delete_experiment_zip(
     """Delete experiment zip file"""
     repository = SQLProjectRepository(db)
     project = await repository.get_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
-    # Delete from database
+
+    active_zip = await repository.get_active_zip(project_id)
+    cleanup_ids = [active_zip.external_id] if active_zip else []
+    await enqueue_drive_cleanup(db, project_id, cleanup_ids)
     deleted = await repository.delete_file_by_kind(project_id, "experiment_zip")
-    
+
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Experiment zip file not found"
         )
-    
+
+    try:
+        if cleanup_ids and await configure_gdrive_client_with_oauth(db, silent=True):
+            await drain_drive_cleanup(db, external_ids=cleanup_ids)
+    except Exception:
+        logger.warning("ZIP removed; its Drive cleanup remains queued", exc_info=True)
     return {"message": "Experiment zip file deleted successfully"}
 
 
-@router.put("/{project_id}/sensors", response_model=List[dict])
+@router.put("/{project_id}/sensors", response_model=List[dict], dependencies=[Depends(lock_project_for_write)])
 async def update_sensors(
     project_id: UUID,
     request: UpdateSensorsRequest,
@@ -1117,19 +1351,19 @@ async def update_sensors(
     """Update project sensors"""
     repository = SQLProjectRepository(db)
     project = await repository.get_basic_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     sensors = await repository.update_sensors(project_id, request.sensors)
-    
+
     return [{"id": s.id, "sensor_type": s.sensor_type} for s in sensors]
 
 
-@router.post("/{project_id}/finalize")
+@router.post("/{project_id}/finalize", dependencies=[Depends(lock_project_for_write)])
 async def finalize_project(
     project_id: UUID,
     current_user: str = Depends(get_current_user),
@@ -1138,20 +1372,20 @@ async def finalize_project(
     """Finalize project (validate and set to active)"""
     repository = SQLProjectRepository(db)
     project = await repository.get_by_id(project_id, UUID(current_user))
-    
+
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     # Validate project
     if not project.name.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Project name is required"
         )
-    
+
     has_active_files = any(f.deleted_at is None for f in project.files)
     has_ready_ingestion = (project.ingestion_status or "").upper() == "READY"
     if not has_active_files and not has_ready_ingestion:
@@ -1159,17 +1393,17 @@ async def finalize_project(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Debes cargar y procesar un ZIP del experimento antes de finalizar"
         )
-    
+
     if not project.sensors:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one csv file is required"
         )
-    
+
     # Update status to active
     project.status = ProjectStatus.ACTIVE
     updated_project = await repository.update(project)
-    
+
     return {"message": "Project finalized successfully", "status": updated_project.status}
 def register_project_routes(app):
     pass

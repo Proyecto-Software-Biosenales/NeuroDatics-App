@@ -3,15 +3,15 @@
 import { Download, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-  ComboboxValue,
-  ComboboxInput
-} from "@/components/ui/combobox"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { AnalyticsParticipant, AnalyticsScenario } from "../types"
+import { participantLabel, participantShortLabel } from "../participantLabel"
 
 interface FiltersBarProps {
   scenarios: AnalyticsScenario[]
@@ -34,55 +34,64 @@ export function FiltersBar({
   scenariosLoading,
   participantsLoading,
 }: FiltersBarProps) {
+  // The value stays the participant code; only the visible text uses the name or document.
+  const selected = participants.find((participant) => participant.participant_code === selectedParticipant)
+  const selectedLabel = selectedParticipant == null
+    ? undefined
+    : selected ? participantShortLabel(selected) : selectedParticipant
   return (
-    <div className="flex items-center gap-3 px-6 py-4">
-      <div className="flex items-center gap-2.5 text-sm font-medium text-muted-foreground">
+    <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 py-2.5 lg:flex-nowrap xl:gap-3 xl:px-6 roomy:py-4">
+      <div className="flex shrink-0 items-center gap-2.5 text-sm font-medium text-muted-foreground">
         <SlidersHorizontal className="h-4 w-4 shrink-0" />
         <span>Filtros</span>
       </div>
 
-      <Combobox
+      <Select
         value={selectedScenario}
         onValueChange={(val) => onScenarioChange(val ?? "all")}
         disabled={scenariosLoading}
       >
-        <ComboboxTrigger className="flex max-w-[280px] items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50">
+        <SelectTrigger className="flex w-[min(34vw,240px)] min-w-40 max-w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-[280px] 2xl:py-2">
           <span className="truncate">
             {selectedScenario === "all" ? "Todos los escenarios" : selectedScenario}
           </span>
-        </ComboboxTrigger>
-        <ComboboxContent>
-          <ComboboxList>
-            <ComboboxItem value="all">Todos los escenarios</ComboboxItem>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="all">Todos los escenarios</SelectItem>
             {scenarios.map((scenario) => (
-              <ComboboxItem key={scenario.name} value={scenario.name}>
+              <SelectItem key={scenario.name} value={scenario.name}>
                 {scenario.name}
-              </ComboboxItem>
+              </SelectItem>
             ))}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
 
-      <Combobox
-        value={selectedParticipant}
+      <Select
+        value={selectedParticipant ?? ""}
         onValueChange={(val) => val && onParticipantChange(val)}
         disabled={participantsLoading || participants.length === 0}
       >
-        <ComboboxTrigger className="flex min-w-[180px] shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50">
-          <ComboboxValue placeholder="Sin sujetos" />
-        </ComboboxTrigger>
-        <ComboboxContent>
-          <ComboboxList>
+        <SelectTrigger className="flex w-40 shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-44 2xl:py-2">
+          <SelectValue placeholder="Sin participantes">
+            {selectedLabel !== undefined ? (
+              <span className="truncate" title={selectedLabel}>{selectedLabel}</span>
+            ) : undefined}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
             {participants.map((participant) => (
-              <ComboboxItem key={participant.participant_code} value={participant.participant_code}>
-                {`Sujeto ${participant.participant_code}`}
-              </ComboboxItem>
+              <SelectItem key={participant.participant_code} value={participant.participant_code}>
+                {participantLabel(participant)}
+              </SelectItem>
             ))}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
 
-      <div className="ml-auto">
+      <div className="ml-auto shrink-0">
         <Button
           type="button"
           variant="outline"
@@ -90,7 +99,7 @@ export function FiltersBar({
           className="cursor-not-allowed opacity-50"
         >
           <Download className="h-4 w-4" />
-          Exportar reporte
+          Exportar informe
         </Button>
       </div>
     </div>

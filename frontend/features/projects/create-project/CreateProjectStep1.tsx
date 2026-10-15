@@ -1,13 +1,34 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { FolderOpen, AlertCircle, X, CheckCircle } from "lucide-react"
+import { FolderOpen, AlertCircle, X, CheckCircle, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { FieldHint } from "@/components/FieldHint"
 import { Textarea } from "@/components/ui/textarea"
 import type { UploadedProjectZip } from "@/features/projects/types"
+import { LAB_SCREEN, useScreenSettings } from "@/features/settings/screenSettings"
+import type { FixationScreenGeometryInput } from "./types"
+import { StimulusPlacementEditor } from "./components/StimulusPlacementEditor"
+import {
+  selectedStimulusPaths,
+  type StimulusPlacementDraft,
+} from "./stimulusPlacement"
+import {
+  analyzeFolderStructure,
+  buildStructureQuestions,
+  emptyFolderSelection,
+  filterRelevantFiles,
+  getBlockingStructureError,
+  getFileRelativePath,
+  resolveSelection,
+  type FolderSelection,
+  type FolderStructure,
+  type FolderStructureQuestion,
+} from "./folderStructure"
+import { storageCopy } from "../storageCopy"
 
 interface CreateProjectStep1Props {
   projectName: string
@@ -18,6 +39,17 @@ interface CreateProjectStep1Props {
   onDescriptionChange: (description: string) => void
   onFolderPathChange: (path: string) => void
   onFolderSelected: (files: File[] | null) => void
+  onSelectionChange?: (selection: FolderSelection | null) => void
+  fixationGeometry?: FixationScreenGeometryInput
+  onFixationGeometryChange?: (geometry: FixationScreenGeometryInput) => void
+  stimulusPlacements?: StimulusPlacementDraft[]
+  onStimulusPathsChange?: (paths: string[]) => void
+  onStimulusPlacementChange?: (
+    sourceEntryPath: string,
+    update: Partial<StimulusPlacementDraft>,
+  ) => void
+  /** False when the name and the description are edited elsewhere (the project editor's own section). */
+  showProjectFields?: boolean
   zipRequired?: boolean
   isEditMode?: boolean
   shouldUpdateFolder?: boolean
@@ -33,6 +65,13 @@ export const CreateProjectStep1 = ({
   onDescriptionChange,
   onFolderPathChange,
   onFolderSelected,
+  onSelectionChange,
+  fixationGeometry,
+  onFixationGeometryChange,
+  stimulusPlacements = [],
+  onStimulusPathsChange,
+  onStimulusPlacementChange,
+  showProjectFields = true,
   zipRequired = true,
   isEditMode = false,
   shouldUpdateFolder = false,
@@ -40,63 +79,100 @@ export const CreateProjectStep1 = ({
 }: CreateProjectStep1Props) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  const globalScreen = useScreenSettings()?.screen ?? null
   const [fileError, setFileError] = useState<string | null>(null)
+  const [structure, setStructure] = useState<FolderStructure | null>(null)
+  const [selection, setSelection] = useState<FolderSelection>(emptyFolderSelection())
 
   const pickFile = () => fileInputRef.current?.click()
 
-  const handleFolder = (files: File[]) => {
-    if (files.length === 0) {
+  const pendingQuestions: FolderStructureQuestion[] = structure
+    ? buildStructureQuestions(structure, selection)
+    : []
+
+  /**
+   * The folder is only handed upstream once every ambiguity is resolved, so the
+   * wizard can never start a packaging run that the backend would answer 409 to.
+   */
+  const publishSelection = (
+    nextStructure: FolderStructure,
+    nextSelection: FolderSelection,
+    files: File[],
+    rootFolderName: string
+  ) => {
+    const questions = buildStructureQuestions(nextStructure, nextSelection)
+    if (questions.length > 0) {
       onFolderSelected(null)
-      setFileError("No se encontraron archivos en la carpeta")
+      onSelectionChange?.(null)
+      onStimulusPathsChange?.([])
       return
     }
 
-    const getRelativePath = (file: File): string =>
-      (file as any)._relativePath || file.webkitRelativePath || file.name
+    const resolved = resolveSelection(nextStructure, nextSelection)
+    const relevantFiles = filterRelevantFiles(files, rootFolderName)
+    onFolderSelected(relevantFiles)
+    onSelectionChange?.(resolved)
+    onStimulusPathsChange?.(selectedStimulusPaths(relevantFiles, rootFolderName, resolved))
+  }
+
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [pendingRoot, setPendingRoot] = useState<string>("")
+
+  const answerQuestion = (field: keyof FolderSelection, value: string | boolean) => {
+    const nextSelection = { ...selection, [field]: value } as FolderSelection
+    setSelection(nextSelection)
+    if (structure) {
+      publishSelection(structure, nextSelection, pendingFiles, pendingRoot)
+    }
+  }
+
+  const handleFolder = (files: File[]) => {
+    const resetFolder = (message: string) => {
+      setFileError(message)
+      setStructure(null)
+      setSelection(emptyFolderSelection())
+      setPendingFiles([])
+      setPendingRoot("")
+      onFolderSelected(null)
+      onSelectionChange?.(null)
+      onStimulusPathsChange?.([])
+      onFolderPathChange("")
+    }
+
+    if (files.length === 0) {
+      resetFolder("No se encontraron archivos en la carpeta.")
+      return
+    }
 
     const filteredFiles = files.filter((file) => {
-      const relativePath = getRelativePath(file)
+      const relativePath = getFileRelativePath(file)
       return !file.name.startsWith(".") && !relativePath.includes("__MACOSX/")
     })
 
     const totalSize = filteredFiles.reduce((sum, file) => sum + file.size, 0)
     const maxSize = 500 * 1024 * 1024
     if (totalSize > maxSize) {
-      setFileError("La carpeta es demasiado grande. Máximo 500MB.")
-      onFolderSelected(null)
-      onFolderPathChange("")
+      resetFolder("La carpeta es demasiado grande. Máximo 500 MB.")
       return
     }
 
-    const hasCsv = filteredFiles.some((file) => getRelativePath(file).toLowerCase().endsWith(".csv"))
-    if (!hasCsv) {
-      setFileError("La carpeta debe contener al menos un archivo CSV")
-      onFolderSelected(null)
-      onFolderPathChange("")
+    const folderName = getFileRelativePath(files[0]).split("/")[0]
+    const nextStructure = analyzeFolderStructure(filteredFiles, folderName)
+
+    const blockingError = getBlockingStructureError(nextStructure)
+    if (blockingError) {
+      resetFolder(blockingError)
       return
     }
 
-    const hasImagesOrVideos = filteredFiles.some((file) => {
-      const relativePath = getRelativePath(file).toLowerCase()
-      return relativePath.includes("/images/") || relativePath.includes("/videos/")
-    })
-    if (!hasImagesOrVideos) {
-      setFileError("La carpeta debe contener subcarpetas Images y/o Videos con archivos")
-      onFolderSelected(null)
-      onFolderPathChange("")
-      return
-    }
-
-    // Only keep files the backend needs: CSVs + files inside Images/ or Videos/ folders
-    const relevantFiles = filteredFiles.filter((file) => {
-      const p = getRelativePath(file).toLowerCase()
-      return p.endsWith(".csv") || p.includes("/images/") || p.includes("/videos/")
-    })
-
-    const folderName = getRelativePath(files[0]).split("/")[0]
-    onFolderSelected(relevantFiles)
-    onFolderPathChange(folderName)
+    const nextSelection = emptyFolderSelection()
     setFileError(null)
+    setStructure(nextStructure)
+    setSelection(nextSelection)
+    setPendingFiles(filteredFiles)
+    setPendingRoot(folderName)
+    onFolderPathChange(folderName)
+    publishSelection(nextStructure, nextSelection, filteredFiles, folderName)
   }
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,7 +209,7 @@ export const CreateProjectStep1 = ({
         })
         // Store reconstructed relative path for drag-drop files.
         const relativePath = basePath ? `${basePath}/${entry.name}` : `${dirEntry.name}/${entry.name}`
-        ;(file as any)._relativePath = relativePath
+        Object.assign(file, { _relativePath: relativePath })
         files.push(file)
       } else if (entry.isDirectory) {
         if (entry.name.startsWith(".")) continue
@@ -154,7 +230,7 @@ export const CreateProjectStep1 = ({
     if (!item) return
     const entry = item.webkitGetAsEntry?.()
     if (!entry?.isDirectory) {
-      setFileError("Por favor arrastra una carpeta, no un archivo suelto")
+      setFileError("Arrastra una carpeta, no un archivo suelto.")
       return
     }
 
@@ -162,13 +238,19 @@ export const CreateProjectStep1 = ({
       const files = await readDirectoryEntries(entry as FileSystemDirectoryEntry)
       handleFolder(files)
     } catch {
-      setFileError("Error al leer la carpeta arrastrada")
+      setFileError("No se pudo leer la carpeta arrastrada.")
     }
   }
 
   const clearFolder = () => {
     setFileError(null)
+    setStructure(null)
+    setSelection(emptyFolderSelection())
+    setPendingFiles([])
+    setPendingRoot("")
     onFolderSelected(null)
+    onSelectionChange?.(null)
+    onStimulusPathsChange?.([])
     onFolderPathChange("")
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
@@ -181,44 +263,139 @@ export const CreateProjectStep1 = ({
     uploadedZip?.ingestion_status === "PROCESSING" ||
     uploadedZip?.ingestion_status === "PENDING"
   const ingestionFailed = ingestionStatus === "FAILED"
+  const geometry = fixationGeometry ?? {
+    enabled: false,
+    widthPx: "",
+    heightPx: "",
+    widthCm: "",
+    heightCm: "",
+  }
+  const geometryDisabled =
+    disableProjectMetadataEditing || (isEditMode && !shouldUpdateFolder)
+  const updateGeometry = (
+    field: keyof FixationScreenGeometryInput,
+    value: string | boolean,
+  ) => {
+    onFixationGeometryChange?.({ ...geometry, [field]: value })
+  }
+  // `enabled` means this experiment used another screen than the one saved in Configuración;
+  // turning it on starts every empty field from that saved screen.
+  const enableGeometry = (enabled: boolean) => {
+    if (!enabled || !globalScreen) return updateGeometry("enabled", enabled)
+    const fallback = (current: string, saved: number | null) =>
+      current || (saved === null ? "" : String(saved))
+    onFixationGeometryChange?.({
+      ...geometry,
+      enabled,
+      widthPx: fallback(geometry.widthPx, globalScreen.width_px),
+      heightPx: fallback(geometry.heightPx, globalScreen.height_px),
+      widthCm: fallback(geometry.widthCm, globalScreen.width_cm),
+      heightCm: fallback(geometry.heightCm, globalScreen.height_cm),
+    })
+  }
+
+  // Same short labels and unit suffix as Configuración, so the four fields line up.
+  const measure = (
+    id: string,
+    field: "widthPx" | "heightPx" | "widthCm" | "heightCm",
+    label: string,
+    unit: "px" | "cm",
+    placeholder: string,
+  ) => (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <Input
+          id={id}
+          type="number"
+          min={unit === "px" ? "1" : "0.1"}
+          step={unit === "px" ? "1" : "0.1"}
+          className="pr-10"
+          placeholder={placeholder}
+          value={geometry[field]}
+          onChange={(event) => updateGeometry(field, event.target.value)}
+          disabled={geometryDisabled}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground"
+        >
+          {unit}
+        </span>
+      </div>
+    </div>
+  )
 
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="nombre-proyecto" className="text-base">
-            Nombre del proyecto
-          </Label>
-          <Input
-            id="nombre-proyecto"
-            name="nombre-proyecto"
-            placeholder="Ej: Publicidad Coca-cola"
-            value={projectName}
-            onChange={(e) => onProjectNameChange(e.target.value)}
-            disabled={disableProjectMetadataEditing}
-          />
+        {showProjectFields && (
+          <div className="space-y-2">
+            <Label htmlFor="nombre-proyecto" className="text-base">
+              Nombre del proyecto
+            </Label>
+            <Input
+              id="nombre-proyecto"
+              name="nombre-proyecto"
+              value={projectName}
+              onChange={(e) => onProjectNameChange(e.target.value)}
+              disabled={disableProjectMetadataEditing}
+            />
+          </div>
+        )}
+
+        <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="usar-geometria-pantalla"
+              checked={geometry.enabled}
+              onCheckedChange={(checked) => enableGeometry(checked === true)}
+              disabled={geometryDisabled}
+              className="mt-0.5 cursor-pointer border-gray-400"
+            />
+            <Label htmlFor="usar-geometria-pantalla" className="cursor-pointer text-base">
+              Pantalla distinta a la configuración
+            </Label>
+          </div>
+
+          {geometry.enabled && (
+            <div className="grid items-end gap-3 pt-1 sm:grid-cols-2 lg:grid-cols-4">
+              {measure("screen-width-px", "widthPx", "Ancho (px)", "px", String(globalScreen?.width_px ?? LAB_SCREEN.width_px))}
+              {measure("screen-height-px", "heightPx", "Alto (px)", "px", String(globalScreen?.height_px ?? LAB_SCREEN.height_px))}
+              {measure("screen-width-cm", "widthCm", "Ancho (cm)", "cm", "53.1")}
+              {measure("screen-height-cm", "heightCm", "Alto (cm)", "cm", "29.9")}
+            </div>
+          )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="descripcion-proyecto" className="text-base">
-            Descripción
-          </Label>
-          <Textarea
-            className="h-20 max-h-20 w-full max-w-full resize-none overflow-y-auto overflow-x-hidden break-all [overflow-wrap:anywhere] [field-sizing:fixed]"
-            id="descripcion-proyecto"
-            name="descripcion-proyecto"
-            wrap="hard"
-            placeholder="Describe brevemente el objetivo del proyecto"
-            value={description}
-            onChange={(e) => onDescriptionChange(e.target.value)}
-            disabled={disableProjectMetadataEditing}
-          />
-        </div>
+        {showProjectFields && (
+          <div className="space-y-2">
+            <Label htmlFor="descripcion-proyecto" className="text-base">
+              Descripción
+            </Label>
+            <Textarea
+              className="h-20 max-h-20 w-full max-w-full resize-none overflow-y-auto overflow-x-hidden break-all [overflow-wrap:anywhere] [field-sizing:fixed]"
+              id="descripcion-proyecto"
+              name="descripcion-proyecto"
+              wrap="hard"
+              placeholder="Describe brevemente el objetivo del proyecto"
+              value={description}
+              onChange={(e) => onDescriptionChange(e.target.value)}
+              disabled={disableProjectMetadataEditing}
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
-          <Label htmlFor="carpeta-experimento" className="text-base">
-            Carpeta del experimento{zipRequired || isEditMode ? "" : " (opcional)"}
-          </Label>
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="carpeta-experimento" className="text-base">
+              Carpeta del experimento
+            </Label>
+            <FieldHint>
+              {zipRequired || isEditMode ? "" : "Opcional. "}
+              La carpeta con las imágenes, los vídeos y los CSV del experimento.
+            </FieldHint>
+          </div>
 
           {isEditMode && (
             <div className="mb-4 flex items-center gap-3 bg-muted border border-border rounded-lg p-3 hover:bg-accent transition-colors">
@@ -269,7 +446,7 @@ export const CreateProjectStep1 = ({
                 : "border-border hover:border-foreground/60"
             }`}
           >
-            <div className="flex flex-col items-center justify-center py-12 px-8 text-center">
+            <div className="flex flex-col items-center justify-center px-5 py-8 text-center xl:px-8 xl:py-12">
               <div className="mb-5 relative">
                 <div className="absolute inset-0 bg-muted rounded-full blur-xl opacity-50" />
                 <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center shadow-sm">
@@ -277,13 +454,9 @@ export const CreateProjectStep1 = ({
                 </div>
               </div>
 
-              <h3 className="text-base font-medium text-foreground mb-2">
+              <h3 className="text-base font-medium text-foreground mb-4">
                 Arrastra la carpeta aquí o haz clic para seleccionar
               </h3>
-
-              <p className="text-muted-foreground text-base leading-relaxed max-w-xl mb-4">
-                Selecciona la carpeta del experimento con imágenes, vídeos y CSV.
-              </p>
 
               <Button 
                 variant="outline" 
@@ -317,7 +490,7 @@ export const CreateProjectStep1 = ({
               )}
 
               {/* mostrar resultado del ZIP upload procesado */}
-              {uploadedZip && (
+              {uploadedZip && ingestionFailed && (
                 <div className={`mt-6 rounded-lg p-4 space-y-3 border ${
                   ingestionFailed ? "border-red-500/30 bg-red-500/10" : "border-green-500/30 bg-green-500/10"
                 }`}>
@@ -328,7 +501,7 @@ export const CreateProjectStep1 = ({
                     />
                     <div>
                       <h4 className={`font-medium ${ingestionFailed ? "text-red-500" : "text-green-400"}`}>
-                        {ingestionFailed ? "Ingesta con errores" : "Carpeta procesada"}
+                        {ingestionFailed ? "Carpeta procesada con errores" : "Carpeta procesada"}
                       </h4>
                       <p className={`text-xs mt-1 ${ingestionFailed ? "text-red-400" : "text-green-300 dark:text-green-400"}`}>
                         {uploadedZip.zip_file?.filename ?? folderPath}
@@ -355,7 +528,7 @@ export const CreateProjectStep1 = ({
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Videos:</span>
+                      <span className="text-muted-foreground">Vídeos:</span>
                       <span className="font-medium text-foreground">{uploadedZip.counts.videos}</span>
                     </div>
 
@@ -389,13 +562,13 @@ export const CreateProjectStep1 = ({
                             : "text-amber-400"
                         }`}
                       >
-                        {ingestionStatus || "PROCESSING"}
+                        {ingestionReady ? "Listo" : ingestionFailed ? "Con errores" : "Procesando"}
                       </span>
                     </div>
 
                     {uploadedZip.drive_root_folder_id && (
                       <div className="flex justify-between col-span-2">
-                        <span className="text-muted-foreground">Drive root:</span>
+                        <span className="text-muted-foreground">{storageCopy.rootIdLabel}</span>
                         <span className="font-medium text-foreground">{uploadedZip.drive_root_folder_id}</span>
                       </div>
                     )}
@@ -422,16 +595,112 @@ export const CreateProjectStep1 = ({
               )}
             </div>
           </div>
+
+          {/* Preguntas de aclaración sobre la estructura de la carpeta */}
+          {pendingQuestions.length > 0 && (
+            <div
+              className="mt-4 space-y-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-2">
+                <HelpCircle size={18} className="mt-0.5 flex-shrink-0 text-amber-500" />
+                <div>
+                  <h4 className="font-medium text-amber-500">Confirma la carpeta</h4>
+                </div>
+              </div>
+
+              {pendingQuestions.map((question) => (
+                <div key={question.code} className="space-y-2">
+                  <p className="text-sm text-foreground">{question.message}</p>
+
+                  {question.kind === "choice" ? (
+                    <div className="space-y-1">
+                      {question.options.map((option) => (
+                        <Button variant="outline"
+                          key={option}
+                          type="button"
+                          onClick={() => answerQuestion(question.field, option)}
+                          className="h-auto w-full justify-start whitespace-normal break-all px-3 py-2 text-left text-xs"
+                        >
+                          {option}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => answerQuestion(question.field, true)}
+                      >
+                        Sí, continuar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={clearFolder}
+                      >
+                        No, elegir otra carpeta
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Resumen de lo que se procesará una vez resueltas las preguntas */}
+          {structure && pendingQuestions.length === 0 && !uploadedZip && (
+            <div className="mt-4 space-y-1 rounded-xl border border-border bg-muted p-4 text-xs">
+              <p className="text-foreground">
+                <span className="text-muted-foreground">CSV a procesar: </span>
+                <span className="break-all font-medium">
+                  {resolveSelection(structure, selection).selectedCsvPath ?? "—"}
+                </span>
+              </p>
+              <p className="text-foreground">
+                <span className="text-muted-foreground">Imágenes: </span>
+                <span className="break-all font-medium">
+                  {resolveSelection(structure, selection).selectedImagesFolder ?? "sin imágenes"}
+                </span>
+              </p>
+              <p className="text-foreground">
+                <span className="text-muted-foreground">Vídeos: </span>
+                <span className="break-all font-medium">
+                  {resolveSelection(structure, selection).selectedVideosFolder ?? "sin vídeos"}
+                </span>
+              </p>
+              {structure.acquisitionRecordings.length > 0 && (
+                <p className="text-foreground">
+                  <span className="text-muted-foreground">Acquisition: </span>
+                  <span className="font-medium">
+                    {structure.acquisitionRecordings.length} grabación(es) detectada(s) — se usarán
+                    como valores por defecto, no se almacenan
+                  </span>
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="flex items-center gap-4 rounded-xl bg-muted py-4 px-5">
+      <StimulusPlacementEditor
+        placements={stimulusPlacements}
+        fixationGeometry={fixationGeometry}
+        disabled={disableProjectMetadataEditing || (isEditMode && !shouldUpdateFolder)}
+        onChange={(sourceEntryPath, update) =>
+          onStimulusPlacementChange?.(sourceEntryPath, update)
+        }
+      />
+
+      <div className="flex items-center gap-3 rounded-xl bg-muted px-4 py-3 xl:gap-4 xl:px-5 xl:py-4">
         <div className="shrink-0 rounded-lg bg-black p-1.5 text-white">
           <AlertCircle size={20} />
         </div>
         <p className="flex-1 text-xs text-foreground leading-relaxed">
-          Recuerda poner un nombre descriptivo a las imágenes y vídeos
-          utilizados, que coincida con lo que se obtiene en los datos.
+          Nombra las imágenes y vídeos igual que en los datos.
         </p>
       </div>
     </div>

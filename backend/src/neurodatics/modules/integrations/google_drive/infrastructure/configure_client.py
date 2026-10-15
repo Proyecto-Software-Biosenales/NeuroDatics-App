@@ -24,9 +24,21 @@ def _build_credentials_signature(refresh_token: str, scope: Optional[str], updat
     return f"{token_hash}:{scope or ''}:{updated_at or ''}"
 
 
+def reset_gdrive_oauth_configuration_cache(*, clear_client: bool = False) -> None:
+    """Reset cached integration state after connect/disconnect operations."""
+    global _last_config_check_at, _last_config_result, _last_credentials_signature
+
+    _last_config_check_at = 0.0
+    _last_config_result = None
+    _last_credentials_signature = None
+    if clear_client:
+        gdrive_client.clear_oauth_credentials()
+
+
 async def configure_gdrive_client_with_oauth(
     db: AsyncSession,
     silent: bool = True,
+    force_refresh: bool = False,
 ) -> bool:
     """
     Configure the global Google Drive client with OAuth credentials from system integrations.
@@ -39,6 +51,7 @@ async def configure_gdrive_client_with_oauth(
     Args:
         db: AsyncSession for database access
         silent: If True, log warnings instead of raising exceptions for missing integration
+        force_refresh: If True, bypass the short-lived in-memory cache
     
     Returns:
         True if credentials were successfully configured, False otherwise
@@ -46,7 +59,11 @@ async def configure_gdrive_client_with_oauth(
     global _last_config_check_at, _last_config_result, _last_credentials_signature
 
     now = time.monotonic()
-    if _last_config_result is not None and (now - _last_config_check_at) < _CONFIG_CACHE_TTL_SECONDS:
+    if (
+        not force_refresh
+        and _last_config_result is not None
+        and (now - _last_config_check_at) < _CONFIG_CACHE_TTL_SECONDS
+    ):
         return _last_config_result
 
     try:
@@ -56,6 +73,8 @@ async def configure_gdrive_client_with_oauth(
         if not integration:
             if not silent:
                 logger.warning("⚠️  Google Drive integration not configured in system_integrations")
+            gdrive_client.clear_oauth_credentials()
+            _last_credentials_signature = None
             _last_config_result = False
             _last_config_check_at = now
             return False
@@ -64,6 +83,8 @@ async def configure_gdrive_client_with_oauth(
         if not refresh_token:
             if not silent:
                 logger.warning("⚠️  Google Drive integration missing refresh_token")
+            gdrive_client.clear_oauth_credentials()
+            _last_credentials_signature = None
             _last_config_result = False
             _last_config_check_at = now
             return False

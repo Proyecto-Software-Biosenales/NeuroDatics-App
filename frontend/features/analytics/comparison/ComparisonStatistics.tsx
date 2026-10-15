@@ -1,0 +1,679 @@
+"use client"
+
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
+import { useMemo } from "react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import type { ComparisonData } from "./useComparisonData"
+import type { VisualizationId } from "./registry"
+
+interface Summary {
+  count: number
+  mean: number | null
+  median: number | null
+  std: number | null
+  min: number | null
+  max: number | null
+  baseline: number | null
+  peak: number | null
+}
+
+interface NumericRow extends Summary {
+  sensor: string
+  visualization: string
+  series: string
+  unit: string
+}
+
+interface NumericStateRow {
+  sensor: string
+  visualization: string
+  series: "Estado"
+  state: string
+}
+
+interface MetricRow {
+  sensor: string
+  visualization: string
+  metric: string
+  value: number | string | null
+  unit: string
+}
+
+function finite(values: Array<number | null | undefined>) {
+  return values.filter(
+    (value): value is number =>
+      typeof value === "number" && Number.isFinite(value)
+  )
+}
+
+function summarize(input: Array<number | null | undefined>): Summary | null {
+  const values = finite(input)
+  if (!values.length) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length
+  const median =
+    values.length % 2
+      ? sorted[Math.floor(values.length / 2)]
+      : (sorted[values.length / 2 - 1] + sorted[values.length / 2]) / 2
+  const std =
+    values.length > 1
+      ? Math.sqrt(
+          values.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+            (values.length - 1)
+        )
+      : 0
+  const baselineStart = Math.floor(sorted.length * 0.05)
+  const baselineEnd = Math.max(
+    baselineStart + 1,
+    Math.ceil(sorted.length * 0.2)
+  )
+  const baselineSlice = sorted.slice(baselineStart, baselineEnd)
+  const baseline =
+    baselineSlice.reduce((sum, value) => sum + value, 0) / baselineSlice.length
+  const max = sorted[sorted.length - 1]
+  return {
+    count: values.length,
+    mean,
+    median,
+    std,
+    min: sorted[0],
+    max,
+    baseline,
+    peak: baseline === 0 ? null : ((max - baseline) / Math.abs(baseline)) * 100,
+  }
+}
+
+function numericStateRow(
+  sensor: string,
+  visualization: string,
+  loading: boolean,
+  error: string | null
+): NumericStateRow {
+  return {
+    sensor,
+    visualization,
+    series: "Estado",
+    state: loading
+      ? "Cargando…"
+      : error
+        ? `No disponible: ${error}`
+        : "Sin datos",
+  }
+}
+
+function format(value: number | string | null, decimals = 3) {
+  if (value == null) return "—"
+  if (typeof value === "string") return value
+  if (!Number.isFinite(value)) return "—"
+  return value.toLocaleString("es-CO", { maximumFractionDigits: decimals })
+}
+
+function selectedState(
+  selected: Set<VisualizationId>,
+  id: VisualizationId,
+  loading: boolean,
+  error: string | null,
+  hasData: boolean,
+  visualization: string,
+  sensor: string
+): MetricRow | null {
+  if (!selected.has(id) || hasData) return null
+  return {
+    sensor,
+    visualization,
+    metric: "Estado",
+    value: loading
+      ? "Cargando…"
+      : error
+        ? `No disponible: ${error}`
+        : "Sin datos",
+    unit: "",
+  }
+}
+
+export function ComparisonStatistics({
+  selectedIds,
+  data,
+  pinnedTime,
+}: {
+  selectedIds: VisualizationId[]
+  data: ComparisonData
+  pinnedTime: number | null
+}) {
+  const selected = useMemo(() => new Set(selectedIds), [selectedIds])
+
+  const numericRows = (() => {
+    const rows: Array<NumericRow | NumericStateRow> = []
+    const definitions = [
+      ["pupil", "Eye tracker", "Dilatación pupilar"],
+      ["distance", "Eye tracker", "Distancia al dispositivo"],
+      ["gaze", "Eye tracker", "Punto de mirada"],
+      ["gsr", "GSR", "Respuesta galvánica"],
+      ["eeg_timeseries", "EEG", "EEG por canal"],
+    ] as const
+    const response = data.comparisonCharts.data
+    for (const [id, sensor, visualization] of definitions) {
+      if (!selected.has(id)) continue
+      if (!response) {
+        rows.push(
+          numericStateRow(
+            sensor,
+            visualization,
+            data.comparisonCharts.loading,
+            data.comparisonCharts.error
+          )
+        )
+        continue
+      }
+      const block = response.statistics.find(
+        (candidate) => candidate.visualization_id === id
+      )
+      if (!block || block.status !== "ok" || !block.series.length) {
+        const error =
+          !block
+            ? "Respuesta estadística incompleta"
+            : block.status === "error"
+              ? "No se pudo calcular esta señal"
+              : null
+        rows.push(numericStateRow(sensor, visualization, false, error))
+        continue
+      }
+      for (const series of block.series) {
+        rows.push({
+          sensor,
+          visualization,
+          series: series.label,
+          unit: series.unit,
+          ...series.summary,
+        })
+      }
+    }
+    return rows
+  })()
+
+  const metricRows = useMemo(() => {
+    const rows: MetricRow[] = []
+    const histogram = data.fixationHistogram.data
+    if (selected.has("fixation_histogram") && histogram) {
+      rows.push(
+        {
+          sensor: "Eye tracker",
+          visualization: "Histograma de fijaciones",
+          metric: "Fijaciones",
+          value: histogram.n_fixations,
+          unit: "",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Histograma de fijaciones",
+          metric: "Duración total",
+          value: histogram.total_duration_ms,
+          unit: "ms",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Histograma de fijaciones",
+          metric: "Duración media",
+          value: histogram.mean_duration_ms,
+          unit: "ms",
+        }
+      )
+    }
+    const fixation = data.fixation.data
+    if (selected.has("heatmap") && fixation) {
+      rows.push(
+        {
+          sensor: "Eye tracker",
+          visualization: "Mapa de calor",
+          metric: "Fijaciones",
+          value: fixation.stats.n_fixations,
+          unit: "",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Mapa de calor",
+          metric: "Duración media",
+          value: fixation.stats.avg_duration_s * 1000,
+          unit: "ms",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Mapa de calor",
+          metric: "Fijación máxima",
+          value: fixation.stats.max_duration_s * 1000,
+          unit: "ms",
+        }
+      )
+    }
+    const scanpath = data.scanpath.data
+    if (selected.has("scanpath") && scanpath) {
+      rows.push(
+        {
+          sensor: "Eye tracker",
+          visualization: "Mapa de recorridos",
+          metric: "Objetivos",
+          value: scanpath.n_objectives,
+          unit: "",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Mapa de recorridos",
+          metric: "Distancia total",
+          value: scanpath.total_distance_px,
+          unit: "px",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Mapa de recorridos",
+          metric: "Duración media",
+          value: scanpath.avg_duration_s * 1000,
+          unit: "ms",
+        }
+      )
+    }
+    if (pinnedTime != null) {
+      rows.push(
+        {
+          sensor: "Eye tracker",
+          visualization: "Punto sobre estímulo",
+          metric: "Instante fijado",
+          value: pinnedTime,
+          unit: "s",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Punto sobre estímulo",
+          metric: "Posición X",
+          value: data.gazeAt.data?.gx ?? null,
+          unit: "%",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Punto sobre estímulo",
+          metric: "Posición Y",
+          value: data.gazeAt.data?.gy ?? null,
+          unit: "%",
+        }
+      )
+    }
+    const aoi = data.aoi.data
+    if (selected.has("aoi") && aoi) {
+      rows.push(
+        {
+          sensor: "Eye tracker",
+          visualization: "Comparativa AOIs",
+          metric: "Áreas",
+          value: aoi.aois.length,
+          unit: "",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Comparativa AOIs",
+          metric: "Fijaciones",
+          value: aoi.total_fixations,
+          unit: "",
+        },
+        {
+          sensor: "Eye tracker",
+          visualization: "Comparativa AOIs",
+          metric: "Permanencia observada",
+          value: aoi.observed_aoi_dwell_time_percent,
+          unit: "%",
+        }
+      )
+    }
+    const psd = data.eegPsd.data
+    if (selected.has("eeg_psd") && psd) {
+      for (const channel of psd.channels) {
+        const values = psd.power[channel] ?? []
+        let peakIndex = -1
+        values.forEach((value, index) => {
+          if (typeof value === "number" && Number.isFinite(value) && (peakIndex < 0 || value > (values[peakIndex] ?? -Infinity))) peakIndex = index
+        })
+        rows.push(
+          {
+            sensor: "EEG",
+            visualization: "Densidad espectral",
+            metric: `${channel.toUpperCase()} frecuencia pico`,
+            value: psd.frequency[peakIndex] ?? null,
+            unit: "Hz",
+          },
+          {
+            sensor: "EEG",
+            visualization: "Densidad espectral",
+            metric: `${channel.toUpperCase()} densidad pico`,
+            value: values[peakIndex] ?? null,
+            unit: psd.unit,
+          }
+        )
+      }
+    }
+    const spectrogram = data.eegSpectrogram.data
+    if (selected.has("eeg_spectrogram") && spectrogram) {
+      for (const channel of spectrogram.channels) {
+        const values = finite((spectrogram.power[channel] ?? []).flat())
+        const summary = summarize(values)
+        rows.push(
+          {
+            sensor: "EEG",
+            visualization: "Espectrograma",
+            metric: `${channel.toUpperCase()} nivel medio`,
+            value: summary?.mean ?? null,
+            unit: spectrogram.unit,
+          },
+          {
+            sensor: "EEG",
+            visualization: "Espectrograma",
+            metric: `${channel.toUpperCase()} densidad pico`,
+            value: summary?.max ?? null,
+            unit: spectrogram.unit,
+          }
+        )
+      }
+    }
+    const states = [
+      selectedState(
+        selected,
+        "fixation_histogram",
+        data.fixationHistogram.loading,
+        data.fixationHistogram.error,
+        Boolean(histogram),
+        "Histograma de fijaciones",
+        "Eye tracker"
+      ),
+      selectedState(
+        selected,
+        "heatmap",
+        data.fixation.loading || data.heatmap.loading,
+        data.fixation.error || data.heatmap.error,
+        Boolean(fixation),
+        "Mapa de calor",
+        "Eye tracker"
+      ),
+      selectedState(
+        selected,
+        "scanpath",
+        data.scanpath.loading,
+        data.scanpath.error,
+        Boolean(scanpath),
+        "Mapa de recorridos",
+        "Eye tracker"
+      ),
+      selectedState(
+        selected,
+        "aoi",
+        data.aoi.loading,
+        data.aoi.error,
+        Boolean(aoi),
+        "Comparativa AOIs",
+        "Eye tracker"
+      ),
+      selectedState(
+        selected,
+        "eeg_psd",
+        data.eegPsd.loading,
+        data.eegPsd.error,
+        Boolean(psd),
+        "Densidad espectral",
+        "EEG"
+      ),
+      selectedState(
+        selected,
+        "eeg_spectrogram",
+        data.eegSpectrogram.loading,
+        data.eegSpectrogram.error,
+        Boolean(spectrogram),
+        "Espectrograma",
+        "EEG"
+      ),
+    ]
+    return [...rows, ...states.filter((row): row is MetricRow => Boolean(row))]
+  }, [data, pinnedTime, selected])
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Resumen estadístico</CardTitle>
+        <CardDescription>
+          Métricas comparables calculadas sobre las mismas señales procesadas
+          que aparecen en las visualizaciones seleccionadas.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-7">
+        <section className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold">Señales numéricas</h3>
+            <p className="text-xs text-muted-foreground">
+              Tendencia, dispersión, rango y cambio frente a la línea base.
+            </p>
+          </div>
+          <div className="max-h-[440px] overflow-auto rounded-xl border border-border">
+            <Table className="w-full min-w-[1180px] text-left text-sm tabular-nums">
+              <TableHeader className="sticky top-0 z-20 bg-muted/95 text-xs text-muted-foreground backdrop-blur">
+                <TableRow>
+                  {[
+                    "Sensor",
+                    "Visualización",
+                    "Serie",
+                    "Unidad",
+                    "N",
+                    "Media",
+                    "Mediana",
+                    "Desv. est.",
+                    "Mín.",
+                    "Máx.",
+                    "Línea base",
+                    "Pico vs. base",
+                  ].map((label) => (
+                    <TableHead
+                      key={label}
+                      className="px-3 py-3 font-semibold whitespace-nowrap"
+                    >
+                      {label}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-border">
+                {numericRows.length ? (
+                  numericRows.map((row) => (
+                    <TableRow
+                      key={`${row.visualization}-${row.series}`}
+                      className="hover:bg-muted/20"
+                    >
+                      <TableCell className="sticky left-0 bg-card px-3 py-3 font-medium">
+                        {row.sensor}
+                      </TableCell>
+                      <TableCell className="px-3 py-3">{row.visualization}</TableCell>
+                      <TableCell className="px-3 py-3 font-medium">{row.series}</TableCell>
+                      {"state" in row ? (
+                        <TableCell
+                          colSpan={9}
+                          className="px-3 py-3 text-muted-foreground"
+                        >
+                          {row.state}
+                        </TableCell>
+                      ) : (
+                        <>
+                          <TableCell className="px-3 py-3 text-muted-foreground">
+                            {row.unit}
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
+                            {row.count.toLocaleString("es-CO")}
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
+                            {format(row.mean)}
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
+                            {format(row.median)}
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
+                            {format(row.std)}
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
+                            {format(row.min)}
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
+                            {format(row.max)}
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
+                            {format(row.baseline)}
+                          </TableCell>
+                          <TableCell className="px-3 py-3 text-right">
+                            {row.peak == null ? "—" : `${format(row.peak, 2)}%`}
+                          </TableCell>
+                        </>
+                      )}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={12}
+                      className="px-4 py-10 text-center text-muted-foreground"
+                    >
+                      No hay señales numéricas seleccionadas o disponibles.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold">Métricas específicas</h3>
+            <p className="text-xs text-muted-foreground">
+              Indicadores propios de distribuciones, mapas y análisis
+              espectrales.
+            </p>
+          </div>
+          <div className="max-h-[440px] overflow-auto rounded-xl border border-border">
+            <Table className="w-full min-w-[760px] text-left text-sm tabular-nums">
+              <TableHeader className="sticky top-0 z-20 bg-muted/95 text-xs text-muted-foreground backdrop-blur">
+                <TableRow>
+                  {[
+                    "Sensor",
+                    "Visualización",
+                    "Métrica",
+                    "Valor",
+                    "Unidad",
+                  ].map((label) => (
+                    <TableHead key={label} className="px-3 py-3 font-semibold">
+                      {label}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-border">
+                {metricRows.length ? (
+                  metricRows.map((row, index) => (
+                    <TableRow
+                      key={`${row.visualization}-${row.metric}-${index}`}
+                      className="hover:bg-muted/20"
+                    >
+                      <TableCell className="sticky left-0 bg-card px-3 py-3 font-medium">
+                        {row.sensor}
+                      </TableCell>
+                      <TableCell className="px-3 py-3">{row.visualization}</TableCell>
+                      <TableCell className="px-3 py-3 font-medium">{row.metric}</TableCell>
+                      <TableCell className="px-3 py-3 text-right">
+                        {format(row.value)}
+                      </TableCell>
+                      <TableCell className="px-3 py-3 text-muted-foreground">
+                        {row.unit}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="px-4 py-10 text-center text-muted-foreground"
+                    >
+                      No hay métricas específicas seleccionadas.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+
+        {selected.has("aoi") && data.aoi.data?.aois.length ? (
+          <Collapsible className="rounded-xl border border-border bg-muted/10">
+            <CollapsibleTrigger asChild><Button variant="ghost" className="h-auto w-full justify-start px-4 py-3 font-semibold">
+              Detalle por AOI ({data.aoi.data.aois.length})
+            </Button></CollapsibleTrigger>
+            <CollapsibleContent>
+            <div className="overflow-x-auto border-t border-border">
+              <Table className="w-full min-w-[880px] text-sm tabular-nums">
+                <TableHeader className="bg-muted/40 text-xs text-muted-foreground">
+                  <TableRow>
+                    {[
+                      "AOI",
+                      "Fijaciones",
+                      "Permanencia total",
+                      "Permanencia %",
+                      "Duración media",
+                      "TTFF",
+                      "Tasa de acierto",
+                    ].map((label) => (
+                      <TableHead
+                        key={label}
+                        className="px-3 py-3 text-left font-semibold"
+                      >
+                        {label}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-border">
+                  {data.aoi.data.aois.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="px-3 py-3 font-medium">
+                        <span
+                          className="mr-2 inline-block h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        {item.name}
+                      </TableCell>
+                      <TableCell className="px-3 py-3">{item.fixation_count}</TableCell>
+                      <TableCell className="px-3 py-3">
+                        {format(item.total_dwell_time_ms)} ms
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
+                        {format(item.total_dwell_time_percent)}%
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
+                        {format(item.avg_fixation_duration_ms)} ms
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
+                        {item.ttff_ms == null
+                          ? "—"
+                          : `${format(item.ttff_ms)} ms`}
+                      </TableCell>
+                      <TableCell className="px-3 py-3">
+                        {format(item.hit_rate_percent)}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CollapsibleContent></Collapsible>
+        ) : null}
+      </CardContent>
+    </Card>
+  )
+}

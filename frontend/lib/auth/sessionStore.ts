@@ -1,4 +1,5 @@
 import type { AppUser, AuthSession } from '@/features/auth/auth'
+import { setAnalyticsSession } from '@/features/analytics/analyticsCache'
 
 const AUTH_SESSION_STORAGE_KEY = 'neurodatics-auth-session'
 const AUTH_SESSION_CHANGED_EVENT = 'neurodatics-auth-session-changed'
@@ -18,10 +19,6 @@ function emitAuthSessionChanged() {
   }
 
   window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT))
-}
-
-export function getAuthSessionStorageKey() {
-  return AUTH_SESSION_STORAGE_KEY
 }
 
 export function getAuthSessionChangedEventName() {
@@ -56,6 +53,7 @@ export function writeStoredAuthSession(nextSession: StoredAuthSession) {
   }
 
   window.localStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(nextSession))
+  setAnalyticsSession(nextSession.user.id, nextSession.session.accessToken, nextSession.session.expiresAt)
   emitAuthSessionChanged()
 }
 
@@ -65,6 +63,7 @@ export function clearStoredAuthSession() {
   }
 
   window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY)
+  setAnalyticsSession(null, null)
   emitAuthSessionChanged()
 }
 

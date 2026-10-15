@@ -1,0 +1,177 @@
+"use client"
+
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
+import { cn } from "@/lib/utils"
+import { formatChannel, formatNumber, type ChannelStats } from "../../eegPresentation"
+import { CHANNEL_COLORS, type PsdStats, type SpectrogramStats } from "./eegViewShared"
+
+export function EegStatsTable({ rows }: { rows: ChannelStats[] }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <Table className="w-full text-sm">
+        <TableHeader>
+          <TableRow className="border-b border-border bg-muted/60">
+            {["Canal", "N válidas", "RMS", "Media", "Desv.", "Mediana", "Min", "Max"].map((header, index) => (
+              <TableHead
+                key={header}
+                className={cn(
+                  "px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
+                  index === 0 ? "text-left" : "text-right"
+                )}
+              >
+                {header}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.channel} className="border-b border-border/50 last:border-b-0 hover:bg-muted/30">
+              <TableCell className="px-4 py-4">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: CHANNEL_COLORS[row.channel] ?? "#4B5563" }}
+                  />
+                  <span className="font-semibold text-foreground">{formatChannel(row.channel)}</span>
+                </div>
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right text-muted-foreground">{row.count}</TableCell>
+              <TableCell className="px-4 py-4 text-right text-muted-foreground">{formatNumber(row.rms, 4, " uV")}</TableCell>
+              <TableCell className="px-4 py-4 text-right font-semibold text-foreground">{formatNumber(row.mean, 4, " uV")}</TableCell>
+              <TableCell className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.std, 4, " uV")}</TableCell>
+              <TableCell className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.median, 4, " uV")}</TableCell>
+              <TableCell className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">{formatNumber(row.min, 4, " uV")}</TableCell>
+              <TableCell className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">{formatNumber(row.max, 4, " uV")}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+export function PsdStatsTable({ rows, unit }: { rows: PsdStats[]; unit: string }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <Table className="w-full text-sm">
+        <TableHeader>
+          <TableRow className="border-b border-border bg-muted/60">
+            {["Canal", "Intervalos", "Freq. pico", "Nivel pico", "Nivel medio", "Desv.", "Mediana", "Min", "Max"].map((header, index) => (
+              <TableHead
+                key={header}
+                className={cn(
+                  "px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
+                  index === 0 ? "text-left" : "text-right"
+                )}
+              >
+                {header}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.channel} className="border-b border-border/50 last:border-b-0 hover:bg-muted/30">
+              <TableCell className="px-4 py-4">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: CHANNEL_COLORS[row.channel] ?? "#4B5563" }}
+                  />
+                  <span className="font-semibold text-foreground">{formatChannel(row.channel)}</span>
+                </div>
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right text-muted-foreground">{row.count}</TableCell>
+              <TableCell className="px-4 py-4 text-right font-semibold text-foreground">{formatNumber(row.peakFrequency, 2, " Hz")}</TableCell>
+              <TableCell className="px-4 py-4 text-right font-semibold text-rose-500 dark:text-rose-400">{formatNumber(row.peakPower, 4, ` ${unit}`)}</TableCell>
+              <TableCell className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.mean, 4, ` ${unit}`)}</TableCell>
+              <TableCell className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.std, 4, ` ${unit}`)}</TableCell>
+              <TableCell className="px-4 py-4 text-right text-foreground/80">{formatNumber(row.median, 4, ` ${unit}`)}</TableCell>
+              <TableCell className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">{formatNumber(row.min, 4, ` ${unit}`)}</TableCell>
+              <TableCell className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">{formatNumber(row.max, 4, ` ${unit}`)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+export function SpectrogramStatsTable({ rows, unit }: { rows: SpectrogramStats[]; unit: string }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <Table className="w-full text-sm">
+        <TableHeader>
+          <TableRow className="border-b border-border bg-muted/60">
+            {[
+              "Canal",
+              "Matriz",
+              "Freq. pico",
+              "Tiempo pico",
+              "Nivel pico",
+              "Nivel medio",
+              "Desv.",
+              "Mediana",
+              "Min",
+              "Max",
+            ].map((header, index) => (
+              <TableHead
+                key={header}
+                className={cn(
+                  "px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
+                  index === 0 ? "text-left" : "text-right"
+                )}
+              >
+                {header}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.channel} className="border-b border-border/50 last:border-b-0 hover:bg-muted/30">
+              <TableCell className="px-4 py-4">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: CHANNEL_COLORS[row.channel] ?? "#4B5563" }}
+                  />
+                  <span className="font-semibold text-foreground">{formatChannel(row.channel)}</span>
+                </div>
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right text-muted-foreground">
+                {row.frequencyBins} x {row.timeBins}
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right font-semibold text-foreground">
+                {formatNumber(row.peakFrequency, 2, " Hz")}
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right text-foreground/80">
+                {formatNumber(row.peakTime, 2, " s")}
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right font-semibold text-rose-500 dark:text-rose-400">
+                {formatNumber(row.peakPower, 4, ` ${unit}`)}
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right text-foreground/80">
+                {formatNumber(row.meanPower, 4, ` ${unit}`)}
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right text-foreground/80">
+                {formatNumber(row.stdPower, 4, ` ${unit}`)}
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right text-foreground/80">
+                {formatNumber(row.medianPower, 4, ` ${unit}`)}
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right font-medium text-emerald-500 dark:text-emerald-400">
+                {formatNumber(row.minPower, 4, ` ${unit}`)}
+              </TableCell>
+              <TableCell className="px-4 py-4 text-right font-medium text-rose-500 dark:text-rose-400">
+                {formatNumber(row.maxPower, 4, ` ${unit}`)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}

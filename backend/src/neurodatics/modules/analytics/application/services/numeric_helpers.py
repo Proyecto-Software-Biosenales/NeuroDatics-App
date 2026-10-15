@@ -1,0 +1,200 @@
+"""Numeric helpers extracted without changing computations."""
+
+from typing import Optional, Sequence
+import numpy as np
+import pandas as pd
+from neurodatics.shared.scenario_identity import ScenarioResolution, is_all_scenarios, resolve_scenario
+
+
+def _infer_fs(t: np.ndarray, default: float = 60.0) -> float:
+    """Estimate sampling frequency from time array (median of 1/Δt)."""
+    t = np.asarray(t, float)
+    dt = np.diff(t)
+    dt = dt[(dt > 0) & np.isfinite(dt)]
+    return float(1.0 / np.median(dt)) if dt.size else float(default)
+
+
+def _moving_average(x: np.ndarray, win: int) -> np.ndarray:
+    """Centered rolling mean with edge propagation (no NaN at boundaries)."""
+    x = np.asarray(x, float)
+    if x.size == 0:
+        return x.copy()
+    if win <= 1:
+        return x.copy()
+    s = pd.Series(x, dtype=float).rolling(
+        win, min_periods=max(1, win // 2), center=True
+    ).mean()
+    v = s.to_numpy()
+    if np.isnan(v[0]):
+        idx = np.flatnonzero(~np.isnan(v))
+        if idx.size:
+            v[: idx[0]] = v[idx[0]]
+    if np.isnan(v[-1]):
+        idx = np.flatnonzero(~np.isnan(v))
+        if idx.size:
+            v[idx[-1] :] = v[idx[-1]]
+    return v
+
+
+def _robust_baseline(x: np.ndarray) -> float:
+    """Baseline as mean of values between 5th and 20th percentiles."""
+    x = np.asarray(x, float)
+    finite = np.isfinite(x)
+    if not finite.any():
+        return 0.0
+    lo, hi = np.nanpercentile(x[finite], [5, 20])
+    m = (x >= lo) & (x <= hi)
+    vals = x[m] if m.any() else x[finite]
+    result = float(np.nanmean(vals))
+    return result if np.isfinite(result) else 0.0
+
+
+def _decimation_indices(size: int, max_points: int) -> np.ndarray:
+    """Evenly spaced sample indices; ``max_points <= 0`` keeps every sample."""
+    if max_points > 0 and size > max_points:
+        return np.linspace(0, size - 1, int(max_points), dtype=int)
+    return np.arange(size, dtype=int)
+
+
+DISPLAY_DECIMATIONS = ("linspace", "minmax_envelope")
+
+
+def _envelope_display_indices(
+    size: int,
+    series: Sequence[np.ndarray],
+    max_points: int,
+) -> np.ndarray:
+    """Real sample indices that keep every bucket's first, last, minimum and maximum.
+
+    ``_decimation_indices`` keeps one sample in every ``size / max_points``, so a
+    short excursion (a one-sample peak, a run of zero-filled samples) survives
+    only by luck. This selection splits the samples into contiguous buckets and,
+    for every displayed ``series``, keeps the index of the bucket's minimum and
+    maximum plus the first non-finite sample, so a missing value still breaks
+    the line. Every returned index is a real sample: values are never averaged
+    or moved in time, and all series stay aligned on one time axis.
+
+    The output never exceeds ``max_points``: the bucket count is derived from
+    the worst case of ``2 + 3 * len(series)`` indices per bucket.
+    """
+
+    if size <= 0:
+        return np.asarray([], dtype=int)
+    if max_points <= 0 or size <= max_points:
+        return np.arange(size, dtype=int)
+    arrays = [np.asarray(values, dtype=float) for values in series]
+    arrays = [values for values in arrays if values.size == size]
+    has_missing = any((~np.isfinite(values)).any() for values in arrays)
+    per_bucket = 2 + (3 if has_missing else 2) * len(arrays)
+    buckets = max(1, min(size, int(max_points) // max(1, per_bucket)))
+    edges = np.linspace(0, size, buckets + 1, dtype=int)
+    starts = edges[:-1]
+    ends = edges[1:]
+    bucket_of = np.repeat(np.arange(buckets), ends - starts)
+    selected = [starts, ends - 1]
+    positions = np.arange(size)
+    for values in arrays:
+        finite = np.isfinite(values)
+        # lexsort orders by bucket first, so each bucket's winner sits at its start.
+        low_key = np.where(finite, values, np.inf)
+        high_key = np.where(finite, -values, np.inf)
+        selected.append(np.lexsort((low_key, bucket_of))[starts])
+        selected.append(np.lexsort((high_key, bucket_of))[starts])
+        if has_missing:
+            first_missing = np.minimum.reduceat(np.where(finite, size, positions), starts)
+            selected.append(first_missing[first_missing < ends])
+    return np.unique(np.concatenate(selected)).astype(int)
+
+
+def _display_indices(
+    size: int,
+    series: Sequence[np.ndarray],
+    max_points: int,
+    decimation: str = "linspace",
+) -> np.ndarray:
+    """Index selection for a displayed trace; ``linspace`` is the historical one."""
+
+    if decimation == "minmax_envelope":
+        return _envelope_display_indices(size, series, max_points)
+    return _decimation_indices(size, max_points)
+
+
+def _envelope_bucket_edges(size: int, max_points: int) -> Optional[np.ndarray]:
+    """Bucket edges for a two-point-per-bucket envelope, or ``None`` if unneeded.
+
+    ``_decimation_indices`` keeps one sample in every ``size / max_points``, so a
+    one-sample peak survives only by luck: SAIO block 3 C3 displayed 806.3 uV
+    for a real 916.5 uV. Half as many buckets, reporting each bucket's minimum
+    and maximum, spend the same point budget and keep every extreme.
+    """
+
+    if max_points <= 0 or size <= max_points:
+        return None
+    buckets = max(1, int(max_points) // 2)
+    return np.linspace(0, size, buckets + 1, dtype=int)
+
+
+def _scenario_strings(df: pd.DataFrame) -> pd.Series:
+    values = df["scenario"]
+    # Importers already store strings. Preserve that column without another
+    # allocation; mixed/legacy dtypes still need the historical string coercion.
+    return values if pd.api.types.is_string_dtype(values) else values.astype(str)
+
+
+def resolve_scenario_in_frame(
+    df: pd.DataFrame,
+    scenario: Optional[str],
+) -> Optional[ScenarioResolution]:
+    """Resolve a requested scenario name against the values the frame stores.
+
+    The caller may hold any of the spellings a scenario has - the media file
+    name, the label the UI shows, the value the CSV importer wrote - so the
+    Parquet's own ``scenario`` column is the authority on which string the rows
+    can actually be compared against.
+    """
+
+    if is_all_scenarios(scenario) or "scenario" not in df.columns:
+        return None
+    stored = pd.unique(_scenario_strings(df))
+    return resolve_scenario(scenario, stored.tolist())
+
+
+def scope_to_scenario(df: pd.DataFrame, scenario: Optional[str]) -> pd.DataFrame:
+    """Restrict a frame to one scenario, whatever spelling the caller used.
+
+    A frame with no ``scenario`` column predates per-scenario storage and is
+    left whole, as it always was. A name that matches nothing yields no rows
+    rather than every row.
+    """
+
+    if is_all_scenarios(scenario) or "scenario" not in df.columns:
+        return df
+    values = _scenario_strings(df)
+    stored = pd.unique(values).tolist()
+    resolution = resolve_scenario(scenario, stored)
+    if resolution is None:
+        return df.iloc[0:0]
+    # Strip distinct labels, not every row. Whitespace variants still select
+    # together, while the usual pre-stripped column takes a direct comparison.
+    target = resolution.value.strip()
+    matching = [value for value in stored if isinstance(value, str) and value.strip() == target]
+    mask = values == matching[0] if len(matching) == 1 else values.isin(matching)
+    return df.loc[mask]
+
+
+def _filter_time_window(
+    df: pd.DataFrame,
+    start_time_s: Optional[float] = None,
+    end_time_s: Optional[float] = None,
+) -> pd.DataFrame:
+    if "time" not in df.columns or (start_time_s is None and end_time_s is None):
+        return df
+
+    time_values = pd.to_numeric(df["time"], errors="coerce")
+    mask = time_values.notna()
+    if start_time_s is not None:
+        mask &= time_values >= float(start_time_s)
+    if end_time_s is not None:
+        mask &= time_values <= float(end_time_s)
+
+    return df.loc[mask]

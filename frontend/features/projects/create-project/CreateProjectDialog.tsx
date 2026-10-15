@@ -1,6 +1,7 @@
 "use client"
 
-import { ChevronLeft, ChevronRight, Check, CheckCircle2, Cloud, Gauge, Clock3, HardDrive } from "lucide-react"
+import { ProjectSaveProgress } from "@/features/projects/components/ProjectSaveProgress"
+import { ChevronLeft, ChevronRight, Check, ClipboardList, FolderOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -17,8 +18,9 @@ import { CreateProjectStep1 } from "./CreateProjectStep1"
 import { CreateProjectStep2 } from "./CreateProjectStep2"
 import { CreateProjectStep3 } from "./CreateProjectStep3"
 import { CreateProjectStep4 } from "./CreateProjectStep4"
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import type { Project, SensorType } from "@/features/projects/types"
+import { PreExperimentCreateForm } from "../pre-experiment/PreExperimentCreateForm"
 
 interface CreateProjectDialogProps {
   trigger: ReactNode
@@ -35,6 +37,8 @@ export const CreateProjectDialog = ({
   resumeProject,
   onResumeHandled,
 }: CreateProjectDialogProps) => {
+  const [mode, setMode] = useState<"folder" | "pre">("folder")
+  const [preBusy, setPreBusy] = useState(false)
   const {
     currentStep,
     formData,
@@ -42,6 +46,9 @@ export const CreateProjectDialog = ({
     setIsOpen,
     updateProjectName,
     updateDescription,
+    updateFixationGeometry,
+    syncStimulusPlacementPaths,
+    updateStimulusPlacement,
     updateFolderPath,
     toggleSensor,
     updateParticipant,
@@ -64,27 +71,21 @@ export const CreateProjectDialog = ({
     isZipUploadInProgress,
     cancelZipUpload,
     setExperimentFolder,
+    setFolderStructureSelection,
     discardDraftProject,
     openForResume,
     isResumedDraft,
+    hasDraftProject,
   } = useCreateProjectWizard(onProjectCreated, onStep1Complete)
 
   useEffect(() => {
     if (!resumeProject) return
+    setMode("folder")
     void openForResume(resumeProject)
     onResumeHandled?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeProject])
 
-  const formatBytesToMB = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  const formatEta = (seconds: number) => {
-    const safeSeconds = Math.max(0, Math.round(seconds))
-    const minutes = Math.floor(safeSeconds / 60)
-    const secs = safeSeconds % 60
-    return `${minutes}:${String(secs).padStart(2, "0")}`
-  }
-  const isDriveSyncInProgress = zipUploadPercent !== null && zipUploadPercent < 100
-  const isDriveSyncFinalizing = zipUploadPercent !== null && zipUploadPercent >= 99 && zipUploadPercent < 100
 
   const step1Done =
     isResumedDraft ||
@@ -92,6 +93,12 @@ export const CreateProjectDialog = ({
     formData.uploadedZip?.ingestion_status === "PROCESSING"
 
   const handleOpenChange = (open: boolean) => {
+    if (preBusy) return
+    if (mode === "pre") {
+      setIsOpen(open)
+      if (!open) { setMode("folder"); reset() }
+      return
+    }
     if (!open) {
       if (isZipUploadInProgress || step1Done) {
         // Upload running or step 1 already completed — keep the project alive
@@ -128,14 +135,15 @@ export const CreateProjectDialog = ({
       <DialogContent
         onPointerDownOutside={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => event.preventDefault()}
-        className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-8"
+        className="max-h-[calc(100vh-2rem)] overflow-y-auto p-5 sm:max-w-3xl xl:max-h-[90vh] xl:p-8"
       >
         <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">
-            Crear nuevo proyecto
+          <DialogTitle className="text-xl font-semibold xl:text-2xl">
+            Crear proyecto
           </DialogTitle>
           <DialogDescription asChild>
             <div>
+              {mode === "folder" && <>
               <span className="text-sm text-muted-foreground">
                 Paso {currentStep} de 4
               </span>
@@ -149,11 +157,26 @@ export const CreateProjectDialog = ({
                   />
                 ))}
               </div>
+              </>}
             </div>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-6">
+        {currentStep === 1 && !isResumedDraft && !hasDraftProject && !formData.uploadedZip && !saveError && <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 sm:inline-grid sm:w-fit" role="group" aria-label="Tipo de proyecto">
+          {([
+            ["folder", "Con datos", FolderOpen],
+            ["pre", "Pre-experimento", ClipboardList],
+          ] as const).map(([value, label, Icon]) => (
+            <Button key={value} type="button" variant="ghost" aria-pressed={mode === value} disabled={preBusy || isSaving} onClick={() => setMode(value)} className="h-9 gap-2 px-4 text-muted-foreground hover:bg-background/60 aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm">
+              <Icon aria-hidden />
+              {label}
+            </Button>
+          ))}
+        </div>}
+
+        {mode === "pre" ? <PreExperimentCreateForm onBusyChange={setPreBusy} onCancel={() => handleOpenChange(false)} onCreated={project => { setIsOpen(false); setMode("folder"); reset(); onProjectCreated?.(project); onStep1Complete?.() }} /> : <>
+
+        <div className="py-4 xl:py-6">
           {currentStep === 1 && (
             <CreateProjectStep1
               projectName={formData.projectName}
@@ -162,8 +185,14 @@ export const CreateProjectDialog = ({
               uploadedZip={formData.uploadedZip}
               onProjectNameChange={updateProjectName}
               onDescriptionChange={updateDescription}
+              fixationGeometry={formData.fixationGeometry}
+              onFixationGeometryChange={updateFixationGeometry}
+              stimulusPlacements={formData.stimulusPlacements}
+              onStimulusPathsChange={syncStimulusPlacementPaths}
+              onStimulusPlacementChange={updateStimulusPlacement}
               onFolderPathChange={updateFolderPath}
               onFolderSelected={setExperimentFolder}
+              onSelectionChange={setFolderStructureSelection}
               zipRequired
             />
           )}
@@ -210,128 +239,13 @@ export const CreateProjectDialog = ({
           )}
 
           {isSaving && !saveError && (
-            <div className="mt-4 p-5 bg-muted border border-border rounded-2xl">
-              {zipUploadPercent !== null ? (
-                <>
-                  {/* Header with title and percentage */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl border border-border bg-card flex items-center justify-center">
-                        <Cloud className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-2sm font-semibold text-foreground">
-                          {isDriveSyncFinalizing
-                            ? "Finalizando sincronización con Google Drive"
-                            : isDriveSyncInProgress
-                            ? "Sincronizando con Google Drive"
-                            : "Sincronización completada"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{zipUploadPercent}% completado</p>
-                      </div>
-                    </div>
-                    <span className="text-xl font-bold text-foreground">{zipUploadPercent}%</span>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mb-4">
-                    <div className="h-2 w-full rounded-full bg-border overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-150 ${
-                          isDriveSyncInProgress ? "bg-foreground/70 animate-pulse" : "bg-foreground"
-                        }`}
-                        style={{ width: `${zipUploadPercent}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Data info grid */}
-                  {zipUploadBytes && zipUploadBytes.total > 0 && (
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-foreground">
-                      <div className="flex items-center gap-2">
-                          <HardDrive className="h-4 w-4 text-muted-foreground" />
-                          <p>{formatBytesToMB(zipUploadBytes.total)}</p>
-                      </div>
-                      <div className="text-right font-medium text-foreground">
-                        {formatBytesToMB(zipUploadBytes.loaded)} transferidos
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Metrics row */}
-                  <div className="grid grid-cols-3 gap-4 text-sm bg-card p-3 rounded-lg border border-border">
-                    <div className="flex items-start gap-2">
-                      <div className="h-6 w-6 rounded-lg border border-border flex items-center justify-center mt-0.5">
-                        <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs mb-1">VELOCIDAD</p>
-                        <p className="font-semibold text-foreground">
-                          {zipUploadSpeedMbps !== null ? `${zipUploadSpeedMbps.toFixed(1)} MB/s` : "calculando..."}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="h-6 w-6 rounded-lg border border-border flex items-center justify-center mt-0.5">
-                        <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs mb-1">RESTANTE</p>
-                        <p className="font-semibold text-foreground">
-                          {zipUploadEtaSeconds !== null ? formatEta(zipUploadEtaSeconds) : isDriveSyncInProgress ? "--" : "0:00"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="h-6 w-6 rounded-lg border border-border flex items-center justify-center mt-0.5">
-                        <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs mb-1">TRANSCURRIDO</p>
-                        <p className="font-semibold text-foreground">
-                          {zipDriveProcessingSeconds !== null ? formatEta(zipDriveProcessingSeconds) : "0:00"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between text-muted-foreground text-sm">
-                    <div className="flex items-center gap-1">
-                      <span
-                        className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
-                        style={{ animationDelay: "0ms", animationDuration: "900ms" }}
-                      />
-                      <span
-                        className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
-                        style={{ animationDelay: "180ms", animationDuration: "900ms" }}
-                      />
-                      <span
-                        className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse"
-                        style={{ animationDelay: "360ms", animationDuration: "900ms" }}
-                      />
-                      <span className="ml-2">Procesando en Google Drive...</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={cancelZipUpload}
-                      disabled={!isZipUploadInProgress}
-                      className="hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center gap-3 text-sm text-foreground">
-                  {isSaveCompleted ? (
-                    <CheckCircle2 className="h-4 w-4 text-foreground" />
-                  ) : (
-                    <div className="h-4 w-4 border-2 border-muted-foreground border-t-foreground rounded-full animate-spin" />
-                  )}
-                  <span>{saveProgressMessage || "Guardando proyecto..."}</span>
-                </div>
-              )}
-            </div>
+            <ProjectSaveProgress
+              zipUploadPercent={zipUploadPercent} zipUploadBytes={zipUploadBytes}
+              zipUploadSpeedMbps={zipUploadSpeedMbps} zipUploadEtaSeconds={zipUploadEtaSeconds}
+              zipDriveProcessingSeconds={zipDriveProcessingSeconds} isSaveCompleted={isSaveCompleted}
+              isZipUploadInProgress={isZipUploadInProgress} cancelZipUpload={cancelZipUpload}
+              message={saveProgressMessage || "Guardando proyecto..."}
+            />
           )}
         </div>
 
@@ -385,6 +299,7 @@ export const CreateProjectDialog = ({
             )}
           </div>
         </DialogFooter>
+        </>}
       </DialogContent>
     </Dialog>
   )

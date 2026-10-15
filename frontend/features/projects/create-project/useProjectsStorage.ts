@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
-import type { Project } from "@/features/projects/types"
-import { ProjectsApi } from "@/features/projects/api/projectsApi"
+import type { Project, SensorType } from "@/features/projects/types"
+import { ProjectsApi, type ApiProject } from "@/features/projects/api/projectsApi"
 
 const STORAGE_KEY = "neurodatics_projects"
 
@@ -89,10 +89,10 @@ export const useProjectsStorage = () => {
   const previousStatusByIdRef = useRef<Map<string, string | undefined>>(new Map())
   const hasProcessingDraftRef = useRef(false)
 
-  const buildProject = (bp: any): Project => ({
+  const buildProject = (bp: ApiProject): Project => ({
     id: bp.id,
     name: bp.name,
-    description: bp.description,
+    description: bp.description ?? undefined,
     status: normalizeStatus(bp.status),
     ingestionStatus: bp.ingestion_status?.toUpperCase() as Project["ingestionStatus"] || undefined,
     createdAt: formatDate(bp.created_at),
@@ -100,9 +100,13 @@ export const useProjectsStorage = () => {
       ? formatDateTime(bp.updated_at)
       : undefined,
     sensors: bp.sensors && bp.sensors.length > 0
-      ? bp.sensors.map((s: any) => s.sensor_type || s)
+      ? bp.sensors.map((sensor) => typeof sensor === "string" ? sensor : sensor.sensor_type).filter(
+          (sensor): sensor is SensorType => sensor === "EEG" || sensor === "GSR" || sensor === "EyeTracker"
+        )
       : [],
     participants: bp.participants_count || 0,
+    isPreExperiment: bp.is_pre_experiment ?? false,
+    planningParticipantsCount: bp.planning_participants_count ?? 0,
   })
 
   const refreshProjects = async () => {
@@ -132,7 +136,7 @@ export const useProjectsStorage = () => {
         setProjects(formattedProjects)
         // Sync to localStorage for offline support
         localStorage.setItem(STORAGE_KEY, JSON.stringify(formattedProjects))
-      } catch (err) {
+      } catch {
         // If backend fails, try localStorage fallback
         try {
           const stored = localStorage.getItem(STORAGE_KEY)
@@ -142,10 +146,10 @@ export const useProjectsStorage = () => {
           } else {
             setProjects([])
           }
-          setError("No se pudieron cargar los proyectos del servidor")
+          setError("No se pudieron cargar los proyectos.")
         } catch {
           setProjects([])
-          setError("Error al cargar los proyectos")
+          setError("No se pudieron cargar los proyectos.")
         }
       } finally {
         setLoading(false)
@@ -186,7 +190,7 @@ export const useProjectsStorage = () => {
             project.status === "draft"
           ) {
             toast.success(
-              `Paso 1 completado para "${project.name}". Ya puedes continuar con los pasos 2, 3 y 4.`,
+              `Carpeta de «${project.name}» procesada. Puedes continuar.`,
               { position: "top-center" }
             )
             playStep1ReadySound()

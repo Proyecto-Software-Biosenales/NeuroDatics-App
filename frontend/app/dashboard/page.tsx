@@ -1,10 +1,18 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { AnalyticsTabs } from "@/features/analytics/components/AnalyticsTabs"
+import { useAnalyticsProjectContext } from "@/features/analytics/hooks/useAnalyticsContext"
+
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { AuthGuard } from "@/features/auth/components/AuthGuard"
-import { ProjectsApi, type ApiProject } from "@/features/projects/api/projectsApi"
+import {
+  ProjectsApi,
+  type ApiProject,
+} from "@/features/projects/api/projectsApi"
 import { AnalyticsSidebar } from "@/features/analytics/components/AnalyticsSidebar"
+import { getProjectSensors, type SensorSelection } from "@/features/analytics/projectSensors"
 import { FiltersBar } from "@/features/analytics/components/FiltersBar"
+import { participantLabelMap } from "@/features/analytics/participantLabel"
 import { PlaceholderTab } from "@/features/analytics/components/PlaceholderTab"
 import { PupilDilationTab } from "@/features/analytics/components/PupilDilationTab"
 import { GazePointTab } from "@/features/analytics/components/GazePointTab"
@@ -15,12 +23,18 @@ import { ScanpathTab } from "@/features/analytics/components/ScanpathTab"
 import { HeatmapTab } from "@/features/analytics/components/HeatmapTab"
 import { FixationHistogramTab } from "@/features/analytics/components/FixationHistogramTab"
 import { AoiComparisonTab } from "@/features/analytics/components/AoiComparisonTab"
+import { FixationDurationControl } from "@/features/analytics/components/FixationDurationControl"
+import { ComparisonTab } from "@/features/analytics/comparison/ComparisonTab"
+import { ParticipantComparisonProvider } from "@/features/analytics/participantComparison/ParticipantComparisonProvider"
 import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
+  useFixationSensitivity,
 } from "@/features/analytics/hooks/useAnalyticsData"
-
-type SensorSelection = "EyeTracker" | "EEG" | "GSR" | "Comparativas"
+import {
+  DEFAULT_FIXATION_DURATION_MS,
+  type FixationDurationMs,
+} from "@/features/analytics/types"
 
 type AnalyticsTabKey =
   | "pupil_dilation"
@@ -33,42 +47,84 @@ type AnalyticsTabKey =
 
 type EegTabKey = "timeseries" | "psd" | "spectrogram" | "topography"
 
-const ANALYTICS_TABS: Array<{ key: AnalyticsTabKey; label: string }> = [
-  { key: "pupil_dilation", label: "Dilatación pupilar" },
-  { key: "gaze_point", label: "Gaze point" },
-  { key: "fixation_histogram", label: "Histograma de fijación" },
-  { key: "heatmap", label: "Mapa de calor" },
-  { key: "scanpath", label: "Mapa de recorridos" },
-  { key: "device_distance", label: "Distancia dispositivo" },
-  { key: "aoi_comparison", label: "Comparativa AOIs" },
+const ANALYTICS_TABS: Array<{ key: AnalyticsTabKey; label: string; hint: string }> = [
+  { key: "pupil_dilation", label: "Dilatación pupilar", hint: "Cambios en el tamaño de la pupila. Suele crecer con el esfuerzo mental o la emoción." },
+  { key: "gaze_point", label: "Punto de mirada", hint: "Dónde miraba la persona en la pantalla en cada momento." },
+  { key: "fixation_histogram", label: "Histograma de fijaciones", hint: "Cuántas fijaciones hubo según su duración. Una fijación es una pausa de la mirada sobre un punto." },
+  { key: "heatmap", label: "Mapa de calor", hint: "Zonas del estímulo donde más se detuvo la mirada: los colores cálidos marcan más atención." },
+  { key: "scanpath", label: "Mapa de recorridos", hint: "El orden en que la mirada pasó de un punto a otro: cada círculo es una fijación y cada línea, un salto entre ellas." },
+  { key: "device_distance", label: "Distancia al dispositivo", hint: "Distancia entre los ojos y la pantalla durante la prueba; muestra si la persona se acercó o se alejó." },
+  { key: "aoi_comparison", label: "Comparativa AOIs", hint: "Compara las áreas de interés (AOI): zonas del estímulo marcadas para medir cuánto y cuándo se miraron." },
 ]
 
-const EEG_TABS: Array<{ key: EegTabKey; label: string }> = [
-  { key: "timeseries", label: "EEG por canal" },
-  { key: "psd", label: "Densidad espectral" },
-  { key: "spectrogram", label: "Espectrograma de frecuencias" },
-  { key: "topography", label: "Topografía EEG" },
+const FIXATION_DERIVED_TABS = new Set<AnalyticsTabKey>([
+  "fixation_histogram",
+  "heatmap",
+  "scanpath",
+  "aoi_comparison",
+])
+
+const EEG_TABS: Array<{ key: EegTabKey; label: string; hint: string }> = [
+  { key: "timeseries", label: "EEG por canal", hint: "La actividad eléctrica que registró cada electrodo a lo largo del tiempo." },
+  { key: "psd", label: "Densidad espectral", hint: "Cuánta energía tiene la señal en cada frecuencia, de los ritmos lentos a los rápidos, en todo el intervalo." },
+  { key: "spectrogram", label: "Espectrograma de frecuencias", hint: "Cómo cambia la energía de cada frecuencia a lo largo del tiempo." },
+  { key: "topography", label: "Topografía EEG", hint: "Mapa de la cabeza que muestra en qué zonas hubo más actividad." },
 ]
 
-const SENSOR_LABELS: Record<SensorSelection, string> = {
-  EyeTracker: "Eye Tracker",
-  EEG: "Electroencefalógrafo",
-  GSR: "Sensor Galvánico",
-  Comparativas: "Comparativas",
+const compactSidebarQuery = "(max-width: 767px)"
+const subscribeToCompactViewport = (onChange: () => void) => {
+  const query = window.matchMedia(compactSidebarQuery)
+  query.addEventListener("change", onChange)
+  return () => query.removeEventListener("change", onChange)
 }
+const getCompactViewport = () => window.matchMedia(compactSidebarQuery).matches
+const getServerCompactViewport = () => false
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<ApiProject[]>([])
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
-  const [selectedSensor, setSelectedSensor] = useState<SensorSelection>("EyeTracker")
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  )
+  const [selectedSensor, setSelectedSensor] =
+    useState<SensorSelection>("EyeTracker")
+  const compactViewport = useSyncExternalStore(subscribeToCompactViewport, getCompactViewport, getServerCompactViewport)
+  const [sidebarCollapsedOverride, setSidebarCollapsed] = useState<boolean | null>(null)
+  const sidebarCollapsed = sidebarCollapsedOverride ?? compactViewport
+  const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState<AnalyticsTabKey>("pupil_dilation")
+  const [minFixationDurationMs, setMinFixationDurationMs] =
+    useState<FixationDurationMs>(DEFAULT_FIXATION_DURATION_MS)
   const [activeEegTab, setActiveEegTab] = useState<EegTabKey>("timeseries")
-  const [selectedParticipantOverride, setSelectedParticipantOverride] = useState<string | null>(null)
+  const [selectedParticipantOverride, setSelectedParticipantOverride] =
+    useState<string | null>(null)
   const [selectedScenario, setSelectedScenario] = useState("all")
+  const [participantDataProjectId, setParticipantDataProjectId] = useState<
+    string | null
+  >(null)
+  const sawParticipantLoading = useRef(false)
+  useAnalyticsProjectContext(selectedProjectId)
 
-  const { participants, loading: participantsLoading } = useAnalyticsParticipants(selectedProjectId)
-  const { scenarios, loading: scenariosLoading } = useAnalyticsScenarios(selectedProjectId)
+  const { participants, loading: participantsLoading } =
+    useAnalyticsParticipants(selectedProjectId)
+  const { scenarios, loading: scenariosLoading } =
+    useAnalyticsScenarios(selectedProjectId)
+
+  useEffect(() => {
+    if (participantsLoading) {
+      sawParticipantLoading.current = true
+      return
+    }
+    if (!selectedProjectId || !sawParticipantLoading.current) return
+
+    const readyProjectId = selectedProjectId
+    let cancelled = false
+    Promise.resolve().then(() => {
+      if (!cancelled) setParticipantDataProjectId(readyProjectId)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [participantsLoading, selectedProjectId])
 
   useEffect(() => {
     let cancelled = false
@@ -76,6 +132,14 @@ export default function DashboardPage() {
       .then((items) => {
         if (cancelled) return
         setProjects(items)
+        // A project card opens its own dashboard: `/dashboard?proyecto=<id>`.
+        const requested = new URLSearchParams(window.location.search).get("proyecto")
+        const initialProject = items.find((item) => item.id === requested) ?? items[0]
+        if (initialProject) {
+          setSelectedProjectId(initialProject.id)
+          setSelectedSensor(getProjectSensors(initialProject)[0] ?? "Comparativas")
+          setExpandedProjects({ [initialProject.id]: true })
+        }
       })
       .catch(() => {
         if (cancelled) return
@@ -88,38 +152,115 @@ export default function DashboardPage() {
   }, [])
 
   const selectedParticipant = useMemo(() => {
-    if (participants.length === 0) {
+    if (
+      participantDataProjectId !== selectedProjectId ||
+      participants.length === 0
+    ) {
       return null
     }
 
     if (
       selectedParticipantOverride &&
       participants.some(
-        (participant) => participant.participant_code === selectedParticipantOverride
+        (participant) =>
+          participant.participant_code === selectedParticipantOverride
       )
     ) {
       return selectedParticipantOverride
     }
 
     return participants[0].participant_code
-  }, [participants, selectedParticipantOverride])
+  }, [
+    participantDataProjectId,
+    participants,
+    selectedParticipantOverride,
+    selectedProjectId,
+  ])
 
-  const selectedSensorLabel = useMemo(() => SENSOR_LABELS[selectedSensor], [selectedSensor])
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId]
+  )
+
+  const fixationDurationViewActive =
+    selectedSensor === "EyeTracker" && FIXATION_DERIVED_TABS.has(activeTab)
+  const {
+    data: fixationSensitivityData,
+    loading: fixationSensitivityLoading,
+    error: fixationSensitivityError,
+  } = useFixationSensitivity(
+    fixationDurationViewActive ? selectedProjectId : null,
+    fixationDurationViewActive ? selectedParticipant : null,
+    selectedScenario
+  )
+  const availableFixationDurations =
+    fixationSensitivityData?.available_min_fixation_durations_ms
+  const effectiveMinFixationDurationMs =
+    availableFixationDurations &&
+    availableFixationDurations.length > 0 &&
+    !availableFixationDurations.includes(minFixationDurationMs)
+      ? (availableFixationDurations.find(
+          (duration) => duration === DEFAULT_FIXATION_DURATION_MS
+        ) ?? availableFixationDurations[0])
+      : minFixationDurationMs
+
+  // Only the current project's participants, never the previous project's list.
+  const comparisonParticipantCodes = useMemo(
+    () =>
+      participantDataProjectId === selectedProjectId
+        ? participants.map((participant) => participant.participant_code)
+        : [],
+    [participantDataProjectId, participants, selectedProjectId]
+  )
+  const comparisonParticipantLabels = useMemo(
+    () => participantLabelMap(participants),
+    [participants]
+  )
+
+  const availableSensors = useMemo(
+    () => (selectedProject?.sensors ?? []).map((sensor) => sensor.sensor_type),
+    [selectedProject]
+  )
+
+  const handleSelectProject = (projectId: string, sensor?: SensorSelection) => {
+    const project = projects.find((item) => item.id === projectId)
+    if (!project) return
+
+    if (projectId !== selectedProjectId) {
+      sawParticipantLoading.current = false
+      setParticipantDataProjectId(null)
+      setSelectedParticipantOverride(null)
+      setSelectedScenario("all")
+      setMinFixationDurationMs(DEFAULT_FIXATION_DURATION_MS)
+    }
+    setSelectedProjectId(projectId)
+    setSelectedSensor(sensor ?? getProjectSensors(project)[0] ?? "Comparativas")
+    setExpandedProjects((prev) => ({ ...prev, [projectId]: true }))
+  }
+
+  const handleToggleProject = (projectId: string) => {
+    if (expandedProjects[projectId]) {
+      setExpandedProjects((prev) => ({ ...prev, [projectId]: false }))
+    } else {
+      handleSelectProject(projectId)
+    }
+  }
 
   return (
     <AuthGuard>
-      <div className="flex h-screen bg-gray-50 dark:bg-black">
+      <div className="fixed inset-x-0 top-[var(--app-nav-height)] bottom-0 flex min-h-0 min-w-0 overflow-hidden bg-muted/30">
         <AnalyticsSidebar
           projects={projects}
           selectedProjectId={selectedProjectId}
           selectedSensor={selectedSensor}
-          onSelectProject={setSelectedProjectId}
-          onSelectSensor={setSelectedSensor}
+          onSelectProject={handleSelectProject}
+          expandedProjects={expandedProjects}
+          onToggleProject={handleToggleProject}
           collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <FiltersBar
             scenarios={scenarios}
             participants={participants}
@@ -131,11 +272,25 @@ export default function DashboardPage() {
             participantsLoading={participantsLoading}
           />
 
-          <main className="flex-1 overflow-y-auto px-6 pb-6">
+          <ParticipantComparisonProvider
+            projectId={selectedProjectId}
+            participantCodes={comparisonParticipantCodes}
+            participantLabels={comparisonParticipantLabels}
+            generation={selectedProject?.ingestion_generation ?? null}
+          >
+          <main className="analytics-shell min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-4 xl:px-6 xl:pb-6">
             {!selectedProjectId ? (
-              <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 Selecciona un proyecto del panel lateral
               </div>
+            ) : selectedSensor === "Comparativas" ? (
+              <ComparisonTab
+                key={selectedProjectId}
+                projectId={selectedProjectId}
+                participantCode={selectedParticipant}
+                scenario={selectedScenario}
+                availableSensors={availableSensors}
+              />
             ) : selectedSensor === "GSR" ? (
               <GsrTab
                 key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
@@ -144,26 +299,7 @@ export default function DashboardPage() {
                 scenario={selectedScenario}
               />
             ) : selectedSensor === "EEG" ? (
-              <>
-                <div className="flex gap-6 text-muted-foreground border-b border-gray-200 dark:border-border px-6">
-                  {EEG_TABS.map((tab) => {
-                    const isActive = activeEegTab === tab.key
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setActiveEegTab(tab.key)}
-                        className={
-                          isActive
-                            ? "cursor-pointer border-b-2 border-gray-900 dark:border-white pb-3 text-sm font-semibold text-foreground"
-                            : "cursor-pointer pb-3 text-sm text-muted-foreground hover:text-gray-700 dark:hover:text-gray-200"
-                        }
-                      >
-                        {tab.label}
-                      </button>
-                    )
-                  })}
-                </div>
+              <AnalyticsTabs value={activeEegTab} onValueChange={setActiveEegTab} options={EEG_TABS} label="Vistas EEG">
 
                 <EegTab
                   key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
@@ -172,32 +308,22 @@ export default function DashboardPage() {
                   scenario={selectedScenario}
                   view={activeEegTab}
                 />
-              </>
-            ) : selectedSensor !== "EyeTracker" ? (
-              <div className="py-6">
-                <PlaceholderTab label={selectedSensorLabel} />
-              </div>
+              </AnalyticsTabs>
             ) : (
-              <>
-                <div className="flex gap-6 text-muted-foreground border-b border-gray-200 dark:border-border px-6">
-                  {ANALYTICS_TABS.map((tab) => {
-                    const isActive = activeTab === tab.key
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setActiveTab(tab.key)}
-                        className={
-                          isActive
-                            ? "cursor-pointer border-b-2 border-gray-900 dark:border-white pb-3 text-sm font-semibold text-foreground"
-                            : "cursor-pointer pb-3 text-sm text-muted-foreground hover:text-gray-700 dark:hover:text-gray-200"
-                        }
-                      >
-                        {tab.label}
-                      </button>
-                    )
-                  })}
-                </div>
+              <AnalyticsTabs value={activeTab} onValueChange={setActiveTab} options={ANALYTICS_TABS} label="Vistas del eye tracker">
+
+                {FIXATION_DERIVED_TABS.has(activeTab) &&
+                  selectedParticipant && (
+                    <div className="flex min-w-0 items-center justify-end border-b border-border bg-muted/10 px-4 py-2 xl:px-6">
+                      <FixationDurationControl
+                        value={effectiveMinFixationDurationMs}
+                        onChange={setMinFixationDurationMs}
+                        availableDurations={availableFixationDurations}
+                        loading={fixationSensitivityLoading}
+                        error={fixationSensitivityError}
+                      />
+                    </div>
+                  )}
 
                 {activeTab === "pupil_dilation" ? (
                   <PupilDilationTab
@@ -226,6 +352,7 @@ export default function DashboardPage() {
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}
                     scenario={selectedScenario}
+                    minFixationDurationMs={effectiveMinFixationDurationMs}
                   />
                 ) : activeTab === "heatmap" ? (
                   <HeatmapTab
@@ -233,6 +360,7 @@ export default function DashboardPage() {
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}
                     scenario={selectedScenario}
+                    minFixationDurationMs={effectiveMinFixationDurationMs}
                   />
                 ) : activeTab === "fixation_histogram" ? (
                   <FixationHistogramTab
@@ -240,6 +368,11 @@ export default function DashboardPage() {
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}
                     scenario={selectedScenario}
+                    minFixationDurationMs={effectiveMinFixationDurationMs}
+                    onMinFixationDurationChange={setMinFixationDurationMs}
+                    sensitivityData={fixationSensitivityData}
+                    sensitivityLoading={fixationSensitivityLoading}
+                    sensitivityError={fixationSensitivityError}
                   />
                 ) : activeTab === "aoi_comparison" ? (
                   <AoiComparisonTab
@@ -247,17 +380,22 @@ export default function DashboardPage() {
                     projectId={selectedProjectId}
                     participantCode={selectedParticipant}
                     scenario={selectedScenario}
+                    minFixationDurationMs={effectiveMinFixationDurationMs}
                   />
                 ) : (
                   <div className="py-6">
                     <PlaceholderTab
-                      label={ANALYTICS_TABS.find((tab) => tab.key === activeTab)?.label ?? "Analitica"}
+                      label={
+                        ANALYTICS_TABS.find((tab) => tab.key === activeTab)
+                          ?.label ?? "Analitica"
+                      }
                     />
                   </div>
                 )}
-              </>
+              </AnalyticsTabs>
             )}
           </main>
+          </ParticipantComparisonProvider>
         </div>
       </div>
     </AuthGuard>

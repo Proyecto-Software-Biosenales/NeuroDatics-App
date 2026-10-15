@@ -5,6 +5,7 @@
 **/.env
 **/.env.*
 !**/.env.example
+NeuroDatics-Docker
 
 # Google and OAuth credential files
 *service-account*.json
@@ -23,7 +24,6 @@ venv/
 
 # Node / Next.js
 node_modules/
-frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/build/
@@ -33,9 +33,28 @@ data/
 backend/data/
 output/
 
+# Local participant recordings for opt-in cleanup acceptance
+docs/RefererenceExperiments/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db
+.vscode/
+
+# Linter and type-checker caches
+.ruff_cache/
+.import_linter_cache/
+
+# Personal documentation (not published)
+mydocs-priv/
 
 # Delivery package (contains the real .env with secrets)
 delivery/
+
+# AI agent instructions and tool settings (kept locally, not published)
+AGENTS.md
+CLAUDE.md
+.claude/
+.codex/
+.cursor/
+.agents/

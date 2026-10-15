@@ -1,3 +1,5 @@
+import { IS_LOCAL_MODE } from "@/lib/appMode";
+import { ensureLocalSession } from "@/lib/auth/localAuth";
 import { clearStoredAuthSession, getAccessToken, isAccessTokenExpired } from "@/lib/auth/sessionStore";
 
 const BASE = "";
@@ -5,15 +7,60 @@ const API_REQUEST_TIMEOUT_MS = 5 * 60_000;
 const ZIP_UPLOAD_TIMEOUT_MS = 30 * 60_000;
 const BLOB_CACHE_TTL_MS = 5 * 60_000;
 const BLOB_CACHE_MAX_ITEMS = 128;
-const SESSION_EXPIRED_MESSAGE = "Sesion expirada. Por favor, inicia sesion nuevamente.";
+const SESSION_EXPIRED_MESSAGE = "Tu sesión expiró. Inicia sesión de nuevo.";
 
 type BlobCacheEntry = {
   blob: Blob;
+  headers: Record<string, string>;
   expiresAt: number;
 };
 
 const blobCache = new Map<string, BlobCacheEntry>();
-const inflightBlobRequests = new Map<string, Promise<Blob>>();
+const inflightBlobRequests = new Map<string, Promise<BlobCacheEntry>>();
+
+/**
+ * Error that preserves the parsed `detail` payload.
+ *
+ * FastAPI answers some failures with a structured `detail` object rather than a
+ * string — the ZIP structure clarification (409) is one. Collapsing everything
+ * to `Error(message)` would throw that payload away, so callers get the status
+ * and the raw detail alongside the human-readable message.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly detail: unknown;
+
+  constructor(message: string, status: number, detail: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+function buildApiError(status: number, statusText: string, text: string): ApiError {
+  let detail: unknown;
+  try {
+    const parsed = JSON.parse(text);
+    detail = parsed?.detail;
+  } catch {
+    detail = undefined;
+  }
+
+  if (typeof detail === "string" && detail.trim()) {
+    return new ApiError(detail, status, detail);
+  }
+  if (detail && typeof detail === "object") {
+    const message =
+      typeof (detail as { message?: unknown }).message === "string"
+        ? (detail as { message: string }).message
+        : `Error ${status}`;
+    return new ApiError(message, status, detail);
+  }
+
+  const message = text ? `Error ${status}: ${text}` : `Error ${status}: ${statusText}`;
+  return new ApiError(message, status, detail);
+}
 
 function pruneBlobCache(now: number) {
   for (const [key, entry] of blobCache.entries()) {
@@ -32,11 +79,15 @@ function pruneBlobCache(now: number) {
 async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const onAbort = () => controller.abort(init.signal?.reason);
+  if (init.signal?.aborted) onAbort();
+  else init.signal?.addEventListener("abort", onAbort, { once: true });
 
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timeout);
+    init.signal?.removeEventListener("abort", onAbort);
   }
 }
 
@@ -52,16 +103,20 @@ function redirectToLogin(message = SESSION_EXPIRED_MESSAGE): never {
   throw new Error(message);
 }
 
-function ensureAccessTokenIsValid() {
-  if (isAccessTokenExpired()) {
-    redirectToLogin();
+async function ensureAccessTokenIsValid() {
+  if (!isAccessTokenExpired()) return;
+  // There is no login to go back to in the student edition: ask the local backend for a new session.
+  if (IS_LOCAL_MODE) {
+    await ensureLocalSession();
+    return;
   }
+  redirectToLogin();
 }
 
 export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
   const { timeoutMs = API_REQUEST_TIMEOUT_MS, ...requestInit } = init;
 
-  ensureAccessTokenIsValid();
+  await ensureAccessTokenIsValid();
 
   const token = getAccessToken();
 
@@ -76,11 +131,11 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
     res = await fetchWithTimeout(`${BASE}${path}`, { ...requestInit, headers, cache: "no-store" }, timeoutMs);
   } catch (error) {
     const reason = error instanceof DOMException && error.name === "AbortError"
-      ? `Timeout de la peticion (${Math.round(timeoutMs / 1000)}s)`
+      ? `La solicitud tardó demasiado (${Math.round(timeoutMs / 1000)} s).`
       : error instanceof Error
         ? error.message
-        : "Network error";
-    throw new Error(`No se pudo conectar con el backend. ${reason}`);
+        : "Error de red";
+    throw new Error(`No se pudo conectar con NeuroDatics. ${reason}`);
   }
 
   if (res.status === 401) {
@@ -89,18 +144,7 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    // Try to parse JSON error detail
-    let errorMessage = `Error ${res.status}`;
-    try {
-      const parsed = JSON.parse(text);
-      if (parsed.detail) {
-        errorMessage = parsed.detail;
-      }
-    } catch {
-      // If JSON parsing fails, use the raw text or status text
-      errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
-    }
-    throw new Error(errorMessage);
+    throw buildApiError(res.status, res.statusText, text);
   }
   return res.json() as Promise<T>;
 }
@@ -121,7 +165,7 @@ export async function apiUploadFormWithProgress<T>(
   onProgress?: UploadProgressCallback,
   signal?: AbortSignal
 ): Promise<T> {
-  ensureAccessTokenIsValid();
+  await ensureAccessTokenIsValid();
 
   const uploadOnce = async (): Promise<Response> => {
     const token = getAccessToken();
@@ -135,12 +179,16 @@ export async function apiUploadFormWithProgress<T>(
       const finalizeReject = (error: Error) => {
         if (settled) return;
         settled = true;
+        clearProcessingTimer();
+        signal?.removeEventListener("abort", onAbortRequest);
         reject(error);
       };
 
       const finalizeResolve = (response: Response) => {
         if (settled) return;
         settled = true;
+        clearProcessingTimer();
+        signal?.removeEventListener("abort", onAbortRequest);
         resolve(response);
       };
 
@@ -158,7 +206,7 @@ export async function apiUploadFormWithProgress<T>(
         } catch {
           // ignore abort errors
         }
-        finalizeReject(new Error("Subida cancelada por el usuario."));
+        finalizeReject(new Error("Subida cancelada."));
       };
 
       if (signal) {
@@ -169,6 +217,8 @@ export async function apiUploadFormWithProgress<T>(
         signal.addEventListener("abort", onAbortRequest, { once: true });
       }
 
+      // Keep uploads on the same origin so the browser never needs a public
+      // backend port. Next.js streams /api rewrites to backend:8000 internally.
       xhr.open("POST", `${BASE}${path}`);
       xhr.timeout = ZIP_UPLOAD_TIMEOUT_MS;
       xhr.responseType = "text";
@@ -178,7 +228,7 @@ export async function apiUploadFormWithProgress<T>(
       }
 
       xhr.upload.onprogress = (event) => {
-        if (!onProgress || !event.lengthComputable) return;
+        if (settled || !onProgress || !event.lengthComputable) return;
         const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
         onProgress({
           loaded: event.loaded,
@@ -189,8 +239,9 @@ export async function apiUploadFormWithProgress<T>(
       };
 
       xhr.upload.onload = () => {
-        if (!onProgress) return;
+        if (settled || !onProgress) return;
 
+        clearProcessingTimer();
         processingStartedAt = Date.now();
         onProgress({
           loaded: 1,
@@ -215,24 +266,25 @@ export async function apiUploadFormWithProgress<T>(
 
       xhr.onerror = () => {
         clearProcessingTimer();
-        finalizeReject(new Error("No se pudo conectar con el backend durante la subida del ZIP."));
+        finalizeReject(new Error("No se pudo conectar con NeuroDatics durante la subida."));
       };
       xhr.ontimeout = () => {
         clearProcessingTimer();
-        finalizeReject(new Error("La subida del ZIP excedio el tiempo de espera."));
+        finalizeReject(new Error("La subida tardó demasiado."));
       };
       xhr.onabort = () => {
         clearProcessingTimer();
-        finalizeReject(new Error("Subida cancelada por el usuario."));
+        finalizeReject(new Error("Subida cancelada."));
       };
 
       xhr.onload = () => {
+        if (settled) return;
         clearProcessingTimer();
         if (signal) {
           signal.removeEventListener("abort", onAbortRequest);
         }
 
-        if (onProgress) {
+        if (onProgress && xhr.status >= 200 && xhr.status < 300) {
           const elapsedSeconds = processingStartedAt
             ? Math.max(0, Math.round((Date.now() - processingStartedAt) / 1000))
             : 0;
@@ -253,7 +305,11 @@ export async function apiUploadFormWithProgress<T>(
         finalizeResolve(response);
       };
 
-      xhr.send(formData);
+      try {
+        xhr.send(formData);
+      } catch (error) {
+        finalizeReject(error instanceof Error ? error : new Error("No se pudo iniciar la subida."));
+      }
     });
   };
 
@@ -265,41 +321,49 @@ export async function apiUploadFormWithProgress<T>(
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    let errorMessage = `Error ${res.status}`;
-    try {
-      const parsed = JSON.parse(text);
-      if (typeof parsed?.detail === "string" && parsed.detail.trim()) {
-        errorMessage = parsed.detail;
-      } else {
-        errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
-      }
-    } catch {
-      errorMessage = text ? `Error ${res.status}: ${text}` : `Error ${res.status}: ${res.statusText}`;
-    }
-    throw new Error(errorMessage);
+    throw buildApiError(res.status, res.statusText, text);
   }
 
   return res.json() as Promise<T>;
 }
 
-export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Promise<Blob> {
+export type ApiBlobResponse = {
+  blob: Blob;
+  headers: Headers;
+};
+
+export async function apiFetchBlobWithHeaders(
+  path: string,
+  init: ApiRequestInit = {},
+): Promise<ApiBlobResponse> {
   const { timeoutMs = API_REQUEST_TIMEOUT_MS, ...requestInit } = init;
 
-  ensureAccessTokenIsValid();
+  await ensureAccessTokenIsValid();
 
   const token = getAccessToken();
+  const method = (requestInit.method ?? "GET").toUpperCase();
+  // Only GET is addressed entirely by its URL. A POST carries its parameters in
+  // the body, which never reached this key, so caching one would hand the next
+  // caller someone else's document — the executive report is posted to a single
+  // constant path for every project.
+  const isCacheable = method === "GET" && requestInit.cache !== "no-store";
+  // Independently cancellable callers must not share a fetch owned by a sibling.
+  const isShareable = isCacheable && !requestInit.signal;
   const cacheKey = `${token ?? "anon"}:${path}`;
   const now = Date.now();
   pruneBlobCache(now);
 
-  const cached = blobCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
-    return cached.blob;
-  }
+  if (isCacheable) {
+    const cached = blobCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return { blob: cached.blob, headers: new Headers(cached.headers) };
+    }
 
-  const inflight = inflightBlobRequests.get(cacheKey);
-  if (inflight) {
-    return inflight;
+    const inflight = isShareable ? inflightBlobRequests.get(cacheKey) : undefined;
+    if (inflight) {
+      const entry = await inflight;
+      return { blob: entry.blob, headers: new Headers(entry.headers) };
+    }
   }
 
   const headers = new Headers(requestInit.headers);
@@ -307,17 +371,17 @@ export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Pro
 
   const cacheMode = requestInit.cache ?? "default";
 
-  const blobPromise = (async (): Promise<Blob> => {
+  const blobPromise = (async (): Promise<BlobCacheEntry> => {
     let res: Response;
     try {
       res = await fetchWithTimeout(`${BASE}${path}`, { ...requestInit, headers, cache: cacheMode }, timeoutMs);
     } catch (error) {
       const reason = error instanceof DOMException && error.name === "AbortError"
-        ? `Timeout de la peticion (${Math.round(timeoutMs / 1000)}s)`
+        ? `La solicitud tardó demasiado (${Math.round(timeoutMs / 1000)} s).`
         : error instanceof Error
           ? error.message
-          : "Network error";
-      throw new Error(`No se pudo conectar con el backend. ${reason}`);
+          : "Error de red";
+      throw new Error(`No se pudo conectar con NeuroDatics. ${reason}`);
     }
 
     if (res.status === 401) {
@@ -326,18 +390,63 @@ export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Pro
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`API ${res.status}: ${text || res.statusText}`);
+      throw buildApiError(res.status, res.statusText, text);
     }
 
     const blob = await res.blob();
-    blobCache.set(cacheKey, { blob, expiresAt: Date.now() + BLOB_CACHE_TTL_MS });
-    pruneBlobCache(Date.now());
-    return blob;
+    const responseHeaders: Record<string, string> = {};
+    res.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
+    const entry = {
+      blob,
+      headers: responseHeaders,
+      expiresAt: Date.now() + BLOB_CACHE_TTL_MS,
+    };
+    if (isCacheable) {
+      blobCache.set(cacheKey, entry);
+      pruneBlobCache(Date.now());
+    }
+    return entry;
   })().finally(() => {
-    inflightBlobRequests.delete(cacheKey);
+    if (isShareable) inflightBlobRequests.delete(cacheKey);
   });
 
-  inflightBlobRequests.set(cacheKey, blobPromise);
+  if (isShareable) inflightBlobRequests.set(cacheKey, blobPromise);
 
-  return blobPromise;
+  const entry = await blobPromise;
+  return { blob: entry.blob, headers: new Headers(entry.headers) };
+}
+
+export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Promise<Blob> {
+  return (await apiFetchBlobWithHeaders(path, init)).blob;
+}
+
+/**
+ * Evict cached blobs without waiting out the TTL.
+ *
+ * An upload that replaces a project's data invalidates every blob derived from
+ * it, but those entries stay servable for up to 5 more minutes. Callers that
+ * know the data changed drop them immediately. Keys are `<token>:<path>`, so
+ * the prefix is matched against the path part only — otherwise a per-project
+ * prefix would never match.
+ */
+export function clearBlobCache(pathPrefix?: string): void {
+  if (!pathPrefix) {
+    blobCache.clear();
+    inflightBlobRequests.clear();
+    return;
+  }
+
+  const matchesPrefix = (key: string) => {
+    const separator = key.indexOf(":");
+    return separator >= 0 && key.slice(separator + 1).startsWith(pathPrefix);
+  };
+
+  for (const key of blobCache.keys()) {
+    if (matchesPrefix(key)) blobCache.delete(key);
+  }
+  for (const key of inflightBlobRequests.keys()) {
+    if (matchesPrefix(key)) inflightBlobRequests.delete(key);
+  }
 }

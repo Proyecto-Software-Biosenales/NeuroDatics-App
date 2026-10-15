@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { DeleteProjectResult } from "@/features/projects/api/projectsApi"
+import { storageCopy } from "@/features/projects/storageCopy"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +14,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
 interface DeleteProjectDialogProps {
@@ -68,7 +68,7 @@ export const DeleteProjectDialog = ({
       return
     }
 
-    const loadingToastId = toast.loading(`Eliminando proyecto "${projectName}"...`)
+    const loadingToastId = toast.loading(`Eliminando «${projectName}»…`)
 
     try {
       const result = await onDelete(projectId)
@@ -77,19 +77,19 @@ export const DeleteProjectDialog = ({
       
       if (result?.drive_folder_found) {
         if (result.drive_folder_deleted) {
-          toast.success(`Proyecto "${projectName}" y carpeta de Drive eliminados correctamente.`)
+          toast.success(storageCopy.deletedWithFolder(projectName))
         } else {
-          toast.success(`Proyecto "${projectName}" eliminado. Carpeta de Drive no confirmada.`)
+          toast.success(storageCopy.deletedFolderUnconfirmed(projectName))
         }
       } else {
-        toast.success(`Proyecto "${projectName}" eliminado correctamente.`)
+        toast.success(`Proyecto «${projectName}» eliminado.`)
       }
       setIsOpen(false)
       resetDialogState()
     } catch (error) {
       console.error(error)
       toast.dismiss(loadingToastId)
-      toast.error(`No se pudo eliminar el proyecto "${projectName}".`)
+      toast.error(`No se pudo eliminar el proyecto «${projectName}».`)
     }
   }
 
@@ -98,15 +98,15 @@ export const DeleteProjectDialog = ({
       <AlertDialogContent onClick={(e) => e.stopPropagation()}>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {step === 1 ? "¿Eliminar proyecto?" : "Confirmación final"}
+            {step === 1 ? "¿Eliminar proyecto?" : "Confirma la eliminación"}
           </AlertDialogTitle>
           {step === 1 ? (
             <AlertDialogDescription>
               Esta acción no se puede deshacer. Se eliminará el proyecto{" "}
               <span className="font-semibold text-foreground">
-                &quot;{projectName}&quot;
+                «{projectName}»
               </span>
-              , sus registros asociados y su carpeta en Google Drive.
+              {storageCopy.deleteWarningTail}
             </AlertDialogDescription>
           ) : (
             <div className="space-y-2">

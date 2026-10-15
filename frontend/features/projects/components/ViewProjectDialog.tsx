@@ -1,5 +1,9 @@
 "use client"
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Activity,
@@ -21,6 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { ProjectsApi, type ApiProjectAoi, type ApiProjectDetail, type ApiProjectFile } from "@/features/projects/api/projectsApi"
 import { apiAoiToFormAoi, normalizeAoiPoints } from "@/features/projects/create-project/aoiUtils"
+import { resolveScenarioImageUrl } from "@/features/projects/driveFallbackUrl"
 
 interface ViewProjectDialogProps {
   projectId: string
@@ -29,7 +34,10 @@ interface ViewProjectDialogProps {
   onOpenChange?: (open: boolean) => void
 }
 
-const getLatestZipFilename = (files: ApiProjectFile[] | undefined): string => {
+const getSourceFolderName = (detail: ApiProjectDetail | null): string => {
+  if (detail?.source_folder_name) return detail.source_folder_name
+  // Projects ingested before the folder name was recorded kept the uploaded ZIP.
+  const files = detail?.files
   if (!files || files.length === 0) return "No disponible"
 
   const zipFiles = files.filter((file) => file.kind === "experiment_zip")
@@ -59,27 +67,8 @@ const getSexPillClass = (): string => {
 const toScenaryTypeLabel = (type?: string | null): string => {
   if (!type) return "No definido"
   if (type.toLowerCase() === "image") return "Imagen"
-  if (type.toLowerCase() === "video") return "Video"
+  if (type.toLowerCase() === "video") return "Vídeo"
   return type
-}
-
-const extractDriveFileId = (url?: string | null): string | null => {
-  if (!url) return null
-  const filePathMatch = url.match(/\/d\/([^/]+)/i)
-  if (filePathMatch?.[1]) return filePathMatch[1]
-  const queryMatch = url.match(/[?&]id=([^&]+)/i)
-  if (queryMatch?.[1]) return queryMatch[1]
-  return null
-}
-
-const resolveScenarioImageUrl = (file?: ApiProjectFile): string | null => {
-  if (!file) return null
-  if (file.drive_download_link) return file.drive_download_link
-  const driveFileId = file.external_id || extractDriveFileId(file.drive_web_view_link)
-  if (driveFileId) {
-    return `https://drive.google.com/thumbnail?id=${driveFileId}&sz=w2000`
-  }
-  return file.drive_web_view_link ?? null
 }
 
 export const ViewProjectDialog = ({
@@ -119,7 +108,7 @@ export const ViewProjectDialog = ({
       } catch (error) {
         console.error("[ViewProjectDialog] loadProject failed", { projectId, error })
         if (!cancelled) {
-          setLoadError("No se pudo cargar la información del proyecto.")
+          setLoadError("No se pudo cargar el proyecto.")
           setProjectDetail(null)
         }
       } finally {
@@ -146,7 +135,7 @@ export const ViewProjectDialog = ({
     }
     return map
   }, [projectDetail?.files])
-  const zipFilename = useMemo(() => getLatestZipFilename(projectDetail?.files), [projectDetail?.files])
+  const zipFilename = useMemo(() => getSourceFolderName(projectDetail), [projectDetail])
 
   useEffect(() => {
     if (!isOpen) {
@@ -170,7 +159,7 @@ export const ViewProjectDialog = ({
         {isLoading ? (
           <div className="py-12 flex items-center justify-center text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Cargando información del proyecto...
+            Cargando el proyecto…
           </div>
         ) : loadError ? (
           <div className="m-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 dark:text-red-400">
@@ -181,14 +170,14 @@ export const ViewProjectDialog = ({
             <section className="space-y-3">
               <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 <Package className="h-4 w-4" />
-                Informacion general
+                Información general
               </h3>
               <div className="rounded-2xl border border-border bg-muted/40 px-5 py-4">
                 <div className="grid grid-cols-1 gap-y-3 sm:grid-cols-[130px_1fr] sm:gap-x-4">
                   <span className="text-sm font-semibold text-muted-foreground">Nombre</span>
                   <span className="text-base font-semibold text-foreground">{projectDetail?.name || "-"}</span>
 
-                  <span className="text-sm font-semibold text-muted-foreground">Descripcion</span>
+                  <span className="text-sm font-semibold text-muted-foreground">Descripción</span>
                   <span className="text-sm font-medium leading-6 text-foreground">
                     {projectDetail?.description || "Sin descripción"}
                   </span>
@@ -205,7 +194,7 @@ export const ViewProjectDialog = ({
             <section className="space-y-3">
               <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 <Activity className="h-4 w-4" />
-                Sensores asociados
+                Sensores
                 <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground">
                   {sensors.length}
                 </span>
@@ -238,32 +227,36 @@ export const ViewProjectDialog = ({
               </h3>
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
                 {participants.length > 0 ? (
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted text-muted-foreground">
-                      <tr className="text-left">
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Documento</th>
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Edad</th>
-                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Sexo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table className="w-full text-sm">
+                    <TableHeader className="bg-muted text-muted-foreground">
+                      <TableRow className="text-left">
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Nombre</TableHead>
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Documento</TableHead>
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Edad</TableHead>
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Sexo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {participants.map((participant) => (
-                        <tr key={participant.id} className="border-t border-border text-foreground">
-                          <td className="px-4 py-3 text-sm font-medium">{participant.participant_code}</td>
-                          <td className="px-4 py-3">
+                        <TableRow key={participant.id} className="border-t border-border text-foreground">
+                          <TableCell className="px-4 py-3 text-sm font-medium">
+                            {participant.name || <span className="text-muted-foreground">-</span>}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm">{participant.document || participant.participant_code}</TableCell>
+                          <TableCell className="px-4 py-3">
                             <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-muted px-2 py-0.5 text-sm font-semibold text-foreground">
                               {participant.age ?? "-"}
                             </span>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4 py-3">
                             <span className={`inline-flex rounded-full border px-3 py-0.5 text-sm font-semibold ${getSexPillClass()}`}>
                               {toSexLabel(participant.sex)}
                             </span>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 ) : (
                   <p className="text-sm text-muted-foreground">No hay participantes registrados.</p>
                 )}
@@ -283,10 +276,10 @@ export const ViewProjectDialog = ({
                   <ul className="space-y-3">
                     {scenaries.map((scenary) => (
                       <li key={scenary.id} className="overflow-hidden rounded-2xl border border-border bg-card">
-                        <button
+                        <Collapsible open={openScenaryId === scenary.id} onOpenChange={(open) => setOpenScenaryId(open ? scenary.id : "")}>
+                        <CollapsibleTrigger asChild><Button variant="ghost"
                           type="button"
-                          onClick={() => setOpenScenaryId((prev) => (prev === scenary.id ? "" : scenary.id))}
-                          className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-muted/50 transition-colors"
+                          className="h-auto w-full justify-between gap-3 whitespace-normal p-4 text-left"
                         >
                           <div className="min-w-0">
                             <p className="break-words text-base font-semibold text-foreground">{scenary.name}</p>
@@ -297,35 +290,26 @@ export const ViewProjectDialog = ({
                           ) : (
                             <ChevronRight className="h-5 w-5 text-muted-foreground" />
                           )}
-                        </button>
+                        </Button></CollapsibleTrigger>
 
-                        {openScenaryId === scenary.id && (
-                          <div className="border-t border-border p-4">
-                            {String(scenary.type || "").toLowerCase() === "video" ? (
-                              <div className="flex aspect-video items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
-                                <div className="flex items-center gap-2 text-sm font-medium">
-                                  <Video className="h-4 w-4" />
-                                  Escenario de video
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="relative overflow-hidden rounded-xl border border-border bg-muted aspect-video">
-                                <ScenarioPreviewImage
-                                  projectId={projectId}
-                                  fileId={scenary.file_id}
-                                  fallbackUrl={scenary.file_id ? resolveScenarioImageUrl(filesById.get(scenary.file_id)) : null}
-                                  alt={scenary.name}
-                                  aois={scenary.aois ?? []}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
+                          <CollapsibleContent className="border-t border-border p-4">
+                            <div className="relative overflow-hidden rounded-xl border border-border bg-muted aspect-video">
+                              <ScenarioPreviewImage
+                                projectId={projectId}
+                                fileId={scenary.file_id}
+                                fallbackUrl={scenary.file_id ? resolveScenarioImageUrl(filesById.get(scenary.file_id)) : null}
+                                alt={scenary.name}
+                                aois={scenary.aois ?? []}
+                                isVideo={String(scenary.type || "").toLowerCase() === "video"}
+                              />
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No hay escenarios disponibles.</p>
+                  <p className="text-sm text-muted-foreground">No hay escenarios.</p>
                 )}
               </div>
             </section>
@@ -351,12 +335,14 @@ const ScenarioPreviewImage = ({
   fallbackUrl,
   alt,
   aois = [],
+  isVideo = false,
 }: {
   projectId?: string
   fileId?: string | null
   fallbackUrl?: string | null
   alt: string
   aois?: ApiProjectAoi[]
+  isVideo?: boolean
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
@@ -433,7 +419,9 @@ const ScenarioPreviewImage = ({
       }
 
       try {
-        const blob = await ProjectsApi.fetchScenarioImage(projectId, fileId)
+        const blob = isVideo
+          ? await ProjectsApi.fetchScenarioPreview(projectId, fileId, 0.5)
+          : await ProjectsApi.fetchScenarioImage(projectId, fileId)
         if (cancelled) return
         objectUrl = URL.createObjectURL(blob)
         setBlobUrl(objectUrl)
@@ -457,13 +445,16 @@ const ScenarioPreviewImage = ({
       cancelled = true
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [projectId, fileId, fallbackUrl, hasAnySource])
+  }, [projectId, fileId, fallbackUrl, hasAnySource, isVideo])
 
   const finalSrc = currentSrc
   if (loadError || (!finalSrc && !isLoading)) {
     return (
       <div ref={containerRef} className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-        <ImageIcon className="h-4 w-4" />
+        <div className="flex items-center gap-2 text-sm font-medium">
+          {isVideo ? <Video className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+          {isVideo ? "No se pudo generar la previsualización" : "No se pudo cargar la imagen"}
+        </div>
       </div>
     )
   }
@@ -498,6 +489,11 @@ const ScenarioPreviewImage = ({
           }}
         />
       )}
+      {isVideo && !isLoading && finalSrc ? (
+        <div className="pointer-events-none absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background/90 text-muted-foreground shadow-sm backdrop-blur">
+          <Video className="h-4 w-4" />
+        </div>
+      ) : null}
       {letterbox && normalizedAois.length > 0 ? (
         <>
           <svg
