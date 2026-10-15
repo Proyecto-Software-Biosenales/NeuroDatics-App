@@ -52,6 +52,8 @@ export type DomainReport = Record<string, Domain>
 
 export interface ParticipantCardProps {
   participant: string
+  /** Visible title (name or document); defaults to "Participante <code>". */
+  label?: string
   index: number
   isSource: boolean
   projectId: string
@@ -93,13 +95,14 @@ function useCardZoom(memory: Map<string, ZoomHistory<ZoomRange>>, participant: s
 
 export const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProps) {
   const { participant, isSource, spec, tracker } = props
+  const label = props.label ?? `Participante ${participant}`
   const ref = useRef<HTMLElement>(null)
   const { near, visible } = useCardVisibility(tracker, ref)
   const height = KIND_INFO[spec.kind].cardHeight
   return (
     <article
       ref={ref}
-      aria-label={`Participante ${participant}`}
+      aria-label={label}
       data-testid="participant-comparison-card"
       data-participant={participant}
       data-card-state={near ? "mounted" : "placeholder"}
@@ -110,7 +113,7 @@ export const ParticipantCard = memo(function ParticipantCard(props: ParticipantC
       )}
     >
       <header className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <h3 className="min-w-0 truncate text-sm font-semibold">Participante {participant}</h3>
+        <h3 className="min-w-0 truncate text-sm font-semibold" title={label}>{label}</h3>
         {isSource ? (
           <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Vista de origen</span>
         ) : null}
@@ -216,8 +219,8 @@ function temporalSeries(spec: ParticipantComparisonSpec, result: Temporal): Temp
     }
     case "gaze": {
       const series: TemporalSeries[] = []
-      if (spec.params.axes !== "y") series.push({ key: "x", label: "Gaze X (%) filtrado", color: "#818CF8", unit: "%", strokeWidth: 1.5 })
-      if (spec.params.axes !== "x") series.push({ key: "y", label: "Gaze Y (%) filtrado", color: "#22C55E", unit: "%", strokeWidth: 1.5 })
+      if (spec.params.axes !== "y") series.push({ key: "x", label: "Mirada X (%)", color: "#818CF8", unit: "%", strokeWidth: 1.5 })
+      if (spec.params.axes !== "x") series.push({ key: "y", label: "Mirada Y (%)", color: "#22C55E", unit: "%", strokeWidth: 1.5 })
       return series
     }
     case "distance":

@@ -146,10 +146,10 @@ export const useProjectsStorage = () => {
           } else {
             setProjects([])
           }
-          setError("No se pudieron cargar los proyectos del servidor")
+          setError("No se pudieron cargar los proyectos.")
         } catch {
           setProjects([])
-          setError("Error al cargar los proyectos")
+          setError("No se pudieron cargar los proyectos.")
         }
       } finally {
         setLoading(false)
@@ -190,7 +190,7 @@ export const useProjectsStorage = () => {
             project.status === "draft"
           ) {
             toast.success(
-              `Paso 1 completado para "${project.name}". Ya puedes continuar con los pasos 2, 3 y 4.`,
+              `Carpeta de «${project.name}» procesada. Puedes continuar.`,
               { position: "top-center" }
             )
             playStep1ReadySound()

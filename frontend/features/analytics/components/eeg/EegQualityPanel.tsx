@@ -39,7 +39,7 @@ function unitCaveats(metadata: EegMetadata | undefined): string[] {
   const lines: string[] = []
   if (notice.rescaledChannels.length > 0) {
     lines.push(
-      `Reescalados en ingesta: ${notice.rescaledChannels
+      `Reescalados al procesar: ${notice.rescaledChannels
         .map((channel) => `${formatChannel(channel)} (${metadata?.source_units?.[channel]})`)
         .join(", ")}. El reescalado corrige la magnitud, no recupera la precisión perdida.`
     )
@@ -80,7 +80,7 @@ export function EegQualityNotes({ metadata }: { metadata?: EegMetadata }) {
         {caveats.length > 0 ? (
           <CardAction>
             <Button asChild variant="outline" size="sm">
-              <Link href="/proyectos">Volver a ingerir</Link>
+              <Link href="/proyectos">Volver a procesar</Link>
             </Button>
           </CardAction>
         ) : null}
@@ -97,7 +97,7 @@ export function EegQualityNotes({ metadata }: { metadata?: EegMetadata }) {
                 ))}
               </ul>
               <p className="mt-1 text-muted-foreground">
-                No compares este participante con otro ingerido bajo otras unidades sin volver a ingerir ambos.
+                No compares este participante con otro procesado bajo otras unidades sin volver a procesar ambos.
               </p>
             </div>
           </div>

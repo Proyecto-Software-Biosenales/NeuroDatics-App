@@ -68,7 +68,7 @@ export const DeleteProjectDialog = ({
       return
     }
 
-    const loadingToastId = toast.loading(`Eliminando proyecto "${projectName}"...`)
+    const loadingToastId = toast.loading(`Eliminando «${projectName}»…`)
 
     try {
       const result = await onDelete(projectId)
@@ -82,14 +82,14 @@ export const DeleteProjectDialog = ({
           toast.success(storageCopy.deletedFolderUnconfirmed(projectName))
         }
       } else {
-        toast.success(`Proyecto "${projectName}" eliminado correctamente.`)
+        toast.success(`Proyecto «${projectName}» eliminado.`)
       }
       setIsOpen(false)
       resetDialogState()
     } catch (error) {
       console.error(error)
       toast.dismiss(loadingToastId)
-      toast.error(`No se pudo eliminar el proyecto "${projectName}".`)
+      toast.error(`No se pudo eliminar el proyecto «${projectName}».`)
     }
   }
 
@@ -98,13 +98,13 @@ export const DeleteProjectDialog = ({
       <AlertDialogContent onClick={(e) => e.stopPropagation()}>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {step === 1 ? "¿Eliminar proyecto?" : "Confirmación final"}
+            {step === 1 ? "¿Eliminar proyecto?" : "Confirma la eliminación"}
           </AlertDialogTitle>
           {step === 1 ? (
             <AlertDialogDescription>
               Esta acción no se puede deshacer. Se eliminará el proyecto{" "}
               <span className="font-semibold text-foreground">
-                &quot;{projectName}&quot;
+                «{projectName}»
               </span>
               {storageCopy.deleteWarningTail}
             </AlertDialogDescription>

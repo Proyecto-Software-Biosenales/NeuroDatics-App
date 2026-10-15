@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ReportStepCard } from "./ReportStepCard"
+import { FieldHint } from "@/components/FieldHint"
 import type { ExportOptions } from "@/features/reports/types"
 
 interface ExportOptionsCardProps {
@@ -36,18 +37,16 @@ export const ExportOptionsCard = ({
   onDownload,
   canDownload,
   loading = false,
-  downloadLabel = "Descargar reporte PDF",
+  downloadLabel = "Descargar informe PDF",
 }: ExportOptionsCardProps) => {
   return (
-    <ReportStepCard step={4} title="Opciones de exportación" description="Personaliza la portada y los metadatos del documento PDF" disabled={!enabled}>
-
-
+    <ReportStepCard step={4} title="Opciones del informe" disabled={!enabled}>
       <div className="sm:pl-14 space-y-3">
         {exportOptions.map((option) => (
           <Label
             key={option.key}
             htmlFor={`export-${option.key}`}
-            className={`flex items-start gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
+            className={`flex items-center gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
               enabled
                 ? options[option.key]
                   ? "border-foreground/40 bg-muted"
@@ -60,15 +59,12 @@ export const ExportOptionsCard = ({
               checked={options[option.key]}
               onCheckedChange={() => onToggleOption(option.key)}
               disabled={!enabled}
-              className="mt-1"
             />
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-foreground mb-1">
+            <div className="flex flex-1 items-center gap-1.5">
+              <h3 className="text-sm font-semibold text-foreground">
                 {option.title}
               </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {option.description}
-              </p>
+              <FieldHint>{option.description}</FieldHint>
             </div>
           </Label>
         ))}
@@ -79,7 +75,7 @@ export const ExportOptionsCard = ({
           className="mt-6 w-full"
         >
           <Download className={`w-5 h-5 ${loading ? "animate-pulse" : ""}`} />
-          {loading ? "Generando informe..." : downloadLabel}
+          {loading ? "Generando informe…" : downloadLabel}
         </Button>
       </div>
     </ReportStepCard>

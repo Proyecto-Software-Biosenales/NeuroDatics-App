@@ -1,5 +1,6 @@
 "use client"
 
+import { HintTooltip } from "@/components/HintTooltip"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
@@ -32,15 +33,16 @@ interface AnalyticsSidebarProps {
   onToggleCollapse: () => void
 }
 
-const SENSOR_META: Record<Exclude<SensorKey, "Comparativas">, { label: string; Icon: typeof Eye }> = {
-  EyeTracker: { label: "Eye Tracker", Icon: Eye },
-  EEG: { label: "Electroencefalógrafo", Icon: Brain },
-  GSR: { label: "Sensor Galvánico", Icon: Activity },
+const SENSOR_META: Record<Exclude<SensorKey, "Comparativas">, { label: string; hint: string; Icon: typeof Eye }> = {
+  EyeTracker: { label: "Eye tracker", hint: "Registra hacia dónde mira la persona y el tamaño de sus pupilas.", Icon: Eye },
+  EEG: { label: "Electroencefalógrafo", hint: "Registra la actividad eléctrica del cerebro con electrodos sobre la cabeza.", Icon: Brain },
+  GSR: { label: "Sensor galvánico", hint: "Mide la conductancia de la piel, que sube con la sudoración y la activación emocional.", Icon: Activity },
 }
 
-const ALWAYS_SENSOR: { key: SensorKey; label: string; Icon: typeof BarChart3 } = {
+const ALWAYS_SENSOR: { key: SensorKey; label: string; hint: string; Icon: typeof BarChart3 } = {
   key: "Comparativas",
   label: "Comparativas",
+  hint: "Gráficas que cruzan sensores, participantes o escenarios para compararlos.",
   Icon: BarChart3,
 }
 
@@ -61,26 +63,30 @@ export function AnalyticsSidebar({
 
   const renderSensorItem = (
     projectId: string,
-    sensor: { key: SensorKey; label: string; Icon: typeof Eye }
+    sensor: { key: SensorKey; label: string; hint: string; Icon: typeof Eye }
   ) => {
     const isActive = selectedProjectId === projectId && selectedSensor === sensor.key
 
     return (
-      <Button variant="selection"
+      <HintTooltip
         key={`${projectId}-${sensor.key}`}
-        type="button"
-        onClick={() => onSelectProject(projectId, sensor.key)}
-        className={cn(
-          "min-w-0 overflow-hidden border-transparent text-left",
-          collapsed ? "h-10 w-10 justify-center p-0" : "h-auto w-full justify-start gap-2 px-3 py-2"
-        )}
-        aria-label={sensor.label}
-        aria-pressed={isActive}
-        title={sensor.label}
+        side="right"
+        hint={collapsed ? <><span className="font-semibold">{sensor.label}.</span> {sensor.hint}</> : sensor.hint}
       >
-        <sensor.Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-[18px] w-[18px]")} />
-        {!collapsed ? <span className="min-w-0 flex-1 truncate">{sensor.label}</span> : null}
-      </Button>
+        <Button variant="selection"
+          type="button"
+          onClick={() => onSelectProject(projectId, sensor.key)}
+          className={cn(
+            "min-w-0 overflow-hidden border-transparent text-left",
+            collapsed ? "h-10 w-10 justify-center p-0" : "h-auto w-full justify-start gap-2 px-3 py-2"
+          )}
+          aria-label={sensor.label}
+          aria-pressed={isActive}
+        >
+          <sensor.Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-[18px] w-[18px]")} />
+          {!collapsed ? <span className="min-w-0 flex-1 truncate">{sensor.label}</span> : null}
+        </Button>
+      </HintTooltip>
     )
   }
 

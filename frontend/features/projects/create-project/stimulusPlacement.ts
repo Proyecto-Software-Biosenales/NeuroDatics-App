@@ -96,7 +96,7 @@ export const describeStimulusPlacementIssue = (
   }
 
   if ((draft.displayMode === "cover" || draft.displayMode === "crop") && !draft.viewportEnabled) {
-    return "Cover y Crop necesitan que definas la región visible."
+    return "«Cubre» y «Recorte» necesitan que definas la región visible."
   }
 
   const viewportLeft = draft.viewportEnabled ? finite(draft.viewportLeftPx) : 0
@@ -111,13 +111,13 @@ export const describeStimulusPlacementIssue = (
     viewportWidth === null || viewportHeight === null ||
     scrollX === null || scrollY === null
   ) {
-    return "Completa las medidas de la región visible y del scroll."
+    return "Completa las medidas de la región visible y del desplazamiento."
   }
   if (viewportWidth <= 0 || viewportHeight <= 0) {
     return "La región visible debe tener ancho y alto mayores que cero."
   }
   if (scrollX < 0 || scrollY < 0) {
-    return "El scroll no puede ser negativo."
+    return "El desplazamiento no puede ser negativo."
   }
   if (
     viewportLeft < 0 || viewportTop < 0 ||
@@ -140,12 +140,12 @@ export const describeStimulusPlacementIssue = (
   if (draft.displayMode === "contain") {
     const fits = left >= viewportLeft && top >= viewportTop &&
       right <= viewportRight && bottom <= viewportBottom
-    return fits ? null : "Contain exige que el estímulo quepa completo dentro de la región visible."
+    return fits ? null : "«Completo» exige que el estímulo quepa entero dentro de la región visible."
   }
   if (draft.displayMode === "cover") {
     const covers = left <= viewportLeft && top <= viewportTop &&
       right >= viewportRight && bottom >= viewportBottom
-    return covers ? null : "Cover exige que el estímulo cubra toda la región visible."
+    return covers ? null : "«Cubre» exige que el estímulo cubra toda la región visible."
   }
   return null
 }

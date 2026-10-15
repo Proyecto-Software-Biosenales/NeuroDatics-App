@@ -1,6 +1,7 @@
 "use client"
 
 import { Skeleton } from "@/components/ui/skeleton"
+import { HintTooltip } from "@/components/HintTooltip"
 import { Button } from "@/components/ui/button"
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -170,8 +171,7 @@ export function HeatmapTab({
                   label="Fijaciones"
                   value={fixData?.stats?.n_fixations}
                   unit=""
-                  description="Total de fijaciones en el escenario"
-                  tooltip="Número total de puntos de fijación detectados"
+                  description="Total en el escenario"
                   Icon={Hash}
                   loading={fixLoading}
                   bgClass="bg-card"
@@ -184,9 +184,7 @@ export function HeatmapTab({
                   label="Fijación más larga"
                   value={fixData ? fixData.stats.max_duration_s * 1000 : null}
                   unit="ms"
-                  description="Duración de la fijación más prolongada"
-                  tooltip="Duración en milisegundos de la fijación más larga"
-                  Icon={Timer}
+                                    Icon={Timer}
                   loading={fixLoading}
                   bgClass="bg-card"
                   iconBgClass="bg-rose-100 dark:bg-rose-900/30"
@@ -198,9 +196,7 @@ export function HeatmapTab({
                   label="Duración media"
                   value={fixData ? fixData.stats.avg_duration_s * 1000 : null}
                   unit="ms"
-                  description="Promedio de duración por fijación"
-                  tooltip="Duración media de cada punto de fijación"
-                  Icon={Clock}
+                                    Icon={Clock}
                   loading={fixLoading}
                   bgClass="bg-card"
                   iconBgClass="bg-amber-100 dark:bg-amber-900/30"
@@ -282,13 +278,15 @@ export function HeatmapTab({
                         disabled={aois.length === 0 || aoiLoading}
                         count={aois.length}
                       />
-                      <Button aria-pressed={showPurple} size="sm" variant="selection"
-                        type="button"
-                        onClick={() => setShowPurple((p) => !p)}
-                        className=""
-                      >
-                        Filtro violeta
-                      </Button>
+                      <HintTooltip hint="Tiñe de violeta la imagen de fondo para que el mapa de calor destaque más.">
+                        <Button aria-pressed={showPurple} size="sm" variant="selection"
+                          type="button"
+                          onClick={() => setShowPurple((p) => !p)}
+                          className=""
+                        >
+                          Filtro violeta
+                        </Button>
+                      </HintTooltip>
                     </div>
                   </div>
                 </>

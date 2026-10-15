@@ -19,7 +19,7 @@ const bundle = browserBundle(`
   ProjectsApi.uploadZipWithProgress = (id, file, onProgress, signal, selection, geometry, placements, uploadId) =>
     new Promise((resolve, reject) => {
       state.uploads.push({ id, file, onProgress, signal, selection, uploadId, resolve, reject });
-      signal.addEventListener('abort', () => reject(new Error('Subida cancelada por el usuario.')), { once: true });
+      signal.addEventListener('abort', () => reject(new Error('Subida cancelada.')), { once: true });
     });
   ProjectsApi.setSensors = async (id, sensors) => { state.metadata.push({ id, sensors }); };
   ProjectsApi.setParticipants = async (id, participants) => { state.metadata.push({ id, participants }); };
@@ -125,7 +125,7 @@ test("a failed replacement never deletes a resumed draft or its existing demogra
   await page.evaluate(() => window.uploadTest.uploads[0].reject(new Error("Drive failed")))
   await waitIdle(page)
   assert.deepEqual(await page.evaluate(() => window.uploadTest.deletes), [])
-  assert.deepEqual(await page.evaluate(() => window.uploadTest.current.formData.participants), [{ id: "P01", age: "34", sex: "female" }])
+  assert.deepEqual(await page.evaluate(() => window.uploadTest.current.formData.participants), [{ id: "P01", age: "34", sex: "female", name: "", document: "P01" }])
 })
 
 test("polling is serial, scoped, and cannot revive progress after cancellation", async (t) => {

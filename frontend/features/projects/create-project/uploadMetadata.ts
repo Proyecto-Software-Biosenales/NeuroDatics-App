@@ -1,5 +1,5 @@
 import type { UploadedProjectZip } from "../types";
-import type { ParticipantData, SensorType } from "./types";
+import { newParticipantData, type ParticipantData, type SensorType } from "./types";
 
 export function detectedUploadMetadata(upload: UploadedProjectZip, previous: ParticipantData[]) {
   const existing = new Map(previous.map((participant) => [participant.id, participant]));
@@ -11,7 +11,7 @@ export function detectedUploadMetadata(upload: UploadedProjectZip, previous: Par
       (sensor): sensor is SensorType => ["EEG", "GSR", "EyeTracker"].includes(sensor),
     ),
     participants: [...new Set(codes)].map((id): ParticipantData => (
-      existing.get(id) ?? { id, age: "", sex: null }
+      existing.get(id) ?? newParticipantData(id)
     )),
   };
 }

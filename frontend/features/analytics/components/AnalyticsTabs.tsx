@@ -1,12 +1,13 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { HintTooltip } from "@/components/HintTooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface AnalyticsTabsProps<T extends string> {
   value: T
   onValueChange: (value: T) => void
-  options: ReadonlyArray<{ key: T; label: string }>
+  options: ReadonlyArray<{ key: T; label: string; hint?: string }>
   label: string
   children: ReactNode
 }
@@ -18,7 +19,8 @@ export function AnalyticsTabs<T extends string>({ value, onValueChange, options,
         <TabsList variant="line" aria-label={label} className="h-auto min-h-10 justify-start py-0 group-data-horizontal/tabs:h-auto">
           {options.map((option) => (
             <TabsTrigger key={option.key} value={option.key} className="h-auto flex-none px-3 py-2 after:bottom-0 roomy:py-2.5">
-              {option.label}
+              {/* On the label, not the trigger: both Radix triggers write data-state. */}
+              <HintTooltip hint={option.hint}><span>{option.label}</span></HintTooltip>
             </TabsTrigger>
           ))}
         </TabsList>

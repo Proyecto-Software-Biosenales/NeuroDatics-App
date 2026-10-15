@@ -203,6 +203,6 @@ test("report participant selection remains operable inside its radio label", asy
 test("report loading state shows its placeholder and disables selection", async (t) => {
   const page = await fixture(t, "report", true)
   const trigger = page.locator('[data-slot="select-trigger"]')
-  await expect(trigger).toContainText("Cargando...")
+  await expect(trigger).toContainText("Cargando…")
   await expect(trigger).toBeDisabled()
 })

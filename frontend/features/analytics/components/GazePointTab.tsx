@@ -183,10 +183,10 @@ export function GazePointTab({
   }, [chartData])
   const chartLegend = [
     ...(viewMode === "both" || viewMode === "x"
-      ? [{ label: "Gaze X (%) filtrado", color: "#818CF8" }]
+      ? [{ label: "Mirada X (%)", color: "#818CF8" }]
       : []),
     ...(viewMode === "both" || viewMode === "y"
-      ? [{ label: "Gaze Y (%) filtrado", color: "#22C55E" }]
+      ? [{ label: "Mirada Y (%)", color: "#22C55E" }]
       : []),
   ]
 
@@ -234,7 +234,7 @@ export function GazePointTab({
 
   const tableRows = useMemo<StatRow[]>(() => {
     const gazeXRow: StatRow = {
-      serie: "Gaze X",
+      serie: "Mirada X",
       count: chartData.length > 0 ? chartData.length : null,
       baseline: stats?.gx_baseline ?? null,
       std: stats?.gx_std ?? null,
@@ -249,7 +249,7 @@ export function GazePointTab({
           : null,
     }
     const gazeYRow: StatRow = {
-      serie: "Gaze Y",
+      serie: "Mirada Y",
       count: chartData.length > 0 ? chartData.length : null,
       baseline: stats?.gy_baseline ?? null,
       std: stats?.gy_std ?? null,
@@ -338,7 +338,7 @@ export function GazePointTab({
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1 basis-72">
-            <CardTitle className="text-xl">Gaze point</CardTitle>
+            <CardTitle className="text-xl">Punto de mirada</CardTitle>
             <CardDescription>
               Posición de la mirada en pantalla (%) a lo largo del tiempo.
             </CardDescription>
@@ -346,9 +346,9 @@ export function GazePointTab({
 
           <div className="flex max-w-full flex-wrap items-center gap-2">
             <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
-                { key: "both", label: "Ambos ejes" },
-                { key: "x", label: "Eje X" },
-                { key: "y", label: "Eje Y" },
+                { key: "both", label: "Ambos ejes", hint: "Posición horizontal y vertical de la mirada juntas." },
+                { key: "x", label: "Eje X", hint: "Solo la posición horizontal de la mirada (izquierda y derecha)." },
+                { key: "y", label: "Eje Y", hint: "Solo la posición vertical de la mirada (arriba y abajo)." },
               ]} />
             <TimeWindowControls
               draftStart={windowState.draft.start}
@@ -368,7 +368,7 @@ export function GazePointTab({
             <CompareParticipantsButton
               spec={() => ({
                 kind: "gaze",
-                title: "Gaze point",
+                title: "Punto de mirada",
                 scenario,
                 sourceParticipant: participantCode,
                 origin: "individual",
@@ -384,8 +384,7 @@ export function GazePointTab({
               {
                 label: "Media",
                 value: stats?.gx_mean,
-                description: "Promedio gaze X",
-                tooltip: "Promedio de la posición de gaze en el eje X",
+                description: "Mirada X",
                 Icon: Activity,
                 unit: "%",
                 iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
@@ -399,8 +398,7 @@ export function GazePointTab({
               {
                 label: "Mínimo",
                 value: stats?.gx_min,
-                description: "Valor más bajo registrado",
-                tooltip: "Valor mínimo registrado en la señal suavizada de gaze X",
+                tooltip: "En la señal suavizada de mirada X",
                 Icon: TrendingDown,
                 unit: "%",
                 iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
@@ -414,8 +412,7 @@ export function GazePointTab({
               {
                 label: "Máximo",
                 value: stats?.gx_max,
-                description: "Pico de posición",
-                tooltip: "Valor máximo registrado en la señal suavizada de gaze X",
+                tooltip: "En la señal suavizada de mirada X",
                 Icon: TrendingUp,
                 unit: "%",
                 iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
@@ -435,7 +432,7 @@ export function GazePointTab({
             <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
           ) : chartData.length === 0 ? (
             <div className="analytics-state-frame flex items-center justify-center text-sm text-muted-foreground">
-              No hay datos de gaze para los filtros seleccionados.
+              No hay datos de mirada para los filtros seleccionados.
             </div>
           ) : (
             <AnalyticsChartShell
@@ -494,7 +491,7 @@ export function GazePointTab({
                   <Line
                     type="monotone"
                     dataKey="gx_clean"
-                    name="Gaze X (%) filtrado"
+                    name="Mirada X (%)"
                     stroke="#818CF8"
                     strokeWidth={1.5}
                     dot={false}
@@ -505,7 +502,7 @@ export function GazePointTab({
                   <Line
                     type="monotone"
                     dataKey="gy_clean"
-                    name="Gaze Y (%) filtrado"
+                    name="Mirada Y (%)"
                     stroke="#22C55E"
                     strokeWidth={1.5}
                     dot={false}
@@ -532,7 +529,7 @@ export function GazePointTab({
               )}
             </div>
             <CardDescription>
-              Ubicación del punto de dilatación pupilar durante la visualización del estímulo.
+              Dónde miraba el participante en el instante seleccionado.
             </CardDescription>
           </div>
           {gazeData && (
@@ -711,7 +708,7 @@ export function GazePointTab({
               <div>
                 <p className="text-base font-medium text-slate-900 dark:text-slate-100">Punto de atención</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">
-                  El indicador de alto contraste marca la ubicación exacta donde se registró la posición de gaze en el segundo {Math.round(gazeData.nearest_time_s)} de la visualización.
+                  Mirada en el segundo {Math.round(gazeData.nearest_time_s)}.
                   {currentAoi ? ` Cae dentro del AOI "${currentAoi.name}".` : aois.length > 0 ? " No cae dentro de un AOI delimitado." : ""}
                 </p>
               </div>
@@ -725,7 +722,7 @@ export function GazePointTab({
         <CardHeader>
           <CardTitle className="text-lg">Estadísticas</CardTitle>
           <CardDescription>
-            Resumen numérico de la señal de gaze suavizada: posición, variabilidad y extremos.
+            Resumen numérico de la señal de mirada suavizada: posición, variabilidad y extremos.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">

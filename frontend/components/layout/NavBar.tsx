@@ -24,7 +24,7 @@ const navItems: NavItem[] = [
   { path: '/', label: 'Inicio', protected: false },
   { path: '/proyectos', label: 'Proyectos', protected: true },
   { path: '/dashboard', label: 'Dashboard', protected: true },
-  { path: '/reportes', label: 'Reportes', protected: true },
+  { path: '/reportes', label: 'Informes', protected: true },
 ]
 
 export const NavBar = () => {
@@ -36,7 +36,7 @@ export const NavBar = () => {
   const handleProtectedNavigation = (event: React.MouseEvent<HTMLAnchorElement>, item: NavItem) => {
     if (item.protected && !currentUser) {
       event.preventDefault()
-      toast.error('Debes iniciar sesion para acceder a esta seccion.')
+      toast.error('Inicia sesión para acceder a esta sección.')
       router.push('/login')
     }
   }
@@ -51,11 +51,11 @@ export const NavBar = () => {
   const handleSignOut = async () => {
     try {
       await signOut()
-      toast.success('Sesion cerrada correctamente.')
+      toast.success('Sesión cerrada.')
       router.push('/')
       router.refresh()
     } catch {
-      toast.error('No se pudo cerrar sesion.')
+      toast.error('No se pudo cerrar la sesión.')
     }
   }
 
@@ -67,7 +67,7 @@ export const NavBar = () => {
             <Link href="/" className="group flex shrink-0 items-center gap-3">
               <Image
                 src="/assets/NeuroDatics-logo.png"
-                alt="NeuroDatics Logo"
+                alt="Logotipo de NeuroDatics"
                 width={30}
                 height={32}
                 className="h-8 w-auto transition-transform group-hover:scale-105 2xl:h-10"

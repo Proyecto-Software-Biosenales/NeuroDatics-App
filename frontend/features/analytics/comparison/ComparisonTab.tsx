@@ -446,7 +446,7 @@ function ComparisonWorkspace({
       case "gaze":
         return renderTemporalPanel(
           "gaze",
-          "Posicion (%)",
+          "Posición (%)",
           pointPinningEnabled ? (point) => pinEyePoint("gaze", point) : undefined,
           pointInteractionHint
         )

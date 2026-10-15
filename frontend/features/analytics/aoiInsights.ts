@@ -448,7 +448,7 @@ export function deriveKeyEvents(
       const aoi = locate(gx, gy)
       events.push({
         id: `${metric}_${kind}_fallback`,
-        label: `${labelBase} ${kind === "min" ? "minimo" : "maximo"}`,
+        label: `${labelBase} ${kind === "min" ? "mínimo" : "máximo"}`,
         metric,
         kind,
         value: values[index] as number,
@@ -474,9 +474,9 @@ export function deriveKeyEvents(
     return null
   }) ?? []
 
-  addExtrema("pupil", "Dilatacion pupilar", "mm", pupil?.time, pupilValues, (_index, timeS) => nearestGaze(timeS))
-  addExtrema("gaze_x", "Gaze X", "%", gaze?.time, gaze?.gx_clean ?? [], (index) => gazeAt(index), gazeValid)
-  addExtrema("gaze_y", "Gaze Y", "%", gaze?.time, gaze?.gy_clean ?? [], (index) => gazeAt(index), gazeValid)
+  addExtrema("pupil", "Dilatación pupilar", "mm", pupil?.time, pupilValues, (_index, timeS) => nearestGaze(timeS))
+  addExtrema("gaze_x", "Mirada X", "%", gaze?.time, gaze?.gx_clean ?? [], (index) => gazeAt(index), gazeValid)
+  addExtrema("gaze_y", "Mirada Y", "%", gaze?.time, gaze?.gy_clean ?? [], (index) => gazeAt(index), gazeValid)
   addExtrema("distance", "Distancia", "cm", distance?.time, distance?.distance_cm ?? [], (_index, timeS) => nearestGaze(timeS))
   return events
 }

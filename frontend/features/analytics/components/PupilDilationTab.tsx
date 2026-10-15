@@ -591,7 +591,7 @@ export function PupilDilationTab({
               {
                 label: "Media",
                 value: activeStats?.mean,
-                description: `Promedio ${activeModeLabel}`,
+                description: `${activeModeLabel.charAt(0).toUpperCase()}${activeModeLabel.slice(1)}`,
                 tooltip: "Promedio del diámetro pupilar en el intervalo visualizado",
                 tooltipExtra: activeStats?.raw_mean != null ? `Valor real: ${activeStats.raw_mean.toFixed(4)} mm` : undefined,
                 Icon: Activity,
@@ -606,8 +606,7 @@ export function PupilDilationTab({
               {
                 label: "Mínimo",
                 value: activeStats?.min,
-                description: "Valor más bajo registrado",
-                tooltip: "Valor mínimo registrado en la señal suavizada",
+                tooltip: "En la señal suavizada",
                 tooltipExtra: activeStats?.raw_min != null ? `Valor real: ${activeStats.raw_min.toFixed(4)} mm` : undefined,
                 Icon: TrendingDown,
                 iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
@@ -621,8 +620,7 @@ export function PupilDilationTab({
               {
                 label: "Máximo",
                 value: activeStats?.max,
-                description: "Pico de dilatación",
-                tooltip: "Valor máximo o pico de dilatación registrado",
+                tooltip: "En la señal suavizada",
                 tooltipExtra: activeStats?.raw_max != null ? `Valor real: ${activeStats.raw_max.toFixed(4)} mm` : undefined,
                 Icon: TrendingUp,
                 iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
@@ -880,7 +878,7 @@ export function PupilDilationTab({
               ) : (
                 <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
                   {isVideoScenario
-                    ? "No se pudo cargar el frame del video."
+                    ? "No se pudo cargar el fotograma del vídeo."
                     : scenarioPreviewError || "No se pudo cargar la imagen del escenario."}
                 </div>
               )}
@@ -899,8 +897,8 @@ export function PupilDilationTab({
                 <p className="text-base font-medium text-slate-900 dark:text-slate-100">Punto de atención</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">
                   {selectedValue != null
-                    ? `El indicador de alto contraste marca la ubicación exacta donde se registró la dilatación pupilar (${selectedValue.toFixed(2)} mm) en el segundo ${Math.round(gazeData.nearest_time_s)} de la visualización.`
-                    : "El indicador de alto contraste marca la ubicación exacta donde se registró la fijación en el instante seleccionado sobre el estímulo visual."}
+                    ? `Mirada en el segundo ${Math.round(gazeData.nearest_time_s)} · ${selectedValue.toFixed(2)} mm`
+                    : "Mirada en el instante seleccionado."}
                   {aoiStatusText}
                 </p>
               </div>

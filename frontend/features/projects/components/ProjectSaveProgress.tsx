@@ -59,7 +59,7 @@ export function ProjectSaveProgress({ zipUploadPercent, zipUploadBytes, zipUploa
                           <p>{formatBytesToMB(zipUploadBytes.total)}</p>
                       </div>
                       <div className="text-right font-medium text-foreground">
-                        {formatBytesToMB(zipUploadBytes.loaded)} transferidos
+                        {formatBytesToMB(zipUploadBytes.loaded)} enviados
                       </div>
                     </div>
                   )}
@@ -73,7 +73,7 @@ export function ProjectSaveProgress({ zipUploadPercent, zipUploadBytes, zipUploa
                       <div>
                         <p className="text-muted-foreground text-xs mb-1">VELOCIDAD</p>
                         <p className="font-semibold text-foreground">
-                          {zipUploadSpeedMbps !== null ? `${zipUploadSpeedMbps.toFixed(1)} MB/s` : "calculando..."}
+                          {zipUploadSpeedMbps !== null ? `${zipUploadSpeedMbps.toFixed(1)} MB/s` : "calculando…"}
                         </p>
                       </div>
                     </div>

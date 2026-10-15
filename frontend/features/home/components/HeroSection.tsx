@@ -10,7 +10,7 @@ export const HeroSection = () => {
       <div className="mb-4 flex justify-center">
         <Image
           src="/assets/NeuroDatics-logo.png"
-          alt="NeuroDatics Logo"
+          alt="Logotipo de NeuroDatics"
           width={96}
           height={96}
           className="h-20 w-auto transition-transform hover:scale-105 2xl:h-24"
@@ -22,12 +22,8 @@ export const HeroSection = () => {
       </h1>
 
       <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-foreground/70">
-        Desarrollamos profesional para el análisis de bioseñales en
-        neuromarketing,
-        <br />
-        acción atención, activación emocional y componentes visual mediante
-        <br />
-        electroencefalografo, sensor galvánico y eye tracking.
+        Analiza la atención visual y la respuesta fisiológica en estudios de
+        neuromarketing con EEG, sensor galvánico y eye tracker.
       </p>
 
       <Button className="bg-foreground px-8 py-5 text-sm font-medium text-background transition-colors duration-200 hover:bg-foreground/90">
@@ -48,9 +44,8 @@ export const HeroSection = () => {
               Tutorial de introducción
             </h3>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Aprende cómo crear proyectos, cargar datos de sensores, visualizar
-              métricas de bioseñales y generar reportes profesionales en pocos
-              minutos.
+              Crea un proyecto, sube los datos de los sensores, revisa los
+              resultados y genera los informes.
             </p>
           </div>
         </div>

@@ -143,7 +143,7 @@ export function getPreviewFailureMessage(
   previewError: string | null
 ): string {
   return String(gaze.scenario_type ?? "").toLowerCase() === "video"
-    ? "No se pudo cargar el frame del video."
+    ? "No se pudo cargar el fotograma del vídeo."
     : previewError || "No se pudo cargar la imagen del escenario."
 }
 

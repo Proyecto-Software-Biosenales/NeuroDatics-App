@@ -163,7 +163,6 @@ export function EegSpectrogramView({
                 value={spectrogramRepresentativeStats.maxPower}
                 unit={spectrogramData?.unit ?? "dB"}
                 decimals={4}
-                description="Mayor valor visible"
                 Icon={TrendingUp}
                 loading={spectrogramLoading}
                 onClick={spectrogramPeak ? () => setSelectedTime(spectrogramPeak.peakTime) : undefined}
@@ -179,7 +178,6 @@ export function EegSpectrogramView({
                 value={spectrogramRepresentativeStats.meanPower}
                 unit={spectrogramData?.unit ?? "dB"}
                 decimals={4}
-                description="Promedio de la matriz visible"
                 Icon={Activity}
                 loading={spectrogramLoading}
                 iconBgClass="bg-emerald-100 dark:bg-emerald-900/40"
@@ -361,7 +359,6 @@ export function EegSpectrogramView({
           totalDurationS={spectrogramData?.time[spectrogramData.time.length - 1] ?? null}
           description="Ubicación de la mirada del participante durante el instante seleccionado del espectrograma."
           emptyText="Haz clic en un espectrograma o en Nivel máximo para ver la mirada del participante"
-          metricDescription="la potencia EEG del espectrograma"
           onClearSelection={() => setSelectedTime(null)}
         />
       ) : null}

@@ -30,6 +30,10 @@ async function mockConnection(page: Page, state: { connection: Connection; statu
       })
       return
     }
+    if (path === "/api/settings/screen") {
+      await route.fulfill({ json: { screen: { width_px: 1280, height_px: 1024, width_cm: null, height_cm: null }, confirmed: true } })
+      return
+    }
     await route.fulfill({ json: [] })
   })
   await page.context().route("https://accounts.google.com/**", route => route.fulfill({

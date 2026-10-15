@@ -1,9 +1,10 @@
 "use client"
-import type { ReactNode } from "react"
+import { useId, type ReactNode } from "react"
 import { Monitor, NotebookPen, Ruler } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { FieldHint } from "@/components/FieldHint"
 import type { PreExperimentConfig } from "./types"
 
 type Measure = keyof Omit<PreExperimentConfig["screen"], "model" | "notes">
@@ -11,31 +12,27 @@ type Measure = keyof Omit<PreExperimentConfig["screen"], "model" | "notes">
 function Group({
   icon,
   title,
-  hint,
   children,
 }: {
   icon: ReactNode
   title: string
-  hint: string
   children: ReactNode
 }) {
   return (
     <section className="space-y-3 rounded-xl border bg-card p-4">
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted [&_svg]:size-4">
           {icon}
         </div>
-        <div>
-          <h4 className="text-sm font-medium">{title}</h4>
-          <p className="text-xs text-muted-foreground">{hint}</p>
-        </div>
+        <h4 className="text-sm font-medium">{title}</h4>
       </div>
       {children}
     </section>
   )
 }
 
-/** Screen geometry and free-form experiment notes; every field is optional. */
+/** Screen geometry and free-form experiment notes; every field is optional.
+ *  The measures start from Configuración (`withScreenDefaults`). */
 export function PlanningScreen({
   value,
   onChange,
@@ -43,13 +40,19 @@ export function PlanningScreen({
   value: PreExperimentConfig
   onChange: (value: PreExperimentConfig) => void
 }) {
+  const baseId = useId()
   const setScreen = (change: Partial<PreExperimentConfig["screen"]>) =>
     onChange({ ...value, screen: { ...value.screen, ...change } })
-  const measure = (key: Measure, label: string, unit: string) => (
-    <Label key={key} className="block space-y-1.5 text-sm">
-      <span>{label}</span>
+  const measure = (key: Measure, label: string, unit: string, hint?: string) => (
+    <div key={key} className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <Label htmlFor={`${baseId}-${key}`}>{label}</Label>
+        {hint && <FieldHint id={`${baseId}-${key}-ayuda`}>{hint}</FieldHint>}
+      </div>
       <div className="relative">
         <Input
+          id={`${baseId}-${key}`}
+          aria-describedby={hint ? `${baseId}-${key}-ayuda` : undefined}
           type="number"
           min={key.endsWith("_px") ? 1 : 0.01}
           step={key.endsWith("_px") ? 1 : "any"}
@@ -68,20 +71,18 @@ export function PlanningScreen({
           {unit}
         </span>
       </div>
-    </Label>
+    </div>
   )
   return (
     <div className="space-y-4">
       <Group
         icon={<Monitor aria-hidden />}
         title="Pantalla"
-        hint="Modelo y resolución del monitor donde se presentan los estímulos."
       >
         <Label className="block space-y-1.5 text-sm">
           <span>Modelo de pantalla</span>
           <Input
             value={value.screen.model}
-            placeholder="Ej: Dell P2419H"
             onChange={(event) => setScreen({ model: event.target.value })}
           />
         </Label>
@@ -93,18 +94,21 @@ export function PlanningScreen({
       <Group
         icon={<Ruler aria-hidden />}
         title="Medidas físicas"
-        hint="Tamaño visible de la pantalla y distancia a la que se sienta el participante."
       >
         <div className="grid items-end gap-3 sm:grid-cols-3">
           {measure("width_cm", "Ancho (cm)", "cm")}
           {measure("height_cm", "Alto (cm)", "cm")}
-          {measure("viewing_distance_cm", "Distancia a la pantalla (cm)", "cm")}
+          {measure(
+            "viewing_distance_cm",
+            "Distancia a la pantalla (cm)",
+            "cm",
+            "Solo se usa si falla el registro de distancia del eye tracker, que es más preciso."
+          )}
         </div>
       </Group>
       <Group
         icon={<NotebookPen aria-hidden />}
         title="Notas"
-        hint="Cualquier detalle que quieras recordar al analizar los datos."
       >
         <Label className="block space-y-1.5 text-sm">
           <span>Notas de pantalla</span>

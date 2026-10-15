@@ -182,7 +182,7 @@ export const analyzeFolderStructure = (
  */
 export const getBlockingStructureError = (structure: FolderStructure): string | null => {
   if (structure.csvPaths.length === 0) {
-    return "La carpeta debe contener al menos un archivo .csv con los datos del experimento"
+    return "La carpeta debe contener al menos un archivo .csv con los datos del experimento."
   }
   return null
 }
@@ -198,7 +198,7 @@ export const buildStructureQuestions = (
       code: "multiple_csv",
       field: "selectedCsvPath",
       kind: "choice",
-      message: `La carpeta contiene ${structure.csvPaths.length} archivos .csv. Selecciona cuál debe procesar la aplicación.`,
+      message: `La carpeta contiene ${structure.csvPaths.length} archivos .csv. Elige cuál usar.`,
       options: structure.csvPaths,
     })
   }
@@ -218,7 +218,7 @@ export const buildStructureQuestions = (
       code: "multiple_images_folders",
       field: "selectedImagesFolder",
       kind: "choice",
-      message: `La carpeta contiene ${structure.imagesFolders.length} subcarpetas 'Images'. Selecciona cuál debe procesar la aplicación.`,
+      message: `La carpeta contiene ${structure.imagesFolders.length} subcarpetas 'Images'. Elige cuál usar.`,
       options: structure.imagesFolders,
     })
   }
@@ -238,7 +238,7 @@ export const buildStructureQuestions = (
       code: "multiple_videos_folders",
       field: "selectedVideosFolder",
       kind: "choice",
-      message: `La carpeta contiene ${structure.videosFolders.length} subcarpetas 'Videos'. Selecciona cuál debe procesar la aplicación.`,
+      message: `La carpeta contiene ${structure.videosFolders.length} subcarpetas 'Videos'. Elige cuál usar.`,
       options: structure.videosFolders,
     })
   }
@@ -248,7 +248,7 @@ export const buildStructureQuestions = (
       code: "multiple_acquisition_folders",
       field: "selectedAcquisitionFolder",
       kind: "choice",
-      message: `La carpeta contiene ${structure.acquisitionFolders.length} subcarpetas 'Acquisition'. Selecciona cuál debe usarse como referencia.`,
+      message: `La carpeta contiene ${structure.acquisitionFolders.length} subcarpetas 'Acquisition'. Elige cuál usar como referencia.`,
       options: structure.acquisitionFolders,
     })
   }

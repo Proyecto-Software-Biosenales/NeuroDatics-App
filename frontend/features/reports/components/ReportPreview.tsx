@@ -49,7 +49,7 @@ export const ReportPreview = ({
           <p className="mt-1 text-sm text-muted-foreground">
             {scope} · {scenarioCount} {scenarioCount === 1 ? "escenario" : "escenarios"}
             {omittedVideoScenarios > 0
-              ? ` · se ${omittedVideoScenarios === 1 ? "omite 1 escenario" : `omiten ${omittedVideoScenarios} escenarios`} de video`
+              ? ` · se ${omittedVideoScenarios === 1 ? "omite 1 escenario" : `omiten ${omittedVideoScenarios} escenarios`} de vídeo`
               : ""}
           </p>
         </div>

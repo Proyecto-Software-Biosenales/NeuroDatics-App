@@ -26,12 +26,14 @@ import {
   isConcreteScenario,
   KIND_INFO,
   orderParticipants,
+  participantDisplay,
   sourceTimeBasis,
   specMinFixationDuration,
   specRestriction,
   specWindow,
   withMinFixationDuration,
   type ParticipantComparisonSpec,
+  type ParticipantLabels,
   type ZoomRange,
 } from "./spec"
 import { toStimulusTime, transferWindow, type ScenarioTiming, type WindowTransfer } from "./timeAlignment"
@@ -42,6 +44,7 @@ export interface ParticipantComparisonDialogProps {
   projectId: string
   generation: number | null
   participantCodes: string[]
+  participantLabels?: ParticipantLabels
   spec: ParticipantComparisonSpec
   returnFocus: HTMLElement | null
   scrollSnapshot: Array<{ element: Element; top: number; left: number }>
@@ -69,6 +72,7 @@ function scenarioLabel(scenario: string) {
 export default function ParticipantComparisonDialog({
   projectId,
   participantCodes,
+  participantLabels,
   spec: sourceSpec,
   returnFocus,
   scrollSnapshot,
@@ -306,6 +310,7 @@ export default function ParticipantComparisonDialog({
               ) : null}
               <ParticipantSelector
                 participants={participants}
+                labels={participantLabels}
                 selected={selected}
                 sourceParticipant={spec.sourceParticipant}
                 onChange={changeSelection}
@@ -315,8 +320,8 @@ export default function ParticipantComparisonDialog({
                   value={scaleMode}
                   onValueChange={setScaleMode}
                   options={[
-                    { key: "common", label: "Escala común" },
-                    { key: "independent", label: "Escalas propias" },
+                    { key: "common", label: "Escala común", hint: "Todas las gráficas usan el mismo rango vertical, así sus valores se comparan directamente." },
+                    { key: "independent", label: "Escalas propias", hint: "Cada gráfica ajusta su rango vertical a sus datos: se ve mejor la forma, pero las alturas no se comparan entre gráficas." },
                   ]}
                 />
               ) : null}
@@ -345,6 +350,7 @@ export default function ParticipantComparisonDialog({
                     <div role="listitem" key={code} className="min-w-0">
                       <ParticipantCard
                         participant={code}
+                        label={participantDisplay(code, participantLabels)}
                         index={index}
                         isSource={code === spec.sourceParticipant}
                         projectId={projectId}
@@ -376,7 +382,7 @@ export default function ParticipantComparisonDialog({
                     Escenario: <strong className="font-medium text-foreground">{scenarioLabel(spec.scenario)}</strong>
                   </span>
                   <span>{info.label}</span>
-                  {spec.sourceParticipant ? <span>Vista de origen: Participante {spec.sourceParticipant}</span> : null}
+                  {spec.sourceParticipant ? <span>Vista de origen: {participantDisplay(spec.sourceParticipant, participantLabels)}</span> : null}
                   {minFixation != null ? <span className="tabular-nums">Duración mínima de fijación: {minFixation} ms</span> : null}
                   <span className="tabular-nums" data-testid="participant-comparison-counter">
                     {selectedList.length} de {participants.length} participantes

@@ -490,7 +490,7 @@ export function TopographyPanel({
             top: Math.max(8, hover.y - 74),
           }}
         >
-          <p className="font-semibold">Topografia EEG</p>
+          <p className="font-semibold">Topografía EEG</p>
           <p>
             Potencia: {hover.value.toFixed(4)} {unit}
           </p>

@@ -48,7 +48,7 @@ function createAttempt(isCurrent: () => boolean) {
     isCurrent,
     assertActive() {
       if (!isCurrent() || controller.signal.aborted) {
-        throw new Error("Subida cancelada por el usuario.");
+        throw new Error("Subida cancelada.");
       }
     },
     markRequestStarted(value: string) { projectId = value; },

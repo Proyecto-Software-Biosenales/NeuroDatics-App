@@ -5,9 +5,16 @@ import type {
   ProjectFormData,
   SensorType,
   ParticipantData,
+  ParticipantField,
   FixationScreenGeometryInput,
 } from "./types";
-import { createEmptyFixationScreenGeometry } from "./types";
+import {
+  createEmptyFixationScreenGeometry,
+  participantDataFromApi,
+  participantToApi,
+  resolveFixationGeometry,
+} from "./types";
+import { useScreenSettings } from "@/features/settings/screenSettings";
 import type { Project } from "@/features/projects/types";
 import { ProjectsApi, asUploadClarification, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
 import { apiAoiToFormAoi, serializeScenaryAois } from "./aoiUtils";
@@ -105,6 +112,7 @@ export const useCreateProjectWizard = (
   onProjectCreated?: (project: Project) => void,
   onStep1Complete?: () => void,
 ) => {
+  const savedScreen = useScreenSettings()?.screen ?? null;
   const [currentStep, setCurrentStep] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
@@ -215,13 +223,7 @@ export const useCreateProjectWizard = (
     setFolderSelection(selection);
   }
 
-  const normalizeParticipants = (participants: ParticipantData[]) => {
-    return participants.map(p => ({
-      participant_code: p.id,
-      age: p.age && !isNaN(Number(p.age)) ? Number(p.age) : null,
-      sex: ["male", "female", "other"].includes(p.sex || "") ? p.sex : null
-    }))
-  }
+  const normalizeParticipants = (participants: ParticipantData[]) => participants.map(participantToApi)
 
   const hasValidParticipants = () => {
     if (formData.participants.length === 0) return false
@@ -241,7 +243,7 @@ export const useCreateProjectWizard = (
     }));
   };
 
-  const updateParticipant = (id: string, field: "sex" | "age", value: string) => {
+  const updateParticipant = (id: string, field: ParticipantField, value: string) => {
     setFormData(prev => ({
       ...prev,
       participants: prev.participants.map(p => (p.id === id ? { ...p, [field]: value } : p)),
@@ -264,7 +266,6 @@ export const useCreateProjectWizard = (
       geometry.heightPx,
       geometry.widthCm,
       geometry.heightCm,
-      geometry.viewingDistanceCm,
     ].every((value) => Number.isFinite(Number(value)) && Number(value) > 0);
     const placementsAreValid = formData.stimulusPlacements.every(
       isStimulusPlacementDraftValid,
@@ -301,7 +302,7 @@ export const useCreateProjectWizard = (
     setIsSaving(true);
     setSaveError(null);
     setSaveNotice(null);
-    setSaveProgressMessage("Creando proyecto borrador...");
+    setSaveProgressMessage("Creando el proyecto…");
 
     let projectIdForUpload = draftProjectId;
     let uploadCommitted = formData.uploadedZip?.ingestion_status === "READY";
@@ -332,7 +333,7 @@ export const useCreateProjectWizard = (
       attempt.assertActive();
       let uploadedZipResult = uploadCommitted ? formData.uploadedZip! : null;
       if (!uploadedZipResult) {
-        updateProgress("Empaquetando carpeta del experimento...");
+        updateProgress("Preparando la carpeta…");
         const zipFile = await packageExperimentFolder(formData.experimentFolderFiles, attempt.signal);
         attempt.assertActive();
 
@@ -356,7 +357,7 @@ export const useCreateProjectWizard = (
         setZipUploadSpeedMbps(null);
         setZipUploadEtaSeconds(null);
         setZipDriveProcessingSeconds(null);
-        updateProgress("Enviando experimento al backend...");
+        updateProgress("Subiendo datos del experimento…");
         setIsZipUploadInProgress(true);
 
         attempt.startPolling(projectIdForUpload, (snapshot) => {
@@ -376,11 +377,11 @@ export const useCreateProjectWizard = (
           setZipUploadEtaSeconds(etaSeconds);
           setZipDriveProcessingSeconds(snapshot.elapsed_seconds ?? 0);
           if (snapshot.phase === "canceling") {
-            updateProgress("Cancelando subida en backend...");
+            updateProgress("Cancelando la subida…");
           } else if (percent >= 99 && snapshot.phase !== "completed") {
             updateProgress(storageCopy.finalizingSync);
           } else {
-            toast.loading(`Procesando archivos de ${formData.projectName} - ${percent}%`, {
+            toast.loading(`Procesando archivos de «${formData.projectName}» · ${percent}%`, {
               id: STEP1_LOADING_TOAST_ID,
               position: "bottom-center",
               duration: Infinity,
@@ -397,7 +398,7 @@ export const useCreateProjectWizard = (
           (progress) => {
             if (!attempt.isCurrent() || attempt.signal.aborted) return;
             if (progress.phase === "uploading") {
-              updateProgress(`Enviando experimento al backend... ${progress.percent}%`);
+              updateProgress(`Subiendo datos del experimento… ${progress.percent}%`);
               return;
             }
 
@@ -408,7 +409,7 @@ export const useCreateProjectWizard = (
           },
           attempt.signal,
           folderSelection,
-          formData.fixationGeometry,
+          resolveFixationGeometry(formData.fixationGeometry, savedScreen),
           serializeStimulusPlacements(formData.stimulusPlacements),
           attempt.id,
         );
@@ -416,7 +417,7 @@ export const useCreateProjectWizard = (
         attempt.markRequestCompleted();
         if (!attempt.isCurrent()) return;
         if (uploadedZipResult.ingestion_status !== "READY") {
-          throw new Error("La ingesta no se completó en backend. Verifica estructura y contenido.");
+          throw new Error("No se pudieron procesar los datos. Revisa la carpeta.");
         }
         uploadCommitted = true;
         setFormData((prev) => ({ ...prev, uploadedZip: uploadedZipResult }));
@@ -440,7 +441,7 @@ export const useCreateProjectWizard = (
       if (!attempt.isCurrent()) return;
       setCurrentStep(2);
       setSaveProgressMessage(null);
-      setSaveNotice("Carpeta procesada correctamente. Puedes continuar con la configuración.");
+      setSaveNotice("Carpeta procesada.");
     } catch (error) {
       if (!attempt.isCurrent()) return;
       // A rejected request or a failed follow-up read never proves that the
@@ -461,7 +462,7 @@ export const useCreateProjectWizard = (
         return;
       }
 
-      const rawErrorMessage = getErrorMessage(error, "Error procesando carpeta");
+      const rawErrorMessage = getErrorMessage(error, "No se pudo procesar la carpeta.");
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
         .replace(/^Error subiendo archivo:\s*/i, "");
@@ -478,7 +479,7 @@ export const useCreateProjectWizard = (
       );
 
       if (wasCanceled) {
-        setSaveNotice("Subida cancelada por el usuario.");
+        setSaveNotice("Subida cancelada.");
       }
 
     } finally {
@@ -636,11 +637,9 @@ export const useCreateProjectWizard = (
         .map((sensor) => sensor.sensor_type)
         .filter((sensorType): sensorType is SensorType => ["EEG", "GSR", "EyeTracker"].includes(sensorType));
 
-      const detectedParticipants: ParticipantData[] = (detail.participants || []).map((p) => ({
-        id: p.participant_code,
-        sex: (p.sex as ParticipantData["sex"] | null) ?? null,
-        age: p.age !== null && p.age !== undefined ? String(p.age) : "",
-      }));
+      const detectedParticipants: ParticipantData[] = (detail.participants || []).map((p) =>
+        participantDataFromApi(p, (p.sex as ParticipantData["sex"] | null) ?? null),
+      );
 
       const detectedScenaries = buildStep4ImageScenaries(detail);
 
@@ -684,7 +683,7 @@ export const useCreateProjectWizard = (
     }
 
     if (!draftProjectId) {
-      setSaveError("No hay un proyecto borrador para finalizar. Regresa al Paso 1 y procesa la carpeta.");
+      setSaveError("Primero sube y procesa la carpeta del experimento.");
       return;
     }
 
@@ -698,7 +697,7 @@ export const useCreateProjectWizard = (
     };
 
     try {
-      updateProgress("Guardando sensores y participantes...");
+      updateProgress("Guardando sensores y participantes…");
       if (formData.sensors.length > 0) {
         await ProjectsApi.setSensors(draftProjectId, formData.sensors as string[]);
       }
@@ -710,7 +709,7 @@ export const useCreateProjectWizard = (
 
       await ProjectsApi.setAois(draftProjectId, serializeScenaryAois(formData.scenaries));
 
-      updateProgress("Finalizando configuración del proyecto...");
+      updateProgress("Finalizando la configuración del proyecto…");
       await ProjectsApi.finalize(draftProjectId);
 
       const finalized = await ProjectsApi.get(draftProjectId);
@@ -730,13 +729,13 @@ export const useCreateProjectWizard = (
 
       onProjectCreated?.(newProject);
       setIsSaveCompleted(true);
-      setSaveProgressMessage("Proceso completado. Cerrando...");
+      setSaveProgressMessage("Listo. Cerrando…");
       await new Promise((resolve) => setTimeout(resolve, 900));
-      toast.success(`Proyecto "${finalized.name}" creado correctamente.`);
+      toast.success(`Proyecto «${finalized.name}» creado.`);
       setIsOpen(false);
       reset();
     } catch (e) {
-      const rawErrorMessage = getErrorMessage(e, "Error guardando proyecto");
+      const rawErrorMessage = getErrorMessage(e, "No se pudo guardar el proyecto.");
       const errorMessage = rawErrorMessage
         .replace(/^API\s*\d+\s*:\s*/i, "")
         .replace(/^Error subiendo archivo:\s*/i, "");
@@ -753,7 +752,7 @@ export const useCreateProjectWizard = (
         showSessionHint
           ? `${errorMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
           : (saveProgressMessage
-              ? `Error guardando proyecto. Paso fallido: ${saveProgressMessage}`
+              ? `No se pudo guardar el proyecto. Falló el paso: ${saveProgressMessage}`
               : errorMessage)
       );
       toast.error("No se pudo guardar el proyecto.");

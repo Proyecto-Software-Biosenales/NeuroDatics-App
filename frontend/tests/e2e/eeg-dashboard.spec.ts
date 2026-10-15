@@ -55,6 +55,18 @@ test("EEG views preserve channels, signal mode and independent time windows", as
   await expect(page.getByText("Estadísticas EEG por canal", { exact: true })).toBeVisible()
   await expect(page.getByLabel("Canales EEG").getByRole("button", { name: "F3", exact: true })).toBeEnabled()
   await expect(page.getByRole("button", { name: "Suavizada", exact: true })).toHaveAttribute("aria-pressed", "true")
+  // Modes, views and sensors explain themselves on hover without changing their look.
+  for (const [target, hint] of [
+    [page.getByRole("button", { name: "Suavizada", exact: true }), /promediada cada 0\.2 s/],
+    [page.getByRole("button", { name: "Montaje", exact: true }), /su propio carril/],
+    [page.getByRole("tab", { name: "Densidad espectral", exact: true }).locator("span"), /energía/],
+    [page.getByRole("button", { name: "Electroencefalógrafo", exact: true }), /actividad eléctrica del cerebro/],
+  ] as const) {
+    await target.hover()
+    await expect(page.getByRole("tooltip")).toHaveText(hint)
+    await page.mouse.move(0, 0)
+    await expect(page.getByRole("tooltip")).toHaveCount(0)
+  }
   await expect(page.getByText("Muestras EEG ausentes: revisar el registro.", {exact:true})).toBeVisible()
   await expect(page.getByRole("cell", {name:"1200",exact:true}).first()).toBeVisible()
   await expect(page.getByRole("columnheader", {name:"Base",exact:true})).toHaveCount(0)

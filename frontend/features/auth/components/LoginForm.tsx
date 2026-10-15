@@ -52,7 +52,7 @@ export function LoginForm() {
         <div className="space-y-2">
           <CardTitle>Acceder a NeuroDatics</CardTitle>
           <CardDescription className="text-balance text-muted-foreground">
-            Inicia sesión para gestionar tus proyectos y análisis de bioseñales.
+            Inicia sesión para gestionar tus proyectos.
           </CardDescription>
         </div>
       </CardHeader>

@@ -25,6 +25,7 @@ for (const view of views) {
       if (path.endsWith("/scenarios")) return route.fulfill({ json: ["Scene", "Empty", "Failure"].map((name) => ({ name, type: "image", file_id: null })) })
       if (path.endsWith("/gaze-at")) return route.fulfill({ json: { requested_time_s: 0, nearest_time_s: 0, scenario: "Instruction", gx: null, gy: null, scenario_file_id: null, scenario_type: null, scenario_time_s: 0 } })
       if (path.endsWith("/aois")) return route.fulfill({ json: { scenario: url.searchParams.get("scenario"), aois: [], transitions: [], total_fixations: 0, total_dwell_time_ms: 0, observed_aoi_dwell_time_ms: 0, observed_aoi_dwell_time_percent: 0 } })
+      if (path === "/api/settings/screen") return route.fulfill({ json: { screen: { width_px: 1280, height_px: 1024, width_cm: null, height_cm: null }, confirmed: true } })
       if (!path.endsWith("/eeg")) throw new Error(`Unexpected request: ${path}`)
       requests.push(url)
       if (url.searchParams.get("scenario") === "Failure") return route.fulfill({ status: 500, json: { detail: "Synthetic EEG failure" } })
@@ -75,7 +76,7 @@ for (const view of views) {
       expect(requests.map((url) => url.pathname)).toEqual([`/api/projects/active/analytics/${view.endpoint}/eeg`])
       expect(requests[0].searchParams.get("scenario")).toBe(scenario)
       if (scenario === "Empty") await expect(page.getByText(view.empty, { exact: true })).toBeVisible()
-      if (scenario === "Failure") await expect(page.getByText(view.endpoint === "timeseries" ? "No se pudo cargar la senal EEG." : view.endpoint === "psd" ? "No se pudo cargar la PSD de EEG." : view.endpoint === "spectrogram" ? "No se pudo cargar el espectrograma de EEG." : "No se pudo cargar la topografía EEG.", { exact: true }).first()).toBeVisible()
+      if (scenario === "Failure") await expect(page.getByText(view.endpoint === "timeseries" ? "No se pudo cargar la señal EEG." : view.endpoint === "psd" ? "No se pudo cargar la PSD de EEG." : view.endpoint === "spectrogram" ? "No se pudo cargar el espectrograma de EEG." : "No se pudo cargar la topografía EEG.", { exact: true }).first()).toBeVisible()
     }
     await expect(extra).toBeEnabled()
     expect(errors).toEqual([])

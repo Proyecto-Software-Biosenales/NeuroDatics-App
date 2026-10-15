@@ -137,11 +137,11 @@ export interface KindInfo {
 
 export const KIND_INFO: Record<ComparisonKind, KindInfo> = {
   pupil: { label: "Dilatación pupilar", sensor: "EyeTracker", temporal: true, requiresConcreteScenario: false, cardHeight: 400, pinsStimulusPoint: true },
-  gaze: { label: "Gaze point", sensor: "EyeTracker", temporal: true, requiresConcreteScenario: false, cardHeight: 400, pinsStimulusPoint: true },
+  gaze: { label: "Punto de mirada", sensor: "EyeTracker", temporal: true, requiresConcreteScenario: false, cardHeight: 400, pinsStimulusPoint: true },
   distance: { label: "Distancia al dispositivo", sensor: "EyeTracker", temporal: true, requiresConcreteScenario: false, cardHeight: 400, pinsStimulusPoint: true },
   gsr: { label: "Respuesta galvánica", sensor: "GSR", temporal: true, requiresConcreteScenario: false, cardHeight: 400, pinsStimulusPoint: true },
   eeg_timeseries: { label: "EEG por canal", sensor: "EEG", temporal: true, requiresConcreteScenario: false, cardHeight: 460, pinsStimulusPoint: true },
-  fixation_histogram: { label: "Histograma de fijación", sensor: "EyeTracker", temporal: false, requiresConcreteScenario: false, cardHeight: 400, pinsStimulusPoint: false },
+  fixation_histogram: { label: "Histograma de fijaciones", sensor: "EyeTracker", temporal: false, requiresConcreteScenario: false, cardHeight: 400, pinsStimulusPoint: false },
   eeg_psd: { label: "Densidad espectral EEG", sensor: "EEG", temporal: false, requiresConcreteScenario: false, cardHeight: 420, pinsStimulusPoint: false },
   eeg_spectrogram: { label: "Espectrograma de frecuencias", sensor: "EEG", temporal: false, requiresConcreteScenario: false, cardHeight: 560, pinsStimulusPoint: true },
   eeg_topography: { label: "Topografía EEG", sensor: "EEG", temporal: false, requiresConcreteScenario: true, cardHeight: 440, pinsStimulusPoint: false },
@@ -287,10 +287,17 @@ export function orderParticipants(codes: readonly string[]): string[] {
   return [...new Set(codes.filter((code) => code.trim().length > 0))].sort((a, b) => collator.compare(a, b) || (a < b ? -1 : a > b ? 1 : 0))
 }
 
-/** Case- and accent-insensitive participant search. */
-export function filterParticipants(codes: readonly string[], query: string): string[] {
+export type ParticipantLabels = Readonly<Record<string, string>>
+
+/** Visible text for a participant code: its name or document label, or "Participante <code>". */
+export function participantDisplay(code: string, labels?: ParticipantLabels): string {
+  return labels?.[code] ?? `Participante ${code}`
+}
+
+/** Case- and accent-insensitive participant search over the code and its visible label. */
+export function filterParticipants(codes: readonly string[], query: string, labels?: ParticipantLabels): string[] {
   const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
   const needle = normalize(query.trim())
   if (!needle) return [...codes]
-  return codes.filter((code) => normalize(code).includes(needle))
+  return codes.filter((code) => normalize(code).includes(needle) || normalize(labels?.[code] ?? "").includes(needle))
 }

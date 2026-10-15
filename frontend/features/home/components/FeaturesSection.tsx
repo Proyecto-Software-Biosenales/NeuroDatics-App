@@ -5,19 +5,19 @@ const features = [
     icon: Brain,
     title: "Electroencefalógrafo",
     description:
-      "Monitoreo avanzado de la actividad cerebral mediante señales eléctricas. Identifica estados de atención, concentración y activación emocional.",
+      "Registra la actividad eléctrica del cerebro y muestra la señal por canal, el espectro y la potencia por bandas.",
   },
   {
     icon: Zap,
     title: "Sensor galvánico",
     description:
-      "Medición precisa de la respuesta galvánica de la piel. Detecta cambios en la conductividad asociados a estados emocionales.",
+      "Mide la conductancia de la piel y muestra los picos de activación y su variación respecto a la base.",
   },
   {
     icon: Eye,
     title: "Eye tracker",
     description:
-      "Seguimiento ocular de alta precisión para analizar patrones de atención visual. Mapea áreas de interés y rutas de mirada.",
+      "Registra hacia dónde mira cada participante y muestra mapas de calor, fijaciones, recorridos y áreas de interés.",
   },
 ]
 
@@ -31,10 +31,9 @@ export const FeaturesSection = () => {
           </h2>
 
           <p className="mx-auto mb-10 max-w-3xl text-center leading-relaxed text-muted-foreground 2xl:mb-12">
-            Una herramienta profesional para el análisis científico de bioseñales.
-            Diseñado para investigadores, especialistas en neuromarketing,
-            profesionales de UX y empresas que buscan entender el comportamiento
-            humano a través de datos neurofisiológicos objetivos.
+            Analiza en un mismo lugar los datos de EEG, sensor galvánico y eye
+            tracker de tus experimentos, para investigación y estudios de
+            neuromarketing y UX.
           </p>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3 2xl:gap-6">

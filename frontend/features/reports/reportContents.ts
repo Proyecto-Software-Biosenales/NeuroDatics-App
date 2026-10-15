@@ -10,7 +10,7 @@ export interface DeviceReportDescription {
 /** What each device report contains, mirrored from the backend report builders. */
 export const DEVICE_REPORTS: Record<SensorType, DeviceReportDescription> = {
   EyeTracker: {
-    title: "Eye Tracking",
+    title: "Eye tracker",
     summary: "Mapas de calor, recorridos visuales, áreas de interés, fijaciones, pupila, mirada y distancia.",
     sections: {
       individual: [

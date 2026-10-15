@@ -7,12 +7,11 @@ export const CTASection = () => {
       <div className="mx-auto max-w-2xl">
         <div className="rounded-2xl border border-foreground/10 bg-foreground/5 px-5 py-10 text-center backdrop-blur-md sm:px-8 2xl:rounded-3xl 2xl:py-14">
           <h2 className="mb-4 text-2xl font-semibold text-foreground sm:text-3xl">
-            Comienza tu análisis ahora
+            Empieza tu análisis
           </h2>
 
           <p className="mb-8 leading-relaxed text-muted-foreground">
-            Crea tu primer proyecto y descubre las métricas profesionales sobre el
-            comportamiento y las respuestas neurofisiológicas de tus usuarios.
+            Crea tu primer proyecto y sube los datos de tu experimento.
           </p>
 
           <Button

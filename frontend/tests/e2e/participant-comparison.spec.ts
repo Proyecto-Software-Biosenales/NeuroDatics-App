@@ -216,6 +216,7 @@ async function mockApi(page: Page, options: { delayMs?: number } = {}): Promise<
       })
     }
     if (/\/files\/[^/]+\/(image|preview)$/.test(path)) return fulfill({ body: onePixelPng, contentType: "image/png" })
+    if (path === "/api/settings/screen") return fulfill({ json: { screen: { width_px: 1280, height_px: 1024, width_cm: null, height_cm: null }, confirmed: true } })
     state.unhandled.push(`${route.request().method()} ${url.pathname}`)
     return fulfill({ status: 501, json: { detail: `Unhandled mock: ${url.pathname}` } })
   })
@@ -496,8 +497,8 @@ test("EEG keeps the source signal mode and channels; Comparativas panels open th
     expect(request.params.get("channels")).toBe(EEG_CHANNELS.join(","))
   }
   // Raw mode: one trace per channel, no smoothed lines in the legend.
-  await expect(cardOf(page, "P01").getByRole("group", { name: "Leyenda de la grafica" })).toHaveText(/LE.*F3/)
-  await expect(cardOf(page, "P01").getByRole("group", { name: "Leyenda de la grafica" })).not.toContainText("suavizada")
+  await expect(cardOf(page, "P01").getByRole("group", { name: "Leyenda de la gráfica" })).toHaveText(/LE.*F3/)
+  await expect(cardOf(page, "P01").getByRole("group", { name: "Leyenda de la gráfica" })).not.toContainText("suavizada")
   await dialog.getByRole("button", { name: "Cerrar comparación" }).click()
   await expect(dialog).toBeHidden()
 
@@ -505,7 +506,7 @@ test("EEG keeps the source signal mode and channels; Comparativas panels open th
   await expect(page.getByRole("heading", { name: "Comparativas", exact: true })).toBeVisible()
   const gazePanelButton = page.locator('button[aria-controls="comparison-panel-gaze"]').locator("xpath=..").getByRole("button", { name: "Comparar participantes" })
   await gazePanelButton.click()
-  await expect(dialog.getByRole("heading", { name: "Comparar participantes · Gaze point" })).toBeVisible()
+  await expect(dialog.getByRole("heading", { name: "Comparar participantes · Punto de mirada" })).toBeVisible()
   await expect(cardOf(page, "P02").getByRole("img", { name: /Posición \(%\)\. 22 observaciones/ })).toBeVisible()
   await page.keyboard.press("Escape")
   await expect(dialog).toBeHidden()

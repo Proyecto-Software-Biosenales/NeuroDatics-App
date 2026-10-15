@@ -44,8 +44,7 @@ export default function ProyectosPage() {
                 Proyectos
               </h1>
               <p className="app-page-description">
-                Gestiona tus experimentos de neuromarketing y análisis de
-                bioseñales.
+                Crea un proyecto o continúa con uno existente.
               </p>
             </div>
 
@@ -65,7 +64,7 @@ export default function ProyectosPage() {
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-foreground"></div>
                 </div>
-                <p className="text-muted-foreground">Cargando proyectos...</p>
+                <p className="text-muted-foreground">Cargando proyectos…</p>
               </div>
             </div>
           )}

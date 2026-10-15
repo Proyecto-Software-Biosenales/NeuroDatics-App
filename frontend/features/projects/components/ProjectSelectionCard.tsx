@@ -16,18 +16,13 @@ export const ProjectSelectionCard = ({
 }: ProjectSelectionCardProps) => {
   return (
     <Card className="p-4 sm:p-6">
-      <div className="flex items-start gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-6">
         <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
           <span className="text-foreground font-semibold text-lg">1</span>
         </div>
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            Selección de proyecto
-          </h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Elige el proyecto del cual deseas generar un reporte
-          </p>
-        </div>
+        <h2 className="flex-1 text-xl font-semibold text-foreground">
+          Selección de proyecto
+        </h2>
       </div>
 
       <div className="sm:pl-14">
@@ -35,7 +30,7 @@ export const ProjectSelectionCard = ({
           projects={projects}
           value={selectedProject?.id || ""}
           onChange={onProjectChange}
-          placeholder="Selecciona un proyecto..."
+          placeholder="Selecciona un proyecto…"
         />
 
         {selectedProject && (

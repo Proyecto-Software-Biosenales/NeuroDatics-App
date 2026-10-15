@@ -150,7 +150,7 @@ test("resolves every point-on-stimulus display state", () => {
 test("uses the standard video and image preview failure messages", () => {
   assert.equal(
     getPreviewFailureMessage({ ...gaze, scenario_type: "video" }, "detail"),
-    "No se pudo cargar el frame del video."
+    "No se pudo cargar el fotograma del vídeo."
   )
   assert.equal(
     getPreviewFailureMessage(gaze, null),

@@ -495,6 +495,11 @@ async function mockDashboardApi(
       return
     }
 
+    if (url.pathname === "/api/settings/screen") {
+      await route.fulfill({ json: { screen: { width_px: 1280, height_px: 1024, width_cm: null, height_cm: null }, confirmed: true } })
+      return
+    }
+
     unhandledRequests.push(`${route.request().method()} ${url.pathname}`)
     await route.fulfill({
       status: 501,
@@ -635,13 +640,13 @@ test("keeps valid statistics visible beside failed and empty temporal signals", 
   })
   await expect(
     numericStatistics.getByRole("row", {
-      name: "Eye Tracker Gaze point Estado No disponible: No se pudo calcular esta señal",
+      name: "Eye tracker Punto de mirada Estado No disponible: No se pudo calcular esta señal",
       exact: true,
     })
   ).toBeVisible()
   await expect(
     numericStatistics.getByRole("row", {
-      name: "Eye Tracker Distancia al dispositivo Estado Sin datos",
+      name: "Eye tracker Distancia al dispositivo Estado Sin datos",
       exact: true,
     })
   ).toBeVisible()
@@ -996,9 +1001,9 @@ test("restores applied views per user and project across filters, navigation, an
     page.locator('button[aria-controls="comparison-panel-distance"]')
   ).toHaveCount(0)
 
-  await page.getByRole("link", { name: "Reportes", exact: true }).click()
+  await page.getByRole("link", { name: "Informes", exact: true }).click()
   await expect(
-    page.getByRole("heading", { name: "Reportes", exact: true })
+    page.getByRole("heading", { name: "Informes", exact: true })
   ).toBeVisible()
   await page.getByRole("link", { name: "Dashboard", exact: true }).click()
   await openProjectComparison(page, "Proyecto Alfa")

@@ -62,6 +62,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
+/** The session when there is a provider above, or null (components rendered on their own). */
+export function useOptionalAuth(): AuthContextType | null {
+  return useContext(AuthContext)
+}
+
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext)
   if (!context) {

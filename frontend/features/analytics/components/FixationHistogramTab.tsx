@@ -2,6 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { HintTooltip } from "@/components/HintTooltip"
 import { Button } from "@/components/ui/button"
 
 import {
@@ -128,14 +129,14 @@ function FixationSensitivityCard({
                     Fijaciones
                   </TableHead>
                   <TableHead className="px-4 py-3 text-right font-semibold">
-                    Dwell total
+                    Permanencia total
                   </TableHead>
                   <TableHead className="px-4 py-3 text-right font-semibold">Media</TableHead>
                   <TableHead className="px-4 py-3 text-right font-semibold">
                     Mediana
                   </TableHead>
                   <TableHead className="px-4 py-3 text-right font-semibold">
-                    Dwell retenido
+                    Permanencia retenida
                   </TableHead>
                   <TableHead className="px-4 py-3 text-right font-semibold">
                     Selección
@@ -174,16 +175,18 @@ function FixationSensitivityCard({
                         {point.retained_dwell_percent.toFixed(1)}%
                       </TableCell>
                       <TableCell className="px-4 py-3 text-right">
-                        <Button size="sm" variant="selection"
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() =>
-                            onSelectDuration(point.min_fixation_duration_ms)
-                          }
-                          className="rounded-full"
-                        >
-                          {selected ? "Activo" : "Usar"}
-                        </Button>
+                        <HintTooltip hint={`Cuenta como fijación solo las pausas de la mirada de ${point.min_fixation_duration_ms} ms o más.`}>
+                          <Button size="sm" variant="selection"
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() =>
+                              onSelectDuration(point.min_fixation_duration_ms)
+                            }
+                            className="rounded-full"
+                          >
+                            {selected ? "Activo" : "Usar"}
+                          </Button>
+                        </HintTooltip>
                       </TableCell>
                     </TableRow>
                   )
@@ -277,7 +280,7 @@ export function FixationHistogramTab({
               label="Mínimo"
               value={data.min_duration_ms}
               unit="ms"
-              description="Duración más corta registrada"
+              description="Fijación más corta"
               Icon={TrendingDown}
               iconBgClass="bg-emerald-100 dark:bg-emerald-900/40"
               iconColorClass="text-emerald-500"
@@ -290,7 +293,7 @@ export function FixationHistogramTab({
               label="Máximo"
               value={data.max_duration_ms}
               unit="ms"
-              description="Duración más larga registrada"
+              description="Fijación más larga"
               Icon={TrendingUp}
               iconBgClass="bg-rose-100 dark:bg-rose-900/40"
               iconColorClass="text-rose-500"
@@ -304,7 +307,7 @@ export function FixationHistogramTab({
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 flex-1 basis-72">
-                <CardTitle className="text-xl">Histograma de fijación</CardTitle>
+                <CardTitle className="text-xl">Histograma de fijaciones</CardTitle>
                 <CardDescription>
                   {data.min_fixation_duration_ms == null
                     ? "Distribución reconstruida desde datos históricos; el umbral mínimo original es desconocido."
@@ -315,7 +318,7 @@ export function FixationHistogramTab({
               <CompareParticipantsButton
                 spec={() => ({
                   kind: "fixation_histogram",
-                  title: "Histograma de fijación",
+                  title: "Histograma de fijaciones",
                   scenario,
                   sourceParticipant: participantCode,
                   origin: "individual",

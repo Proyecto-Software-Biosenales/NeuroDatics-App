@@ -171,8 +171,7 @@ export function ScanpathTab({
                   label="Distancia"
                   value={data?.total_distance_px}
                   unit="px"
-                  description="Longitud total del recorrido"
-                  tooltip="Distancia total en píxeles entre fijaciones consecutivas asumiendo resolución 1920×1080"
+                                    tooltip="Distancia total en píxeles entre fijaciones consecutivas asumiendo resolución 1920×1080"
                   Icon={Ruler}
                   loading={loading}
                   bgClass="bg-card"
@@ -186,7 +185,6 @@ export function ScanpathTab({
                   value={data ? data.avg_duration_s * 1000 : null}
                   unit="ms"
                   description="Duración media por fijación"
-                  tooltip="Duración promedio de cada punto de fijación agrupado"
                   Icon={Clock}
                   loading={loading}
                   bgClass="bg-card"

@@ -31,7 +31,7 @@ for (const theme of ["light", "dark"]) {
       for (const route of ["/", "/login", "/proyectos", "/reportes", "/dashboard"]) {
         await page.goto(route)
         await expect(page.locator("body")).not.toBeEmpty()
-        if (route === "/dashboard") await expect(page.getByRole("button", { name: "Eye Tracker", exact: true })).toHaveAttribute("aria-pressed", "true")
+        if (route === "/dashboard") await expect(page.getByRole("button", { name: "Eye tracker", exact: true })).toHaveAttribute("aria-pressed", "true")
         if (route === "/login") {
           await expect(page.getByRole("button", { name: "Continuar con Google", exact: true })).toBeVisible()
           await expect(page.getByRole("textbox")).toHaveCount(0)
@@ -41,7 +41,7 @@ for (const theme of ["light", "dark"]) {
           await page.getByRole("combobox").click()
           await page.getByRole("option", { name: new RegExp(project.name) }).click()
           await expect(page.getByRole("radio", { name: "Un participante", exact: true })).toBeVisible()
-          await expect(page.getByRole("button", { name: "Descargar reporte PDF", exact: true })).toBeVisible()
+          await expect(page.getByRole("button", { name: "Descargar informe PDF", exact: true })).toBeVisible()
         }
         await page.evaluate(() => document.fonts.ready)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

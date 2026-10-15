@@ -7,7 +7,7 @@ const API_REQUEST_TIMEOUT_MS = 5 * 60_000;
 const ZIP_UPLOAD_TIMEOUT_MS = 30 * 60_000;
 const BLOB_CACHE_TTL_MS = 5 * 60_000;
 const BLOB_CACHE_MAX_ITEMS = 128;
-const SESSION_EXPIRED_MESSAGE = "Sesion expirada. Por favor, inicia sesion nuevamente.";
+const SESSION_EXPIRED_MESSAGE = "Tu sesión expiró. Inicia sesión de nuevo.";
 
 type BlobCacheEntry = {
   blob: Blob;
@@ -131,11 +131,11 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
     res = await fetchWithTimeout(`${BASE}${path}`, { ...requestInit, headers, cache: "no-store" }, timeoutMs);
   } catch (error) {
     const reason = error instanceof DOMException && error.name === "AbortError"
-      ? `Timeout de la peticion (${Math.round(timeoutMs / 1000)}s)`
+      ? `La solicitud tardó demasiado (${Math.round(timeoutMs / 1000)} s).`
       : error instanceof Error
         ? error.message
-        : "Network error";
-    throw new Error(`No se pudo conectar con el backend. ${reason}`);
+        : "Error de red";
+    throw new Error(`No se pudo conectar con NeuroDatics. ${reason}`);
   }
 
   if (res.status === 401) {
@@ -206,7 +206,7 @@ export async function apiUploadFormWithProgress<T>(
         } catch {
           // ignore abort errors
         }
-        finalizeReject(new Error("Subida cancelada por el usuario."));
+        finalizeReject(new Error("Subida cancelada."));
       };
 
       if (signal) {
@@ -266,15 +266,15 @@ export async function apiUploadFormWithProgress<T>(
 
       xhr.onerror = () => {
         clearProcessingTimer();
-        finalizeReject(new Error("No se pudo conectar con el backend durante la subida del ZIP."));
+        finalizeReject(new Error("No se pudo conectar con NeuroDatics durante la subida."));
       };
       xhr.ontimeout = () => {
         clearProcessingTimer();
-        finalizeReject(new Error("La subida del ZIP excedio el tiempo de espera."));
+        finalizeReject(new Error("La subida tardó demasiado."));
       };
       xhr.onabort = () => {
         clearProcessingTimer();
-        finalizeReject(new Error("Subida cancelada por el usuario."));
+        finalizeReject(new Error("Subida cancelada."));
       };
 
       xhr.onload = () => {
@@ -377,11 +377,11 @@ export async function apiFetchBlobWithHeaders(
       res = await fetchWithTimeout(`${BASE}${path}`, { ...requestInit, headers, cache: cacheMode }, timeoutMs);
     } catch (error) {
       const reason = error instanceof DOMException && error.name === "AbortError"
-        ? `Timeout de la peticion (${Math.round(timeoutMs / 1000)}s)`
+        ? `La solicitud tardó demasiado (${Math.round(timeoutMs / 1000)} s).`
         : error instanceof Error
           ? error.message
-          : "Network error";
-      throw new Error(`No se pudo conectar con el backend. ${reason}`);
+          : "Error de red";
+      throw new Error(`No se pudo conectar con NeuroDatics. ${reason}`);
     }
 
     if (res.status === 401) {

@@ -1,13 +1,17 @@
+import type { ScreenSettings } from "@/features/settings/screenSettings"
+
 export type Phase = "before" | "after"
 export type PlanningParticipant = {
   id: string
-  code: string
+  /** What identified participants before the document; only older saves have it. */
+  code?: string
   name: string
   identification_document: string
   gender: string
   age: number | null
   notes: string
 }
+export type ProjectNote = { id: string; title: string; text: string }
 export type PlanningQuestion = {
   id: string
   type: "multiple_choice" | "open_text" | "true_false"
@@ -33,6 +37,7 @@ export type PreExperimentConfig = {
   }
   notes: string
   questionnaires: Record<Phase, Questionnaire>
+  project_notes: ProjectNote[]
 }
 export type Answers = Record<string, string | boolean | string[]>
 export type QuestionnaireResponse = {
@@ -49,6 +54,32 @@ export type PreExperimentEnvelope = {
   revision: number
   config: PreExperimentConfig
   responses: QuestionnaireResponse[]
+}
+/** The same choices as the participants of a project created from its folder. */
+export const sexOptions = [
+  { label: "Masculino", value: "male" },
+  { label: "Femenino", value: "female" },
+  { label: "Otro", value: "other" },
+] as const
+export const sexLabel = (value: string) =>
+  sexOptions.find((option) => option.value === value)?.label ?? value
+/** The document identifies a participant; older saves were identified by a code. */
+export const participantLabel = (participant: PlanningParticipant) =>
+  [
+    participant.identification_document.trim() || participant.code?.trim(),
+    participant.name.trim(),
+  ]
+    .filter(Boolean)
+    .join(" — ")
+/** Whether another participant has the same document, compared as the backend does. */
+export function repeatedDocument(participants: PlanningParticipant[]) {
+  const key = (participant: PlanningParticipant) =>
+    participant.identification_document.trim().toLowerCase()
+  const counts = new Map<string, number>()
+  for (const participant of participants)
+    counts.set(key(participant), (counts.get(key(participant)) ?? 0) + 1)
+  return (participant: PlanningParticipant) =>
+    !!key(participant) && (counts.get(key(participant)) ?? 0) > 1
 }
 export const phaseLabel: Record<Phase, string> = {
   before: "Antes del experimento",
@@ -78,7 +109,51 @@ export const emptyConfig = (): PreExperimentConfig => ({
       questions: [],
     },
   },
+  project_notes: [],
 })
+/** Empty screen measures start from Configuración: the resolution and the physical size, each as a pair. */
+export function withScreenDefaults(
+  config: PreExperimentConfig,
+  saved: ScreenSettings | null | undefined
+): PreExperimentConfig {
+  if (!saved) return config
+  const screen = { ...config.screen }
+  if (screen.width_px === null && screen.height_px === null) {
+    screen.width_px = saved.width_px
+    screen.height_px = saved.height_px
+  }
+  if (screen.width_cm === null && screen.height_cm === null) {
+    screen.width_cm = saved.width_cm
+    screen.height_cm = saved.height_cm
+  }
+  return JSON.stringify(screen) === JSON.stringify(config.screen)
+    ? config
+    : { ...config, screen }
+}
+/** A note with neither title nor text is not kept. */
+export const noteIsEmpty = (note: ProjectNote) => !note.title.trim() && !note.text.trim()
+export const withoutEmptyNotes = (config: PreExperimentConfig): PreExperimentConfig => ({
+  ...config,
+  project_notes: config.project_notes.filter((note) => !noteIsEmpty(note)),
+})
+/** A questionnaire exists when it has questions; there is no separate switch to turn it on. */
+export function withDerivedQuestionnaires(
+  config: PreExperimentConfig
+): PreExperimentConfig {
+  const defaults = emptyConfig().questionnaires
+  const derive = (phase: Phase): Questionnaire => {
+    const questionnaire = config.questionnaires[phase]
+    return {
+      ...questionnaire,
+      enabled: questionnaire.questions.length > 0,
+      title: questionnaire.title.trim() || defaults[phase].title,
+    }
+  }
+  return {
+    ...config,
+    questionnaires: { before: derive("before"), after: derive("after") },
+  }
+}
 export function validateConfig(config: PreExperimentConfig): string | null {
   return (
     validateParticipants(config) ??
@@ -89,13 +164,12 @@ export function validateConfig(config: PreExperimentConfig): string | null {
 export function validateParticipants(
   config: PreExperimentConfig
 ): string | null {
-  const codes = new Set<string>()
+  const isRepeated = repeatedDocument(config.participants)
   for (const participant of config.participants) {
-    if (!participant.code.trim() || !participant.name.trim())
-      return "Completa el código y el nombre de cada participante."
-    if (codes.has(participant.code.trim().toLowerCase()))
-      return "Usa un código distinto para cada participante."
-    codes.add(participant.code.trim().toLowerCase())
+    if (!participant.identification_document.trim())
+      return "Escribe el documento de identificación de cada participante."
+    if (isRepeated(participant))
+      return `Hay dos participantes con el documento ${participant.identification_document.trim()}.`
     if (
       participant.age !== null &&
       (!Number.isInteger(participant.age) ||
@@ -131,13 +205,9 @@ export function validateQuestionnaire(
   phase: Phase
 ): string | null {
   const questionnaire = config.questionnaires[phase]
-  if (!questionnaire.title.trim())
-    return `Completa el título en «${phaseLabel[phase]}».`
-  if (questionnaire.enabled && !questionnaire.questions.length)
-    return `Añade una pregunta en «${phaseLabel[phase]}».`
   for (const question of questionnaire.questions) {
     if (!question.prompt.trim())
-      return "Escribe el enunciado de todas las preguntas, incluidas las conservadas en cuestionarios deshabilitados."
+      return `Escribe todas las preguntas de «${phaseLabel[phase]}».`
     if (
       question.type === "multiple_choice" &&
       (question.options.length < 2 ||

@@ -52,7 +52,6 @@ interface StimulusFixationCardProps {
   title?: string
   description?: string
   emptyText?: string
-  metricDescription?: string
   onClearSelection?: () => void
   canClearSelection?: boolean
   enableAois?: boolean
@@ -325,7 +324,6 @@ export function StimulusFixationCard({
   title = "Punto de fijación sobre estímulo visual",
   description = "Ubicación de la mirada del participante durante el estímulo visual.",
   emptyText = "Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante",
-  metricDescription = "la métrica seleccionada",
   onClearSelection,
   canClearSelection = true,
   enableAois = true,
@@ -557,8 +555,8 @@ export function StimulusFixationCard({
               <p className="text-base font-medium text-slate-900 dark:text-slate-100">Punto de atención</p>
               <p className="text-sm text-slate-700 dark:text-slate-300">
                 {selectedValue != null
-                  ? `El indicador de alto contraste marca la ubicación exacta donde se registró ${metricDescription} (${metricValueText}) en el segundo ${Math.round(gazeData.nearest_time_s)} de la visualización.`
-                  : "El indicador de alto contraste marca la ubicación exacta donde se registró la fijación en el instante seleccionado sobre el estímulo visual."}
+                  ? `Mirada en el segundo ${Math.round(gazeData.nearest_time_s)} · ${metricValueText}`
+                  : "Mirada en el instante seleccionado."}
                 {aoiStatusText}
               </p>
             </div>

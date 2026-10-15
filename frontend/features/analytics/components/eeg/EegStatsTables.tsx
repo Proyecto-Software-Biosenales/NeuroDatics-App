@@ -58,7 +58,7 @@ export function PsdStatsTable({ rows, unit }: { rows: PsdStats[]; unit: string }
       <Table className="w-full text-sm">
         <TableHeader>
           <TableRow className="border-b border-border bg-muted/60">
-            {["Canal", "Bins", "Freq. pico", "Nivel pico", "Nivel medio", "Desv.", "Mediana", "Min", "Max"].map((header, index) => (
+            {["Canal", "Intervalos", "Freq. pico", "Nivel pico", "Nivel medio", "Desv.", "Mediana", "Min", "Max"].map((header, index) => (
               <TableHead
                 key={header}
                 className={cn(

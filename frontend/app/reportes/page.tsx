@@ -221,7 +221,7 @@ export default function ReportesPage() {
 
     const several = devices.length > 1
     const toastId = toast.loading(
-      several ? "Generando informes por dispositivo..." : "Generando informe..."
+      several ? "Generando informes…" : "Generando informe…"
     )
     setGenerating(true)
     try {
@@ -247,11 +247,11 @@ export default function ReportesPage() {
           <div className="app-page-header">
             <div>
             <h1 className="app-page-title">
-              Reportes
+              Informes
             </h1>
             <p className="app-page-description">
-              Genera un informe PDF por dispositivo con las gráficas y tablas de
-              estadísticas de cada escenario, listo para compartir.
+              Genera un informe PDF por dispositivo, con las gráficas y
+              estadísticas de cada escenario.
             </p>
             </div>
           </div>
@@ -264,7 +264,7 @@ export default function ReportesPage() {
             />
             {projectsLoading ? (
               <p className="mt-3 pl-14 text-sm text-muted-foreground">
-                Cargando proyectos...
+                Cargando proyectos…
               </p>
             ) : null}
           </div>
@@ -302,8 +302,7 @@ export default function ReportesPage() {
                 />
                 {!hasScenarios && !scenariosLoading ? (
                   <p className="mt-3 text-sm text-muted-foreground">
-                    El proyecto no tiene escenarios de imagen disponibles para
-                    seccionar el informe.
+                    El proyecto no tiene escenarios de imagen.
                   </p>
                 ) : null}
               </div>
@@ -320,7 +319,7 @@ export default function ReportesPage() {
                   canDownload={canDownload}
                   loading={generating}
                   downloadLabel={
-                    devices.length > 1 ? "Descargar reportes (ZIP)" : "Descargar reporte PDF"
+                    devices.length > 1 ? "Descargar informes (ZIP)" : "Descargar informe PDF"
                   }
                 />
               </div>

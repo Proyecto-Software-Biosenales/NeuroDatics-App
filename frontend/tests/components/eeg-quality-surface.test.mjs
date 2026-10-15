@@ -74,7 +74,8 @@ before(async () => { browser = await chromium.launch({ headless: true }) })
 after(async () => { await browser?.close() })
 
 async function fixture(t, clean = false) {
-  const page = await browser.newPage()
+  // The counts use toLocaleString(); pin the locale so the separators do not follow the machine's.
+  const page = await browser.newPage({ locale: "en-US" })
   const errors = []
   page.on("pageerror", (error) => errors.push(error.message))
   t.after(async () => { await page.close(); assert.deepEqual(errors, []) })
@@ -96,11 +97,11 @@ test("warnings and unit caveats share one card that offers re-ingestion", async 
   await expect(notice).toContainText("Muestras EEG ausentes")
   // The kilo caveat below says it with the channel name; the prose copy goes.
   await expect(notice).not.toContainText("Escala kilo corregida")
-  await expect(notice).toContainText("Reescalados en ingesta: F3 (kilo)")
+  await expect(notice).toContainText("Reescalados al procesar: F3 (kilo)")
   await expect(notice).toContainText("no recupera la precisión perdida")
   await expect(notice).toContainText("Excluidos por unidad ambigua: LE")
-  await expect(notice).toContainText("sin volver a ingerir ambos")
-  await expect(page.getByRole("link", { name: "Volver a ingerir" })).toHaveAttribute(
+  await expect(notice).toContainText("sin volver a procesar ambos")
+  await expect(page.getByRole("link", { name: "Volver a procesar" })).toHaveAttribute(
     "href",
     "/proyectos"
   )

@@ -181,7 +181,7 @@ export function PointOnStimulusPanel({
   if (pinnedTime == null) {
     return (
       <MessageSurface Icon={Crosshair}>
-        Haz clic en una gráfica temporal de Eye Tracker para fijar un instante y
+        Haz clic en una gráfica temporal del eye tracker para fijar un instante y
         ubicar la mirada.
       </MessageSurface>
     )

@@ -729,7 +729,7 @@ export function AoiEditor({
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/80 text-muted-foreground">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Cargando imagen...
+              Cargando imagen…
             </div>
           </div>
         )}
@@ -941,7 +941,7 @@ export function AoiEditor({
         </div>
 
         {normalizedAois.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No hay AOIs registradas para este estimulo.</p>
+          <p className="text-sm text-muted-foreground">No hay AOIs registradas para este estímulo.</p>
         ) : (
           <div className="space-y-2">
             {normalizedAois.map((aoi, index) => (

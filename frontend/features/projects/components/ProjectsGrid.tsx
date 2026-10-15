@@ -1,13 +1,12 @@
 
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar, Clock3, Folder, Users, MoreVertical, Edit, Trash2, Archive, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { SensorBadge } from "./SensorBadge"
 import { DeleteProjectDialog } from "./DeleteProjectDialog"
-import { EditProjectDialog } from "./EditProjectDialog"
 import { ViewProjectDialog } from "./ViewProjectDialog"
 import { ProjectsApi, type DeleteProjectResult } from "../api/projectsApi"
 import type { Project, ProjectStatus } from "@/features/projects/types"
@@ -26,6 +25,12 @@ interface ProjectsGridProps {
   onContinueDraft?: (project: Project) => void
 }
 
+const editHref = (projectId: string) =>
+  `/proyectos/editar?proyecto=${encodeURIComponent(projectId)}`
+
+const dashboardHref = (projectId: string) =>
+  `/dashboard?proyecto=${encodeURIComponent(projectId)}`
+
 const statusLabel: Record<ProjectStatus, string> = {
   draft: "Borrador",
   active: "Activo",
@@ -39,9 +44,9 @@ const statusColorClass: Record<ProjectStatus, string> = {
 }
 
 export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: ProjectsGridProps) => {
+  const router = useRouter()
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [editOpenId, setEditOpenId] = useState<string | null>(null)
   const [deleteOpenId, setDeleteOpenId] = useState<string | null>(null)
   const [viewOpenId, setViewOpenId] = useState<string | null>(null)
 
@@ -59,10 +64,10 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
       setArchivingId(projectId)
       await ProjectsApi.update(projectId, { status: "archived" })
       onEdit({ ...project, status: "archived" })
-      toast.success("Proyecto archivado correctamente")
+      toast.success("Proyecto archivado.")
     } catch (error) {
       console.error("[ProjectsGrid] Archive failed", { projectId, error })
-      toast.error("No se pudo archivar el proyecto")
+      toast.error("No se pudo archivar el proyecto.")
     } finally {
       setArchivingId(null)
     }
@@ -74,10 +79,10 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
       const status = project.isPreExperiment ? "draft" : "active"
       await ProjectsApi.update(projectId, { status })
       onEdit({ ...project, status })
-      toast.success("Proyecto desarchivado correctamente")
+      toast.success("Proyecto desarchivado.")
     } catch (error) {
       console.error("[ProjectsGrid] Unarchive failed", { projectId, error })
-      toast.error("No se pudo desarchiva el proyecto")
+      toast.error("No se pudo desarchivar el proyecto.")
     } finally {
       setArchivingId(null)
     }
@@ -94,25 +99,51 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
 
         // PENDING = upload never completed (interrupted or never started).
         // No backend work is running for these — show a "Retomar" footer.
+        // A pre-experiment has no folder by definition, so it uses the common card and footer.
         const isDraftPending =
           project.status === "draft" &&
-          (!project.ingestionStatus || project.ingestionStatus === "PENDING" || (project.isPreExperiment && project.ingestionStatus === "FAILED"))
+          !project.isPreExperiment &&
+          (!project.ingestionStatus || project.ingestionStatus === "PENDING")
 
         const canContinueDraft =
           project.status === "draft" &&
-          project.ingestionStatus === "READY"
+          (project.isPreExperiment || project.ingestionStatus === "READY")
+
+        // The card and its footer button read the same state: pre-experiment edits, draft resumes, active opens its dashboard.
+        const openProject = () => {
+          if (isDraftProcessing) return
+          if (project.isPreExperiment) router.push(editHref(project.id))
+          else if (canContinueDraft || isDraftPending) onContinueDraft?.(project)
+          else if (projectStatus === "active") router.push(dashboardHref(project.id))
+          else setViewOpenId(project.id)
+        }
+
+        // One button in the footer, the same size on every card: what the card does next.
+        const footerAction = isDraftProcessing || isDraftPending
+          ? null
+          : canContinueDraft
+            ? { label: project.isPreExperiment ? "Subir" : "Continuar", run: () => onContinueDraft?.(project) }
+            : project.isPreExperiment
+              ? { label: "Editar", run: () => router.push(editHref(project.id)) }
+              : { label: "Ver proyecto", run: () => setViewOpenId(project.id) }
 
         return (
         <Card
           key={project.id}
-          className={`group relative cursor-pointer rounded-2xl border p-4 transition-all duration-200 xl:p-6 ${
+          onClick={(event) => {
+            // Dialogs and the menu render in portals but their clicks still bubble here through React.
+            const target = event.target as HTMLElement
+            if (!event.currentTarget.contains(target) || target.closest("button, a")) return
+            openProject()
+          }}
+          className={`group relative flex flex-col rounded-2xl border p-4 transition-all duration-200 xl:p-6 ${
             isDeleting ? "animate-pulse scale-[0.99] opacity-70 pointer-events-none" : ""
           } ${
             isDraftProcessing
               ? "border-border shadow-none bg-muted/40 pb-16 xl:pb-16"
               : isDraftPending
-              ? "border-border shadow-sm bg-card pb-14 xl:pb-16"
-              : "border-border shadow-sm bg-card hover:-translate-y-0.5 hover:shadow-lg"
+              ? "cursor-pointer border-border shadow-sm bg-card pb-14 xl:pb-16 hover:-translate-y-0.5 hover:shadow-lg"
+              : "cursor-pointer border-border shadow-sm bg-card hover:-translate-y-0.5 hover:shadow-lg"
           }`}
         >
           <DeleteProjectDialog
@@ -121,13 +152,6 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             onDelete={handleDeleteProject}
             isOpen={deleteOpenId === project.id}
             onOpenChange={(open) => setDeleteOpenId(open ? project.id : null)}
-          />
-          <EditProjectDialog
-            projectId={project.id}
-            projectName={project.name}
-            onProjectUpdated={onEdit}
-            isOpen={editOpenId === project.id}
-            onOpenChange={(open) => setEditOpenId(open ? project.id : null)}
           />
           <ViewProjectDialog
             projectId={project.id}
@@ -151,11 +175,11 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => { if (project.isPreExperiment) window.location.href = `/configuracion?proyecto=${encodeURIComponent(project.id)}`; else setEditOpenId(project.id) }}
+                  onClick={() => router.push(editHref(project.id))}
                   disabled={isDraftProcessing}
                 >
                   <Edit className="h-4 w-4" />
-                  <span>{project.isPreExperiment ? "Configuración" : "Editar"}</span>
+                  <span>Editar</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setDeleteOpenId(project.id)}
@@ -227,14 +251,15 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             )}
           </div>
 
-          <div className="mb-4 mt-3 flex flex-wrap gap-2 xl:mb-5 xl:mt-4">
+          <div className="mb-4 mt-3 flex min-h-6 flex-wrap gap-2 xl:mb-5 xl:mt-4">
             {project.sensors.map((sensor) => (
               <SensorBadge key={sensor} sensor={sensor} size="sm" />
             ))}
           </div>
 
-          <div className="border-t border-border pt-4">
-            <div className="flex items-center justify-between text-sm">
+          {/* The footer sits at the bottom of the card, so its line is at the same height on every card of a row. */}
+          <div className="mt-auto border-t border-border pt-4">
+            <div className="flex min-h-7 items-center justify-between text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium text-foreground">
@@ -242,27 +267,11 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                 </span>
               </div>
 
-              <div className="flex items-center gap-1">
-                {project.isPreExperiment && <Button size="sm" variant="outline" asChild><Link href={`/configuracion?proyecto=${encodeURIComponent(project.id)}`}>Configuración</Link></Button>}
-                {!isDraftProcessing && !isDraftPending && !canContinueDraft && (
-                  <Button size="sm" variant="outline"
-                    type="button"
-                    className=""
-                    onClick={() => setViewOpenId(project.id)}
-                  >
-                    Ver proyecto
-                  </Button>
-                )}
-                {canContinueDraft && (
-                  <Button variant="outline"
-                    type="button"
-                    className="text-xs"
-                    onClick={() => onContinueDraft?.(project)}
-                  >
-                    Continuar
-                  </Button>
-                )}
-              </div>
+              {footerAction && (
+                <Button size="sm" variant="outline" type="button" onClick={footerAction.run}>
+                  {footerAction.label}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -279,7 +288,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/70 backdrop-blur-[1px]">
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Eliminando proyecto...
+                Eliminando proyecto…
               </div>
             </div>
           )}
@@ -313,14 +322,14 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
               <div className="flex items-center justify-between bg-card px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  <p className="text-xs text-muted-foreground">{project.isPreExperiment ? "Sin carpeta todavía" : "Paso 1 incompleto"}</p>
+                  <p className="text-xs text-muted-foreground">Carpeta sin procesar</p>
                 </div>
                 <Button variant="link"
                   type="button"
                   className="text-xs"
-                  onClick={(e) => { e.stopPropagation(); onContinueDraft?.(project) }}
+                  onClick={() => onContinueDraft?.(project)}
                 >
-                  {project.isPreExperiment ? "Agregar carpeta" : "Retomar"}
+                  Retomar
                 </Button>
               </div>
             </div>

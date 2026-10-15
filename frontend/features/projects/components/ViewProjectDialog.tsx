@@ -67,7 +67,7 @@ const getSexPillClass = (): string => {
 const toScenaryTypeLabel = (type?: string | null): string => {
   if (!type) return "No definido"
   if (type.toLowerCase() === "image") return "Imagen"
-  if (type.toLowerCase() === "video") return "Video"
+  if (type.toLowerCase() === "video") return "Vídeo"
   return type
 }
 
@@ -108,7 +108,7 @@ export const ViewProjectDialog = ({
       } catch (error) {
         console.error("[ViewProjectDialog] loadProject failed", { projectId, error })
         if (!cancelled) {
-          setLoadError("No se pudo cargar la información del proyecto.")
+          setLoadError("No se pudo cargar el proyecto.")
           setProjectDetail(null)
         }
       } finally {
@@ -159,7 +159,7 @@ export const ViewProjectDialog = ({
         {isLoading ? (
           <div className="py-12 flex items-center justify-center text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Cargando información del proyecto...
+            Cargando el proyecto…
           </div>
         ) : loadError ? (
           <div className="m-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 dark:text-red-400">
@@ -170,14 +170,14 @@ export const ViewProjectDialog = ({
             <section className="space-y-3">
               <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 <Package className="h-4 w-4" />
-                Informacion general
+                Información general
               </h3>
               <div className="rounded-2xl border border-border bg-muted/40 px-5 py-4">
                 <div className="grid grid-cols-1 gap-y-3 sm:grid-cols-[130px_1fr] sm:gap-x-4">
                   <span className="text-sm font-semibold text-muted-foreground">Nombre</span>
                   <span className="text-base font-semibold text-foreground">{projectDetail?.name || "-"}</span>
 
-                  <span className="text-sm font-semibold text-muted-foreground">Descripcion</span>
+                  <span className="text-sm font-semibold text-muted-foreground">Descripción</span>
                   <span className="text-sm font-medium leading-6 text-foreground">
                     {projectDetail?.description || "Sin descripción"}
                   </span>
@@ -194,7 +194,7 @@ export const ViewProjectDialog = ({
             <section className="space-y-3">
               <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 <Activity className="h-4 w-4" />
-                Sensores asociados
+                Sensores
                 <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground">
                   {sensors.length}
                 </span>
@@ -230,6 +230,7 @@ export const ViewProjectDialog = ({
                   <Table className="w-full text-sm">
                     <TableHeader className="bg-muted text-muted-foreground">
                       <TableRow className="text-left">
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Nombre</TableHead>
                         <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Documento</TableHead>
                         <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Edad</TableHead>
                         <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]">Sexo</TableHead>
@@ -238,7 +239,10 @@ export const ViewProjectDialog = ({
                     <TableBody>
                       {participants.map((participant) => (
                         <TableRow key={participant.id} className="border-t border-border text-foreground">
-                          <TableCell className="px-4 py-3 text-sm font-medium">{participant.participant_code}</TableCell>
+                          <TableCell className="px-4 py-3 text-sm font-medium">
+                            {participant.name || <span className="text-muted-foreground">-</span>}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm">{participant.document || participant.participant_code}</TableCell>
                           <TableCell className="px-4 py-3">
                             <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-muted px-2 py-0.5 text-sm font-semibold text-foreground">
                               {participant.age ?? "-"}
@@ -305,7 +309,7 @@ export const ViewProjectDialog = ({
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No hay escenarios disponibles.</p>
+                  <p className="text-sm text-muted-foreground">No hay escenarios.</p>
                 )}
               </div>
             </section>
@@ -449,7 +453,7 @@ const ScenarioPreviewImage = ({
       <div ref={containerRef} className="absolute inset-0 flex items-center justify-center text-muted-foreground">
         <div className="flex items-center gap-2 text-sm font-medium">
           {isVideo ? <Video className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
-          {isVideo ? "No se pudo generar la previsualizacion" : "No se pudo cargar la imagen"}
+          {isVideo ? "No se pudo generar la previsualización" : "No se pudo cargar la imagen"}
         </div>
       </div>
     )

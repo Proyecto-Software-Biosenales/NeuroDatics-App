@@ -60,11 +60,14 @@ function scrollSnapshot(trigger: HTMLElement | null) {
 export function ParticipantComparisonProvider({
   projectId,
   participantCodes,
+  participantLabels,
   generation,
   children,
 }: {
   projectId: string | null
   participantCodes: string[]
+  /** Display text by participant code; codes without an entry show "Participante <code>". */
+  participantLabels?: Readonly<Record<string, string>>
   generation: number | null
   children: ReactNode
 }) {
@@ -113,6 +116,7 @@ export function ParticipantComparisonProvider({
             projectId={projectId}
             generation={generation}
             participantCodes={participantCodes}
+            participantLabels={participantLabels}
             spec={session.spec}
             returnFocus={session.trigger}
             scrollSnapshot={session.scroll}

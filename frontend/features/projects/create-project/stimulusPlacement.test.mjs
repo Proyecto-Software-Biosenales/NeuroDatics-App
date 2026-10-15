@@ -107,7 +107,7 @@ test("explains why a placement is not publishable instead of failing silently", 
       stimulusWidthPx: "1080",
       stimulusHeightPx: "1080",
     }),
-    /Contain exige/,
+    /«Completo» exige/,
   )
   assert.equal(
     describeStimulusPlacementIssue({

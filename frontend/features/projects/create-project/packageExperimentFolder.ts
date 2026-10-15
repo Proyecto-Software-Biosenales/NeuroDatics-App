@@ -4,7 +4,7 @@ export const MAX_EXPERIMENT_ZIP_BYTES = 500 * 1024 * 1024;
 
 export async function packageExperimentFolder(files: File[], signal: AbortSignal): Promise<File> {
   const assertActive = () => {
-    if (signal.aborted) throw new Error("Subida cancelada por el usuario.");
+    if (signal.aborted) throw new Error("Subida cancelada.");
   };
   assertActive();
   if (!files.length) throw new Error("Debes seleccionar una carpeta para continuar.");
@@ -27,7 +27,7 @@ export async function packageExperimentFolder(files: File[], signal: AbortSignal
   assertActive();
   // ZIP headers add bytes beyond the source-file total checked by the picker.
   if (blob.size > MAX_EXPERIMENT_ZIP_BYTES) {
-    throw new Error("El ZIP generado supera el máximo de 500MB. Reduce el tamaño de la carpeta.");
+    throw new Error("La carpeta supera el máximo de 500 MB. Reduce su tamaño.");
   }
   return new File([blob], `${folderName}.zip`, { type: "application/zip" });
 }

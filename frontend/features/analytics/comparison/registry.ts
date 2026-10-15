@@ -82,8 +82,8 @@ export const VISUALIZATION_REGISTRY: VisualizationDefinition[] = [
   },
   {
     id: "gaze",
-    label: "Gaze point",
-    shortLabel: "Gaze point",
+    label: "Punto de mirada",
+    shortLabel: "Punto de mirada",
     description: "Posición horizontal y vertical de la mirada.",
     group: "temporal",
     sensor: "EyeTracker",
@@ -115,7 +115,7 @@ export const VISUALIZATION_REGISTRY: VisualizationDefinition[] = [
   },
   {
     id: "fixation_histogram",
-    label: "Histograma de fijación",
+    label: "Histograma de fijaciones",
     shortLabel: "Fijaciones",
     description: "Distribución de las duraciones de fijación.",
     group: "frequency",
@@ -137,7 +137,7 @@ export const VISUALIZATION_REGISTRY: VisualizationDefinition[] = [
   },
   {
     id: "eeg_spectrogram",
-    label: "Espectrograma de frecuencia",
+    label: "Espectrograma de frecuencias",
     shortLabel: "Espectrograma",
     description: "Evolución temporal de la potencia espectral.",
     group: "frequency",

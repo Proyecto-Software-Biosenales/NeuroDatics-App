@@ -154,9 +154,9 @@ export function ComparisonStatistics({
   const numericRows = (() => {
     const rows: Array<NumericRow | NumericStateRow> = []
     const definitions = [
-      ["pupil", "Eye Tracker", "Dilatación pupilar"],
-      ["distance", "Eye Tracker", "Distancia al dispositivo"],
-      ["gaze", "Eye Tracker", "Gaze point"],
+      ["pupil", "Eye tracker", "Dilatación pupilar"],
+      ["distance", "Eye tracker", "Distancia al dispositivo"],
+      ["gaze", "Eye tracker", "Punto de mirada"],
       ["gsr", "GSR", "Respuesta galvánica"],
       ["eeg_timeseries", "EEG", "EEG por canal"],
     ] as const
@@ -206,22 +206,22 @@ export function ComparisonStatistics({
     if (selected.has("fixation_histogram") && histogram) {
       rows.push(
         {
-          sensor: "Eye Tracker",
-          visualization: "Histograma de fijación",
+          sensor: "Eye tracker",
+          visualization: "Histograma de fijaciones",
           metric: "Fijaciones",
           value: histogram.n_fixations,
           unit: "",
         },
         {
-          sensor: "Eye Tracker",
-          visualization: "Histograma de fijación",
+          sensor: "Eye tracker",
+          visualization: "Histograma de fijaciones",
           metric: "Duración total",
           value: histogram.total_duration_ms,
           unit: "ms",
         },
         {
-          sensor: "Eye Tracker",
-          visualization: "Histograma de fijación",
+          sensor: "Eye tracker",
+          visualization: "Histograma de fijaciones",
           metric: "Duración media",
           value: histogram.mean_duration_ms,
           unit: "ms",
@@ -232,21 +232,21 @@ export function ComparisonStatistics({
     if (selected.has("heatmap") && fixation) {
       rows.push(
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Mapa de calor",
           metric: "Fijaciones",
           value: fixation.stats.n_fixations,
           unit: "",
         },
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Mapa de calor",
           metric: "Duración media",
           value: fixation.stats.avg_duration_s * 1000,
           unit: "ms",
         },
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Mapa de calor",
           metric: "Fijación máxima",
           value: fixation.stats.max_duration_s * 1000,
@@ -258,21 +258,21 @@ export function ComparisonStatistics({
     if (selected.has("scanpath") && scanpath) {
       rows.push(
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Mapa de recorridos",
           metric: "Objetivos",
           value: scanpath.n_objectives,
           unit: "",
         },
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Mapa de recorridos",
           metric: "Distancia total",
           value: scanpath.total_distance_px,
           unit: "px",
         },
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Mapa de recorridos",
           metric: "Duración media",
           value: scanpath.avg_duration_s * 1000,
@@ -283,21 +283,21 @@ export function ComparisonStatistics({
     if (pinnedTime != null) {
       rows.push(
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Punto sobre estímulo",
           metric: "Instante fijado",
           value: pinnedTime,
           unit: "s",
         },
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Punto sobre estímulo",
           metric: "Posición X",
           value: data.gazeAt.data?.gx ?? null,
           unit: "%",
         },
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Punto sobre estímulo",
           metric: "Posición Y",
           value: data.gazeAt.data?.gy ?? null,
@@ -309,21 +309,21 @@ export function ComparisonStatistics({
     if (selected.has("aoi") && aoi) {
       rows.push(
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Comparativa AOIs",
           metric: "Áreas",
           value: aoi.aois.length,
           unit: "",
         },
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Comparativa AOIs",
           metric: "Fijaciones",
           value: aoi.total_fixations,
           unit: "",
         },
         {
-          sensor: "Eye Tracker",
+          sensor: "Eye tracker",
           visualization: "Comparativa AOIs",
           metric: "Permanencia observada",
           value: aoi.observed_aoi_dwell_time_percent,
@@ -387,8 +387,8 @@ export function ComparisonStatistics({
         data.fixationHistogram.loading,
         data.fixationHistogram.error,
         Boolean(histogram),
-        "Histograma de fijación",
-        "Eye Tracker"
+        "Histograma de fijaciones",
+        "Eye tracker"
       ),
       selectedState(
         selected,
@@ -397,7 +397,7 @@ export function ComparisonStatistics({
         data.fixation.error || data.heatmap.error,
         Boolean(fixation),
         "Mapa de calor",
-        "Eye Tracker"
+        "Eye tracker"
       ),
       selectedState(
         selected,
@@ -406,7 +406,7 @@ export function ComparisonStatistics({
         data.scanpath.error,
         Boolean(scanpath),
         "Mapa de recorridos",
-        "Eye Tracker"
+        "Eye tracker"
       ),
       selectedState(
         selected,
@@ -415,7 +415,7 @@ export function ComparisonStatistics({
         data.aoi.error,
         Boolean(aoi),
         "Comparativa AOIs",
-        "Eye Tracker"
+        "Eye tracker"
       ),
       selectedState(
         selected,
@@ -623,11 +623,11 @@ export function ComparisonStatistics({
                     {[
                       "AOI",
                       "Fijaciones",
-                      "Dwell total",
-                      "Dwell %",
+                      "Permanencia total",
+                      "Permanencia %",
                       "Duración media",
                       "TTFF",
-                      "Hit rate",
+                      "Tasa de acierto",
                     ].map((label) => (
                       <TableHead
                         key={label}

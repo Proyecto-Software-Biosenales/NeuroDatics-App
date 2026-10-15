@@ -194,13 +194,13 @@ export function EegTimeseriesView({
 
           <div className="flex flex-wrap items-center gap-3 xl:shrink-0">
             <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
-                { key: "smooth", label: "Suavizada" },
-                { key: "raw", label: "Cruda" },
-                { key: "both", label: "Ambas" },
+                { key: "smooth", label: "Suavizada", hint: "Señal promediada cada 0.2 s: quita las oscilaciones rápidas y deja ver la tendencia." },
+                { key: "raw", label: "Cruda", hint: "Valores originales de cada electrodo, sin suavizar." },
+                { key: "both", label: "Ambas", hint: "La señal suavizada y la cruda juntas, para compararlas." },
               ]} />
             <AnalyticsModeSelector value={chartLayout} onValueChange={setChartLayout} options={[
-                { key: "overlay", label: "Superpuesta" },
-                { key: "stacked", label: "Montaje" },
+                { key: "overlay", label: "Superpuesta", hint: "Todos los canales sobre el mismo eje, para comparar su amplitud." },
+                { key: "stacked", label: "Montaje", hint: "Cada canal en su propio carril, uno debajo de otro, como en un registro clínico de EEG." },
               ]} />
             <TimeWindowControls
               draftStart={timeseriesWindowDraft.start}
@@ -292,7 +292,7 @@ export function EegTimeseriesView({
               value={timeRepresentativeStats.minValue}
               unit="uV"
               decimals={4}
-              description="Mínimo de muestras válidas"
+              description="Solo muestras válidas"
               Icon={TrendingDown}
               loading={timeseriesLoading}
               onClick={timeExtremePoints.minPoint ? () => setSelectedTime(timeExtremePoints.minPoint?.time ?? null) : undefined}
@@ -308,7 +308,7 @@ export function EegTimeseriesView({
               value={timeRepresentativeStats.maxValue}
               unit="uV"
               decimals={4}
-              description="Máximo de muestras válidas"
+              description="Solo muestras válidas"
               Icon={TrendingUp}
               loading={timeseriesLoading}
               onClick={timeExtremePoints.maxPoint ? () => setSelectedTime(timeExtremePoints.maxPoint?.time ?? null) : undefined}
@@ -325,7 +325,7 @@ export function EegTimeseriesView({
             <Skeleton className="analytics-state-frame-eeg w-full animate-pulse rounded-lg bg-muted" />
           ) : timeseriesError ? (
             <div className="analytics-state-frame-eeg flex items-center justify-center text-sm text-muted-foreground">
-              No se pudo cargar la senal EEG.
+              No se pudo cargar la señal EEG.
             </div>
           ) : chartData.length === 0 || visibleChannels.length === 0 ? (
             <div className="analytics-state-frame-eeg flex items-center justify-center text-sm text-muted-foreground">
@@ -454,7 +454,6 @@ export function EegTimeseriesView({
           totalDurationS={chartData[chartData.length - 1]?.time ?? null}
           description="Ubicación de la mirada del participante durante el instante seleccionado de la señal EEG."
           emptyText="Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante"
-          metricDescription="la amplitud EEG promedio"
           onClearSelection={() => setSelectedTime(null)}
         />
       ) : null}

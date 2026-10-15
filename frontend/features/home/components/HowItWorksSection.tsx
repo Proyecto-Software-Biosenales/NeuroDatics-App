@@ -3,25 +3,25 @@ const steps = [
     number: 1,
     title: "Crea un proyecto",
     description:
-      "Inicia tu investigación creando un proyecto. Define nombre, descripción y configura los parámetros de medición según tus objetivos.",
+      "Sube la carpeta del experimento, marca los sensores y registra a los participantes.",
   },
   {
     number: 2,
-    title: "Cargar datos y sensores",
+    title: "Marca áreas de interés",
     description:
-      "Importa datos de EEG, GSR y Eye Tracking. Define zonas de interés (AOI), establece ventanas temporales.",
+      "Dibuja sobre cada imagen las zonas que quieres analizar.",
   },
   {
     number: 3,
-    title: "Analizar gráficas y métricas",
+    title: "Analiza los resultados",
     description:
-      "Visualiza métricas en tiempo real con gráficas interactivas y métricas estadísticas: atención, activación y emoción agregada.",
+      "Revisa las gráficas y estadísticas de EEG, GSR y eye tracker, y compara participantes.",
   },
   {
     number: 4,
-    title: "Generar reportes en PDF",
+    title: "Genera informes en PDF",
     description:
-      "Exporta reportes profesionales en PDF con gráficas, y métricas. Elige entre reporte por sensor o publicación completa.",
+      "Descarga un informe por dispositivo, de un participante o de todo el grupo.",
   },
 ]
 

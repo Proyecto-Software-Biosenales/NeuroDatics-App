@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { NavBar } from "@/components/layout/NavBar"
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from '@/lib/providers/AuthProvider'
+import { ScreenSettingsNotice } from "@/features/settings/components/ScreenSettingsNotice"
 
 export default function RootLayout({
   children,
@@ -16,6 +17,7 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="light">
           <AuthProvider>
             <NavBar />
+            <ScreenSettingsNotice />
             <main>{children}</main>
           </AuthProvider>
           <Toaster />

@@ -8,8 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { FieldHint } from "@/components/FieldHint"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { useScreenSettings } from "@/features/settings/screenSettings"
 import type { FixationScreenGeometryInput } from "../types"
 import {
   describeStimulusPlacementIssue,
@@ -28,17 +30,17 @@ type DisplayMode = StimulusPlacementDraft["displayMode"]
 const displayModes: Array<{ value: DisplayMode; label: string; hint: string }> = [
   {
     value: "contain",
-    label: "Contain",
+    label: "Completo",
     hint: "El estímulo se mostró completo, con márgenes alrededor.",
   },
   {
     value: "cover",
-    label: "Cover",
+    label: "Cubre",
     hint: "El estímulo cubrió toda la región visible y se recortó por los bordes.",
   },
   {
     value: "crop",
-    label: "Crop",
+    label: "Recorte",
     hint: "Solo se mostró una región recortada del estímulo.",
   },
   {
@@ -69,8 +71,8 @@ const viewportFields: Array<{
   { key: "viewportTopPx", label: "Y (arriba)", nonNegative: true },
   { key: "viewportWidthPx", label: "Ancho", positive: true },
   { key: "viewportHeightPx", label: "Alto", positive: true },
-  { key: "scrollXPx", label: "Scroll X", nonNegative: true },
-  { key: "scrollYPx", label: "Scroll Y", nonNegative: true },
+  { key: "scrollXPx", label: "Desplazamiento X", nonNegative: true },
+  { key: "scrollYPx", label: "Desplazamiento Y", nonNegative: true },
 ]
 
 const num = (value: string | undefined): number | null => {
@@ -167,6 +169,7 @@ export const StimulusPlacementEditor = ({
 }: StimulusPlacementEditorProps) => {
   const [sectionOpen, setSectionOpen] = useState(() => placements.some((p) => p.enabled))
   const [openPath, setOpenPath] = useState<string | null>(null)
+  const globalScreen = useScreenSettings()?.screen
 
   if (placements.length === 0) return null
 
@@ -189,6 +192,9 @@ export const StimulusPlacementEditor = ({
   const canCopyGeometry =
     !!geometryWidth && !!geometryHeight &&
     (geometryWidth !== sharedScreenWidth || geometryHeight !== sharedScreenHeight)
+  // A screen not typed yet starts from the other screen typed in Step 1, else from Configuración.
+  const startWidth = geometryWidth || (globalScreen ? String(globalScreen.width_px) : "")
+  const startHeight = geometryHeight || (globalScreen ? String(globalScreen.height_px) : "")
 
   const applyScreenSize = (width: string, height: string) => {
     placements.forEach((placement) => {
@@ -209,16 +215,16 @@ export const StimulusPlacementEditor = ({
   }
 
   const togglePlacement = (placement: StimulusPlacementDraft, enabled: boolean) => {
-    if (enabled && !sharedScreenWidth && !sharedScreenHeight && geometryWidth && geometryHeight) {
-      applyScreenSize(geometryWidth, geometryHeight)
+    if (enabled && !sharedScreenWidth && !sharedScreenHeight && startWidth && startHeight) {
+      applyScreenSize(startWidth, startHeight)
     }
     onChange(placement.sourceEntryPath, { enabled })
     setOpenPath(enabled ? placement.sourceEntryPath : null)
   }
 
   const toggleAll = (enabled: boolean) => {
-    if (enabled && !sharedScreenWidth && !sharedScreenHeight && geometryWidth && geometryHeight) {
-      applyScreenSize(geometryWidth, geometryHeight)
+    if (enabled && !sharedScreenWidth && !sharedScreenHeight && startWidth && startHeight) {
+      applyScreenSize(startWidth, startHeight)
     }
     placements.forEach((placement) => onChange(placement.sourceEntryPath, { enabled }))
     setOpenPath(enabled ? placements[0]?.sourceEntryPath ?? null : null)
@@ -310,7 +316,7 @@ export const StimulusPlacementEditor = ({
             </span>
             <span className="block truncate text-xs text-muted-foreground">
               {enabledCount === 0
-                ? `Opcional · ${placements.length} archivo(s) sin geometría registrada`
+                ? `${placements.length} archivo(s) sin geometría registrada`
                 : `${enabledCount} de ${placements.length} archivo(s) con geometría registrada`}
             </span>
           </span>
@@ -340,17 +346,14 @@ export const StimulusPlacementEditor = ({
         </CollapsibleTrigger>
 
         <CollapsibleContent className="space-y-3 border-t border-border p-3">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Registra cómo se mostró cada imagen o vídeo durante la adquisición. Si lo omites, el
-            proyecto conserva el comportamiento legado y mostrará una advertencia; nunca se asumirá
-            pantalla completa.
-          </p>
-
           <div className="space-y-2 rounded-lg border border-border bg-card p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <Label className="text-xs font-medium text-foreground">
-                Pantalla de la adquisición (px)
-              </Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-medium text-foreground">
+                  Pantalla de la adquisición (px)
+                </Label>
+                <FieldHint>Se aplica a todos los archivos del experimento.</FieldHint>
+              </div>
               {canCopyGeometry && !disabled && (
                 <Button
                   type="button"
@@ -358,7 +361,7 @@ export const StimulusPlacementEditor = ({
                   size="xs"
                   onClick={() => applyScreenSize(geometryWidth, geometryHeight)}
                 >
-                  Usar {geometryWidth}×{geometryHeight} de la geometría física
+                  Usar {geometryWidth}×{geometryHeight} de la otra pantalla
                 </Button>
               )}
             </div>
@@ -368,7 +371,7 @@ export const StimulusPlacementEditor = ({
                 type="number"
                 min="1"
                 step="1"
-                placeholder="1920"
+                placeholder={startWidth || "1280"}
                 aria-label="Ancho de la pantalla en píxeles"
                 value={sharedScreenWidth}
                 onChange={(event) => applyScreenSize(event.target.value, sharedScreenHeight)}
@@ -380,16 +383,13 @@ export const StimulusPlacementEditor = ({
                 type="number"
                 min="1"
                 step="1"
-                placeholder="1080"
+                placeholder={startHeight || "1024"}
                 aria-label="Alto de la pantalla en píxeles"
                 value={sharedScreenHeight}
                 onChange={(event) => applyScreenSize(sharedScreenWidth, event.target.value)}
                 disabled={disabled}
               />
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Se aplica a todos los archivos del experimento.
-            </p>
           </div>
 
           <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -406,6 +406,10 @@ export const StimulusPlacementEditor = ({
               >
                 Registrar todos los archivos
               </Label>
+              <FieldHint>
+                Registra cómo se mostró cada imagen o vídeo durante la adquisición. Si lo omites, los
+                resultados de mirada mostrarán una advertencia.
+              </FieldHint>
               <span className="ml-auto text-[11px] text-muted-foreground">
                 {enabledCount}/{placements.length}
               </span>
@@ -417,7 +421,6 @@ export const StimulusPlacementEditor = ({
                 const { folder, name } = splitPath(placement.sourceEntryPath)
                 const isOpen = openPath === placement.sourceEntryPath
                 const issue = issues.get(placement.sourceEntryPath) ?? null
-                const mode = displayModes.find((option) => option.value === placement.displayMode)
                 const fullscreen = placement.displayMode === "fullscreen"
 
                 return (
@@ -438,7 +441,7 @@ export const StimulusPlacementEditor = ({
                           checked={placement.enabled}
                           onCheckedChange={(checked) => togglePlacement(placement, checked === true)}
                           disabled={disabled}
-                          aria-label={`Registrar transformación de ${placement.sourceEntryPath}`}
+                          aria-label={`Registrar la ubicación de ${placement.sourceEntryPath}`}
                         />
                         <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left">
                           <span
@@ -473,9 +476,18 @@ export const StimulusPlacementEditor = ({
                         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,170px)]">
                           <div className="space-y-3">
                             <div className="space-y-1.5">
-                              <Label htmlFor={`placement-mode-${id}`} className="text-xs">
-                                ¿Cómo se mostró?
-                              </Label>
+                              <div className="flex items-center gap-1.5">
+                                <Label htmlFor={`placement-mode-${id}`} className="text-xs">
+                                  ¿Cómo se mostró?
+                                </Label>
+                                <FieldHint>
+                                  {displayModes.map((option) => (
+                                    <span key={option.value} className="block">
+                                      <span className="font-medium">{option.label}:</span> {option.hint}
+                                    </span>
+                                  ))}
+                                </FieldHint>
+                              </div>
                               <Select
                                 value={placement.displayMode}
                                 onValueChange={(value) => changeMode(placement, value as DisplayMode)}
@@ -492,11 +504,6 @@ export const StimulusPlacementEditor = ({
                                   ))}
                                 </SelectContent>
                               </Select>
-                              {mode && (
-                                <p className="text-[11px] leading-tight text-muted-foreground">
-                                  {mode.hint}
-                                </p>
-                              )}
                             </div>
 
                             {!fullscreen && (
@@ -547,7 +554,7 @@ export const StimulusPlacementEditor = ({
 
                         {!fullscreen && (
                           <div className="space-y-2">
-                            <div className="flex items-start gap-2">
+                            <div className="flex items-center gap-2">
                               <Checkbox
                                 id={`placement-viewport-${id}`}
                                 checked={placement.viewportEnabled}
@@ -561,17 +568,14 @@ export const StimulusPlacementEditor = ({
                                   placement.displayMode === "cover" ||
                                   placement.displayMode === "crop"
                                 }
-                                className="mt-0.5"
                               />
                               <Label
                                 htmlFor={`placement-viewport-${id}`}
                                 className="cursor-pointer text-xs leading-tight"
                               >
-                                Se mostró dentro de una región con scroll
-                                <span className="ml-1 font-normal text-muted-foreground">
-                                  (el origen del estímulo ya incluye el desplazamiento)
-                                </span>
+                                Se mostró dentro de una región con desplazamiento
                               </Label>
+                              <FieldHint>El origen del estímulo ya incluye el desplazamiento.</FieldHint>
                             </div>
 
                             {placement.viewportEnabled && (

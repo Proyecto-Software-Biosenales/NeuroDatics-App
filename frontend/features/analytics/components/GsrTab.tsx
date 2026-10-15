@@ -158,9 +158,9 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
       })}
       headerActions={
         <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
-          { key: "smooth", label: "Suavizada" },
-          { key: "raw", label: "Cruda" },
-          { key: "both", label: "Ambas" },
+          { key: "smooth", label: "Suavizada", hint: "Señal promediada en ventanas de un segundo: quita el ruido y deja ver la tendencia." },
+          { key: "raw", label: "Cruda", hint: "Valores originales del sensor, sin suavizar." },
+          { key: "both", label: "Ambas", hint: "La señal suavizada y la cruda juntas, para compararlas." },
         ]} />
       }
       kpis={[
@@ -182,8 +182,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
         {
           label: "Mínimo",
           value: stats?.min,
-          description: "Valor más bajo",
-          tooltip: "Valor mínimo registrado en la señal suavizada",
+          tooltip: "En la señal suavizada",
           tooltipExtra: stats?.raw_min != null ? `Valor real: ${stats.raw_min.toFixed(4)} µS` : undefined,
           Icon: TrendingDown,
           iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
@@ -197,8 +196,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
         {
           label: "Máximo",
           value: stats?.max,
-          description: "Pico de conductancia",
-          tooltip: "Valor máximo registrado en la señal suavizada",
+          tooltip: "En la señal suavizada",
           tooltipExtra: stats?.raw_max != null ? `Valor real: ${stats.raw_max.toFixed(4)} µS` : undefined,
           Icon: TrendingUp,
           iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
@@ -300,7 +298,6 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
         totalDurationS={chartData[chartData.length - 1]?.time ?? null}
         description="Ubicación de la mirada del participante durante el instante seleccionado de respuesta galvánica."
         emptyText="Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante"
-        metricDescription="la respuesta galvánica"
         onClearSelection={() => setSelectedTime(null)}
       />
 

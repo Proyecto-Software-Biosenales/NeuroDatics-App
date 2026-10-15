@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { FieldHint } from "@/components/FieldHint"
 import { Textarea } from "@/components/ui/textarea"
 import type { UploadedProjectZip } from "@/features/projects/types"
+import { LAB_SCREEN, useScreenSettings } from "@/features/settings/screenSettings"
 import type { FixationScreenGeometryInput } from "./types"
 import { StimulusPlacementEditor } from "./components/StimulusPlacementEditor"
 import {
@@ -46,6 +48,8 @@ interface CreateProjectStep1Props {
     sourceEntryPath: string,
     update: Partial<StimulusPlacementDraft>,
   ) => void
+  /** False when the name and the description are edited elsewhere (the project editor's own section). */
+  showProjectFields?: boolean
   zipRequired?: boolean
   isEditMode?: boolean
   shouldUpdateFolder?: boolean
@@ -67,6 +71,7 @@ export const CreateProjectStep1 = ({
   stimulusPlacements = [],
   onStimulusPathsChange,
   onStimulusPlacementChange,
+  showProjectFields = true,
   zipRequired = true,
   isEditMode = false,
   shouldUpdateFolder = false,
@@ -74,6 +79,7 @@ export const CreateProjectStep1 = ({
 }: CreateProjectStep1Props) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  const globalScreen = useScreenSettings()?.screen ?? null
   const [fileError, setFileError] = useState<string | null>(null)
   const [structure, setStructure] = useState<FolderStructure | null>(null)
   const [selection, setSelection] = useState<FolderSelection>(emptyFolderSelection())
@@ -134,7 +140,7 @@ export const CreateProjectStep1 = ({
     }
 
     if (files.length === 0) {
-      resetFolder("No se encontraron archivos en la carpeta")
+      resetFolder("No se encontraron archivos en la carpeta.")
       return
     }
 
@@ -146,7 +152,7 @@ export const CreateProjectStep1 = ({
     const totalSize = filteredFiles.reduce((sum, file) => sum + file.size, 0)
     const maxSize = 500 * 1024 * 1024
     if (totalSize > maxSize) {
-      resetFolder("La carpeta es demasiado grande. Máximo 500MB.")
+      resetFolder("La carpeta es demasiado grande. Máximo 500 MB.")
       return
     }
 
@@ -224,7 +230,7 @@ export const CreateProjectStep1 = ({
     if (!item) return
     const entry = item.webkitGetAsEntry?.()
     if (!entry?.isDirectory) {
-      setFileError("Por favor arrastra una carpeta, no un archivo suelto")
+      setFileError("Arrastra una carpeta, no un archivo suelto.")
       return
     }
 
@@ -232,7 +238,7 @@ export const CreateProjectStep1 = ({
       const files = await readDirectoryEntries(entry as FileSystemDirectoryEntry)
       handleFolder(files)
     } catch {
-      setFileError("Error al leer la carpeta arrastrada")
+      setFileError("No se pudo leer la carpeta arrastrada.")
     }
   }
 
@@ -263,7 +269,6 @@ export const CreateProjectStep1 = ({
     heightPx: "",
     widthCm: "",
     heightCm: "",
-    viewingDistanceCm: "",
   }
   const geometryDisabled =
     disableProjectMetadataEditing || (isEditMode && !shouldUpdateFolder)
@@ -273,139 +278,124 @@ export const CreateProjectStep1 = ({
   ) => {
     onFixationGeometryChange?.({ ...geometry, [field]: value })
   }
+  // `enabled` means this experiment used another screen than the one saved in Configuración;
+  // turning it on starts every empty field from that saved screen.
+  const enableGeometry = (enabled: boolean) => {
+    if (!enabled || !globalScreen) return updateGeometry("enabled", enabled)
+    const fallback = (current: string, saved: number | null) =>
+      current || (saved === null ? "" : String(saved))
+    onFixationGeometryChange?.({
+      ...geometry,
+      enabled,
+      widthPx: fallback(geometry.widthPx, globalScreen.width_px),
+      heightPx: fallback(geometry.heightPx, globalScreen.height_px),
+      widthCm: fallback(geometry.widthCm, globalScreen.width_cm),
+      heightCm: fallback(geometry.heightCm, globalScreen.height_cm),
+    })
+  }
+
+  // Same short labels and unit suffix as Configuración, so the four fields line up.
+  const measure = (
+    id: string,
+    field: "widthPx" | "heightPx" | "widthCm" | "heightCm",
+    label: string,
+    unit: "px" | "cm",
+    placeholder: string,
+  ) => (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <Input
+          id={id}
+          type="number"
+          min={unit === "px" ? "1" : "0.1"}
+          step={unit === "px" ? "1" : "0.1"}
+          className="pr-10"
+          placeholder={placeholder}
+          value={geometry[field]}
+          onChange={(event) => updateGeometry(field, event.target.value)}
+          disabled={geometryDisabled}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground"
+        >
+          {unit}
+        </span>
+      </div>
+    </div>
+  )
 
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="nombre-proyecto" className="text-base">
-            Nombre del proyecto
-          </Label>
-          <Input
-            id="nombre-proyecto"
-            name="nombre-proyecto"
-            placeholder="Ej: Publicidad Coca-cola"
-            value={projectName}
-            onChange={(e) => onProjectNameChange(e.target.value)}
-            disabled={disableProjectMetadataEditing}
-          />
-        </div>
+        {showProjectFields && (
+          <div className="space-y-2">
+            <Label htmlFor="nombre-proyecto" className="text-base">
+              Nombre del proyecto
+            </Label>
+            <Input
+              id="nombre-proyecto"
+              name="nombre-proyecto"
+              value={projectName}
+              onChange={(e) => onProjectNameChange(e.target.value)}
+              disabled={disableProjectMetadataEditing}
+            />
+          </div>
+        )}
 
         <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
           <div className="flex items-start gap-3">
             <Checkbox
               id="usar-geometria-pantalla"
               checked={geometry.enabled}
-              onCheckedChange={(checked) => updateGeometry("enabled", checked === true)}
+              onCheckedChange={(checked) => enableGeometry(checked === true)}
               disabled={geometryDisabled}
               className="mt-0.5 cursor-pointer border-gray-400"
             />
-            <div className="space-y-1">
-              <Label htmlFor="usar-geometria-pantalla" className="cursor-pointer text-base">
-                Usar geometría física para la detección ocular
-              </Label>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Actívala si conoces la pantalla usada en el experimento. Permite calcular
-                velocidad visual en grados. Si la dejas desactivada, se usará el detector
-                normalizado, que no necesita estas medidas.
-              </p>
-            </div>
+            <Label htmlFor="usar-geometria-pantalla" className="cursor-pointer text-base">
+              Pantalla distinta a la configuración
+            </Label>
           </div>
 
           {geometry.enabled && (
-            <div className="grid gap-3 pt-1 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="screen-width-px">Resolución horizontal (px)</Label>
-                <Input
-                  id="screen-width-px"
-                  type="number"
-                  min="1"
-                  step="1"
-                  placeholder="1920"
-                  value={geometry.widthPx}
-                  onChange={(event) => updateGeometry("widthPx", event.target.value)}
-                  disabled={geometryDisabled}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="screen-height-px">Resolución vertical (px)</Label>
-                <Input
-                  id="screen-height-px"
-                  type="number"
-                  min="1"
-                  step="1"
-                  placeholder="1080"
-                  value={geometry.heightPx}
-                  onChange={(event) => updateGeometry("heightPx", event.target.value)}
-                  disabled={geometryDisabled}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="screen-width-cm">Ancho físico (cm)</Label>
-                <Input
-                  id="screen-width-cm"
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  placeholder="53.1"
-                  value={geometry.widthCm}
-                  onChange={(event) => updateGeometry("widthCm", event.target.value)}
-                  disabled={geometryDisabled}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="screen-height-cm">Alto físico (cm)</Label>
-                <Input
-                  id="screen-height-cm"
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  placeholder="29.9"
-                  value={geometry.heightCm}
-                  onChange={(event) => updateGeometry("heightCm", event.target.value)}
-                  disabled={geometryDisabled}
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
-                <Label htmlFor="viewing-distance-cm">Distancia ojo-pantalla (cm)</Label>
-                <Input
-                  id="viewing-distance-cm"
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  placeholder="62"
-                  value={geometry.viewingDistanceCm}
-                  onChange={(event) => updateGeometry("viewingDistanceCm", event.target.value)}
-                  disabled={geometryDisabled}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Se usa como respaldo si el CSV no trae Distance.
-                </p>
-              </div>
+            <div className="grid items-end gap-3 pt-1 sm:grid-cols-2 lg:grid-cols-4">
+              {measure("screen-width-px", "widthPx", "Ancho (px)", "px", String(globalScreen?.width_px ?? LAB_SCREEN.width_px))}
+              {measure("screen-height-px", "heightPx", "Alto (px)", "px", String(globalScreen?.height_px ?? LAB_SCREEN.height_px))}
+              {measure("screen-width-cm", "widthCm", "Ancho (cm)", "cm", "53.1")}
+              {measure("screen-height-cm", "heightCm", "Alto (cm)", "cm", "29.9")}
             </div>
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="descripcion-proyecto" className="text-base">
-            Descripción
-          </Label>
-          <Textarea
-            className="h-20 max-h-20 w-full max-w-full resize-none overflow-y-auto overflow-x-hidden break-all [overflow-wrap:anywhere] [field-sizing:fixed]"
-            id="descripcion-proyecto"
-            name="descripcion-proyecto"
-            wrap="hard"
-            placeholder="Describe brevemente el objetivo del proyecto"
-            value={description}
-            onChange={(e) => onDescriptionChange(e.target.value)}
-            disabled={disableProjectMetadataEditing}
-          />
-        </div>
+        {showProjectFields && (
+          <div className="space-y-2">
+            <Label htmlFor="descripcion-proyecto" className="text-base">
+              Descripción
+            </Label>
+            <Textarea
+              className="h-20 max-h-20 w-full max-w-full resize-none overflow-y-auto overflow-x-hidden break-all [overflow-wrap:anywhere] [field-sizing:fixed]"
+              id="descripcion-proyecto"
+              name="descripcion-proyecto"
+              wrap="hard"
+              placeholder="Describe brevemente el objetivo del proyecto"
+              value={description}
+              onChange={(e) => onDescriptionChange(e.target.value)}
+              disabled={disableProjectMetadataEditing}
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
-          <Label htmlFor="carpeta-experimento" className="text-base">
-            Carpeta del experimento{zipRequired || isEditMode ? "" : " (opcional)"}
-          </Label>
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="carpeta-experimento" className="text-base">
+              Carpeta del experimento
+            </Label>
+            <FieldHint>
+              {zipRequired || isEditMode ? "" : "Opcional. "}
+              La carpeta con las imágenes, los vídeos y los CSV del experimento.
+            </FieldHint>
+          </div>
 
           {isEditMode && (
             <div className="mb-4 flex items-center gap-3 bg-muted border border-border rounded-lg p-3 hover:bg-accent transition-colors">
@@ -464,13 +454,9 @@ export const CreateProjectStep1 = ({
                 </div>
               </div>
 
-              <h3 className="text-base font-medium text-foreground mb-2">
+              <h3 className="text-base font-medium text-foreground mb-4">
                 Arrastra la carpeta aquí o haz clic para seleccionar
               </h3>
-
-              <p className="mb-4 max-w-xl text-sm leading-relaxed text-muted-foreground xl:text-base">
-                Selecciona la carpeta del experimento con imágenes, vídeos y CSV.
-              </p>
 
               <Button 
                 variant="outline" 
@@ -515,7 +501,7 @@ export const CreateProjectStep1 = ({
                     />
                     <div>
                       <h4 className={`font-medium ${ingestionFailed ? "text-red-500" : "text-green-400"}`}>
-                        {ingestionFailed ? "Ingesta con errores" : "Carpeta procesada"}
+                        {ingestionFailed ? "Carpeta procesada con errores" : "Carpeta procesada"}
                       </h4>
                       <p className={`text-xs mt-1 ${ingestionFailed ? "text-red-400" : "text-green-300 dark:text-green-400"}`}>
                         {uploadedZip.zip_file?.filename ?? folderPath}
@@ -542,7 +528,7 @@ export const CreateProjectStep1 = ({
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Videos:</span>
+                      <span className="text-muted-foreground">Vídeos:</span>
                       <span className="font-medium text-foreground">{uploadedZip.counts.videos}</span>
                     </div>
 
@@ -576,7 +562,7 @@ export const CreateProjectStep1 = ({
                             : "text-amber-400"
                         }`}
                       >
-                        {ingestionStatus || "PROCESSING"}
+                        {ingestionReady ? "Listo" : ingestionFailed ? "Con errores" : "Procesando"}
                       </span>
                     </div>
 
@@ -619,10 +605,7 @@ export const CreateProjectStep1 = ({
               <div className="flex items-start gap-2">
                 <HelpCircle size={18} className="mt-0.5 flex-shrink-0 text-amber-500" />
                 <div>
-                  <h4 className="font-medium text-amber-500">Necesitamos una confirmación</h4>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    La estructura de la carpeta es ambigua. Responde para continuar.
-                  </p>
+                  <h4 className="font-medium text-amber-500">Confirma la carpeta</h4>
                 </div>
               </div>
 
@@ -717,8 +700,7 @@ export const CreateProjectStep1 = ({
           <AlertCircle size={20} />
         </div>
         <p className="flex-1 text-xs text-foreground leading-relaxed">
-          Recuerda poner un nombre descriptivo a las imágenes y vídeos
-          utilizados, que coincida con lo que se obtiene en los datos.
+          Nombra las imágenes y vídeos igual que en los datos.
         </p>
       </div>
     </div>

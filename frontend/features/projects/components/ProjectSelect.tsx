@@ -28,7 +28,7 @@ export const ProjectSelect = ({
   projects,
   value,
   onChange,
-  placeholder = "Selecciona un proyecto...",
+  placeholder = "Selecciona un proyecto…",
 }: ProjectSelectProps) => {
   return (
     <Select value={value} onValueChange={(val) => val && onChange(val)}>

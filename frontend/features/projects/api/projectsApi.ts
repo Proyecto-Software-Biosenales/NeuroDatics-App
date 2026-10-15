@@ -91,8 +91,7 @@ const appendFixationGeometry = (
   const heightPx = Number(geometry.heightPx);
   const widthCm = Number(geometry.widthCm);
   const heightCm = Number(geometry.heightCm);
-  const viewingDistanceCm = Number(geometry.viewingDistanceCm);
-  const values = [widthPx, heightPx, widthCm, heightCm, viewingDistanceCm];
+  const values = [widthPx, heightPx, widthCm, heightCm];
   if (!values.every((value) => Number.isFinite(value) && value > 0)) {
     throw new Error("Completa la geometría de pantalla con valores positivos antes de subir.");
   }
@@ -101,7 +100,6 @@ const appendFixationGeometry = (
   form.append("screen_height_px", String(Math.round(heightPx)));
   form.append("screen_width_mm", String(widthCm * 10));
   form.append("screen_height_mm", String(heightCm * 10));
-  form.append("viewing_distance_mm", String(viewingDistanceCm * 10));
 };
 
 const appendStimulusPlacements = (
@@ -139,9 +137,14 @@ export type ApiProject = {
 
 export type ApiProjectParticipant = {
   id: string;
+  /** Extracted recording identifier; key for analytics, never edited. */
   participant_code: string;
   age?: number | null;
   sex?: "male" | "female" | "other" | string | null;
+  /** Optional user-entered name. */
+  name?: string | null;
+  /** Corrected document, or participant_code when never corrected. */
+  document?: string | null;
 };
 
 export type ApiProjectAoi = {
@@ -321,7 +324,13 @@ export const ProjectsApi = {
 
   setParticipants: (
     projectId: string,
-    participants: Array<{ participant_code: string; age?: number | null; sex?: "male" | "female" | "other" | null }>
+    participants: Array<{
+      participant_code: string;
+      age?: number | null;
+      sex?: "male" | "female" | "other" | null;
+      name?: string | null;
+      document?: string | null;
+    }>
   ) =>
     analyticsMutation(projectId, () => apiFetch<void>(`/api/projects/${projectId}/participants`, {
       method: "PUT",

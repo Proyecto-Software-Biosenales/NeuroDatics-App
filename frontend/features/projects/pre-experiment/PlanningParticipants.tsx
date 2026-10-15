@@ -1,22 +1,22 @@
 "use client"
+import { useId } from "react"
 import { Plus, Trash2, UserRound, UsersRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import type { PlanningParticipant, PreExperimentConfig } from "./types"
-
-// [field, label, placeholder, columns out of six on wider screens]
-const textFields = [
-  ["code", "Código", "Ej: P01", "sm:col-span-2"],
-  ["name", "Nombre del participante", "Nombre completo", "sm:col-span-4"],
-  ["identification_document", "Documento de identificación", "Opcional", "sm:col-span-3"],
-  ["gender", "Género", "Opcional", "sm:col-span-2"],
-] as const
+import { FieldHint } from "@/components/FieldHint"
+import { PlanningSelect } from "./PlanningControls"
+import {
+  participantLabel,
+  repeatedDocument,
+  sexOptions,
+  type PlanningParticipant,
+  type PreExperimentConfig,
+} from "./types"
 
 const newParticipant = (): PlanningParticipant => ({
   id: crypto.randomUUID(),
-  code: "",
   name: "",
   identification_document: "",
   gender: "",
@@ -24,7 +24,7 @@ const newParticipant = (): PlanningParticipant => ({
   notes: "",
 })
 
-/** Participant cards shared by the creation tabs and Configuración. */
+/** Participant cards of the pre-experiment, with the fields of a project created from its folder. */
 export function PlanningParticipants({
   value,
   onChange,
@@ -32,6 +32,8 @@ export function PlanningParticipants({
   value: PreExperimentConfig
   onChange: (value: PreExperimentConfig) => void
 }) {
+  const baseId = useId()
+  const isRepeated = repeatedDocument(value.participants)
   const update = (id: string, change: Partial<PlanningParticipant>) =>
     onChange({
       ...value,
@@ -50,8 +52,7 @@ export function PlanningParticipants({
         <div className="space-y-1">
           <p className="font-medium">Aún no hay participantes</p>
           <p className="text-sm text-muted-foreground">
-            Registra a quienes harán el experimento. Solo el código y el nombre
-            son obligatorios.
+            Registra a quienes harán el experimento.
           </p>
         </div>
         <Button type="button" onClick={add}>
@@ -62,14 +63,9 @@ export function PlanningParticipants({
     )
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Código y nombre son obligatorios al agregar un participante. Los demás
-        datos son opcionales.
-      </p>
       {value.participants.map((participant, index) => {
-        const summary = [participant.code.trim(), participant.name.trim()]
-          .filter(Boolean)
-          .join(" — ")
+        const fieldId = `${baseId}-${index}`
+        const repeated = isRepeated(participant)
         return (
           <fieldset
             key={participant.id}
@@ -82,8 +78,12 @@ export function PlanningParticipants({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Participante {index + 1}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {summary || "Sin código ni nombre todavía"}
+                <p
+                  className={`truncate text-xs ${repeated ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  {repeated
+                    ? "Documento repetido"
+                    : participantLabel(participant) || "Sin documento todavía"}
                 </p>
               </div>
               <Button
@@ -104,43 +104,86 @@ export function PlanningParticipants({
                 <Trash2 aria-hidden />
               </Button>
             </div>
-            <div className="grid gap-3 p-4 sm:grid-cols-6">
-              {textFields.map(([key, label, placeholder, span]) => (
-                <Label key={key} className={`block space-y-1.5 text-sm ${span}`}>
-                  <span>
-                    {label}
-                    {(key === "code" || key === "name") && " *"}
-                  </span>
+            {/* The four data fields share one row of equal columns and the notes go below. Every label
+                row is h-5, so a hint icon does not push its field below its neighbours. */}
+            <div className="grid gap-3 p-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex h-5 items-center gap-1.5">
+                    <Label htmlFor={`${fieldId}-nombre`}>Nombre</Label>
+                    <FieldHint id={`${fieldId}-nombre-ayuda`}>
+                      Opcional. Si lo dejas vacío, se muestra el documento.
+                    </FieldHint>
+                  </div>
                   <Input
-                    value={participant[key]}
-                    placeholder={placeholder}
+                    id={`${fieldId}-nombre`}
+                    autoComplete="off"
+                    maxLength={255}
+                    aria-describedby={`${fieldId}-nombre-ayuda`}
+                    value={participant.name}
                     onChange={(event) =>
-                      update(participant.id, { [key]: event.target.value })
+                      update(participant.id, { name: event.target.value })
                     }
                   />
-                </Label>
-              ))}
-              <Label className="block space-y-1.5 text-sm sm:col-span-1">
-                <span>Edad</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={150}
-                  step={1}
-                  placeholder="Opcional"
-                  value={participant.age ?? ""}
-                  onChange={(event) =>
-                    update(participant.id, {
-                      age:
-                        event.target.value === ""
-                          ? null
-                          : Number(event.target.value),
-                    })
-                  }
-                />
-              </Label>
-              <Label className="block space-y-1.5 text-sm sm:col-span-6">
-                <span>Notas del participante</span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex h-5 items-center gap-1.5">
+                    <Label htmlFor={`${fieldId}-documento`}>Documento *</Label>
+                    <FieldHint id={`${fieldId}-documento-ayuda`}>
+                      Identifica al participante: no puede repetirse en el
+                      proyecto.
+                    </FieldHint>
+                  </div>
+                  <Input
+                    id={`${fieldId}-documento`}
+                    autoComplete="off"
+                    maxLength={100}
+                    aria-describedby={`${fieldId}-documento-ayuda`}
+                    aria-invalid={repeated}
+                    value={participant.identification_document}
+                    onChange={(event) =>
+                      update(participant.id, {
+                        identification_document: event.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {/* The trigger is named by aria-label; this label is only what is seen. */}
+                  <Label aria-hidden className="h-5">
+                    Sexo
+                  </Label>
+                  <PlanningSelect
+                    label="Sexo"
+                    value={participant.gender}
+                    options={[...sexOptions]}
+                    onChange={(gender) => update(participant.id, { gender })}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor={`${fieldId}-edad`} className="h-5">
+                    Edad
+                  </Label>
+                  <Input
+                    id={`${fieldId}-edad`}
+                    type="number"
+                    min={0}
+                    max={150}
+                    step={1}
+                    value={participant.age ?? ""}
+                    onChange={(event) =>
+                      update(participant.id, {
+                        age:
+                          event.target.value === ""
+                            ? null
+                            : Number(event.target.value),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              <Label className="flex-col items-stretch gap-1.5">
+                <span className="flex h-5 items-center">Notas del participante</span>
                 <Textarea
                   value={participant.notes}
                   placeholder="Observaciones, condiciones especiales…"

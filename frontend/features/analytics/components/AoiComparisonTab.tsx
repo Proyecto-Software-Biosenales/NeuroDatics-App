@@ -97,7 +97,7 @@ function AoiTooltip({
       <p className="mb-2 font-semibold">{label}</p>
       <p>Tiempo observado: {formatPercent(item.total_dwell_time_percent)}</p>
       <p>Fijaciones: {item.fixation_count}</p>
-      <p>Dwell time: {formatMs(item.total_dwell_time_ms)}</p>
+      <p>Tiempo de permanencia: {formatMs(item.total_dwell_time_ms)}</p>
     </div>
   )
 }
@@ -296,7 +296,7 @@ export function AoiComparisonTab({
           label="Tiempo en AOIs"
           value={data.observed_aoi_dwell_time_percent}
           unit="%"
-          description="Dwell time cubierto"
+          description="Permanencia cubierta"
           Icon={Clock}
           bgClass="bg-card"
           iconBgClass="bg-amber-100 dark:bg-amber-900/30"

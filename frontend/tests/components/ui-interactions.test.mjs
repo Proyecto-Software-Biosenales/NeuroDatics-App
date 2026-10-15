@@ -17,7 +17,7 @@ const bundle = browserBundle(`
   import { Activity } from 'lucide-react';
   function Fixture({mode}) {
     const [sensors,setSensors]=useState(['EEG']);
-    const [participants,setParticipants]=useState([{id:'P01',sex:'male',age:'25'},{id:'P02',sex:'',age:''}]);
+    const [participants,setParticipants]=useState([{id:'P01',sex:'male',age:'25',name:'',document:'P01'},{id:'P02',sex:'',age:'',name:'',document:'P02'}]);
     const [scope,setScope]=useState('participant');
     const [participant,setParticipant]=useState('');
     const [device,setDevice]=useState('EyeTracker');
@@ -61,17 +61,26 @@ const state = async page => JSON.parse(await page.locator("#state").textContent(
 test("sensor cards toggle once and participant disclosures preserve demographics", async t => {
   const page = await fixture(t, "wizard")
   await expect(page.getByRole("checkbox", { name: "Electroencefalógrafo", exact: true })).toBeChecked()
-  await page.getByText("Sensor Galvánico", { exact: true }).click()
+  await page.getByText("Sensor galvánico", { exact: true }).click()
   assert.deepEqual((await state(page)).sensors, ["EEG", "GSR"])
-  await page.getByRole("checkbox", { name: "Sensor Galvánico", exact: true }).focus()
+  await page.getByRole("checkbox", { name: "Sensor galvánico", exact: true }).focus()
   await page.keyboard.press("Space")
   assert.deepEqual((await state(page)).sensors, ["EEG"])
-  await page.getByRole("button", { name: /^P02/ }).click()
+  // Headers are generic and positional; the extracted code prefills the editable document.
+  await expect(page.getByRole("button", { name: /P0[12]/ })).toHaveCount(0)
+  await page.getByRole("button", { name: /^Participante 2/ }).click()
+  await expect(page.getByLabel("Documento", { exact: true })).toHaveValue("P02")
+  await page.getByLabel("Nombre", { exact: true }).fill("Ana Pérez")
+  await page.getByLabel("Documento", { exact: true }).fill("1033176186")
+  await expect(page.getByLabel("Documento", { exact: true })).toHaveAccessibleDescription(/Detectado en los datos: P02/)
   await page.getByRole("radio", { name: "Femenino", exact: true }).click()
   await page.getByLabel("Edad", { exact: true }).fill("31")
-  await page.getByRole("button", { name: "P01", exact: true }).click()
+  await page.getByRole("button", { name: "Participante 1", exact: true }).click()
   await expect(page.getByLabel("Edad", { exact: true })).toHaveValue("25")
-  assert.deepEqual((await state(page)).participants[1], { id: "P02", sex: "female", age: "31" })
+  await expect(page.getByLabel("Nombre", { exact: true })).toHaveValue("")
+  assert.deepEqual((await state(page)).participants[1], {
+    id: "P02", sex: "female", age: "31", name: "Ana Pérez", document: "1033176186",
+  })
 })
 
 test("report scope, device radios and export options keep independent selections", async t => {
@@ -87,10 +96,15 @@ test("report scope, device radios and export options keep independent selections
   assert.equal((await state(page)).device, "all")
   await page.getByRole("radio", { name: /^GSR/ }).click()
   await page.keyboard.press("ArrowLeft", { delay: 50 })
-  await expect(page.getByRole("radio", { name: /^Eye Tracking/ })).toBeChecked()
+  await expect(page.getByRole("radio", { name: /^Eye tracker/ })).toBeChecked()
   assert.equal((await state(page)).device, "EyeTracker")
+  // An option's explanation is a tooltip: clicking its icon opens it without choosing the option.
+  await page.locator("label[for='report-device-all']").getByRole("button", { name: "Más información" }).click()
+  await expect(page.getByRole("tooltip")).toContainText("juntos en un archivo ZIP")
+  assert.equal((await state(page)).device, "EyeTracker")
+  await page.keyboard.press("Escape")
   await page.getByRole("checkbox", { name: /Incluir portada/ }).click()
-  await page.getByRole("button", { name: "Descargar reporte PDF", exact: true }).click()
+  await page.getByRole("button", { name: "Descargar informe PDF", exact: true }).click()
   assert.deepEqual((await state(page)).options, { includeCover: false, includeMetadata: true })
   assert.equal((await state(page)).downloads, 1)
 })

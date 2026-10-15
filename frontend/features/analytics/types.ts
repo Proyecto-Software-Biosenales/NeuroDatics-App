@@ -1,6 +1,11 @@
 export interface AnalyticsParticipant {
+  /** Key for every analytics request. Display text comes from participantLabel. */
   participant_code: string
   user_index: number
+  /** Optional name entered when configuring the project. */
+  name?: string | null
+  /** Corrected document, or participant_code when never corrected. */
+  document?: string | null
 }
 
 export interface AnalyticsScenario {

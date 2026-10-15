@@ -1,5 +1,6 @@
 "use client"
 
+import { HintTooltip } from "@/components/HintTooltip"
 import { Button } from "@/components/ui/button"
 
 import { Layers } from "lucide-react"
@@ -208,15 +209,17 @@ export function AoiToggleButton({
   count?: number
 }) {
   return (
-    <Button aria-pressed={enabled} size="sm" variant="selection"
-      type="button"
-      onClick={onToggle}
-      disabled={disabled}
-      className="gap-2"
-    >
-      <Layers className="h-3.5 w-3.5" />
-      AOIs{typeof count === "number" ? ` (${count})` : ""}
-    </Button>
+    <HintTooltip hint="Muestra u oculta las áreas de interés (AOI): zonas del estímulo marcadas para medir cuánto se miraron.">
+      <Button aria-pressed={enabled} size="sm" variant="selection"
+        type="button"
+        onClick={onToggle}
+        disabled={disabled}
+        className="gap-2"
+      >
+        <Layers className="h-3.5 w-3.5" />
+        AOIs{typeof count === "number" ? ` (${count})` : ""}
+      </Button>
+    </HintTooltip>
   )
 }
 

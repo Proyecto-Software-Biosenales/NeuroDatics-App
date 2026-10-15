@@ -38,6 +38,40 @@ function expectClean(seen: Watch) {
 const storedExpiry = (page: Page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).session.expiresAt as string, SESSION_KEY)
 
+// First in the file: the profile is fresh, so the screen has never been reviewed.
+test("the first visit asks to review the screen, and Configuración holds only global settings", async ({ page }) => {
+  const seen = watch(page)
+  await page.goto("/proyectos/")
+  const notice = page.getByText("Revisa la configuración de pantalla", { exact: true })
+  await expect(notice).toBeVisible()
+  await page.getByRole("button", { name: "Ir a Configuración", exact: true }).click()
+  await expect(page).toHaveURL(/\/configuracion\/?$/)
+  await expect(notice).toHaveCount(0)
+
+  // Leaving without saving does not ask again during this launch.
+  await page.goto("/proyectos/")
+  await expect(page.getByRole("heading", { name: "Proyectos", exact: true })).toBeVisible()
+  await expect(notice).toHaveCount(0)
+  await page.goto("/configuracion/")
+
+  // The laboratory screen is the default; per-project planning no longer lives here.
+  await expect(page.getByRole("spinbutton", { name: "Ancho (px)", exact: true })).toHaveValue("1280")
+  await expect(page.getByRole("spinbutton", { name: "Alto (px)", exact: true })).toHaveValue("1024")
+  await expect(page.getByText("Pre-experimento y cuestionarios", { exact: true })).toHaveCount(0)
+  await expect(page.getByRole("spinbutton", { name: "Distancia a la pantalla (cm)", exact: true })).toHaveCount(0)
+  await page.getByRole("spinbutton", { name: "Ancho (cm)", exact: true }).fill("53")
+  await page.getByRole("button", { name: "Guardar configuración de pantalla", exact: true }).click()
+  await expect(page.getByText("Configuración revisada.", { exact: true })).toBeVisible()
+
+  await page.goto("/proyectos/")
+  await expect(page.getByRole("heading", { name: "Proyectos", exact: true })).toBeVisible()
+  await expect(notice).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByRole("heading", { name: "Proyectos", exact: true })).toBeVisible()
+  await expect(notice).toHaveCount(0)
+  expectClean(seen)
+})
+
 test("there is no account, Google or Drive anywhere in the app", async ({ page }) => {
   const seen = watch(page)
   await page.goto("/")
@@ -51,13 +85,12 @@ test("there is no account, Google or Drive anywhere in the app", async ({ page }
   await page.keyboard.press("Escape")
   await expect(page.getByText("Google", { exact: false })).toHaveCount(0)
 
-  // Sign-in redirects locally; Configuration exposes planning without Google or Drive.
+  // Sign-in redirects locally; Configuration holds the screen without Google or Drive.
   await page.goto("/login/")
   await expect(page).toHaveURL(/\/dashboard\/?$/)
   await page.goto("/configuracion/")
   await expect(page).toHaveURL(/\/configuracion\/?$/)
-  await expect(page.getByText("Pre-experimento y cuestionarios", { exact: true })).toBeVisible()
-  await expect(page.getByRole("link", { name: "Ir a proyectos" })).toBeVisible()
+  await expect(page.getByText("Pantalla", { exact: true })).toBeVisible()
   await expect(page.getByText("Google", { exact: false })).toHaveCount(0)
   await expect(page.getByText("Google Drive", { exact: false })).toHaveCount(0)
   await expect(page.getByText("Sesión de NeuroDatics", { exact: true })).toHaveCount(0)
@@ -97,38 +130,64 @@ test("a pre-experiment is prepared tab by tab without a folder, then deleted", a
   const name = `Pre-experimento local ${Date.now()}`
 
   await page.goto("/proyectos/")
-  await page.getByRole("button", { name: "Crear nuevo proyecto" }).first().click()
+  await page.getByRole("button", { name: "Crear proyecto", exact: true }).first().click()
   const dialog = page.getByRole("dialog")
   await dialog.getByRole("button", { name: "Pre-experimento", exact: true }).click()
   await dialog.getByRole("textbox", { name: "Nombre del proyecto *", exact: true }).fill(name)
 
   await dialog.getByRole("tab", { name: /^Participantes/ }).click()
   await dialog.getByRole("button", { name: "Agregar participante", exact: true }).click()
-  await dialog.getByRole("textbox", { name: "Código *", exact: true }).fill("P01")
-  await dialog.getByRole("textbox", { name: "Nombre del participante *", exact: true }).fill("Participante sintético")
+  // The document identifies the participant; the name is optional, as in a project with its folder.
+  await dialog.getByRole("textbox", { name: "Nombre", exact: true }).fill("Participante sintético")
+  await dialog.getByRole("textbox", { name: "Documento *", exact: true }).fill("SINTETICO-1")
+  await dialog.getByRole("combobox", { name: "Sexo", exact: true }).click()
+  await page.getByRole("option", { name: "Femenino", exact: true }).click()
 
+  // The screen starts as the one saved in Configuración by the first test.
   await dialog.getByRole("tab", { name: /^Pantalla/ }).click()
+  await expect(dialog.getByRole("spinbutton", { name: "Alto (px)", exact: true })).toHaveValue("1024")
+  await expect(dialog.getByRole("spinbutton", { name: "Ancho (cm)", exact: true })).toHaveValue("53")
+  // The planned seating distance only backs up the eye tracker's own record, and starts empty.
+  await expect(dialog.getByRole("spinbutton", { name: "Distancia a la pantalla (cm)", exact: true })).toHaveValue("")
   await dialog.getByRole("spinbutton", { name: "Ancho (px)", exact: true }).fill("1920")
 
   await dialog.getByRole("tab", { name: /^Cuestionarios/ }).click()
-  await dialog.getByRole("checkbox", { name: "Usar cuestionario antes", exact: true }).check()
-  await dialog.getByRole("button", { name: "Agregar pregunta antes", exact: true }).click()
-  await dialog.getByRole("textbox", { name: "Enunciado", exact: true }).fill("¿Cómo te sientes?")
+  // Adding a question is what turns the questionnaire on; there is no separate switch.
+  await dialog.getByRole("button", { name: "Agregar pregunta", exact: true }).click()
+  await dialog.getByRole("textbox", { name: "Pregunta 1", exact: true }).fill("¿Cómo te sientes?")
+
+  await dialog.getByRole("tab", { name: /^Notas/ }).click()
+  await dialog.getByRole("button", { name: "Agregar nota", exact: true }).click()
+  await dialog.getByRole("textbox", { name: "Título de la nota 1", exact: true }).fill("Sala")
+  await dialog.getByRole("textbox", { name: "Nota 1", exact: true }).fill("Reservar la sala")
   await dialog.getByRole("button", { name: "Crear pre-experimento", exact: true }).click()
   await expect(dialog).toBeHidden({ timeout: 30_000 })
 
   const cardWith = (has: ReturnType<Page["getByRole"]>) =>
     page.locator("div").filter({ has: page.getByText(name, { exact: true }) }).filter({ has }).last()
   const card = cardWith(page.getByRole("button", { name: "Opciones del proyecto" }))
-  await expect(cardWith(page.getByText("Sin carpeta todavía"))).toBeVisible()
+  await expect(cardWith(page.getByRole("button", { name: "Subir", exact: true }))).toBeVisible()
 
-  // What was typed in the tabs is what Configuración loads from the local database.
-  await cardWith(page.getByRole("link", { name: "Configuración" })).getByRole("link", { name: "Configuración" }).click()
-  await expect(page).toHaveURL(/\/configuracion\/?\?proyecto=/)
-  await expect(page.getByRole("textbox", { name: "Nombre del participante *", exact: true })).toHaveValue(
-    "Participante sintético",
-  )
-  await expect(page.getByRole("textbox", { name: "Enunciado", exact: true })).toHaveValue("¿Cómo te sientes?")
+  // The menu has one way to edit, not a second entry for the pre-experiment.
+  await card.getByRole("button", { name: "Opciones del proyecto" }).click()
+  await expect(page.getByRole("menuitem", { name: "Editar", exact: true })).toBeVisible()
+  await expect(page.getByRole("menuitem", { name: /^Pre-experimento/ })).toHaveCount(0)
+  await page.keyboard.press("Escape")
+
+  // Clicking the card opens its editor, whose sections load what was typed from the local database.
+  await page.getByRole("heading", { name, exact: true }).click()
+  await expect(page).toHaveURL(/\/proyectos\/editar\/?\?proyecto=/)
+  await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible()
+  await expect(page.getByRole("tab", { name: /^Dispositivos/ })).toHaveCount(0)
+  await page.getByRole("tab", { name: /^Participantes/ }).click()
+  await expect(page.getByRole("textbox", { name: "Nombre", exact: true })).toHaveValue("Participante sintético")
+  await expect(page.getByRole("textbox", { name: "Documento *", exact: true })).toHaveValue("SINTETICO-1")
+  await expect(page.getByRole("combobox", { name: "Sexo", exact: true })).toHaveText("Femenino")
+  await page.getByRole("tab", { name: /^Cuestionarios/ }).click()
+  await expect(page.getByRole("textbox", { name: "Pregunta 1", exact: true })).toHaveValue("¿Cómo te sientes?")
+  await page.getByRole("tab", { name: /^Notas/ }).click()
+  await expect(page.getByRole("textbox", { name: "Título de la nota 1", exact: true })).toHaveValue("Sala")
+  await expect(page.getByRole("textbox", { name: "Nota 1", exact: true })).toHaveValue("Reservar la sala")
 
   await page.goto("/proyectos/")
   await card.getByRole("button", { name: "Opciones del proyecto" }).click()
@@ -148,7 +207,7 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
   const name = `Proyecto local ${Date.now()}`
 
   await page.goto("/proyectos/")
-  await page.getByRole("button", { name: "Crear nuevo proyecto" }).first().click()
+  await page.getByRole("button", { name: "Crear proyecto", exact: true }).first().click()
   const dialog = page.getByRole("dialog")
   await dialog.locator("#nombre-proyecto").fill(name)
   await dialog.locator("input[type=file]").setInputFiles(rawFolder!)
@@ -159,15 +218,19 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
   await expect(dialog.getByText("Paso 2 de 4")).toBeVisible({ timeout: 5 * 60_000 })
   await dialog.getByRole("button", { name: "Siguiente" }).click()
 
-  // Step 3: demographics for every participant found in the data.
+  // Step 3: generic "Participante N" headers; the document comes prefilled from the
+  // data and the optional name of the first participant becomes its dashboard label.
   await expect(dialog.getByText("Paso 3 de 4")).toBeVisible()
-  const codes = [...new Set((await dialog.innerText()).match(/[0-9]{10}/g) ?? [])]
-  expect(codes.length).toBeGreaterThan(0)
-  for (const code of codes) {
-    const header = dialog.getByRole("button").filter({ hasText: code })
+  const count = await dialog.getByRole("button", { name: /^Participante \d+/ }).count()
+  expect(count).toBeGreaterThan(0)
+  const participantName = "Participante de prueba Ana"
+  for (let index = 1; index <= count; index += 1) {
+    const header = dialog.getByRole("button", { name: new RegExp(`^Participante ${index}(\\D|$)`) })
     if ((await header.getAttribute("aria-expanded")) !== "true") await header.click()
+    await expect(dialog.getByLabel("Documento", { exact: true }).first()).toHaveValue(/[0-9]{10}/)
+    if (index === 1) await dialog.getByLabel(/^Nombre/).first().fill(participantName)
     await dialog.getByText("Masculino", { exact: true }).first().click()
-    await dialog.getByPlaceholder("Ej: 25").first().fill("25")
+    await dialog.getByLabel("Edad", { exact: true }).first().fill("25")
     await header.click()
   }
   await expect(dialog.getByText("Completar", { exact: true })).toHaveCount(0)
@@ -197,14 +260,36 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
     .toBeGreaterThan(0)
   await page.keyboard.press("Escape")
 
-  // Analytics computed live from the ingested data.
-  await page.goto("/dashboard/")
+  // The one editor of a project with its folder also holds its devices and areas of interest.
+  await card.getByRole("button", { name: "Opciones del proyecto" }).click()
+  await page.getByRole("menuitem", { name: "Editar", exact: true }).click()
+  await expect(page).toHaveURL(/\/proyectos\/editar\/?\?proyecto=/)
+  await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible()
+  await page.getByRole("tab", { name: /^Dispositivos/ }).click()
+  await expect(page.getByRole("checkbox", { name: "Eye tracker" })).toBeChecked()
+  await page.getByRole("tab", { name: /^Áreas de interés/ }).click()
+  await expect(page.locator("main img").first()).toBeVisible()
+  await page.goto("/proyectos/")
+
+  // Clicking an active project's card opens its own dashboard, with analytics computed live from the ingested data.
+  await page.getByRole("heading", { name, exact: true }).click()
+  await expect(page).toHaveURL(/\/dashboard\/?\?proyecto=/)
   const sidebar = page.getByRole("button", { name, exact: true }).locator("xpath=../..")
-  await expect(sidebar.getByRole("button", { name: "Eye Tracker" })).toHaveAttribute("aria-pressed", "true")
-  await expect(page.getByText("Promedio ambas pupilas")).toBeVisible({ timeout: 90_000 })
+  await expect(sidebar.getByRole("button", { name: "Eye tracker" })).toHaveAttribute("aria-pressed", "true")
+  await expect(page.locator('p[title="Ambas pupilas"]')).toBeVisible({ timeout: 90_000 })
+  // The participant filter shows the entered name instead of the document.
+  const participantFilter = page.getByRole("combobox").nth(1)
+  await participantFilter.click()
+  await page.getByRole("option", { name: participantName, exact: true }).click()
+  await expect(participantFilter).toHaveText(participantName)
+  await expect(page.locator('p[title="Ambas pupilas"]')).toBeVisible({ timeout: 90_000 })
   await sidebar.getByRole("button", { name: "Electroencefalógrafo" }).click()
   await expect(page.getByText("puntos renderizados")).toBeVisible({ timeout: 90_000 })
-  await sidebar.getByRole("button", { name: "Sensor Galvánico" }).click()
+  // Technical modes explain themselves on hover.
+  await page.getByRole("button", { name: "Suavizada", exact: true }).hover()
+  await expect(page.getByRole("tooltip")).toHaveText(/promediada/)
+  await page.mouse.move(0, 0)
+  await sidebar.getByRole("button", { name: "Sensor galvánico" }).click()
   await expect(page.locator("main .recharts-surface").first()).toBeVisible({ timeout: 90_000 })
 
   // Deleting removes the project and says the student's own files went with it (no Drive folder).

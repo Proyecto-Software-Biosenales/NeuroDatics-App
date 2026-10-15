@@ -215,7 +215,7 @@ export function DeviceDistanceTab({
 
   return (
     <SingleSignalTab
-      label="Distancia dispositivo"
+      label="Distancia al dispositivo"
       description="Distancia ojo-pantalla (cm) a lo largo del tiempo."
       unit="cm"
       emptyText="No hay datos de distancia para los filtros seleccionados."
@@ -234,7 +234,6 @@ export function DeviceDistanceTab({
         {
           label: "Media",
           value: stats?.mean,
-          description: "Promedio de distancia",
           tooltip: "Promedio de distancia ojo-pantalla en el intervalo visualizado",
           Icon: Activity,
           iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
@@ -248,8 +247,6 @@ export function DeviceDistanceTab({
         {
           label: "Mínimo",
           value: stats?.min,
-          description: "Valor más bajo registrado",
-          tooltip: "Valor mínimo registrado en la distancia ojo-pantalla",
           Icon: TrendingDown,
           iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
           iconColorClass: "text-emerald-500",
@@ -262,8 +259,6 @@ export function DeviceDistanceTab({
         {
           label: "Máximo",
           value: stats?.max,
-          description: "Distancia más alta registrada",
-          tooltip: "Valor máximo registrado en la distancia ojo-pantalla",
           Icon: TrendingUp,
           iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
           iconColorClass: "text-rose-500",
@@ -334,7 +329,7 @@ export function DeviceDistanceTab({
               )}
             </div>
             <CardDescription>
-              Ubicación del punto de dilatación pupilar durante la visualización del estímulo.
+              Dónde miraba el participante en el instante seleccionado.
             </CardDescription>
           </div>
           {gazeData && (
@@ -507,8 +502,8 @@ export function DeviceDistanceTab({
                 <p className="text-base font-medium text-slate-900 dark:text-slate-100">Punto de atención</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">
                   {selectedValue != null
-                    ? `El indicador de alto contraste marca la ubicación exacta donde se registró la distancia ojo-pantalla (${selectedValue.toFixed(1)} cm) en el segundo ${Math.round(gazeData.nearest_time_s)} de la visualización.`
-                    : "El indicador de alto contraste marca la ubicación exacta donde se registró la fijación en el instante seleccionado sobre el estímulo visual."}
+                    ? `Mirada en el segundo ${Math.round(gazeData.nearest_time_s)} · ${selectedValue.toFixed(1)} cm`
+                    : "Mirada en el instante seleccionado."}
                   {currentAoi ? ` Cae dentro del AOI "${currentAoi.name}".` : aois.length > 0 ? " No cae dentro de un AOI delimitado." : ""}
                 </p>
               </div>

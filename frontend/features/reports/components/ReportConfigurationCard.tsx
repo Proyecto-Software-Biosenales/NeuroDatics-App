@@ -6,6 +6,7 @@ import type { SensorType } from "@/features/projects/types"
 import { DEVICE_REPORTS } from "@/features/reports/reportContents"
 import type { ReportDevice } from "@/features/reports/types"
 import { ReportStepCard } from "./ReportStepCard"
+import { FieldHint } from "@/components/FieldHint"
 
 interface ReportConfigurationCardProps {
   availableSensors: SensorType[]
@@ -31,18 +32,14 @@ export const ReportConfigurationCard = ({
       ? [{
           id: "all" as ReportDevice,
           title: "Todos los dispositivos",
-          description: "Un informe PDF por dispositivo, descargados juntos en un archivo ZIP.",
+          description: "Un informe PDF por dispositivo, juntos en un archivo ZIP.",
           Icon: Files,
         }]
       : []),
   ]
 
   return (
-    <ReportStepCard
-      step={3}
-      title="Dispositivo"
-      description="Cada dispositivo genera su propio informe, con sus gráficas y tablas de estadísticas por escenario."
-    >
+    <ReportStepCard step={3} title="Dispositivo">
       {options.length === 0 ? (
         <p className="text-sm text-muted-foreground sm:pl-14">
           El proyecto no tiene dispositivos registrados.
@@ -59,20 +56,16 @@ export const ReportConfigurationCard = ({
               key={id}
               htmlFor={`report-device-${id}`}
               className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 transition-all duration-200",
+                "flex cursor-pointer items-center gap-3 rounded-xl border border-border p-4 transition-all duration-200",
                 selectedDevice === id ? "border-foreground/40 bg-muted" : "hover:bg-muted/50"
               )}
             >
-              <RadioGroupItem id={`report-device-${id}`} value={id} className="mt-1" />
-              <div className="min-w-0 flex-1">
-                <span className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Icon className="size-4 shrink-0" aria-hidden="true" />
-                  {title}
-                </span>
-                <span className="block text-xs leading-relaxed font-normal text-muted-foreground">
-                  {description}
-                </span>
-              </div>
+              <RadioGroupItem id={`report-device-${id}`} value={id} />
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-foreground">
+                <Icon className="size-4 shrink-0" aria-hidden="true" />
+                {title}
+                <FieldHint>{description}</FieldHint>
+              </span>
             </Label>
           ))}
         </RadioGroup>

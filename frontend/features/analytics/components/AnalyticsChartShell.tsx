@@ -62,7 +62,7 @@ export function AnalyticsChartShell({
       {notes.length > 0 ? (
         <div className="analytics-chart-footer">
           <ChartLegend legend={legend} />
-          <div role="group" className="analytics-chart-notes" aria-label="Notas de la grafica">
+          <div role="group" className="analytics-chart-notes" aria-label="Notas de la gráfica">
             {notes.map(({ id, ...note }) => (
               <InfoChip key={id} {...note} />
             ))}
@@ -78,7 +78,7 @@ export function AnalyticsChartShell({
 function ChartLegend({ legend }: { legend: AnalyticsChartLegendItem[] }) {
   if (legend.length === 0) return null
   return (
-    <div role="group" className="analytics-chart-legend" aria-label="Leyenda de la grafica">
+    <div role="group" className="analytics-chart-legend" aria-label="Leyenda de la gráfica">
       {legend.map((item) => (
         <span key={item.label} className="analytics-chart-legend-item">
           <span

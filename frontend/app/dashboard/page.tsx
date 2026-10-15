@@ -12,6 +12,7 @@ import {
 import { AnalyticsSidebar } from "@/features/analytics/components/AnalyticsSidebar"
 import { getProjectSensors, type SensorSelection } from "@/features/analytics/projectSensors"
 import { FiltersBar } from "@/features/analytics/components/FiltersBar"
+import { participantLabelMap } from "@/features/analytics/participantLabel"
 import { PlaceholderTab } from "@/features/analytics/components/PlaceholderTab"
 import { PupilDilationTab } from "@/features/analytics/components/PupilDilationTab"
 import { GazePointTab } from "@/features/analytics/components/GazePointTab"
@@ -46,14 +47,14 @@ type AnalyticsTabKey =
 
 type EegTabKey = "timeseries" | "psd" | "spectrogram" | "topography"
 
-const ANALYTICS_TABS: Array<{ key: AnalyticsTabKey; label: string }> = [
-  { key: "pupil_dilation", label: "Dilatación pupilar" },
-  { key: "gaze_point", label: "Gaze point" },
-  { key: "fixation_histogram", label: "Histograma de fijación" },
-  { key: "heatmap", label: "Mapa de calor" },
-  { key: "scanpath", label: "Mapa de recorridos" },
-  { key: "device_distance", label: "Distancia dispositivo" },
-  { key: "aoi_comparison", label: "Comparativa AOIs" },
+const ANALYTICS_TABS: Array<{ key: AnalyticsTabKey; label: string; hint: string }> = [
+  { key: "pupil_dilation", label: "Dilatación pupilar", hint: "Cambios en el tamaño de la pupila. Suele crecer con el esfuerzo mental o la emoción." },
+  { key: "gaze_point", label: "Punto de mirada", hint: "Dónde miraba la persona en la pantalla en cada momento." },
+  { key: "fixation_histogram", label: "Histograma de fijaciones", hint: "Cuántas fijaciones hubo según su duración. Una fijación es una pausa de la mirada sobre un punto." },
+  { key: "heatmap", label: "Mapa de calor", hint: "Zonas del estímulo donde más se detuvo la mirada: los colores cálidos marcan más atención." },
+  { key: "scanpath", label: "Mapa de recorridos", hint: "El orden en que la mirada pasó de un punto a otro: cada círculo es una fijación y cada línea, un salto entre ellas." },
+  { key: "device_distance", label: "Distancia al dispositivo", hint: "Distancia entre los ojos y la pantalla durante la prueba; muestra si la persona se acercó o se alejó." },
+  { key: "aoi_comparison", label: "Comparativa AOIs", hint: "Compara las áreas de interés (AOI): zonas del estímulo marcadas para medir cuánto y cuándo se miraron." },
 ]
 
 const FIXATION_DERIVED_TABS = new Set<AnalyticsTabKey>([
@@ -63,11 +64,11 @@ const FIXATION_DERIVED_TABS = new Set<AnalyticsTabKey>([
   "aoi_comparison",
 ])
 
-const EEG_TABS: Array<{ key: EegTabKey; label: string }> = [
-  { key: "timeseries", label: "EEG por canal" },
-  { key: "psd", label: "Densidad espectral" },
-  { key: "spectrogram", label: "Espectrograma de frecuencias" },
-  { key: "topography", label: "Topografía EEG" },
+const EEG_TABS: Array<{ key: EegTabKey; label: string; hint: string }> = [
+  { key: "timeseries", label: "EEG por canal", hint: "La actividad eléctrica que registró cada electrodo a lo largo del tiempo." },
+  { key: "psd", label: "Densidad espectral", hint: "Cuánta energía tiene la señal en cada frecuencia, de los ritmos lentos a los rápidos, en todo el intervalo." },
+  { key: "spectrogram", label: "Espectrograma de frecuencias", hint: "Cómo cambia la energía de cada frecuencia a lo largo del tiempo." },
+  { key: "topography", label: "Topografía EEG", hint: "Mapa de la cabeza que muestra en qué zonas hubo más actividad." },
 ]
 
 const compactSidebarQuery = "(max-width: 767px)"
@@ -131,11 +132,13 @@ export default function DashboardPage() {
       .then((items) => {
         if (cancelled) return
         setProjects(items)
-        const firstProject = items[0]
-        if (firstProject) {
-          setSelectedProjectId(firstProject.id)
-          setSelectedSensor(getProjectSensors(firstProject)[0] ?? "Comparativas")
-          setExpandedProjects({ [firstProject.id]: true })
+        // A project card opens its own dashboard: `/dashboard?proyecto=<id>`.
+        const requested = new URLSearchParams(window.location.search).get("proyecto")
+        const initialProject = items.find((item) => item.id === requested) ?? items[0]
+        if (initialProject) {
+          setSelectedProjectId(initialProject.id)
+          setSelectedSensor(getProjectSensors(initialProject)[0] ?? "Comparativas")
+          setExpandedProjects({ [initialProject.id]: true })
         }
       })
       .catch(() => {
@@ -209,6 +212,10 @@ export default function DashboardPage() {
         : [],
     [participantDataProjectId, participants, selectedProjectId]
   )
+  const comparisonParticipantLabels = useMemo(
+    () => participantLabelMap(participants),
+    [participants]
+  )
 
   const availableSensors = useMemo(
     () => (selectedProject?.sensors ?? []).map((sensor) => sensor.sensor_type),
@@ -268,6 +275,7 @@ export default function DashboardPage() {
           <ParticipantComparisonProvider
             projectId={selectedProjectId}
             participantCodes={comparisonParticipantCodes}
+            participantLabels={comparisonParticipantLabels}
             generation={selectedProject?.ingestion_generation ?? null}
           >
           <main className="analytics-shell min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-4 xl:px-6 xl:pb-6">
@@ -302,7 +310,7 @@ export default function DashboardPage() {
                 />
               </AnalyticsTabs>
             ) : (
-              <AnalyticsTabs value={activeTab} onValueChange={setActiveTab} options={ANALYTICS_TABS} label="Vistas Eye Tracker">
+              <AnalyticsTabs value={activeTab} onValueChange={setActiveTab} options={ANALYTICS_TABS} label="Vistas del eye tracker">
 
                 {FIXATION_DERIVED_TABS.has(activeTab) &&
                   selectedParticipant && (

@@ -165,7 +165,7 @@ export function EegPsdView({
               <span className="font-semibold text-foreground">{psdData?.unit ?? "dB"}</span>
             </div>
             <div>
-              <span className="block text-xs uppercase tracking-widest text-muted-foreground">Bins</span>
+              <span className="block text-xs uppercase tracking-widest text-muted-foreground">Intervalos</span>
               <span className="font-semibold text-foreground">{psdChartData.length.toLocaleString()}</span>
             </div>
             <TimeWindowControls

@@ -139,15 +139,10 @@ export const CreateProjectDialog = ({
       >
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold xl:text-2xl">
-            Crear nuevo proyecto
+            Crear proyecto
           </DialogTitle>
           <DialogDescription asChild>
             <div>
-              {mode === "pre" && (
-                <span className="text-sm text-muted-foreground">
-                  Prepara el estudio sin carpeta de datos y agrega las grabaciones cuando las tengas.
-                </span>
-              )}
               {mode === "folder" && <>
               <span className="text-sm text-muted-foreground">
                 Paso {currentStep} de 4
@@ -169,7 +164,7 @@ export const CreateProjectDialog = ({
 
         {currentStep === 1 && !isResumedDraft && !hasDraftProject && !formData.uploadedZip && !saveError && <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 sm:inline-grid sm:w-fit" role="group" aria-label="Tipo de proyecto">
           {([
-            ["folder", "Con carpeta", FolderOpen],
+            ["folder", "Con datos", FolderOpen],
             ["pre", "Pre-experimento", ClipboardList],
           ] as const).map(([value, label, Icon]) => (
             <Button key={value} type="button" variant="ghost" aria-pressed={mode === value} disabled={preBusy || isSaving} onClick={() => setMode(value)} className="h-9 gap-2 px-4 text-muted-foreground hover:bg-background/60 aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm">

@@ -16,7 +16,7 @@ import type {
   PreExperimentEnvelope,
   QuestionnaireResponse,
 } from "./types"
-import { missingRequiredAnswer, phaseLabel } from "./types"
+import { missingRequiredAnswer, participantLabel, phaseLabel } from "./types"
 import { planningError, PreExperimentApi } from "./api"
 import { PlanningSelect } from "./PlanningControls"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -117,14 +117,12 @@ export function QuestionnaireDialog({
         <DialogHeader>
           <DialogTitle>Responder cuestionario</DialogTitle>
           <DialogDescription>
-            Selecciona al participante y entrega la aplicación para responder.
-            Las respuestas se guardan con la versión de las preguntas y los
-            datos del participante.
+            Elige al participante y entrégale el equipo para que responda.
           </DialogDescription>
         </DialogHeader>
         {done ? (
           <div role="status" className="space-y-4">
-            <p>Respuestas guardadas correctamente.</p>
+            <p>Respuestas guardadas.</p>
             <Button onClick={onClose}>Cerrar</Button>
           </div>
         ) : (
@@ -140,15 +138,15 @@ export function QuestionnaireDialog({
                     onChange={setParticipantId}
                     options={saved.config.participants.map((item) => ({
                       value: item.id,
-                      label: `${item.code} — ${item.name}`,
+                      label: participantLabel(item),
                     }))}
                   />
                 </Label>
                 <Label className="block space-y-1 text-sm">
-                  Momento del cuestionario
+                  Cuestionario
                   <PlanningSelect
-                    label="Momento del cuestionario"
-                    placeholder="Seleccionar momento"
+                    label="Cuestionario"
+                    placeholder="Seleccionar cuestionario"
                     value={phase}
                     onChange={(value) => setPhase(value as Phase)}
                     options={(["before", "after"] as const)
@@ -165,18 +163,18 @@ export function QuestionnaireDialog({
                   disabled={!participantId || !phase}
                   onClick={() => setStarted(true)}
                 >
-                  Comenzar respuestas
+                  Comenzar
                 </Button>
               </>
             ) : (
               <>
                 <p className="text-sm font-medium">
-                  {participant?.code} — {participant?.name} ·{" "}
+                  {participant && participantLabel(participant)} ·{" "}
                   {phase && phaseLabel[phase]}
                 </p>
                 <h3 className="font-semibold">{questionnaire?.title}</h3>
                 <p className="text-sm text-muted-foreground">
-                  * Respuesta obligatoria
+                  * Obligatoria
                 </p>
                 <fieldset
                   disabled={busy || conflict}
@@ -291,9 +289,7 @@ export function QuestionnaireDialog({
               </p>
             )}
             <Button variant="outline" disabled={busy} onClick={onClose}>
-              {started
-                ? "Cerrar y descartar respuestas sin guardar"
-                : "Cancelar"}
+              {started ? "Descartar" : "Cancelar"}
             </Button>
           </div>
         )}

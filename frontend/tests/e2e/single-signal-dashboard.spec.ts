@@ -19,8 +19,14 @@ for (const signal of ["gsr", "distance"] as const) {
       requests.push(url)
       if (path === "/api/projects") {
         await route.fulfill({ json: [{ id: "signal-project", name: "Signal Project", sensors: [{ sensor_type: signal === "gsr" ? "GSR" : "EyeTracker" }] }] })
+      } else if (path === "/api/projects/signal-project") {
+        await route.fulfill({ json: { id: "signal-project" } })
       } else if (path.endsWith("/analytics/participants")) {
-        await route.fulfill({ json: [{ participant_code: "P01" }, { participant_code: "P02" }] })
+        // P01 has no name (shown by document); P02 has one, which replaces the document.
+        await route.fulfill({ json: [
+          { participant_code: "P01", name: null, document: "P01" },
+          { participant_code: "P02", name: "Ana Pérez", document: "1033176186" },
+        ] })
       } else if (path.endsWith("/analytics/scenarios")) {
         await route.fulfill({ json: [] })
       } else if (path.includes("/analytics/timeseries/")) {
@@ -44,6 +50,8 @@ for (const signal of ["gsr", "distance"] as const) {
         await route.fulfill({ json: { requested_time_s: time, nearest_time_s: time, scenario: "Instruction", gx: 20, gy: 30, scenario_file_id: null } })
       } else if (path.endsWith("/analytics/aois")) {
         await route.fulfill({ json: { aois: [] } })
+      } else if (path === "/api/settings/screen") {
+        await route.fulfill({ json: { screen: { width_px: 1280, height_px: 1024, width_cm: null, height_cm: null }, confirmed: true } })
       } else {
         errors.push(`Unexpected request: ${path}`)
         await route.fulfill({ status: 501, json: {} })
@@ -52,8 +60,8 @@ for (const signal of ["gsr", "distance"] as const) {
     const signalRequests = () => requests.filter(url => url.pathname.endsWith(`/timeseries/${signal}`) || url.pathname.endsWith(`/statistics/${signal}`))
     const gazeRequests = () => requests.filter(url => url.pathname.endsWith("/gaze-at"))
     await page.goto("/dashboard")
-    if (signal === "distance") await page.getByRole("tab", { name: "Distancia dispositivo", exact: true }).click()
-    await expect(page.getByRole("heading", { name: signal === "gsr" ? "Respuesta galvánica" : "Distancia dispositivo", exact: true })).toBeVisible()
+    if (signal === "distance") await page.getByRole("tab", { name: "Distancia al dispositivo", exact: true }).click()
+    await expect(page.getByRole("heading", { name: signal === "gsr" ? "Respuesta galvánica" : "Distancia al dispositivo", exact: true })).toBeVisible()
     const minimum = page.getByRole("button", { name: /^Mínimo:/ })
     const maximum = page.getByRole("button", { name: /^Máximo:/ })
     await expect(minimum).toBeEnabled()
@@ -71,7 +79,7 @@ for (const signal of ["gsr", "distance"] as const) {
     // Tied minima retain the first sample; GSR extrema always use the smooth signal.
     if (signal === "gsr") {
       await page.getByRole("button", { name: "Cruda", exact: true }).click()
-      await expect(page.getByLabel("Leyenda de la grafica")).toHaveText("GSR cruda")
+      await expect(page.getByLabel("Leyenda de la gráfica")).toHaveText("GSR cruda")
     }
     await minimum.click()
     await expect(minimum).toHaveAttribute("aria-pressed", "true")
@@ -199,7 +207,10 @@ for (const signal of ["gsr", "distance"] as const) {
     await expect(page.getByText("Todo el experimento", { exact: true })).toBeVisible()
     // Switching participant remounts the tab and handles an empty response without a plot.
     await page.getByRole("combobox").filter({ hasText: "P01" }).click()
-    await page.getByRole("option", { name: "Participante P02", exact: true }).click()
+    await expect(page.getByRole("option", { name: "Participante P01", exact: true })).toBeVisible()
+    await page.getByRole("option", { name: "Ana Pérez", exact: true }).click()
+    // The label changes; the request still uses the participant code (P02 above).
+    await expect(page.getByRole("combobox").filter({ hasText: "Ana Pérez" })).toBeVisible()
     await timeWindow.click()
     await expect(page.getByRole("button", { name: "Aplicar", exact: true })).toBeDisabled()
     await page.keyboard.press("Escape")

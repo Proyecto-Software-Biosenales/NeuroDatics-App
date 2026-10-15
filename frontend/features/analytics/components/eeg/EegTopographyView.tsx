@@ -75,7 +75,7 @@ export function EegTopographyView({
                 Topografía EEG
               </CardTitle>
               <CardDescription>
-                Distribución espacial de potencia broadband por ventanas temporales.
+                Distribución espacial de potencia de banda ancha por ventanas temporales.
               </CardDescription>
             </div>
             {/* Recomputed on the server, so the colour scale follows the window
