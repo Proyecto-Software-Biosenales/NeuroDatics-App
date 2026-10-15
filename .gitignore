@@ -50,3 +50,11 @@ mydocs-priv/
 
 # Delivery package (contains the real .env with secrets)
 delivery/
+
+# AI agent instructions and tool settings (kept locally, not published)
+AGENTS.md
+CLAUDE.md
+.claude/
+.codex/
+.cursor/
+.agents/
