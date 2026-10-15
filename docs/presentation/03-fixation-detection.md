@@ -28,8 +28,9 @@ machinery that makes the resulting numbers defensible.
 ## 3.1 Mode selection
 
 ```
-screen geometry available (width_px, height_px, width_mm, height_mm,
-                           viewing_distance_mm — all finite and positive)?
+screen geometry available (width_px, height_px, width_mm, height_mm — all
+finite and positive) AND a distance (the CSV `distance` column, or an optional
+typed viewing_distance_mm)?
    ├── yes → adaptive-ivt-angular      (velocity in degrees of visual angle/second)
    └── no  → i-dt-normalized           (dispersion in screen fractions)
 ```
@@ -266,7 +267,8 @@ y_deg = degrees(arctan2(y_mm, distance_mm))
 
 `distance_mm` is **per sample** when the CSV has a `distance` column (the tracker
 measures eye-to-screen distance continuously); rows with an unusable distance
-fall back to the calibrated `viewing_distance_mm`. Using the real per-sample
+fall back to a typed `viewing_distance_mm` when one was given, otherwise to the
+median of the block's measured distances. Using the real per-sample
 distance matters — a participant leaning in changes how many degrees a given
 pixel offset represents.
 

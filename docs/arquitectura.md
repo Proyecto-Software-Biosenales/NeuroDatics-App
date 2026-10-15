@@ -121,7 +121,7 @@ composición de los informes. Vive en `backend/src/neurodatics/`:
 | --- | --- |
 | `main.py`, `api/` | La aplicación, los middlewares, el montaje de routers, `/health` y `/health/ready`. |
 | `config/` | `settings.py` (toda la configuración, con validaciones de seguridad para producción) y el registro. |
-| `modules/` | Los módulos funcionales: `projects`, `participants`, `scenaries`, `analytics`, `reports`, `auth`, `integrations`. |
+| `modules/` | Los módulos funcionales: `projects`, `participants`, `scenaries`, `analytics`, `reports`, `settings`, `auth`, `integrations`. |
 | `infra/` | Lo que habla con el mundo: `db` (sesión, modelos, repositorios), `cache`, `storage`, `queue` (la conexión a Redis), `health`. |
 | `shared/` | Contratos neutros: identidad de escenario, contrato de fijaciones, generación de caché, recursos de la máquina, excepciones. |
 | `local/` | La edición de estudiantes. |
@@ -132,9 +132,9 @@ Cada módulo funcional repite la misma estructura interna: `api/` (rutas y esque
 (repositorios y adaptadores).
 
 Hay una convención asumida en ese `domain/`: los `modules/*/domain/entities.py` son modelos ORM de
-SQLAlchemy. Los tres módulos que tienen entidades —`projects`, `participants` y `scenaries`— declaran
+SQLAlchemy. Los módulos que tienen entidades —`projects`, `participants`, `scenaries` y `settings`— declaran
 sus clases sobre `infra.db.base.BaseModel`, con `Column`, `ForeignKey` y `relationship`, así que el
-dominio depende de la persistencia y no al revés. Es deliberado y es coherente en los tres, no un
+dominio depende de la persistencia y no al revés. Es deliberado y es coherente en todos, no un
 descuido. Lo que implica: una entidad no se instancia fuera de una sesión de SQLAlchemy (ni sirve como
 objeto de transporte entre capas; para eso están los esquemas de `api/`), y las reglas que no son de
 persistencia no se cuelgan de esas clases, sino que viven en `domain/` como funciones o clases aparte
@@ -180,6 +180,7 @@ La superficie HTTP, toda bajo `/api`:
 | `scenaries` | Escenarios (estímulos), sus AOI y la ubicación del estímulo. |
 | `analytics` | Series de tiempo y estadísticas por sensor, PSD, espectrograma y topografía de EEG, fijaciones, histograma, scanpath, mapa de calor, AOI, correlaciones, comparativas, tiempos de escenario. |
 | `reports` | Generación de los informes en PDF. |
+| `settings` | Ajustes globales de cada persona: la pantalla del experimento (por defecto 1280×1024) y si ya la revisó. |
 | `integrations/google-drive` | Conectar, estado y desconectar (solo en servidor), más el callback de OAuth. |
 
 Los pre-experimentos y los cuestionarios, que permiten registrar un proyecto antes de tener datos,

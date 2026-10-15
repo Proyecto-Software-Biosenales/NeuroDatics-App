@@ -188,11 +188,16 @@ pero su umbral representa una fracción de pantalla, no grados visuales.
 
 ## Clasificación con geometría: velocidad angular adaptativa
 
-Cuando se proporciona geometría completa, el modo automático selecciona
-`adaptive-ivt-angular`. Se requieren ancho y alto en píxeles, ancho y alto físicos
-en milímetros y distancia de observación en milímetros, todos finitos y positivos.
-Si existe una columna `distance`, puede emplearse por muestra después de convertir
-su unidad; los valores inválidos usan como respaldo la distancia de la geometría.
+Cuando se proporciona la geometría de la pantalla y hay una distancia de
+observación, el modo automático selecciona `adaptive-ivt-angular`. Se requieren ancho
+y alto en píxeles y ancho y alto físicos en milímetros, todos finitos y positivos.
+La distancia sale de la columna `distance` del CSV, por muestra y después de
+convertir su unidad. Una distancia escrita en la geometría es opcional: si existe,
+cubre las muestras sin distancia válida; si no, esas muestras toman la mediana de
+las distancias medidas del bloque (aviso `invalid_sample_distance_using_sample_median`).
+Sin columna `distance` ni distancia escrita no hay modo angular: el detector sigue
+normalizado y lo avisa con `viewing_distance_unavailable_normalized_detection`.
+La interfaz ya no pide la distancia, para no tener que inventarla.
 
 Las coordenadas se transforman a ángulos visuales y la velocidad central se
 calcula con los timestamps reales, en grados por segundo. Para cada segmento, el
@@ -448,7 +453,8 @@ estos Parquets no tienen conteos del detector que reutilizar.
   El contrato los rechaza en lugar de promediarlos a un rectángulo fijo, así que
   comparar AOI o scanpaths en esos casos requiere primero una extensión del
   contrato con ubicaciones por tramo de tiempo.
-- El modo angular depende de una geometría y distancia calibradas. Metadatos
+- El modo angular depende de una geometría calibrada y de la distancia que mide el
+  eye tracker. Metadatos
   incorrectos producen velocidades angulares incorrectas aunque el cálculo sea
   determinista.
 - La inferencia automática de unidades y tasas emite advertencias, pero no puede

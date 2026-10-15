@@ -149,7 +149,7 @@ Fuente: `frontend/lib/api/apiFetch.ts`, `frontend/features/projects/api/projects
 | `selected_images_folder`, `selected_videos_folder` | Elección explícita de los directorios de medios. |
 | `selected_acquisition_folder` | Directorio `Acquisition` usado para los valores por defecto. |
 | `allow_missing_images`, `allow_missing_videos` | Confirmación explícita de la ausencia de medios; por defecto `false`. |
-| `screen_width_px`, `screen_height_px`, `screen_width_mm`, `screen_height_mm`, `viewing_distance_mm` | Calibración física de la pantalla, opcional. |
+| `screen_width_px`, `screen_height_px`, `screen_width_mm`, `screen_height_mm`, `viewing_distance_mm` | Calibración física de la pantalla, opcional; los cuatro primeros van juntos y la distancia es opcional (la mide el CSV). |
 | `stimulus_placements_json` | Sobres de ubicación que atan cada medio seleccionado a las coordenadas de la pantalla de adquisición. |
 
 La ruta se instala con una clase de ruta propia (`upload_route.py`) que se interpone **antes** de que

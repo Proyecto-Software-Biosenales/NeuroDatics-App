@@ -60,8 +60,9 @@ de Google; el procedimiento completo está en
 
 Para instalarla en un equipo ajeno al desarrollo existe el
 [paquete instalable en español](deployment/README.md): en Windows se abre `INSTALAR.bat`, que comprueba y
-prepara WSL y Docker Desktop, configura el entorno y carga las imágenes incluidas; después se usa desde
-Docker Desktop. La guía del mantenedor está en [deployment/MANTENIMIENTO.md](deployment/MANTENIMIENTO.md).
+prepara WSL y Docker Desktop, configura el entorno y carga las imágenes incluidas; después, cada día, se
+abre `INICIAR.bat` o el icono «NeuroDatics» del escritorio, que enciende Docker si hace falta y abre el
+navegador. La guía del mantenedor está en [deployment/MANTENIMIENTO.md](deployment/MANTENIMIENTO.md).
 
 ## NeuroDatics Estudiantes
 
@@ -83,7 +84,9 @@ student\package.ps1 -Work output\student -Version <versión>
 ## Operación diaria (edición servidor)
 
 Puedes crear un **Pre-experimento** antes de tener la carpeta del experimento y organizar sus
-participantes, pantalla y cuestionarios opcionales desde **Configuración**. Consulta la
+participantes, pantalla y cuestionarios opcionales desde su tarjeta, con **Editar**. **Configuración**
+guarda solo ajustes globales: la pantalla del experimento (por defecto 1280×1024) y, en esta edición,
+Google Drive. Consulta la
 [guía de pre-experimentos y cuestionarios](docs/PRE_EXPERIMENTO.md).
 
 ```powershell

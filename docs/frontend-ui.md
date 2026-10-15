@@ -29,6 +29,11 @@ Los controles generales se importan desde `@/components/ui`. Se usa shadcn con e
 | Indicadores | `Badge`, `Skeleton`, `Progress` |
 | Canales y modos de analítica | `EegChannelSelector`, `AnalyticsModeSelector` |
 | Progreso de creación/edición | `ProjectSaveProgress` |
+| Secciones de un formulario de proyecto (crear y editar) | `features/projects/components/SectionTabs`, dentro de `Tabs` |
+| Subsecciones dentro de una sección («Antes» / «Después» / «Respuestas») | `features/projects/components/SubTabs` |
+| Explicación de un campo, opción o sección | `components/FieldHint` junto a la etiqueta; nunca letra pequeña debajo |
+| Definición breve de un modo, una vista o un sensor | `components/HintTooltip` alrededor del control, sin cambiar su aspecto; en `AnalyticsModeSelector` y `AnalyticsTabs`, mediante `hint` de cada opción |
+| Cuestionarios de antes y después | `PlanningQuestionnaires` (crear y editar los comparten) |
 | Pasos de reportes | `ReportStepCard` |
 | KPI y estadísticas | `features/analytics/components/KpiCard` y `StatisticsTable` |
 | Salvedad, aviso o salto junto a una gráfica | `features/analytics/components/InfoChip`; en gráficas Recharts, mediante `notes` de `AnalyticsChartShell`; en vistas canvas, en la fila de la barra de color |
@@ -36,6 +41,43 @@ Los controles generales se importan desde `@/components/ui`. Se usa shadcn con e
 Las variantes definen colores, foco y estados deshabilitados. Los consumidores añaden principalmente distribución y dimensiones. Evitar copiar las clases internas de una base en cada pantalla.
 
 Las superficies de interfaz usan `background`, `card`, `muted`, `foreground`, `border`, `primary` y `destructive`. Se conservan las escalas de color científicas, colores de canales y AOIs, y fondos necesarios para que los logotipos sean legibles.
+
+## Consistencia visual
+
+Lo mismo se ve igual en toda la aplicación. Estas reglas existen por errores que ya pasaron:
+
+- **Una función, un componente.** Crear y editar un proyecto usan las mismas pestañas (`SectionTabs`) y
+  las mismas secciones (`Planning*`, `CreateProjectStep2/3/4`). Si una pantalla nueva necesita algo que
+  ya existe en otra, se reutiliza o se extrae a un componente compartido; no se copia con otras clases.
+- **Una entrada por acción.** Un objeto se edita desde un solo lugar. No se añaden al menú dos opciones
+  que llevan a configurar lo mismo (antes había «Editar» y «Pre-experimento y cuestionarios»).
+- **Tarjetas de una cuadrícula.** La tarjeta es `flex flex-col` y su pie lleva `mt-auto`, para que la
+  línea del pie quede a la misma altura en todas las tarjetas de una fila aunque una no tenga sensores.
+  Las filas que pueden quedar vacías reservan su altura (`min-h-*`). Los botones que ocupan el mismo
+  lugar en tarjetas distintas tienen el mismo tamaño y variante (`size="sm" variant="outline"`).
+- **Encabezado de página.** `app-page-header` con el nombre del objeto como título (no una etiqueta
+  genérica como «Pre-experimento») y su descripción debajo, si la tiene. Las acciones de navegación van
+  a la derecha del título.
+- **Espacio.** Un formulario con muchas partes se divide en pestañas arriba, no en una lista vertical
+  de desplegables. Los desplegables (`Collapsible`, `PlanningSection`) se usan solo dentro de una
+  sección, para elementos repetidos (participantes, escenarios, respuestas). Los formularios de página
+  usan `max-w-6xl`; el contenido de una sección no lleva un título que repita el de su pestaña.
+- **Pie de guardado.** Una página editable termina con una sola barra: el aviso «Hay cambios sin
+  guardar» a la izquierda y **Descartar cambios** / **Guardar cambios** a la derecha.
+- **Filas de campos.** Los campos de una misma fila empiezan a la misma altura: la fila de la etiqueta
+  mide `h-5` lleve o no `FieldHint` (el icono mide más que la etiqueta y empuja su campo 2 px). Los
+  datos cortos de una fila comparten columnas iguales, y el texto libre va debajo, con los mismos
+  bordes que la fila. Una tarjeta tiene el mismo margen
+  interior arriba que a los lados, también cuando empieza con pestañas. Las pestañas de `SectionTabs`
+  reservan siempre la línea de estado para que iconos y nombres queden en la misma línea.
+- **Pestañas que no caben.** Una tira de pestañas que puede desbordarse se desplaza en horizontal y se
+  alinea al inicio (`justify-start`): la base `TabsList` centra, y un contenido centrado que se desborda
+  deja las primeras pestañas fuera de alcance.
+
+Para comprobarlo, se mira la pantalla, no solo el código: con la API simulada en Playwright (como en
+`tests/e2e/screen-settings.spec.ts`), se fotografía a 1536×730 (el portátil del propietario) y a 390 px,
+y se miden las alineaciones que importan (por ejemplo, la altura de la línea del pie de cada tarjeta) y
+que no haya scroll horizontal del documento.
 
 ### Adaptaciones deliberadas
 
