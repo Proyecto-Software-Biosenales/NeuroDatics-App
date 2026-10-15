@@ -6,7 +6,7 @@
 # Written for Windows PowerShell 5.1 (what a laptop has), and ASCII only so no encoding can break it.
 # It uses its own temporary data folder, so it does not touch a real student profile. It needs no
 # internet: turn Wi-Fi off first for the offline test (the report says whether the machine was online).
-# It does NOT replace the by-hand steps in docs\student\LAPTOP-TEST.md (double-click, SmartScreen).
+# It does NOT replace the by-hand steps in student\README.md ("Prueba en un portatil") (double-click, SmartScreen).
 param(
     [string]$Package = '',
     [string]$RawZip = '',
@@ -164,4 +164,4 @@ $lines | ForEach-Object { Write-Host $_ }
 Write-Host ''
 Write-Host "Report folder: $run"
 Write-Host "Send back:     $zip"
-Write-Host 'Now do the by-hand steps in docs\student\LAPTOP-TEST.md (double-click, SmartScreen, closing, reopening).'
+Write-Host 'Now do the by-hand steps in student\README.md ("Prueba en un portatil") (double-click, SmartScreen, closing, reopening).'

@@ -54,9 +54,8 @@ El código propio de la edición de estudiantes está en `backend/src/neurodatic
 que prepara el entorno, arranca PostgreSQL y ejecuta las migraciones antes de importar la aplicación
 (`launcher.py`), el control del clúster (`postgres.py`), la instancia única (`instance.py`), el
 servicio del sitio estático (`static_frontend.py`) y el guard que detecta cualquier intento de salir
-a la red (`offline_guard.py`). El empaquetado vive en `student/`; su plan y sus hitos están en
-[student/PLAN.md](student/PLAN.md), y la prueba que falta en
-[student/LAPTOP-TEST.md](student/LAPTOP-TEST.md).
+a la red (`offline_guard.py`). La construcción y el empaquetado viven en `student/`
+([student/README.md](../../student/README.md)).
 
 ## El recorrido de los datos
 
@@ -81,7 +80,7 @@ la subida. Lo que sí hay es un registro durable por intento (`upload_attempts`)
 mutación por proyecto y un bucle de recuperación acotado que cierra lo que un corte deje abierto.
 
 El detalle completo —la frontera de recepción, los límites configurables, la cancelación, la
-semántica de cada fallo y la recuperación— está en [UPLOAD_PIPELINE.md](UPLOAD_PIPELINE.md).
+semántica de cada fallo y la recuperación— está en [subida-de-experimentos.md](subida-de-experimentos.md).
 
 ### Por qué un Parquet por participante y por escenario
 
@@ -107,9 +106,9 @@ fijaciones del fabricante, el reloj más lento fija la frecuencia efectiva, una 
 invalida sin apelación, y una coordenada imposible se rechaza en lugar de recortarse al borde.
 
 El detector de fijaciones, sus cinco variantes de duración mínima, la máscara de validez y la
-reconstrucción de `duration_s` están en [FIXATION_V2.md](FIXATION_V2.md). La conversión de las
+reconstrucción de `duration_s` están en [deteccion-de-fijaciones.md](deteccion-de-fijaciones.md). La conversión de las
 coordenadas de pantalla al sistema del estímulo, que se resuelve antes de detectar, está en
-[SCREEN_TO_STIMULUS_TRANSFORM.md](SCREEN_TO_STIMULUS_TRANSFORM.md).
+[coordenadas-pantalla-estimulo.md](coordenadas-pantalla-estimulo.md).
 
 ## El backend y sus fronteras
 
@@ -184,14 +183,14 @@ La superficie HTTP, toda bajo `/api`:
 | `integrations/google-drive` | Conectar, estado y desconectar (solo en servidor), más el callback de OAuth. |
 
 Los pre-experimentos y los cuestionarios, que permiten registrar un proyecto antes de tener datos,
-están descritos en [PRE_EXPERIMENTO.md](PRE_EXPERIMENTO.md).
+están descritos en [pre-experimento.md](../usuario/pre-experimento.md).
 
 ### Informes
 
 Los informes son un PDF por dispositivo, no un único informe ejecutivo. Los servicios de analítica
 aportan los números, los constructores por dispositivo deciden qué dice el informe, y una plantilla
 de Typst hace la composición. Como reutilizan los mismos servicios que el tablero, el PDF y la
-pantalla no pueden discrepar. Ver [REPORTS.md](REPORTS.md).
+pantalla no pueden discrepar. Ver [informes.md](informes.md).
 
 ## Dónde viven los archivos
 
@@ -247,8 +246,28 @@ agrupa, dentro de un proceso, las solicitudes idénticas que llegan a la vez, pa
 se haga una sola vez. Es local al bucle de eventos, no coordinación distribuida, y quien aporta el
 cálculo es dueño de sus recursos hasta que termina.
 
-La campaña de rendimiento que fijó estos límites y midió sus efectos está resumida en
-[rendimiento.md](rendimiento.md). Son mediciones sintéticas en una máquina, no una promesa.
+### Decisiones de rendimiento
+
+Estos límites salieron de medir, con corpus sintéticos y en una sola máquina, antes y después de cada
+cambio. Lo que quedó en el código:
+
+- **Lectura por columnas.** Las rutas de analítica piden al Parquet solo las columnas que usan; el resto
+  del marco no se decodifica.
+- **Lotes en lugar de N+1.** Un informe de grupo resuelve la identidad de todos sus participantes en una
+  consulta; guardar participantes o AOIs usa una escritura por lote.
+- **Trabajo compartido dentro de una operación.** Los eventos de fijación se construyen una vez por marco
+  y escenario y se reutilizan en las métricas que los necesitan.
+- **Respuestas condicionales.** Los fotogramas de vídeo conservan su ETag y responden 304 sin cuerpo
+  cuando el navegador ya los tiene, manteniendo la autorización.
+- **Presupuestos de concurrencia explícitos.** Las respuestas y los archivos Parquet admiten 4
+  operaciones en curso, 32 en cola y hasta 256 esperando un resultado compartido; la E/S de informes, 2
+  en curso y 16 esperando. Una cancelación libera su hueco solo cuando el trabajo físico termina.
+- **Carga diferida en la interfaz.** Las vistas de EEG y el diálogo de comparación se cargan al abrirse,
+  no al entrar al tablero.
+
+Ningún contrato científico cambió por rendimiento: tiempos y señales en float64, orden original, NaN y
+huecos preservados, eventos de fijación intactos y goldens sin regenerar. Para volver a medir, los
+microbenchmarks y su protocolo están en [backend/benchmarks/](../../backend/benchmarks/README.md).
 
 ## Cómo encaja el frontend
 
@@ -258,9 +277,8 @@ Recharts para las gráficas. La estructura:
 ```
 frontend/
   app/          páginas del App Router: proyectos, dashboard, reportes, configuracion, login, authorize
-  features/     módulos por función: analytics, auth, home, projects, reports
+  features/     módulos por función: analytics, auth, home, projects, reports, settings
   components/   los controles compartidos de interfaz
-  hooks/        hooks compartidos
   lib/          cliente de API, sesión, modo de la aplicación, proveedores
   public/       estáticos, incluidas las fuentes
   tests/        unitarias, de hooks en Chromium y especificaciones de Playwright
@@ -282,9 +300,9 @@ Hay una regla más que vale en las dos ediciones: **nada remoto**. Ni fuentes, n
 telemetría. Poppins se sirve desde `frontend/public/fonts`, y la compilación del paquete de
 estudiantes falla si la exportación contiene una fuente o un script remotos.
 
-Las convenciones de interfaz están en [frontend-ui.md](frontend-ui.md), y la comparación de
+Las convenciones de interfaz están en [interfaz.md](../desarrollo/interfaz.md), y la comparación de
 participantes, que es la pieza de interfaz más particular, en
-[comparar-participantes.md](comparar-participantes.md).
+[comparar-participantes.md](../usuario/comparar-participantes.md).
 
 ## Seguridad y operación, en resumen
 
@@ -300,7 +318,7 @@ participantes, que es la pieza de interfaz más particular, en
 - **Red en Compose.** Dos redes: `app`, que conecta frontend y backend, y `data`, marcada como interna,
   de modo que PostgreSQL y Redis no tienen ruta hacia fuera. TLS queda fuera del repositorio: se
   asume un proxy HTTPS delante. El despliegue en una red universitaria está en
-  [NETWORK_DEPLOYMENT.md](NETWORK_DEPLOYMENT.md).
+  [despliegue-en-red.md](despliegue-en-red.md).
 - **Verificación.** La puerta única es `./verify.ps1` desde la raíz: pruebas del backend con sus
   snapshots protegidos, Ruff, Vulture, deptry, arranque de la aplicación, los contratos de
   importación, TypeScript, pruebas unitarias del frontend, regresiones de hooks en Chromium real y
@@ -311,16 +329,14 @@ participantes, que es la pieza de interfaz más particular, en
 
 | Tema | Documento |
 | --- | --- |
-| Pipeline de subida completo | [UPLOAD_PIPELINE.md](UPLOAD_PIPELINE.md) |
-| Detector de fijaciones | [FIXATION_V2.md](FIXATION_V2.md) |
-| Coordenadas pantalla → estímulo | [SCREEN_TO_STIMULUS_TRANSFORM.md](SCREEN_TO_STIMULUS_TRANSFORM.md) |
-| Informes en PDF | [REPORTS.md](REPORTS.md) |
-| Rendimiento y sus límites | [rendimiento.md](rendimiento.md) |
-| Comparar participantes | [comparar-participantes.md](comparar-participantes.md) |
-| Convenciones de interfaz | [frontend-ui.md](frontend-ui.md) |
-| Pre-experimentos y cuestionarios | [PRE_EXPERIMENTO.md](PRE_EXPERIMENTO.md) |
-| Métodos de EEG y reproducibilidad | [eeg-audit/METHODS.md](eeg-audit/METHODS.md) |
-| Edición de estudiantes | [student/PLAN.md](student/PLAN.md), [student/LAPTOP-TEST.md](student/LAPTOP-TEST.md) |
-| Despliegue en red | [NETWORK_DEPLOYMENT.md](NETWORK_DEPLOYMENT.md) |
-| Licenciamiento | [LICENCIAMIENTO.md](LICENCIAMIENTO.md) |
-| Cambios de producto | [CHANGELOG.md](CHANGELOG.md) |
+| Pipeline de subida completo | [subida-de-experimentos.md](subida-de-experimentos.md) |
+| Detector de fijaciones | [deteccion-de-fijaciones.md](deteccion-de-fijaciones.md) |
+| Coordenadas pantalla → estímulo | [coordenadas-pantalla-estimulo.md](coordenadas-pantalla-estimulo.md) |
+| Informes en PDF | [informes.md](informes.md) |
+| Comparar participantes | [comparar-participantes.md](../usuario/comparar-participantes.md) |
+| Convenciones de interfaz | [interfaz.md](../desarrollo/interfaz.md) |
+| Pre-experimentos y cuestionarios | [pre-experimento.md](../usuario/pre-experimento.md) |
+| Métodos de EEG y reproducibilidad | [eeg/metodos.md](eeg/metodos.md) |
+| Edición de estudiantes | [student/README.md](../../student/README.md) |
+| Despliegue en red | [despliegue-en-red.md](despliegue-en-red.md) |
+| Cambios de producto | [CHANGELOG.md](../CHANGELOG.md) |

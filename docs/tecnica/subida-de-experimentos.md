@@ -1,15 +1,11 @@
 # Pipeline de subida de experimentos
 
-Documento vivo del flujo de ingesta: qué hace una subida, en qué orden, qué garantiza y qué no.
-Integra el endurecimiento del pipeline aplicado el 12 de septiembre de 2026, que antes vivía en un
-documento aparte. Describe el comportamiento del código que está en la rama, no la configuración de
-un despliegue en particular.
+El flujo de ingesta: qué hace una subida, en qué orden, qué garantiza y qué no. Describe el
+comportamiento del código, no la configuración de un despliegue en particular.
 
 Para el contrato de coordenadas que se resuelve durante la subida, ver
-[SCREEN_TO_STIMULUS_TRANSFORM.md](SCREEN_TO_STIMULUS_TRANSFORM.md); para el detector de fijaciones
-que corre dentro del paso de CSV, [FIXATION_V2.md](FIXATION_V2.md). El historial de los cambios de
-producto está en [CHANGELOG.md](CHANGELOG.md), y las notas de las campañas que lo precedieron quedaron
-en el historial de Git bajo el tag de archivo (`git show docs-archive-pre-release:<ruta>`).
+[coordenadas-pantalla-estimulo.md](coordenadas-pantalla-estimulo.md); para el detector de fijaciones
+que corre dentro del paso de CSV, [deteccion-de-fijaciones.md](deteccion-de-fijaciones.md).
 
 ## 1. Qué hace una subida
 
@@ -249,7 +245,7 @@ salir del ámbito; una terminación abrupta del proceso puede dejarlos, y la rec
 la publicación y la limpieza del almacén, no un recolector completo del sistema de archivos.
 
 Fuente: `zip_extraction_service.py`, `stimulus_probe_service.py`,
-[SCREEN_TO_STIMULUS_TRANSFORM.md](SCREEN_TO_STIMULUS_TRANSFORM.md).
+[coordenadas-pantalla-estimulo.md](coordenadas-pantalla-estimulo.md).
 
 ### 3.8 Procesamiento del CSV y artefactos analíticos
 
@@ -291,7 +287,7 @@ queda en 1 worker. Si el grupo no arranca o pierde un worker, los bloques corren
 punto de entrada congelado llama primero a `multiprocessing.freeze_support()`, así que un worker nunca
 arranca una segunda aplicación.
 
-Los detalles del detector están en [FIXATION_V2.md](FIXATION_V2.md). La responsabilidad del pipeline de
+Los detalles del detector están en [deteccion-de-fijaciones.md](deteccion-de-fijaciones.md). La responsabilidad del pipeline de
 subida es conservar las unidades, la identidad y la procedencia necesarias para interpretar esos
 resultados; la detección científica no se cambia como efecto secundario de un refactor de subida.
 

@@ -316,8 +316,8 @@ class CorrelationAnalyticsService:
         # sign reported for distance and to hide a moderate GSR relationship.
         # The dB scale does not absorb it: a 0.25 s bin is either contaminated or
         # it is not. Reporting and excluding those bins changes the
-        # /correlations response contract, which is a protected snapshot, so it
-        # waits for the owner. See docs/eeg-audit/FINDINGS.md.
+        # /correlations response contract, which is a protected snapshot, so it is
+        # left as a deliberate, documented decision. See docs/tecnica/eeg/validacion.md.
 
         # `le` is intentionally excluded: it is a reference/auxiliary channel, not scalp data.
         source_columns = [

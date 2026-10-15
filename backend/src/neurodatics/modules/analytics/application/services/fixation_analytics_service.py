@@ -319,7 +319,7 @@ class FixationEventService:
     # rebuild the detector duration.
     _RATE_CONSISTENCY_TOLERANCE = 0.05
     # Legacy containment: one isolated row proves a sample, not a fixation, so
-    # it never becomes an event.  Documented in docs/FIXATION_V2.md.
+    # it never becomes an event.  Documented in docs/tecnica/deteccion-de-fijaciones.md.
     _LEGACY_MIN_SOURCE_ROWS = 2
 
     @classmethod

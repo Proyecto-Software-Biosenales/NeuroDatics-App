@@ -68,13 +68,13 @@ $ffmpegBanner = (& "$internal\tools\ffmpeg.exe" -version 2>&1 | Out-String)
 $gpl = $ffmpegBanner -match '--enable-gpl'
 if (-not (Get-ChildItem "$internal\tools" -Filter 'LICENSE*' -File -ErrorAction SilentlyContinue)) {
     $blockers += if ($gpl) {
-        'ffmpeg is a GPL build and tools\ has no LICENSE file: add the license text that came with the build, or switch to an LGPL build (owner decision, PLAN.md open items)'
+        'ffmpeg is a GPL build and tools\ has no LICENSE file: add the license text that came with the build, or switch to an LGPL build (licensing decision pending)'
     } else { 'tools\ has no LICENSE file for ffmpeg: add the license text that came with the build' }
 } elseif ($gpl) {
-    $blockers += 'ffmpeg is a GPL build: the license text is present, but the owner has not confirmed GPL is acceptable versus an LGPL build (PLAN.md open items)'
+    $blockers += 'ffmpeg is a GPL build: the license text is present, but GPL versus an LGPL build is not decided yet'
 }
-$blockers += 'no real-laptop run yet: SmartScreen, Smart App Control, antivirus, missing runtimes and student RAM are unproven (docs/student/LAPTOP-TEST.md)'
-$blockers += 'governance of raw participant data handed to students is not confirmed by the owner (PLAN.md open items)'
+$blockers += 'no real-laptop run yet: SmartScreen, Smart App Control, antivirus, missing runtimes and student RAM are unproven (student/README.md, laptop test)'
+$blockers += 'governance of raw participant data handed to students is not decided yet'
 
 # --- 2. the zip -----------------------------------------------------------------------------------------
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }

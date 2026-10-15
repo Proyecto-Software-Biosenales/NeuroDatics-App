@@ -1,4 +1,4 @@
-"""EEG sampling and validity contract. See docs/eeg-audit/METHODS.md.
+"""EEG sampling and validity contract. See docs/tecnica/eeg/metodos.md.
 
 No sorting, sample deletion, interpolation, reference change or artifact removal
 is implicit. Fourier windows must contain finite samples on a contiguous grid.

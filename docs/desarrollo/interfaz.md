@@ -75,7 +75,7 @@ Lo mismo se ve igual en toda la aplicación. Estas reglas existen por errores qu
   deja las primeras pestañas fuera de alcance.
 
 Para comprobarlo, se mira la pantalla, no solo el código: con la API simulada en Playwright (como en
-`tests/e2e/screen-settings.spec.ts`), se fotografía a 1536×730 (el portátil del propietario) y a 390 px,
+`tests/e2e/screen-settings.spec.ts`), se fotografía a 1536×730 (un portátil habitual) y a 390 px,
 y se miden las alineaciones que importan (por ejemplo, la altura de la línea del pie de cada tarjeta) y
 que no haya scroll horizontal del documento.
 

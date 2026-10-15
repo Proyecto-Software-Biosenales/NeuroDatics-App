@@ -447,7 +447,7 @@ estos Parquets no tienen conteos del detector que reutilizar.
 - Las coordenadas se interpretan sobre estímulos estáticos. Ese caso ya está
   cubierto: el contrato `screen-stimulus-v1` transforma la mirada de la pantalla
   al sistema del estímulo durante la ingesta y la analítica informa qué contrato
-  la produjo (ver [SCREEN_TO_STIMULUS_TRANSFORM.md](SCREEN_TO_STIMULUS_TRANSFORM.md)).
+  la produjo (ver [coordenadas-pantalla-estimulo.md](coordenadas-pantalla-estimulo.md)).
   Lo que sigue sin soporte es la geometría variable en el tiempo: scroll o zoom
   que cambian durante la grabación, estímulo en movimiento y cambios de viewport.
   El contrato los rechaza en lugar de promediarlos a un rectángulo fijo, así que

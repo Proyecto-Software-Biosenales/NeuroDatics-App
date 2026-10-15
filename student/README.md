@@ -1,179 +1,197 @@
-# Student edition: build and gates
+# NeuroDatics Estudiantes: construcción y comprobaciones
 
-The offline student edition is the backend in `APP_MODE=local`, frozen with PyInstaller next to
-an embedded PostgreSQL 16, ffmpeg and the web app as a static export (`frontend/`) that the backend serves. Plan and decisions: [`docs/student/PLAN.md`](../docs/student/PLAN.md).
-Run-time code lives in the backend (`backend/src/neurodatics/local/`); this folder holds only what
-builds and checks the package.
+La edición de estudiantes es el backend en `APP_MODE=local`, congelado con PyInstaller junto a un PostgreSQL 16
+embebido, ffmpeg y la aplicación web como exportación estática (`frontend/`) que el propio backend sirve. El
+código de ejecución vive en el backend (`backend/src/neurodatics/local/`); esta carpeta contiene solo lo que
+construye y comprueba el paquete.
 
-| File | What it is |
+| Archivo | Qué es |
 | --- | --- |
-| `requirements.txt` | Direct dependencies, pinned to what the backend tests run on. No Google libraries. |
-| `requirements-frozen.txt` | `pip freeze` of the build venv that produced the tested package. |
-| `check-pins.py` | Fails when a pin differs from the tested environment (`.venv`) or from the build venv. |
-| `build.ps1` | Builds the web app (`NEXT_PUBLIC_APP_MODE=local`, output in `frontend/.next-local`, copied to `<Work>/frontend`) and freezes `src/student_entry.py` into `<Work>/dist/neurodatics-estudiantes`. |
-| `run-frozen.ps1` | Assembles the package folder (PostgreSQL, template, ffmpeg and web app inside `_internal`; dropping test suites, headers, link libraries and PostgreSQL's GUI and test programs), then runs the gates below against it. |
-| `package.ps1` | Adds the guide (beside the exe) and the notices (in `_internal`), hides `_internal`, zips the package to `<Work>/release/`, writes `SHA256.txt` and `package-report.json`, starts the app from the extracted zip (accented path, empty profile) and lays out `delivery\`. |
-| `LEEME.txt` | The student guide (Spanish), shipped inside the package. Edit it here, not in the package. |
-| `make-notices.py` | Writes `THIRD-PARTY-NOTICES.txt` from the build venv, `frontend/package.json` and the ffmpeg actually in `tools\`. |
-| `laptop-test.ps1` | Runs on the test laptop (Windows PowerShell 5.1): machine facts, a real experiment through the app, memory and connection sampling, a zip to send back. |
-| `src/` | The frozen entry point and the checks it carries: `selftest`, `pg-check`, `pg-adopt`, `http-check`. |
+| `requirements.txt` | Dependencias directas, fijadas a las versiones con que corren las pruebas del backend. Sin bibliotecas de Google. |
+| `requirements-frozen.txt` | `pip freeze` del entorno de construcción que produjo el paquete probado. |
+| `check-pins.py` | Falla si una versión difiere del entorno probado (`.venv`) o del entorno de construcción. |
+| `build.ps1` | Compila la aplicación web (`NEXT_PUBLIC_APP_MODE=local`, salida en `frontend/.next-local`, copiada a `<Work>/frontend`) y congela `src/student_entry.py` en `<Work>/dist/neurodatics-estudiantes`. |
+| `run-frozen.ps1` | Ensambla la carpeta del paquete (PostgreSQL, plantilla, ffmpeg y web dentro de `_internal`, sin baterías de pruebas, cabeceras, bibliotecas de enlace ni los programas gráficos y de prueba de PostgreSQL) y ejecuta sobre ella las comprobaciones de abajo. |
+| `check-pe-imports.py` | Comprueba que cada binario de PostgreSQL encuentre las DLL que importa dentro del paquete. |
+| `package.ps1` | Añade la guía (junto al exe) y los avisos (en `_internal`), oculta `_internal`, comprime el paquete en `<Work>/release/`, escribe `SHA256.txt` y `package-report.json`, arranca la aplicación desde el zip extraído (ruta con acentos, perfil vacío) y prepara `delivery\`. |
+| `LEEME.txt` | La guía del estudiante, que viaja en el paquete. Se edita aquí, nunca en el paquete. |
+| `make-notices.py` | Escribe `THIRD-PARTY-NOTICES.txt` a partir del entorno de construcción, `frontend/package.json` y el ffmpeg que de verdad está en `tools\`. |
+| `laptop-test.ps1` | Se ejecuta en un portátil de prueba (Windows PowerShell 5.1): datos de la máquina, un experimento real por la aplicación, muestreo de memoria y conexiones, y un zip para devolver. |
+| `src/` | El punto de entrada congelado y las comprobaciones que lleva dentro: `selftest`, `pg-check`, `pg-adopt`, `http-check`. |
 
-## Build and check
+## Construir y comprobar
 
-The web build needs Node with the frontend's `node_modules` installed. The browser part of the `serve`
-gate also needs Chromium once: `cd frontend; npx playwright install chromium`.
+La compilación web necesita Node con los `node_modules` del frontend instalados (si están vacíos, `npm ci` en
+`frontend`). La parte de navegador de la comprobación `serve` necesita Chromium una vez:
+`cd frontend; npx playwright install chromium`.
 
-Inputs live in `<Work>` (default `output/student`, git-ignored): a `build-venv` made from
-`requirements-frozen.txt`, `tools/` (`ffmpeg.exe`, `ffprobe.exe`), the `bin`/`lib`/`share` folders of the
-EDB PostgreSQL 16 zip (`pgsql/`, or `-PgSource`), a cluster template (`%TEMP%\ndtest\pg-template`, made with
-`initdb -A trust -U postgres -E UTF8 --locale=C` **from an ASCII path**), and `data/saio-raw.zip`, a raw
-experiment ZIP with images and a video (private data, never committed).
+Las entradas viven en `<Work>` (por defecto `output/student`, ignorado por Git): un `build-venv` creado desde
+`requirements-frozen.txt`, `tools/` (`ffmpeg.exe`, `ffprobe.exe`), las carpetas `bin`/`lib`/`share` del zip de
+PostgreSQL 16 de EDB (`pgsql/`, o `-PgSource`), una plantilla de clúster (`pg-template`, creada con
+`initdb -A trust -U postgres -E UTF8 --locale=C` **desde una ruta ASCII**; mejor fuera de `%TEMP%`, que Windows
+puede vaciar) y `data/saio-raw.zip`, un ZIP de experimento crudo con imágenes y un vídeo (datos privados, nunca
+en el repositorio).
 
 ```powershell
 student\build.ps1 -Work output\student
-student\run-frozen.ps1 -Work output\student -Assemble
-student\run-frozen.ps1 -Work output\student            # all gates, or -Only selftest|pg|serve|race
+student\run-frozen.ps1 -Work output\student -Assemble -TemplateSource output\student\pg-template
+student\run-frozen.ps1 -Work output\student            # todas las comprobaciones, o -Only selftest|pg|serve|race
 ```
 
-Evidence is written to `<Work>/frozen-results/` (`selftest.json`, `pg-check.json`, `http-check.json`,
-`browser.out.txt`, `serve-evidence.json`). The gates:
+La evidencia queda en `<Work>/frozen-results/` (`selftest.json`, `pg-check.json`, `http-check.json`,
+`browser.out.txt`, `serve-evidence.json`). Las comprobaciones:
 
-- **selftest**: real ingestion, analytics, reports and media in the frozen runtime. It fails on an empty
-  result, null media dimensions, a fixture without a video or images, or any non-loopback connection
-  attempt; the guard behind that last check is proven live inside the runtime first.
-- **pg**: template copy, loopback password, migrations, advisory lock, JSONB merge, clean stop, crash
-  recovery, adoption of a running server, an interrupted first copy.
-- **serve**: the real app in a brand-new empty profile, under an offline guard and a TCP connection
-  sampler, driven twice. First through its HTTP routes with a real ZIP (web app served from the same
-  origin, session, upload, analytics, media, report, delete). Then in a real Chromium whose name
-  resolution is off for everything but loopback (`frontend/tests/local/student-offline.spec.ts`): no
-  account or Drive screens, the fonts, a wizard upload of the extracted experiment folder, its images,
-  live analytics and deleting the project, failing on any request that leaves the machine.
-- **race**: two launches started at the same instant on one data directory.
+- **selftest**: ingesta, analítica, informes y medios reales dentro del ejecutable congelado. Falla con un
+  resultado vacío, dimensiones de medios nulas, una fixture sin vídeo o sin imágenes, o cualquier intento de
+  conexión fuera de loopback; la guarda que hace esto último se demuestra antes en vivo dentro del ejecutable.
+- **pg**: copia de la plantilla, contraseña de loopback, migraciones, bloqueo consultivo, fusión JSONB, parada
+  limpia, recuperación tras un cierre abrupto, adopción de un servidor ya en marcha y una primera copia
+  interrumpida.
+- **serve**: la aplicación real en un perfil nuevo y vacío, bajo la guarda sin conexión y un muestreador de
+  conexiones TCP, recorrida dos veces. Primero por sus rutas HTTP con un ZIP real (web servida desde el mismo
+  origen, sesión, subida, analítica, medios, informe y borrado). Después en un Chromium real cuya resolución de
+  nombres está desactivada para todo lo que no sea loopback (`frontend/tests/local/student-offline.spec.ts`): sin
+  pantallas de cuenta ni de Drive, las fuentes, la subida de la carpeta del experimento por el asistente, sus
+  imágenes, la analítica y el borrado del proyecto, fallando ante cualquier petición que salga de la máquina.
+- **race**: dos arranques en el mismo instante sobre un mismo directorio de datos.
 
-The paths deliberately contain accents and spaces. None of this is the clean-machine, network-off proof
-gate ([`docs/student/LAPTOP-TEST.md`](../docs/student/LAPTOP-TEST.md)), which needs a machine this one is not.
+Las rutas contienen a propósito acentos y espacios. Nada de esto sustituye a la prueba en un portátil limpio y sin
+red (abajo).
 
-## Package and test on a laptop (M4)
+## Empaquetar y entregar
 
 ```powershell
-student\package.ps1 -Work output\student -Version 0.1        # after build.ps1 and run-frozen.ps1 -Assemble
-student\run-frozen.ps1 -Work output\student -Pkg "<release-check\...\NeuroDatics Estudiantes>" -Only serve   # optional: the full gate on the extracted zip
+student\package.ps1 -Work output\student -Version <versión>
+student\run-frozen.ps1 -Work output\student -Pkg "<release-check\...\NeuroDatics Estudiantes>" -Only serve   # opcional: la comprobación completa sobre el zip extraído
 ```
 
-The package a student opens shows two files and nothing else:
+`<versión>` es la del zip actual en `delivery/` más uno en el último número. Para dar por bueno un paquete no basta
+el código de salida: en el log de `run-frozen.ps1` el navegador debe decir `passed` (no `failed`), debe haber 0
+conexiones fuera de loopback y no deben quedar procesos de PostgreSQL. La versión, el SHA-256 del zip y las
+comprobaciones que pasaron se anotan en `docs/CHANGELOG.md`. `delivery/` solo lo escribe `package.ps1`.
+
+El paquete que abre el estudiante muestra dos archivos y nada más:
 
 ```text
 NeuroDatics Estudiantes\
     neurodatics-estudiantes.exe
     LEEME.txt
-    _internal\          hidden: Python runtime, pgsql\, pg-template\, tools\, frontend\, THIRD-PARTY-NOTICES.txt
+    _internal\          oculto: Python, pgsql\, pg-template\, tools\, frontend\, THIRD-PARTY-NOTICES.txt
 ```
 
-`run-frozen.ps1 -Assemble` puts the parts inside PyInstaller's `_internal` and the launcher finds them through
-`sys._MEIPASS` (`neurodatics.local.launcher.package_dir`; a folder with `pgsql` beside the exe still works).
-`package.ps1` marks `_internal` hidden in the folder and in the zip (Explorer's "Extract all" restores it), and the
-launcher hides it again on start for extractors that drop the flag.
+`run-frozen.ps1 -Assemble` coloca las piezas dentro del `_internal` de PyInstaller y el lanzador las encuentra con
+`sys._MEIPASS` (`neurodatics.local.launcher.package_dir`; una carpeta con `pgsql` junto al exe también sirve).
+`package.ps1` marca `_internal` como oculto en la carpeta y en el zip («Extraer todo» del Explorador lo
+conserva), y el lanzador lo vuelve a ocultar al arrancar si un extractor perdió el atributo.
 
-`package.ps1` makes `delivery\NeuroDatics-Estudiantes\` (git-ignored, next to the teacher edition's
-`delivery\NeuroDatics-App`) that program folder itself, and puts the zip beside it as
-`delivery\NeuroDatics-Estudiantes-<Version>-win64.zip`, removing older ones (`-NoDelivery` skips this). The
-maintainer's files stay in `<Work>\release`: the zip, `SHA256.txt`, `laptop-test.ps1` and `package-report.json`,
-whose `release_blockers` lists what no script can settle (ffmpeg licence, governance, the real-laptop run). The by-hand
-procedure for the laptop is [`docs/student/LAPTOP-TEST.md`](../docs/student/LAPTOP-TEST.md). A double-clicked launch
-(no arguments) that fails prints the error, writes `logs\launcher-errors.log` in the data directory and waits for
-Enter; runs with arguments (every gate) never wait.
+`package.ps1` crea `delivery\NeuroDatics-Estudiantes\` (ignorado por Git, junto al `delivery\NeuroDatics-App` de
+la edición servidor) con la carpeta del programa, y deja al lado el zip como
+`delivery\NeuroDatics-Estudiantes-<versión>-win64.zip`, retirando los anteriores (`-NoDelivery` omite este paso).
+Los archivos del mantenedor quedan en `<Work>\release`: el zip, `SHA256.txt`, `laptop-test.ps1` y
+`package-report.json`, cuyo `release_blockers` enumera lo que ningún script puede resolver. Un arranque con doble
+clic (sin argumentos) que falla muestra el error, escribe `logs\launcher-errors.log` en el directorio de datos y
+espera a que se pulse Enter; los arranques con argumentos (todas las comprobaciones) nunca esperan.
 
-## The web app in local mode
+### Prueba en un portátil
 
-`frontend/next.config.mjs` returns a static export config when `NEXT_PUBLIC_APP_MODE=local` (server
-builds are untouched). `build.ps1` fails if the export contains a value from `frontend/.env*` or a
-reference to a remote font or Google script. By hand:
+Lo único que ninguna comprobación de esta máquina puede cubrir es un portátil de estudiante real: SmartScreen,
+Smart App Control, el antivirus, un equipo sin herramientas de desarrollo y poca memoria. El procedimiento:
+subir el zip a Drive y descargarlo **desde Drive en el portátil**; comparar `Get-FileHash` con `SHA256.txt`;
+extraer con el Explorador; seguir `LEEME.txt` anotando cada paso que no sea cierto en esa máquina; activar el modo
+avión; abrir `neurodatics-estudiantes.exe` anotando el aviso de SmartScreen exacto; subir un experimento crudo,
+abrir el tablero, un informe, una imagen y un vídeo; y ejecutar `laptop-test.ps1`, que reúne los datos de la
+máquina y devuelve un zip con el resultado.
+
+## La aplicación web en modo local
+
+`frontend/next.config.mjs` devuelve una configuración de exportación estática cuando
+`NEXT_PUBLIC_APP_MODE=local` (la compilación de servidor no cambia). `build.ps1` falla si la exportación contiene
+un valor de `frontend/.env*` o una referencia a una fuente remota o a un script de Google. A mano:
 
 ```powershell
 cd frontend
-$env:NEXT_PUBLIC_APP_MODE = 'local'; npx next build      # writes frontend/.next-local
+$env:NEXT_PUBLIC_APP_MODE = 'local'; npx next build      # escribe frontend/.next-local
 ```
 
-The same spec runs against any live local app, including one started from source:
+La misma prueba de navegador se ejecuta contra cualquier aplicación local en marcha, incluida una arrancada desde
+el código:
 
 ```powershell
 $env:STUDENT_BASE_URL = 'http://127.0.0.1:8765'
-$env:STUDENT_RAW_FOLDER = '<extracted raw experiment folder>'   # private data; the full-flow test is skipped without it
+$env:STUDENT_RAW_FOLDER = '<carpeta de un experimento crudo>'   # datos privados; sin ella se omite el flujo completo
 npx playwright test -c playwright.local.config.ts
 ```
 
-## Run the app from source (no freezing)
+## Ejecutar desde el código (sin congelar)
 
 ```powershell
 cd backend
 $env:PYTHONPATH = 'src'
-..\.venv\Scripts\python.exe -m neurodatics.local --pkg <folder with pgsql, pg-template, tools, frontend> --data-dir <dir> --no-browser
+..\.venv\Scripts\python.exe -m neurodatics.local --pkg <carpeta con pgsql, pg-template, tools, frontend> --data-dir <dir> --no-browser
 ```
 
-`pg-adopt` continues the data root a previous `pg-check --leave-running` left behind. `--help` lists the options (`--port`, `--offline-guard`, `--exit-after`, `--stop-file`).
+`pg-adopt` continúa el directorio de datos que dejó un `pg-check --leave-running` anterior. `--help` lista las
+opciones (`--port`, `--offline-guard`, `--exit-after`, `--stop-file`).
 
-## Why it is built this way
+## Por qué está construido así
 
-Each decision below is in the code it describes (`backend/src/neurodatics/local/`, `student/*.ps1`),
-and exists because a simpler option was tried or ruled out.
+Cada decisión está en el código que describe (`backend/src/neurodatics/local/`, `student/*.ps1`) y existe porque
+una opción más simple se probó o se descartó.
 
-**The same PostgreSQL 16, embedded, instead of a lighter database.** The app's SQL is not portable:
-the project mutation lock is a PostgreSQL advisory lock, the analytics transform tokens are merged
-with the JSONB `||` operator, and a third of the migrations name PostgreSQL types. A different engine
-would mean rewriting those and re-proving them against the goldens, so the student edition ships the
-EDB build of the same server as a second process and the application code stays untouched. Migrations
-run on every start, which is why a migration must not use an extension the EDB zip does not carry.
+**El mismo PostgreSQL 16, embebido, en lugar de una base de datos más ligera.** El SQL de la aplicación no es
+portable: el bloqueo de mutación de proyectos es un bloqueo consultivo de PostgreSQL, los tokens de
+transformación de la analítica se fusionan con el operador JSONB `||` y un tercio de las migraciones nombran
+tipos de PostgreSQL. Otro motor obligaría a reescribir todo eso y volver a demostrarlo contra los goldens, así que
+la edición de estudiantes lleva la compilación de EDB del mismo servidor como segundo proceso y el código de la
+aplicación no cambia. Las migraciones se ejecutan en cada arranque, por eso una migración no puede usar una
+extensión que el zip de EDB no traiga.
 
-**The cluster is copied from a template, never created on the student's machine.** `initdb` fails from
-a path with non-ASCII characters, and a student's user folder may well have one. `pg-template` is built
-elsewhere with `initdb -A trust -U postgres -E UTF8 --locale=C` from an ASCII path and copied on first
-launch. The copy is assembled under a `.building` name and renamed into place, so an interrupted first
-launch leaves nothing that looks like a cluster; the rename waits and retries, because a virus scanner
-or the search indexer can still hold the files it just copied. The cluster is secured before it ever
-accepts a connection: a random password set with the server stopped, and a `pg_hba.conf` with nothing
-but loopback and `scram-sha-256`. The server always starts in UTC, whatever timezone the template was
-built in, and readiness is polled with `pg_isready` rather than trusted from `pg_ctl -w`, because a
-stale `postmaster.pid` still reports success while crash recovery is starting.
+**El clúster se copia de una plantilla; nunca se crea en la máquina del estudiante.** `initdb` falla desde una
+ruta con caracteres no ASCII, y la carpeta de usuario de un estudiante bien puede tenerlos. `pg-template` se
+construye aparte desde una ruta ASCII y se copia en el primer arranque. La copia se arma con un nombre
+`.building` y se renombra al final, así que un primer arranque interrumpido no deja nada que parezca un clúster;
+el renombrado espera y reintenta, porque un antivirus o el indexador de búsqueda pueden seguir sujetando los
+archivos recién copiados. El clúster queda protegido antes de aceptar ninguna conexión: una contraseña aleatoria
+fijada con el servidor detenido y un `pg_hba.conf` con solo loopback y `scram-sha-256`. El servidor arranca
+siempre en UTC, sea cual sea la zona horaria de la plantilla, y la disponibilidad se sondea con `pg_isready` en
+lugar de fiarse de `pg_ctl -w`, porque un `postmaster.pid` rancio informa éxito mientras empieza la recuperación.
 
-**A running server is adopted, not fought.** A launcher that died leaves its postmaster running. The
-next launch reads the pid file, accepts the pid only when it is a live `postgres.exe` from our own
-`bin` (pids are reused and the machine may run other servers), takes the port from the file and
-continues with that server. A second launch on the same data directory does not start a second server
-either: the instance lock makes it open the running app and exit.
+**Un servidor en marcha se adopta, no se combate.** Un lanzador que murió deja su postmaster en marcha. El
+siguiente arranque lee el archivo de pid, lo acepta solo si es un `postgres.exe` vivo de nuestra propia carpeta
+`bin` (los pid se reutilizan y la máquina puede tener otros servidores), toma el puerto del archivo y continúa con
+ese servidor. Un segundo arranque sobre el mismo directorio de datos tampoco inicia un segundo servidor: el
+bloqueo de instancia hace que abra la aplicación que ya corre y salga.
 
-**Everything lives in the user's profile, not beside the program.** A folder extracted into Downloads
-or Desktop is often synced by OneDrive, and syncing a live database directory corrupts it, so the data
-root is `%LOCALAPPDATA%\NeuroDatics Estudiantes` (`--data-dir` overrides). The cost is deliberate and
-documented in the guide: deleting the extracted program folder does not delete the student's projects.
+**Todo vive en el perfil del usuario, no junto al programa.** Una carpeta extraída en Descargas o en el
+Escritorio suele sincronizarla OneDrive, y sincronizar un directorio de base de datos vivo lo corrompe, así que la
+raíz de datos es `%LOCALAPPDATA%\NeuroDatics Estudiantes` (`--data-dir` la cambia). El coste es deliberado y está
+en la guía: borrar la carpeta extraída del programa no borra los proyectos del estudiante.
 
-**The web app is a static export served by the backend itself.** One origin means no CORS, no second
-port and no proxy: the pages call `/api/...` on the address they were loaded from. The site is mounted
-last so every API route wins over its catch-all, and two Windows-export details are mapped in front of
-it: the collection route the app requests without a trailing slash, and Next's page-data prefetch,
-which a Windows export writes into a nested folder.
+**La web es una exportación estática que sirve el propio backend.** Un solo origen significa sin CORS, sin
+segundo puerto y sin proxy: las páginas llaman a `/api/...` en la dirección desde la que se cargaron. El sitio se
+monta el último para que cada ruta de la API gane a su comodín, y delante se resuelven dos detalles de la
+exportación en Windows: la ruta de colección que la aplicación pide sin barra final, y la precarga de datos de
+página de Next, que una exportación en Windows escribe en una carpeta anidada.
 
-**Everything listens on 127.0.0.1, and there is no login.** The app's port is bound to loopback before
-the server starts, so no other program can take it in between, and PostgreSQL is started with
-`listen_addresses=127.0.0.1`. Without accounts, the only thing keeping another web page from driving
-the API is that a browser cannot name a loopback `Host` it does not own, nor send an `Origin` that
-differs from the one it was served from: local mode refuses both. The offline guard is the other half
-of the promise, and it is a check rather than a defence: it refuses and records every non-loopback
-connection the process attempts, hooking the socket module and asyncio's `sock_connect` on both loop
-classes, because the default Windows loop connects through `ConnectEx` and never calls
-`socket.connect`. It cannot see ffmpeg, Typst or another process, so the gates also sample the
-operating system's connection table. In local mode the Google routes are not even imported, the cache
-is in-process (no Redis to be down) and files go through the local storage client, so there is nothing
-left that wants the network.
+**Todo escucha en 127.0.0.1, y no hay inicio de sesión.** El puerto de la aplicación se reserva en loopback antes
+de arrancar el servidor, para que ningún otro programa lo tome entretanto, y PostgreSQL arranca con
+`listen_addresses=127.0.0.1`. Sin cuentas, lo único que impide que otra página web maneje la API es que un
+navegador no puede nombrar un `Host` de loopback que no es suyo ni enviar un `Origin` distinto de aquel desde el
+que se sirvió: el modo local rechaza ambos. La guarda sin conexión es la otra mitad de la promesa, y es una
+comprobación, no una defensa: rechaza y registra cada conexión fuera de loopback que intenta el proceso,
+enganchando el módulo `socket` y el `sock_connect` de asyncio en las dos clases de bucle, porque el bucle por
+defecto de Windows conecta con `ConnectEx` y nunca llama a `socket.connect`. No ve a ffmpeg, a Typst ni a otros
+procesos, así que las comprobaciones también muestrean la tabla de conexiones del sistema operativo. En modo local
+las rutas de Google ni siquiera se importan, la caché es en proceso (no hay Redis que pueda caerse) y los archivos
+pasan por el cliente de almacenamiento local, así que no queda nada que quiera la red.
 
-**Frozen with PyInstaller as one directory, and everything travels inside `_internal`.** A student sees
-`neurodatics-estudiantes.exe` and `LEEME.txt`; PostgreSQL, its template, ffmpeg, the web app and the
-notices sit in the runtime's own folder, which the launcher finds through `sys._MEIPASS` and re-hides
-on start for extractors that drop the hidden flag. ffmpeg travels because the stimulus probe looks for
-`ffprobe` on `PATH`, which the launcher points at the bundled `tools`; the Visual C++ runtime travels
-beside `pgsql\bin` because the PostgreSQL binaries need it and a student's machine may not have it.
-`-Assemble` copies one matching set (`msvcp140*.dll`, `vcruntime140*.dll`) from Visual Studio's redistributable
-folder and runs `check-pe-imports.py` over every PostgreSQL binary: the build machine has the runtime in
-System32, so a missing DLL (0.5 lacked `msvcp140.dll`, which `icuuc67.dll` imports) only shows on a clean Windows.
-The app also refuses to run elevated, with a message, because PostgreSQL will not run under an
-administrator token.
+**Congelado con PyInstaller en un directorio, y todo viaja dentro de `_internal`.** El estudiante ve
+`neurodatics-estudiantes.exe` y `LEEME.txt`; PostgreSQL, su plantilla, ffmpeg, la web y los avisos están en la
+carpeta del propio ejecutable, que el lanzador encuentra con `sys._MEIPASS` y vuelve a ocultar al arrancar.
+ffmpeg viaja porque el sondeo de estímulos busca `ffprobe` en el `PATH`, que el lanzador apunta a la carpeta
+`tools` incluida; el runtime de Visual C++ viaja junto a `pgsql\bin` porque los binarios de PostgreSQL lo
+necesitan y la máquina de un estudiante puede no tenerlo. `-Assemble` copia un juego coherente (`msvcp140*.dll`,
+`vcruntime140*.dll`) de la carpeta de redistribuibles de Visual Studio y pasa `check-pe-imports.py` sobre cada
+binario de PostgreSQL: la máquina de construcción tiene el runtime en System32, así que una DLL que falte solo se
+nota en un Windows limpio. La aplicación también se niega a ejecutarse con privilegios de administrador, con un
+mensaje, porque PostgreSQL no arranca con un token de administrador.

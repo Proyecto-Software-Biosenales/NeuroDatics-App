@@ -1,4 +1,4 @@
-"""EEG estimates on contiguous valid windows. See docs/eeg-audit/METHODS.md."""
+"""EEG estimates on contiguous valid windows. See docs/tecnica/eeg/metodos.md."""
 
 from typing import Iterable, Optional
 import numpy as np

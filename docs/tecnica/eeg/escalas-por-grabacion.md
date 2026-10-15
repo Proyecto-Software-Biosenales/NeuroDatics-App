@@ -1,6 +1,6 @@
 # EEG: escalas diferentes entre grabaciones y canales
 
-Estado comprobado el 27 de septiembre de 2026. Este documento describe el comportamiento existente; esta revisión no cambia la conversión productiva ni reprocesa proyectos guardados. Se incorpora una prueba de regresión para la mezcla de escalas en un mismo CSV.
+Cómo trata la ingesta las escalas de EEG que el archivo declara grabación por grabación y canal por canal. Una prueba de regresión cubre la mezcla de escalas en un mismo CSV.
 
 ## Hallazgo y evidencia de origen
 
@@ -23,7 +23,7 @@ Son números de línea del CSV original; una importación en Excel que retire fi
 
 Los canales LE, F4, C4, P4, P3 y C3 del bloque 5 también tienen la unidad vacía. Por tanto, **F3 del bloque 5 se multiplica por 1.000; los otros canales y bloques no heredan ese factor**. Los números de bloque son posiciones de grabación, no identificadores públicos de personas.
 
-En F3 del bloque 5, el rango exportado es −0,97 a 9,64; normalizado es −970 a 9.640. Los rangos del archivo de adquisición candidato y el metadato respaldan el multiplicador; no demuestran alineación exacta muestra a muestra ni confirman la unidad física. La auditoría reproducida el 25 de septiembre está en [FINDINGS.md](FINDINGS.md).
+En F3 del bloque 5, el rango exportado es −0,97 a 9,64; normalizado es −970 a 9.640. Los rangos del archivo de adquisición candidato y el metadato respaldan el multiplicador; no demuestran alineación exacta muestra a muestra ni confirman la unidad física. La validación completa está en [validacion.md](validacion.md).
 
 ## Contrato actual de importación
 
