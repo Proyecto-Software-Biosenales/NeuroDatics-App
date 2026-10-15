@@ -129,7 +129,7 @@ if (-not $SkipVerify) {
     $verify.files_match = ($extractedFiles.Count -eq $pkgFiles.Count) -and
         (($extractedFiles | Measure-Object Length -Sum).Sum -eq ($pkgFiles | Measure-Object Length -Sum).Sum)
     if (-not $verify.files_match) { throw "the extracted zip differs from the package ($($extractedFiles.Count) vs $($pkgFiles.Count) files)" }
-    foreach ($needed in 'neurodatics-estudiantes.exe', 'LEEME.txt', '_internal\THIRD-PARTY-NOTICES.txt', '_internal\pgsql\bin\postgres.exe', '_internal\pgsql\bin\vcruntime140.dll', '_internal\pg-template\PG_VERSION', '_internal\tools\ffprobe.exe', '_internal\frontend\index.html') {
+    foreach ($needed in 'neurodatics-estudiantes.exe', 'LEEME.txt', '_internal\THIRD-PARTY-NOTICES.txt', '_internal\pgsql\bin\postgres.exe', '_internal\pgsql\bin\vcruntime140.dll', '_internal\pgsql\bin\msvcp140.dll','_internal\pg-template\PG_VERSION', '_internal\tools\ffprobe.exe', '_internal\frontend\index.html') {
         if (-not (Test-Path (Join-Path $extracted $needed))) { throw "the extracted package lacks $needed" }
     }
     # What the student sees: the top of the zip, and the hidden flag Explorer will restore.

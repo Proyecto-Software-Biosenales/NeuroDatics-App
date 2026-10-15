@@ -13,6 +13,9 @@
 #   %TEMP%\ndtest\pg-template      a cluster built with `initdb -A trust -U postgres -E UTF8 --locale=C`
 #                                  from an ASCII path (initdb fails on accented ones)
 #   data\saio-raw.zip              a raw experiment ZIP with images and a video (private, not committed)
+#   -VcRuntime                     the Visual C++ x64 runtime DLLs shipped beside PostgreSQL; default:
+#                                  Visual Studio's newest VC\Redist\MSVC\*\x64\Microsoft.VC14*.CRT,
+#                                  else System32 (where the Redistributable installs them)
 #
 # The accents and spaces in the default package and data paths are deliberate: they are the
 # non-ASCII paths Spanish user profiles produce.
@@ -22,6 +25,7 @@ param(
     [string]$PgSource = '',
     [string]$TemplateSource = (Join-Path $env:TEMP 'ndtest\pg-template'),
     [string]$Zip = '',
+    [string]$VcRuntime = '',
     [switch]$Assemble,
     [string]$Only = ''
 )
@@ -89,15 +93,29 @@ if ($Assemble) {
         'isolationtester.exe', 'libpq_*.exe', 'test_*.exe', '*.lib' | Remove-Item -Force
     Get-ChildItem "$internal\pgsql\lib" -File -Filter '*.lib' | Remove-Item -Force
     Get-ChildItem "$internal\pgsql\share\locale" -Directory | Where-Object Name -ne 'es' | Remove-Item -Recurse -Force
-    # The PostgreSQL zip does not ship the Visual C++ runtime its executables import, and a
-    # laptop without the redistributable would fail to start the database. The frozen runtime
-    # carries copies; put them beside the executables that need them.
-    $runtime = @(Get-ChildItem $internal -Filter 'vcruntime140*.dll' -File)
-    if ($runtime.Count -lt 1) { throw "no vcruntime140*.dll in $internal to ship beside PostgreSQL" }
-    $runtime | ForEach-Object { Copy-Item $_.FullName $pgBin -Force }
-    foreach ($needed in @('vcruntime140.dll')) {
-        if (-not (Test-Path "$pgBin\$needed")) { throw "$needed is not beside postgres.exe" }
+    # The PostgreSQL zip does not ship the Visual C++ runtime its executables import (icuuc67.dll
+    # needs msvcp140.dll, the rest vcruntime140*.dll), and a laptop without the redistributable
+    # fails to start the database. Ship one matching set beside them, from Visual Studio's
+    # redistributable folder or, failing that, the copy the Redistributable installed in System32.
+    if (-not $VcRuntime) {
+        $VcRuntime = @(foreach ($root in $env:ProgramFiles, ${env:ProgramFiles(x86)}) {
+                Get-ChildItem "$root\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC14*.CRT" -Directory -ErrorAction SilentlyContinue
+            }) | Sort-Object { $_.Parent.Parent.Name -as [version] } -Descending | Select-Object -First 1 -ExpandProperty FullName
+        if (-not $VcRuntime) { $VcRuntime = "$env:SystemRoot\System32" }
     }
+    $runtime = @('msvcp140.dll', 'msvcp140_1.dll', 'msvcp140_2.dll', 'msvcp140_atomic_wait.dll',
+        'msvcp140_codecvt_ids.dll', 'vcruntime140.dll', 'vcruntime140_1.dll', 'concrt140.dll' |
+        ForEach-Object { Get-Item "$VcRuntime\$_" -ErrorAction SilentlyContinue })
+    foreach ($needed in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
+        if ($needed -notin ($runtime | ForEach-Object { $_.Name.ToLower() })) {
+            throw "no $needed in $VcRuntime (install the Visual C++ Redistributable x64, or pass -VcRuntime)"
+        }
+    }
+    $runtime | ForEach-Object { Copy-Item $_.FullName $pgBin -Force }
+    # The build machine has the runtime in System32, so a missing DLL only shows on a clean
+    # Windows; read the import tables instead of trusting what starts here.
+    & "$Work\build-venv\Scripts\python.exe" "$repo\student\check-pe-imports.py" --pgsql "$internal\pgsql"
+    if ($LASTEXITCODE -ne 0) { throw "a PostgreSQL binary imports a DLL the package does not carry" }
     $runtimeFiles = @(Get-ChildItem $internal -Force | Where-Object Name -notin $parts | ForEach-Object {
         if ($_.PSIsContainer) { Get-ChildItem $_.FullName -Recurse -File -Force } else { $_ } })
     "assembled: $Pkg"

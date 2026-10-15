@@ -40,9 +40,20 @@ no cambies configuraciones de seguridad: avisa a tu docente.
 Se abre una ventana negra (no la cierres) y, unos segundos después, tu navegador con NeuroDatics.
 La primera vez tarda más (hasta un minuto) porque prepara la base de datos.
 
-   - Proyectos > "Crear nuevo proyecto": sube el ZIP del experimento. Procesarlo toma unos minutos.
+   - La primera vez aparece abajo a la derecha el aviso "Revisa la configuración de pantalla".
+     Pulsa "Ir a Configuración" (también está en el menú "Estudiante", arriba a la derecha), comprueba
+     el ancho y el alto de la pantalla donde se mostraron los estímulos (por defecto la del laboratorio,
+     1280 x 1024) y pulsa "Guardar configuración de pantalla". Si cierras el aviso o sales de Configuración sin guardar,
+     no vuelve a salir hasta la próxima vez que abras NeuroDatics.
+   - Proyectos > "Crear proyecto": sube el ZIP del experimento. Procesarlo toma unos minutos.
+     En "Datos del participante" cada persona aparece como Participante 1, 2, 3... Completa sexo y
+     edad. El documento viene de los datos: corrígelo si está mal. El nombre es opcional; si lo
+     escribes, el Dashboard lo muestra en lugar del documento.
+   - Para cambiar un proyecto, en su tarjeta pulsa los tres puntos > "Editar". Arriba están sus
+     secciones (participantes, cuestionarios, pantalla, dispositivos, áreas de interés, notas y
+     carpeta); cambia lo que necesites y pulsa "Guardar cambios".
    - Dashboard: analiza EyeTracker, GSR, EEG y comparaciones.
-   - Reportes: genera el informe en PDF.
+   - Informes: genera el informe en PDF.
 
 Puedes tener el navegador cerrado y volver a abrirlo con doble clic en el .exe: te lleva a la app que
 ya está abierta.

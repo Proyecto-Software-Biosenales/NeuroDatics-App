@@ -172,5 +172,8 @@ notices sit in the runtime's own folder, which the launcher finds through `sys._
 on start for extractors that drop the hidden flag. ffmpeg travels because the stimulus probe looks for
 `ffprobe` on `PATH`, which the launcher points at the bundled `tools`; the Visual C++ runtime travels
 beside `pgsql\bin` because the PostgreSQL binaries need it and a student's machine may not have it.
+`-Assemble` copies one matching set (`msvcp140*.dll`, `vcruntime140*.dll`) from Visual Studio's redistributable
+folder and runs `check-pe-imports.py` over every PostgreSQL binary: the build machine has the runtime in
+System32, so a missing DLL (0.5 lacked `msvcp140.dll`, which `icuuc67.dll` imports) only shows on a clean Windows.
 The app also refuses to run elevated, with a message, because PostgreSQL will not run under an
 administrator token.
