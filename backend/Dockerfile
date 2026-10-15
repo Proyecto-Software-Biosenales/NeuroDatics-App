@@ -1,5 +1,5 @@
 # ---- Base image ----
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # ---- System deps (for some libs + curl for healthchecks) ----
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN printf "precedence ::ffff:0:0/96  100\n" >> /etc/gai.conf
 
 # ---- Poetry ----
-ENV POETRY_VERSION=1.8.3 \
+ENV POETRY_VERSION=2.3.3 \
     POETRY_VIRTUALENVS_CREATE=false \
     POETRY_NO_INTERACTION=1 \
     PYTHONDONTWRITEBYTECODE=1 \

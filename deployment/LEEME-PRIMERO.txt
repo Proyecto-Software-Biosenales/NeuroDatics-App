@@ -1,22 +1,48 @@
-NEURODATICS — PRIMERA INSTALACIÓN
+NEURODATICS
 
-1. Extrae TODA la carpeta del ZIP; preferiblemente en C:\NeuroDatics.
-2. Haz doble clic en INSTALAR.bat.
-3. Autoriza Windows si solicita permiso para preparar WSL.
-4. Si pide reiniciar, guarda tu trabajo y reinicia. Continuará al iniciar sesión.
-5. Completa la bienvenida de Docker Desktop y acepta sus condiciones.
-6. En NeuroDatics, inicia sesión con Google y abre Configuración para conectar Drive.
+LA PRIMERA VEZ: INSTALAR (una sola vez)
+1. Extrae TODA la carpeta del ZIP en un lugar fijo, por ejemplo C:\NeuroDatics.
+   No la abras desde dentro del ZIP y no la muevas después de instalar.
+2. Haz doble clic en INSTALAR.bat, con tu propia sesión de Windows abierta.
+3. Si Windows pide permiso de administrador para preparar WSL, acéptalo.
+   Si tu cuenta no tiene ese permiso, alguien que administre el equipo puede
+   escribir su contraseña en esa ventana. NeuroDatics queda instalada para ti.
+4. Si pide reiniciar, guarda tu trabajo y reinicia. La instalación sigue sola
+   cuando vuelvas a entrar en Windows.
+5. Si no hay credenciales de Google preparadas, la ventana te pedirá las dos
+   que te dé el responsable del proyecto.
+6. Al terminar se abre NeuroDatics en el navegador. Inicia sesión con Google y,
+   en Configuración, conecta Google Drive.
 
-El asistente instala los requisitos que falten y comprueba los archivos.
-No necesitas conocimientos de programación ni instalar Python, Node.js o Git.
-Si faltan credenciales de Google, el responsable debe suministrarlas.
+Al instalar se descarga Docker Desktop y se aceptan sus condiciones de uso:
+https://www.docker.com/legal/docker-subscription-service-agreement/
+Docker Desktop es gratuito para uso personal, educativo y para organizaciones
+pequeñas; las organizaciones grandes necesitan una suscripción de pago.
+No hace falta una cuenta de Docker. Si Docker muestra una bienvenida o una
+encuesta, puedes cerrarla.
 
-PARA USARLA DESPUÉS
-Docker Desktop > Containers > neurodatics > Iniciar (triángulo).
-Abre http://localhost:3000 o ABRIR-NEURODATICS.url.
-Para detener: botón cuadrado del grupo o DETENER.bat. No elimines el grupo.
+CADA DÍA: INICIAR
+Haz doble clic en el icono «NeuroDatics» del escritorio (o en INICIAR.bat).
+Una ventana muestra el progreso, enciende Docker si está apagado y abre el
+navegador en http://localhost:3000. La ventana se cierra sola cuando todo
+está listo. Si algo falla, se queda abierta con el mensaje.
+No hace falta ser administrador ni abrir Docker Desktop.
 
-Necesitas Internet para Google y para instalar requisitos nuevos.
-Windows x64, virtualización, 8 GB de RAM y al menos 15 GB libres.
-Lee README.md y SOLUCION-DE-PROBLEMAS.md si algo impide continuar.
-Conserva el archivo privado .env y los volúmenes de Docker.
+PARA APAGAR
+Abre DETENER.bat. Tus datos se conservan.
+En Docker Desktop no borres los contenedores ni los volúmenes.
+
+QUÉ NECESITA EL EQUIPO
+Windows 10 22H2 u 11 de 64 bits (Intel o AMD), 8 GB de RAM (mejor 16),
+15 GB libres, la virtualización activada e Internet para Google y Drive.
+
+SI ALGO FALLA
+- «NeuroDatics no está instalado o la instalación quedó incompleta»:
+  abre INSTALAR.bat.
+- Después de recibir una versión nueva de la carpeta, abre INSTALAR.bat
+  una vez y luego sigue usando INICIAR.
+- Hay más ayuda en _internal\SOLUCION-DE-PROBLEMAS.md. Después de instalar,
+  la carpeta _internal queda oculta: escribe _internal en la barra de
+  direcciones del Explorador para abrirla.
+- El archivo .env guarda las contraseñas de esta instalación. No lo borres,
+  no lo compartas y guárdalo en tus copias de seguridad.

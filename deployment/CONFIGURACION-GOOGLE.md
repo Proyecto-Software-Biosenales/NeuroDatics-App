@@ -9,7 +9,7 @@ El responsable de la entrega prepara el proyecto de Google. El usuario final sol
 3. Registra estas URI de redirección autorizadas exactamente:
    - `http://localhost:3000/authorize`
    - `http://localhost:3000/api/integrations/google-drive/callback`
-4. Completa `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET` en `.env`, o entrégalos al usuario para que el asistente los solicite.
+4. Completa `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET` en `.env` (en la carpeta principal, junto a `INSTALAR.bat`), o entrégalos al usuario para que el asistente los solicite una vez durante la instalación.
 5. Autoriza las cuentas que usarán el proyecto según su estado de publicación y las políticas de la organización. Consulta la [guía OAuth de Google](https://developers.google.com/identity/protocols/oauth2/web-server).
 
 No incluyas `.env` en Git ni lo publiques. El generador no copia las credenciales del repositorio automáticamente. Una entrega privada ya configurada puede incluir su propio `.env`.

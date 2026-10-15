@@ -9,8 +9,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 . (Join-Path $PSScriptRoot 'comun.ps1')
-$directorio = Split-Path -Parent $PSScriptRoot
-$registro = Join-Path $directorio 'instalacion.log'
+# Raíz de la entrega: los lanzadores y .env; el resto está en _internal.
+$directorio = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$registro = Join-Path (Get-Interno $directorio) 'instalacion.log'
 $runOnce = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce'
 $nombreReanudar = 'NeuroDaticsInstalacion'
 $codigoSalida = 0
@@ -25,7 +26,8 @@ function Write-Registro([string]$Mensaje) {
 
 function Register-Reanudacion {
     $ejecutable = Join-Path $env:SystemRoot 'System32\cmd.exe'
-    $lanzador = Join-Path $directorio 'INICIAR.bat'
+    # Después de reiniciar continúa la instalación, no el uso diario.
+    $lanzador = Join-Path $directorio 'INSTALAR.bat'
     $comando = '"' + $ejecutable + '" /d /c ""' + $lanzador + '" -Proyecto ' + $Proyecto + '"'
     if ($comando.Length -gt 260) {
         throw 'La ruta es demasiado larga para continuar después del reinicio. Mueve la carpeta a C:\NeuroDatics y vuelve a ejecutar INSTALAR.bat.'
@@ -36,6 +38,30 @@ function Register-Reanudacion {
 
 function Unregister-Reanudacion {
     Remove-ItemProperty -LiteralPath $runOnce -Name $nombreReanudar -ErrorAction SilentlyContinue
+}
+
+function Install-AccesoDirecto([string]$Escritorio = [Environment]::GetFolderPath('Desktop')) {
+    # Un único acceso «NeuroDatics» en el escritorio que abre INICIAR.bat.
+    if (-not $Escritorio -or -not (Test-Path -LiteralPath $Escritorio -PathType Container)) { return }
+    $ruta = Join-Path $Escritorio 'NeuroDatics.lnk'
+    $lanzador = Join-Path $directorio 'INICIAR.bat'
+    $shell = New-Object -ComObject WScript.Shell
+    if (Test-Path -LiteralPath $ruta) {
+        $actual = $shell.CreateShortcut($ruta).TargetPath
+        if ($actual -eq $lanzador) { return }
+        # Se actualiza el de una carpeta anterior de NeuroDatics; otro acceso con ese nombre no se toca.
+        if ([IO.Path]::GetFileName($actual) -ne 'INICIAR.bat') {
+            Write-Host 'Ya hay en el escritorio un acceso «NeuroDatics» que abre otra cosa; no se cambió. Usa INICIAR.bat de esta carpeta.'
+            return
+        }
+    }
+    $acceso = $shell.CreateShortcut($ruta)
+    $acceso.TargetPath = $lanzador
+    $acceso.WorkingDirectory = $directorio
+    $acceso.Description = 'Inicia NeuroDatics y abre el navegador'
+    $icono = Join-Path (Get-Interno $directorio) 'neurodatics.ico'
+    if (Test-Path -LiteralPath $icono) { $acceso.IconLocation = $icono }
+    $acceso.Save()
 }
 
 function Assert-Equipo {
@@ -84,9 +110,10 @@ function Install-DockerDesktop {
         throw 'El instalador de Docker no tiene una firma válida de Docker Inc. No se ejecutó; vuelve a descargarlo o consulta al responsable.'
     }
     Write-Registro 'Instalando Docker Desktop para tu usuario. Este paso puede tardar varios minutos.'
-    $proceso = Start-Process -FilePath $instalador -ArgumentList @('install', '--user', '--quiet', '--backend=wsl-2') -Wait -PassThru -WindowStyle Hidden
+    # Instalar implica aceptar las condiciones de Docker (aviso en LEEME-PRIMERO.txt).
+    $proceso = Start-Process -FilePath $instalador -ArgumentList @('install', '--user', '--quiet', '--accept-license', '--backend=wsl-2') -Wait -PassThru -WindowStyle Hidden
     if ($proceso.ExitCode -in @(3010, 1641)) { return 3010 }
-    if ($proceso.ExitCode -ne 0) { throw "Docker Desktop no se instaló (código $($proceso.ExitCode)). Consulta SOLUCION-DE-PROBLEMAS.md." }
+    if ($proceso.ExitCode -ne 0) { throw "Docker Desktop no se instaló (código $($proceso.ExitCode)). Consulta _internal\SOLUCION-DE-PROBLEMAS.md." }
     return 0
 }
 
@@ -96,6 +123,13 @@ try {
     try { $bloqueado = $mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $bloqueado = $true }
     if (-not $bloqueado) { throw 'Ya hay otra instalación de NeuroDatics abierta. Continúa en esa ventana.' }
     Write-Host 'NeuroDatics: instalación y configuración' -ForegroundColor Green
+    Assert-CuentaDeSesion
+    if (-not $SoloComprobar) {
+        $interno = Get-Interno $directorio
+        if (Test-Path -LiteralPath $interno -PathType Container) { Set-CarpetaOculta $interno }
+        $anteriores = Remove-EntregaAnterior $directorio
+        if ($anteriores) { Write-Host "Se retiraron $anteriores archivos de la versión anterior de la carpeta; .env se conserva." }
+    }
     Write-Registro 'Comprobando los archivos y sus huellas SHA256.'
     $manifest = Get-Manifiesto $directorio -VerificarArchivos
     Assert-Equipo
@@ -114,14 +148,15 @@ try {
         if (-not $requisitos) {
             if ($NoInteractivo) { throw 'Faltan requisitos del sistema. Ejecuta INSTALAR.bat de forma interactiva.' }
             Register-Reanudacion
-            Write-Registro 'Preparando WSL 2. Acepta la solicitud de administrador de Windows.'
+            # Solo este paso se eleva; si la ventana ya es de administrador, Windows no vuelve a preguntar.
+            Write-Registro $(if (Test-Elevado) { 'Preparando WSL 2.' } else { 'Preparando WSL 2. Acepta la solicitud de administrador de Windows.' })
             $argumentos = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $PSScriptRoot 'requisitos-admin.ps1') + '"'
             $proceso = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList $argumentos -Verb RunAs -Wait -PassThru -WindowStyle Hidden
             if ($proceso.ExitCode -eq 3010) {
                 Write-Registro 'Guarda tus documentos y reinicia Windows. Continuaremos al volver a iniciar sesión; también puedes abrir INSTALAR.bat de nuevo.'
                 $codigoSalida = 3010
             } elseif ($proceso.ExitCode -ne 0 -or -not (Test-Requisitos)) {
-                throw 'No se pudieron preparar WSL 2 y los servicios de Windows. Revisa SOLUCION-DE-PROBLEMAS.md, conexión y permisos de administrador.'
+                throw 'No se pudieron preparar WSL 2 y los servicios de Windows. Revisa _internal\SOLUCION-DE-PROBLEMAS.md, la conexión y los permisos de administrador.'
             }
         }
         if ($codigoSalida -eq 0) {
@@ -137,21 +172,15 @@ try {
         if ($codigoSalida -eq 0) {
             $docker = Find-Docker $desktop
             if (-not $docker) { throw 'No se encontró docker.exe. Repara Docker Desktop y vuelve a iniciar.' }
-            $dockerArgs = @(Get-DockerLocalArgs $docker)
-            $motor = Invoke-Nativo $docker ($dockerArgs + @('info', '--format', '{{.OSType}}')) -PermitirError
-            if ($motor.Codigo -ne 0) {
-                Write-Registro 'Abriendo Docker Desktop. Completa su bienvenida y acepta sus condiciones para continuar. No necesitas iniciar sesión en Docker Hub.'
+            $motor = Get-MotorDocker $docker
+            if (-not $motor.Listo) {
                 if ($NoInteractivo) { throw 'El motor de Docker Desktop no está encendido.' }
-                $null = Start-Process -FilePath $desktop -PassThru
-                $limite = (Get-Date).AddMinutes(10)
-                do {
-                    Start-Sleep -Seconds 5
-                    $dockerArgs = @(Get-DockerLocalArgs $docker)
-                    $motor = Invoke-Nativo $docker ($dockerArgs + @('info', '--format', '{{.OSType}}')) -PermitirError
-                } while ($motor.Codigo -ne 0 -and (Get-Date) -lt $limite)
+                Write-Registro 'Abriendo Docker Desktop. Si muestra una bienvenida o una encuesta, puedes omitirla: no necesitas una cuenta de Docker.'
+                $motor = Wait-MotorDocker $docker $desktop 600
             }
-            if ($motor.Codigo -ne 0) { throw 'Docker Desktop no terminó de iniciar. Revisa su ventana y SOLUCION-DE-PROBLEMAS.md; después repite INSTALAR.bat.' }
-            if ($motor.Texto.Trim() -ne 'linux') { throw 'Docker está en modo Windows containers. En su menú selecciona Switch to Linux containers y repite INSTALAR.bat.' }
+            if (-not $motor.Listo) { throw 'Docker Desktop no terminó de iniciar. Revisa su ventana y _internal\SOLUCION-DE-PROBLEMAS.md; después repite INSTALAR.bat.' }
+            Assert-MotorLinux $motor 'INSTALAR.bat'
+            $dockerArgs = $motor.Args
             $compose = Invoke-Nativo $docker ($dockerArgs + @('compose', 'version', '--short'))
             if ((Get-VersionNumerica $compose.Texto) -lt [version]'2.20.0') { throw 'Actualiza Docker Desktop: se necesita Docker Compose 2.20 o posterior.' }
             Unregister-Reanudacion
@@ -165,14 +194,12 @@ try {
             Write-Registro 'Iniciando los cuatro servicios y esperando su comprobación de salud.'
             $null = Invoke-Nativo $docker ($composeArgs + @('up', '-d', '--no-build', '--pull', 'never', '--remove-orphans', '--wait', '--wait-timeout', '300'))
             $url = "http://localhost:$puerto"
-            $null = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 20
-            $null = Invoke-WebRequest -Uri "$url/api/auth/google/login-url?redirect_uri=$([uri]::EscapeDataString("$url/authorize"))" -UseBasicParsing -TimeoutSec 20
-            $acceso = "[InternetShortcut]`r`nURL=$url/configuracion`r`n"
-            [IO.File]::WriteAllText((Join-Path $directorio 'ABRIR-NEURODATICS.url'), $acceso)
+            Wait-Aplicacion $url
+            if (-not $SinAbrirNavegador) { Install-AccesoDirecto }
             Write-Registro "Servicios listos en $url. Abre Configuración, inicia sesión con Google y comprueba la conexión de Drive."
-            Write-Host "Uso diario: Docker Desktop > Containers > $Proyecto > Iniciar (triángulo). Para detener usa el cuadrado del grupo."
-            Write-Host 'Los datos y contenedores se conservan. No hace falta repetir la instalación.'
-            if (-not $SinAbrirNavegador) { Start-Process "$url/configuracion" }
+            Write-Host 'Desde ahora, para usar NeuroDatics abre el icono «NeuroDatics» del escritorio o INICIAR.bat.' -ForegroundColor Green
+            Write-Host 'Los datos se conservan. No hace falta repetir la instalación.'
+            if (-not $SinAbrirNavegador) { Start-ComoUsuario "$url/configuracion" }
         }
     }
 } catch {
@@ -180,7 +207,7 @@ try {
     # Solo registrar la etapa y un error general: los errores de servicios pueden incluir datos privados.
     Add-Content -LiteralPath $registro -Value "$(Get-Date -Format s) ERROR: no se completó el proceso. Revisa el mensaje de la ventana." -Encoding UTF8 -ErrorAction SilentlyContinue
     Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host 'Puedes repetir INSTALAR.bat después de corregir el problema. Consulta SOLUCION-DE-PROBLEMAS.md.'
+    Write-Host 'Puedes repetir INSTALAR.bat después de corregir el problema. Consulta _internal\SOLUCION-DE-PROBLEMAS.md.'
 } finally {
     Restore-EntornoCompose $entornoCompose
     if ($codigoSalida -ne 3010 -and -not $SoloComprobar -and $bloqueado) { Unregister-Reanudacion }
