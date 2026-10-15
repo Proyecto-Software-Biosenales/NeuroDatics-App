@@ -50,11 +50,16 @@ class ScreenPixelSize:
 
 @dataclass(frozen=True)
 class ScreenGeometry(ScreenPixelSize):
-    """Physical screen calibration used by angular-velocity detection."""
+    """Physical screen calibration used by angular-velocity detection.
+
+    ``viewing_distance_mm`` is optional: the eye tracker's per-sample
+    ``distance`` column is the measured value, and without either one the
+    detector stays normalized instead of trusting a guessed distance.
+    """
 
     width_mm: float
     height_mm: float
-    viewing_distance_mm: float
+    viewing_distance_mm: Optional[float] = None
 
 
 # New code can use the explicit name while existing routes and callers keep the
@@ -256,7 +261,8 @@ class FixationDetectionService:
         resolved_metadata = metadata or FixationDetectionMetadata()
         requested_mode = base_config.coordinate_mode.lower()
         angular_mode = requested_mode == "angular" or (
-            requested_mode == "auto" and resolved_metadata.screen_geometry is not None
+            requested_mode == "auto"
+            and cls._angular_geometry_available(block, resolved_metadata)
         )
 
         angular_base_result: Optional[FixationDetectionResult] = None
@@ -423,9 +429,16 @@ class FixationDetectionService:
         row_count = len(samples)
         warnings: List[str] = []
         requested_mode = config.coordinate_mode.lower()
+        angular_available = cls._angular_geometry_available(samples, metadata)
+        if (
+            requested_mode == "auto"
+            and metadata.screen_geometry is not None
+            and not angular_available
+        ):
+            warnings.append("viewing_distance_unavailable_normalized_detection")
         coordinate_mode = (
             "angular"
-            if requested_mode == "auto" and metadata.screen_geometry is not None
+            if requested_mode == "auto" and angular_available
             else "normalized"
             if requested_mode == "auto"
             else requested_mode
@@ -810,6 +823,10 @@ class FixationDetectionService:
         if coordinate_mode == "angular":
             if metadata.screen_geometry is None:
                 raise ValueError("angular mode requires complete screen geometry")
+            if not cls._angular_geometry_available(block, metadata):
+                raise ValueError(
+                    "angular mode requires a viewing distance or sample distances"
+                )
 
         if metadata.gaze_units.lower() not in {
             "auto",
@@ -884,9 +901,28 @@ class FixationDetectionService:
             "height_mm",
             "viewing_distance_mm",
         ):
+            if name == "viewing_distance_mm" and geometry.viewing_distance_mm is None:
+                continue
             value = float(getattr(geometry, name))
             if not math.isfinite(value) or value <= 0.0:
                 raise ValueError(f"screen geometry {name} must be finite and positive")
+
+    @staticmethod
+    def _angular_geometry_available(
+        block: pd.DataFrame,
+        metadata: FixationDetectionMetadata,
+    ) -> bool:
+        """Angular detection needs the physical screen and a measured distance."""
+
+        geometry = metadata.screen_geometry
+        if geometry is None:
+            return False
+        if geometry.viewing_distance_mm is not None:
+            return True
+        if "distance" not in block:
+            return False
+        raw = pd.to_numeric(block["distance"], errors="coerce").to_numpy(float)
+        return bool((np.isfinite(raw) & (raw > 0.0)).any())
 
     @staticmethod
     def _validate_pixel_size(size: ScreenPixelSize) -> None:
@@ -1482,17 +1518,20 @@ class FixationDetectionService:
         valid: np.ndarray,
         warnings: List[str],
     ) -> np.ndarray:
-        fallback = (
-            float(metadata.screen_geometry.viewing_distance_mm)
-            if metadata.screen_geometry is not None
-            else math.nan
+        geometry = metadata.screen_geometry
+        typed_distance = (
+            geometry.viewing_distance_mm if geometry is not None else None
         )
+        fallback = float(typed_distance) if typed_distance is not None else math.nan
         result = np.full(len(samples), fallback, dtype=float)
         if "distance" not in samples:
             return result
 
         raw = pd.to_numeric(samples["distance"], errors="coerce").to_numpy(float)
         usable = np.isfinite(raw) & (raw > 0.0) & valid
+        if typed_distance is None and not usable.any():
+            # Without a typed distance any measured one beats none at all.
+            usable = np.isfinite(raw) & (raw > 0.0)
         if not usable.any():
             warnings.append("sample_distance_unavailable_using_geometry_fallback")
             return result
@@ -1511,7 +1550,12 @@ class FixationDetectionService:
         converted = raw * factor
         use_converted = np.isfinite(converted) & (converted > 0.0) & valid
         result[use_converted] = converted[use_converted]
-        if (~use_converted & valid).any():
+        if typed_distance is None:
+            # The gaps take the participant's own median distance, not a guess.
+            result[~use_converted] = float(np.median(converted[usable]))
+            if (~use_converted & valid).any():
+                warnings.append("invalid_sample_distance_using_sample_median")
+        elif (~use_converted & valid).any():
             warnings.append("invalid_sample_distance_using_geometry_fallback")
         return result
 
@@ -1972,7 +2016,10 @@ class FixationDetectionService:
             raise ValueError("angular mode requires complete screen geometry")
         distance = analysis.distance_mm.copy()
         invalid_distance = ~np.isfinite(distance) | (distance <= 0.0)
-        distance[invalid_distance] = float(geometry.viewing_distance_mm)
+        if geometry.viewing_distance_mm is not None:
+            distance[invalid_distance] = float(geometry.viewing_distance_mm)
+        elif invalid_distance.any():  # _distance_mm fills every row with the median
+            raise ValueError("angular mode requires a viewing distance or sample distances")
         x_mm = (analysis.x_screen_norm - 0.5) * float(geometry.width_mm)
         y_mm = (analysis.y_screen_norm - 0.5) * float(geometry.height_mm)
         return (
@@ -2550,7 +2597,7 @@ class FixationDetectionService:
     @staticmethod
     def _physical_geometry_snapshot(
         geometry: Optional[ScreenGeometry],
-    ) -> Optional[Dict[str, float]]:
+    ) -> Optional[Dict[str, Optional[float]]]:
         if geometry is None:
             return None
         return {
@@ -2558,7 +2605,11 @@ class FixationDetectionService:
             "height_px": float(geometry.height_px),
             "width_mm": float(geometry.width_mm),
             "height_mm": float(geometry.height_mm),
-            "viewing_distance_mm": float(geometry.viewing_distance_mm),
+            "viewing_distance_mm": (
+                float(geometry.viewing_distance_mm)
+                if geometry.viewing_distance_mm is not None
+                else None
+            ),
         }
 
     @staticmethod

@@ -381,10 +381,10 @@ class AoiAnalyticsService:
         event_specs = [
             ("pupil_avg_mm", "pupil", "min", "Dilatacion pupilar minima", "mm"),
             ("pupil_avg_mm", "pupil", "max", "Dilatacion pupilar maxima", "mm"),
-            ("gx_clean", "gaze_x", "min", "Gaze X minimo", "%"),
-            ("gx_clean", "gaze_x", "max", "Gaze X maximo", "%"),
-            ("gy_clean", "gaze_y", "min", "Gaze Y minimo", "%"),
-            ("gy_clean", "gaze_y", "max", "Gaze Y maximo", "%"),
+            ("gx_clean", "gaze_x", "min", "Mirada X mínima", "%"),
+            ("gx_clean", "gaze_x", "max", "Mirada X máxima", "%"),
+            ("gy_clean", "gaze_y", "min", "Mirada Y mínima", "%"),
+            ("gy_clean", "gaze_y", "max", "Mirada Y máxima", "%"),
             ("distance_cm", "distance", "min", "Distancia minima", "cm"),
             ("distance_cm", "distance", "max", "Distancia maxima", "cm"),
         ]

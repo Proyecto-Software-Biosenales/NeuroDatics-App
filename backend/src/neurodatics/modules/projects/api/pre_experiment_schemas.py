@@ -13,21 +13,24 @@ class PlanningModel(BaseModel):
 
 
 class PlanningParticipant(PlanningModel):
+    """The identification document identifies a participant; the name is optional.
+
+    ``code`` is what identified participants before the document did. It is only
+    read from older saves and their response snapshots.
+    """
+
     id: UUID
-    code: str = Field(min_length=1, max_length=100)
-    name: str = Field(min_length=1, max_length=255)
+    code: str = Field(default="", max_length=100)
+    name: str = Field(default="", max_length=255)
     identification_document: str = Field(default="", max_length=100)
     gender: str = Field(default="", max_length=100)
     age: Optional[int] = Field(default=None, ge=0, le=150, strict=True)
     notes: str = Field(default="", max_length=10000)
 
-    @field_validator("code", "name")
+    @field_validator("code", "name", "identification_document")
     @classmethod
-    def nonblank(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("El nombre y el código del participante no pueden estar vacíos")
-        return value
+    def stripped(cls, value: str) -> str:
+        return value.strip()
 
 
 class PlanningScreen(PlanningModel):
@@ -96,26 +99,50 @@ class PlanningQuestionnaires(PlanningModel):
     after: PlanningQuestionnaire = Field(default_factory=lambda: PlanningQuestionnaire(title="Cuestionario después del experimento"))
 
 
+class ProjectNote(PlanningModel):
+    id: UUID
+    title: str = Field(default="", max_length=255)
+    text: str = Field(default="", max_length=10000)
+
+
 class PreExperimentConfig(PlanningModel):
     participants: list[PlanningParticipant] = Field(default_factory=list, max_length=1000)
     screen: PlanningScreen = Field(default_factory=PlanningScreen)
     notes: str = Field(default="", max_length=50000)
     questionnaires: PlanningQuestionnaires = Field(default_factory=PlanningQuestionnaires)
+    project_notes: list[ProjectNote] = Field(default_factory=list, max_length=500)
 
     @model_validator(mode="after")
     def unique_participants(self):
         if len({participant.id for participant in self.participants}) != len(self.participants):
             raise ValueError("Los identificadores de participantes deben ser únicos")
-        if len({participant.code.casefold() for participant in self.participants}) != len(self.participants):
-            raise ValueError("Los códigos de participantes deben ser únicos")
+        if len({note.id for note in self.project_notes}) != len(self.project_notes):
+            raise ValueError("Los identificadores de las notas deben ser únicos")
         if len(json.dumps(self.model_dump(mode="json")).encode("utf-8")) > 2 * 1024 * 1024:
             raise ValueError("La configuración excede el límite de 2 MB")
         return self
 
 
+class PreExperimentConfigInput(PreExperimentConfig):
+    """What a save accepts: every participant has its own document.
+
+    Reading stays lenient, so older saves identified by ``code`` still open and
+    ask for the documents on their next save.
+    """
+
+    @model_validator(mode="after")
+    def identified_participants(self):
+        documents = [participant.identification_document.casefold() for participant in self.participants]
+        if not all(documents):
+            raise ValueError("Cada participante necesita su documento de identificación")
+        if len(set(documents)) != len(documents):
+            raise ValueError("Dos participantes no pueden tener el mismo documento de identificación")
+        return self
+
+
 class UpdatePreExperimentRequest(PlanningModel):
     revision: int = Field(ge=0, strict=True)
-    config: PreExperimentConfig
+    config: PreExperimentConfigInput
 
 
 Answer = Union[Annotated[StrictStr, Field(max_length=20000)], StrictBool, Annotated[list[StrictStr], Field(max_length=100)]]

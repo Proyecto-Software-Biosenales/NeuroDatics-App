@@ -301,7 +301,7 @@ def test_entry_expanding_beyond_the_per_file_cap_is_rejected(tmp_path):
         archive.writestr("data.csv", b"time;x\n")
         archive.writestr("Images/huge.png", b"\0" * (900 * 1024 * 1024))
 
-    with pytest.raises(ZipValidationService.ValidationError, match="maximo por archivo"):
+    with pytest.raises(ZipValidationService.ValidationError, match="máximo por archivo"):
         analyze(path)
 
 
@@ -357,7 +357,7 @@ def test_oversized_archive_is_rejected_by_the_compressed_cap(tmp_path, monkeypat
     monkeypatch.setattr(settings, "project_zip_max_size_mb", 0, raising=False)
     path = build_zip(tmp_path, {"data.csv": b"time;x\n"})
 
-    with pytest.raises(ZipValidationService.ValidationError, match="maximo permitido"):
+    with pytest.raises(ZipValidationService.ValidationError, match="máximo permitido"):
         analyze(path)
 
 

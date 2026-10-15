@@ -417,7 +417,12 @@ async def list_participants(
     participants = result.scalars().all()
 
     return [
-        ParticipantItem(participant_code=participant.participant_code, user_index=index)
+        ParticipantItem(
+            participant_code=participant.participant_code,
+            user_index=index,
+            name=participant.name,
+            document=participant.effective_document,
+        )
         for index, participant in enumerate(participants, start=1)
     ]
 

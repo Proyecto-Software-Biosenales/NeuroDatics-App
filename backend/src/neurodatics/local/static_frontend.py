@@ -23,10 +23,12 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 API_PATH_ALIASES = {"/api/projects": "/api/projects/"}
 
 
-# Next.js prefetches a page's data as `<page>/__next.<page>.__PAGE__.txt`, but a Windows export
-# writes that file as `<page>/__next.<page>/__PAGE__.txt`. Without the mapping every link on
-# screen answers 404 and navigation falls back to a full page load.
-_SEGMENT_DATA = re.compile(r"^(?P<folder>(?:.*/)?)__next\.(?P<page>[^/.]+)\.__PAGE__\.txt$")
+# Next.js prefetches a page's data as `<page>/__next.<segments joined by dots>.txt`, but a Windows
+# export writes each dot after the first as a folder: `__next.proyectos.__PAGE__.txt` is on disk as
+# `__next.proyectos/__PAGE__.txt`, and a nested page's `__next.proyectos.pre-experimento.txt` as
+# `__next.proyectos/pre-experimento.txt`. Without the mapping every link on screen answers 404 and
+# navigation falls back to a full page load.
+_SEGMENT_DATA = re.compile(r"^(?P<folder>(?:.*/)?)__next\.(?P<segments>[^/.]+(?:\.[^/.]+)+)\.txt$")
 
 
 class _ExportedSite(StaticFiles):
@@ -34,7 +36,7 @@ class _ExportedSite(StaticFiles):
         response = await super().get_response(path, scope)
         # Starlette hands over an OS-style relative path, backslashes on Windows.
         if response.status_code == 404 and (match := _SEGMENT_DATA.match(path.replace("\\", "/"))):
-            nested = f"{match['folder']}__next.{match['page']}/__PAGE__.txt"
+            nested = f"{match['folder']}__next.{match['segments'].replace('.', '/')}.txt"
             found = await super().get_response(nested, scope)
             # 304 counts: the browser revalidates what it cached from an earlier visit.
             if found.status_code != 404:

@@ -315,7 +315,7 @@ class ZipValidationService:
 
         if size_bytes > cls.get_max_file_size_bytes():
             raise cls.ValidationError(
-                f"ZIP excede el maximo permitido de {settings.project_zip_max_size_mb}MB"
+                f"ZIP excede el máximo permitido de {settings.project_zip_max_size_mb}MB"
             )
 
     @classmethod
@@ -358,7 +358,7 @@ class ZipValidationService:
             if declared > max_entry_bytes:
                 raise cls.ValidationError(
                     f"La entrada '{info.filename}' se descomprime a "
-                    f"{declared // (1024 * 1024)}MB y supera el maximo por archivo de "
+                    f"{declared // (1024 * 1024)}MB y supera el máximo por archivo de "
                     f"{settings.project_zip_max_entry_uncompressed_mb}MB"
                 )
 
@@ -372,7 +372,7 @@ class ZipValidationService:
             total_uncompressed += declared
             if total_uncompressed > max_total_bytes:
                 raise cls.ValidationError(
-                    "El contenido descomprimido del ZIP supera el maximo permitido de "
+                    "El contenido descomprimido del ZIP supera el máximo permitido de "
                     f"{settings.project_zip_max_uncompressed_mb}MB"
                 )
 

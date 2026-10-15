@@ -260,9 +260,12 @@ class EmbeddedPostgres:
         return {"returncode": completed.returncode, "seconds": round(time.perf_counter() - started, 2)}
 
     def control_state(self) -> str:
+        # The package carries the Spanish catalogue, which a Spanish Windows selects; the parse
+        # below reads the untranslated labels.
         out = subprocess.run(
             [str(self.bin / "pg_controldata.exe"), str(self.data)],
             capture_output=True, text=True, check=False, creationflags=CREATE_NO_WINDOW,
+            env={**os.environ, "LC_MESSAGES": "C"},
         ).stdout
         for line in out.splitlines():
             if line.startswith("Database cluster state"):

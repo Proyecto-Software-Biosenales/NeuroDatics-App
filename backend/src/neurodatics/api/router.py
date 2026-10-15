@@ -5,6 +5,7 @@ from ..modules.participants.api.routes import router as participants_router
 from ..modules.scenaries.api.routes import router as scenaries_router
 from ..modules.analytics.api.routes import router as analytics_router
 from ..modules.reports.api.routes import router as reports_router
+from ..modules.settings.api.routes import router as settings_router
 
 
 def include_routes(app: FastAPI):
@@ -31,3 +32,4 @@ def include_routes(app: FastAPI):
     app.include_router(scenaries_router, prefix="/api")
     app.include_router(analytics_router, prefix="/api")
     app.include_router(reports_router, prefix="/api")
+    app.include_router(settings_router, prefix="/api")

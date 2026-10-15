@@ -600,7 +600,7 @@ class ChartConfigBuilder:
             },
         ]
         return cls._chart_and_summary(
-            "gaze", "Gaze point", "Posicion (%)",
+            "gaze", "Punto de mirada", "Posición (%)",
             data.get("time", []), definitions, max_points,
         )
 
@@ -723,8 +723,8 @@ class ChartConfigBuilder:
         data = PupilAnalyticsService.compute_gaze_timeseries(df, scenario)
         return cls._build_chart(
             "gaze",
-            "Gaze point",
-            "Posicion (%)",
+            "Punto de mirada",
+            "Posición (%)",
             data.get("time", []),
             [
                 {

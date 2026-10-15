@@ -120,7 +120,7 @@ def test_global_concurrency_cap_is_enforced(monkeypatch):
 
     with control.slot("user-a"):
         with control.slot("user-b"):
-            with pytest.raises(UploadRejected, match="maximo de cargas"):
+            with pytest.raises(UploadRejected, match="máximo de cargas"):
                 with control.slot("user-c"):
                     pass
 

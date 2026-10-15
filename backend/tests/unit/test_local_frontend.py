@@ -28,6 +28,10 @@ def exported_site(tmp_path):
     (site / "_next" / "static" / "app.js").write_text("console.log(1)", encoding="utf-8")
     (site / "proyectos" / "__next.proyectos").mkdir()
     (site / "proyectos" / "__next.proyectos" / "__PAGE__.txt").write_text("datos de proyectos", encoding="utf-8")
+    nested = site / "proyectos" / "pre-experimento" / "__next.proyectos" / "pre-experimento"
+    nested.mkdir(parents=True)
+    (nested / "__PAGE__.txt").write_text("datos del pre-experimento", encoding="utf-8")
+    (nested.parent / "pre-experimento.txt").write_text("segmento del pre-experimento", encoding="utf-8")
     return site
 
 
@@ -71,6 +75,18 @@ def test_the_page_data_next_prefetches_is_found_where_a_windows_export_puts_it(e
 
     assert prefetch.status_code == 200 and prefetch.text == "datos de proyectos"
     assert client.get("/proyectos/__next.otra.__PAGE__.txt").status_code == 404
+
+
+def test_a_nested_page_finds_its_segment_data_in_the_folders_a_windows_export_writes(exported_site):
+    client = api_with_site(exported_site)
+    base = "/proyectos/pre-experimento/__next.proyectos.pre-experimento"
+
+    page = client.get(f"{base}.__PAGE__.txt?proyecto=a&_rsc=abc")
+    segment = client.get(f"{base}.txt?proyecto=a&_rsc=abc")
+
+    assert page.status_code == 200 and page.text == "datos del pre-experimento"
+    assert segment.status_code == 200 and segment.text == "segmento del pre-experimento"
+    assert client.get("/proyectos/pre-experimento/__next.proyectos.otra.txt").status_code == 404
 
 
 def test_the_prefetched_page_data_can_be_revalidated_by_the_browser(exported_site):

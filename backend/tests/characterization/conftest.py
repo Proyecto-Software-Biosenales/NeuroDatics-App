@@ -86,7 +86,8 @@ def http_client(corpus, aois, monkeypatch):
         id=UUID(int=index + 200), project_id=PROJECT_ID, name=name, type="image",
         file_id=UUID(int=index + 300), width=1280, height=720, aois=aois,
     ) for index, name in enumerate(("stimulus-a", "stimulus-b"))]
-    participants = [SimpleNamespace(participant_code=code) for code in corpus.frames]
+    # Real (transient) entities so derived labels such as effective_document resolve.
+    participants = [Participant(project_id=PROJECT_ID, participant_code=code) for code in corpus.frames]
 
     class Database:
         async def execute(self, statement):

@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 
 from ...scenaries.api.schemas import scenariesResponse
-from .pre_experiment_schemas import PreExperimentConfig
+from .pre_experiment_schemas import PreExperimentConfigInput
 
 
 class ProjectStatus(str, Enum):
@@ -18,7 +18,7 @@ class CreateProjectRequest(BaseModel):
     name: str
     description: Optional[str] = None
     status: Optional[ProjectStatus] = ProjectStatus.DRAFT
-    pre_experiment: Optional[PreExperimentConfig] = None
+    pre_experiment: Optional[PreExperimentConfigInput] = None
 
     @field_validator("name")
     @classmethod

@@ -200,7 +200,7 @@ class BlockMetadata:
     stimulus_placements_by_scenario: Dict[str, Dict[str, Any]] = field(
         default_factory=dict
     )
-    physical_screen_geometry: Optional[Dict[str, float]] = None
+    physical_screen_geometry: Optional[Dict[str, Optional[float]]] = None
     channels: List[ChannelMetadata] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
@@ -216,7 +216,7 @@ class ProcessingResult:
     stimulus_placements_by_scenario: Dict[str, Dict[str, Any]] = field(
         default_factory=dict
     )
-    physical_screen_geometry: Optional[Dict[str, float]] = None
+    physical_screen_geometry: Optional[Dict[str, Optional[float]]] = None
     warnings: List[str] = field(default_factory=list)
 
 
@@ -950,7 +950,6 @@ class CsvProcessingService:
             "height_px",
             "width_mm",
             "height_mm",
-            "viewing_distance_mm",
         )
         try:
             source = value if isinstance(value, dict) else vars(value)
@@ -958,6 +957,9 @@ class CsvProcessingService:
                 return None, [
                     "incomplete screen geometry ignored; normalized fixation detection used"
                 ]
+            # The distance is optional: the CSV's per-sample distance is the measured one.
+            if source.get("viewing_distance_mm") is not None:
+                names = (*names, "viewing_distance_mm")
             geometry = ScreenGeometry(**{name: float(source[name]) for name in names})
             if not all(
                 math.isfinite(getattr(geometry, name)) and getattr(geometry, name) > 0
@@ -973,7 +975,7 @@ class CsvProcessingService:
     @staticmethod
     def _physical_screen_geometry_snapshot(
         geometry: Optional[ScreenGeometry],
-    ) -> Optional[Dict[str, float]]:
+    ) -> Optional[Dict[str, Optional[float]]]:
         if geometry is None:
             return None
         return {
@@ -981,7 +983,11 @@ class CsvProcessingService:
             "height_px": float(geometry.height_px),
             "width_mm": float(geometry.width_mm),
             "height_mm": float(geometry.height_mm),
-            "viewing_distance_mm": float(geometry.viewing_distance_mm),
+            "viewing_distance_mm": (
+                float(geometry.viewing_distance_mm)
+                if geometry.viewing_distance_mm is not None
+                else None
+            ),
         }
 
     @classmethod
@@ -1034,7 +1040,7 @@ class CsvProcessingService:
         stimulus_placements_by_scenario: Optional[
             Mapping[str, Mapping[str, Any]]
         ] = None,
-        physical_screen_geometry: Optional[Mapping[str, float]] = None,
+        physical_screen_geometry: Optional[Mapping[str, Optional[float]]] = None,
         recording_units: Optional[Mapping[str, Any]] = None,
     ) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str, str]]]:
         base_dir = pathlib.Path(output_dir).resolve() / f"user{user_index}"

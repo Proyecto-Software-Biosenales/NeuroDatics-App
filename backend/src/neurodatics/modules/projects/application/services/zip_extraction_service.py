@@ -58,7 +58,7 @@ class ZipExtractionService:
                 )
             if written > remaining_total:
                 raise cls.ExtractionError(
-                    "El contenido descomprimido del ZIP supera el maximo permitido de "
+                    "El contenido descomprimido del ZIP supera el máximo permitido de "
                     f"{settings.project_zip_max_uncompressed_mb}MB"
                 )
 

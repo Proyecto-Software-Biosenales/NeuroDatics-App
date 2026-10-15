@@ -32,14 +32,23 @@ async def update_participants(
 
     # Update participants
     participant_repo = SQLParticipantRepository(db)
-    participants_data = [p.dict() for p in request.participants]
+    # name/document are sent only when the client knows them; unset keys keep stored values.
+    participants_data = [
+        {
+            **p.model_dump(include={"participant_code", "age", "sex"}),
+            **p.model_dump(include={"name", "document"}, exclude_unset=True),
+        }
+        for p in request.participants
+    ]
     participants = await participant_repo.upsert_participants(project_id, participants_data)
 
     return [
         ParticipantResponse(
             participant_code=p.participant_code,
             age=p.age,
-            sex=p.sex.value if p.sex else None
+            sex=p.sex.value if p.sex else None,
+            name=p.name,
+            document=p.effective_document,
         )
         for p in participants
     ]

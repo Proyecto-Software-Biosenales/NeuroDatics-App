@@ -36,6 +36,7 @@
   "GET /api/projects/{project_id}/files/{file_id}/preview",
   "GET /api/projects/{project_id}/pre-experiment",
   "GET /api/projects/{project_id}/pre-experiment/export",
+  "GET /api/settings/screen",
   "GET /health",
   "GET /health/ready",
   "PATCH /api/projects/{project_id}",
@@ -50,5 +51,6 @@
   "PUT /api/projects/{project_id}/participants",
   "PUT /api/projects/{project_id}/pre-experiment",
   "PUT /api/projects/{project_id}/scenaries",
-  "PUT /api/projects/{project_id}/sensors"
+  "PUT /api/projects/{project_id}/sensors",
+  "PUT /api/settings/screen"
 ]

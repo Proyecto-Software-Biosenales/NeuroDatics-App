@@ -4,8 +4,13 @@ from pydantic import BaseModel, Field
 
 
 class ParticipantItem(BaseModel):
+    # Key for every analytics query; labels below are display-only.
     participant_code: str
     user_index: int
+    # User-entered name; when present it labels the participant in the dashboard.
+    name: Optional[str] = None
+    # Corrected document, or participant_code when it was never corrected.
+    document: Optional[str] = None
 
 
 class ScenarioItem(BaseModel):

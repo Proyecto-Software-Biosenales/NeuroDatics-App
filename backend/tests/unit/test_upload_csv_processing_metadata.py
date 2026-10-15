@@ -78,8 +78,19 @@ def _summary(project_id):
     }
 
 
-def test_screen_geometry_requires_all_fields_and_positive_values():
+def test_screen_geometry_requires_the_screen_fields_and_positive_values():
     assert project_routes._build_screen_geometry(None, None, None, None, None) is None
+
+    # The CSV's per-sample distance is the measured one, so a typed distance is optional.
+    assert project_routes._build_screen_geometry(1920, 1080, 530.0, 300.0, None) == ScreenGeometry(
+        width_px=1920, height_px=1080, width_mm=530.0, height_mm=300.0
+    )
+    with pytest.raises(HTTPException) as distance_only:
+        project_routes._build_screen_geometry(None, None, None, None, 650.0)
+    assert distance_only.value.status_code == 422
+    with pytest.raises(HTTPException) as non_positive_distance:
+        project_routes._build_screen_geometry(1920, 1080, 530.0, 300.0, 0.0)
+    assert non_positive_distance.value.status_code == 422
 
     geometry = project_routes._build_screen_geometry(1920, 1080, 530.0, 300.0, 650.0)
     assert geometry == ScreenGeometry(

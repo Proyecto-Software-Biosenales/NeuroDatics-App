@@ -55,7 +55,7 @@ class UploadAdmissionControl:
 
             if self._active_total >= global_limit:
                 raise UploadRejected(
-                    "El servidor esta procesando el maximo de cargas simultaneas. Intenta de nuevo en unos minutos.",
+                    "El servidor está procesando el máximo de cargas simultáneas. Intenta de nuevo en unos minutos.",
                     retry_after_seconds=60,
                 )
 

@@ -19,6 +19,9 @@ from neurodatics.api.deps import get_current_user, get_db
 from neurodatics.infra.db.base import Base
 from neurodatics.modules.projects.api.routes import router
 from neurodatics.modules.projects.api.pre_experiment_routes import guard_revision, planning_summary
+from neurodatics.modules.projects.api.pre_experiment_schemas import PreExperimentConfig, PreExperimentConfigInput
+from neurodatics.modules.projects.application.services.fixation_detection_service import ScreenGeometry
+from neurodatics.modules.projects.application.use_cases.upload_experiment_zip import with_planned_viewing_distance
 from neurodatics.modules.projects.domain.entities import Project, PreExperimentResponse
 from neurodatics.modules.projects.infrastructure.repository_impl import SQLProjectRepository
 
@@ -79,9 +82,10 @@ def storage(tmp_path):
 
 def configuration():
     return {
-        "participants": [{"id": str(uuid4()), "code": "P01", "name": "Participante", "identification_document": "1234", "gender": "Otro", "age": 22}],
+        "participants": [{"id": str(uuid4()), "name": "Participante", "identification_document": "1234", "gender": "other", "age": 22}],
         "screen": {"model": "Monitor", "width_px": 1920, "height_px": 1080, "width_cm": 52.5},
         "notes": "Recordar la iluminación",
+        "project_notes": [{"id": str(uuid4()), "title": "Sala", "text": "Reservar la sala"}],
         "questionnaires": {
             "before": {"enabled": True, "title": "Antes", "questions": [
                 {"id": str(uuid4()), "type": "open_text", "prompt": "¿Cómo estás?", "required": True},
@@ -254,18 +258,21 @@ def test_create_empty_planning_then_capture_after_only_and_require_authenticatio
     assert client.get(path).status_code in (401, 403)
 
 
-@pytest.mark.parametrize("alter", ["duplicate_participant", "duplicate_code", "blank_name", "duplicate_question", "invalid_options", "enabled_empty", "negative_screen", "invalid_age"])
+@pytest.mark.parametrize("alter", ["duplicate_participant", "duplicate_document", "blank_document", "duplicate_note", "duplicate_question", "invalid_options", "enabled_empty", "negative_screen", "invalid_age"])
 def test_invalid_configuration_is_rejected_on_create(storage, alter):
     client, _engine, _app, _owner = storage
     config = configuration()
     if alter == "duplicate_participant":
         config["participants"] *= 2
-    elif alter == "duplicate_code":
+    elif alter == "duplicate_document":
         duplicate = deepcopy(config["participants"][0])
         duplicate["id"] = str(uuid4())
+        duplicate["identification_document"] = " 1234 "
         config["participants"].append(duplicate)
-    elif alter == "blank_name":
-        config["participants"][0]["name"] = " "
+    elif alter == "blank_document":
+        config["participants"][0]["identification_document"] = " "
+    elif alter == "duplicate_note":
+        config["project_notes"] *= 2
     elif alter == "duplicate_question":
         config["questionnaires"]["before"]["questions"] *= 2
     elif alter == "invalid_options":
@@ -309,3 +316,28 @@ def test_planning_flag_preserves_acquisition_identity():
     assert planning_summary(project)["is_pre_experiment"]
     project.ingestion_generation = 1
     assert not planning_summary(project)["is_pre_experiment"]
+
+
+def test_name_is_optional_and_older_saves_identified_by_code_still_open(storage):
+    client, _engine, _app, _owner = storage
+    config = configuration()
+    config["participants"][0]["name"] = ""
+    project = create(client, config)
+    saved = client.get(f"/api/projects/{project['id']}/pre-experiment").json()["config"]
+    assert saved["participants"][0]["name"] == "" and saved["project_notes"][0] == config["project_notes"][0]
+
+    older = {"participants": [{"id": str(uuid4()), "code": "P01", "name": "Ana"}]}
+    assert PreExperimentConfig.model_validate(older).participants[0].code == "P01"
+    with pytest.raises(ValueError, match="documento"):
+        PreExperimentConfigInput.model_validate(older)
+
+
+def test_planned_distance_backs_up_the_recorded_one_only_with_a_physical_screen():
+    screen = ScreenGeometry(width_px=1280, height_px=1024, width_mm=376.0, height_mm=301.0)
+    planned = {"screen": {"viewing_distance_cm": 65}}
+    assert with_planned_viewing_distance(screen, planned).viewing_distance_mm == 650.0
+    assert with_planned_viewing_distance(None, planned) is None
+    typed = ScreenGeometry(width_px=1280, height_px=1024, width_mm=376.0, height_mm=301.0, viewing_distance_mm=600.0)
+    assert with_planned_viewing_distance(typed, planned) is typed
+    for missing in (None, {}, {"screen": {}}, {"screen": {"viewing_distance_cm": None}}):
+        assert with_planned_viewing_distance(screen, missing) is screen

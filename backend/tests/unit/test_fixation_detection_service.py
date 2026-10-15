@@ -530,6 +530,45 @@ def test_angular_mode_accepts_per_sample_distance_and_reports_its_use():
     assert set(result.events["fixation_method"]) == {"adaptive-ivt-angular"}
 
 
+def test_sample_distance_alone_enables_angular_mode_and_gaps_take_its_median():
+    geometry = ScreenGeometry(width_px=1920, height_px=1080, width_mm=531.0, height_mm=299.0)
+    metadata = FixationDetectionMetadata(
+        eye_sampling_rate_hz=60.0, distance_unit="mm", screen_geometry=geometry
+    )
+    block = _two_fixations(60.0)
+    block["distance"] = np.linspace(590.0, 650.0, len(block))
+    gaps = block.index[::7]
+    filled = block.copy()
+    filled.loc[gaps, "distance"] = float(np.median(block["distance"].drop(gaps)))
+    block.loc[gaps, "distance"] = np.nan
+
+    result = FixationDetectionService.detect(block, metadata=metadata)
+    expected = FixationDetectionService.detect(filled, metadata=metadata)
+
+    assert result.metadata["coordinate_mode"] == "angular"
+    assert result.metadata["physical_screen_geometry"]["viewing_distance_mm"] is None
+    assert "invalid_sample_distance_using_sample_median" in result.metadata["warnings"]
+    assert_frame_equal(result.events.drop(columns="fixation_warnings"),
+                       expected.events.drop(columns="fixation_warnings"))
+
+
+def test_without_any_distance_detection_stays_normalized():
+    geometry = ScreenGeometry(width_px=1920, height_px=1080, width_mm=531.0, height_mm=299.0)
+    metadata = FixationDetectionMetadata(eye_sampling_rate_hz=60.0, screen_geometry=geometry)
+
+    result = FixationDetectionService.detect_duration_variants(_two_fixations(60.0), metadata=metadata)
+
+    assert result.metadata["coordinate_mode"] == "normalized"
+    assert "viewing_distance_unavailable_normalized_detection" in result.metadata["warnings"]
+    assert len(result.events) == 2
+    with pytest.raises(ValueError, match="viewing distance or sample distances"):
+        FixationDetectionService.detect(
+            _two_fixations(60.0),
+            metadata=metadata,
+            config=FixationDetectionConfig(coordinate_mode="angular"),
+        )
+
+
 def test_event_duration_is_valid_detector_support_not_bridged_wall_time():
     block = _two_fixations(60.0, duration_s=0.34)
     gap_rows = block.index[(block["time"] >= 0.15) & (block["time"] < 0.20)]

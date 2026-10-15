@@ -3,7 +3,7 @@ import logging
 import pathlib
 import uuid
 from contextlib import AsyncExitStack
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import PurePosixPath
@@ -135,6 +135,26 @@ def _user_facing_ingestion_error(exc: Exception) -> str:
     return "No se pudo completar la carga. Los datos publicados se conservan; puedes reintentar."
 
 
+def with_planned_viewing_distance(
+    screen_geometry: Optional[ScreenGeometry],
+    pre_experiment: Optional[Dict[str, Any]],
+) -> Optional[ScreenGeometry]:
+    """The distance written in the pre-experiment backs up the eye tracker's.
+
+    The per-sample distance of the recording stays the measured value; the
+    planned one only fills the samples where that record failed. It needs the
+    physical screen, without which detection stays normalized anyway.
+    """
+
+    if screen_geometry is None or screen_geometry.viewing_distance_mm is not None:
+        return screen_geometry
+    screen = (pre_experiment or {}).get("screen") or {}
+    distance_cm = screen.get("viewing_distance_cm")
+    if isinstance(distance_cm, bool) or not isinstance(distance_cm, (int, float)) or not distance_cm > 0:
+        return screen_geometry
+    return replace(screen_geometry, viewing_distance_mm=float(distance_cm) * 10.0)
+
+
 class UploadExperimentZipUseCase:
     """End-to-end project ZIP ingestion use case."""
 
@@ -157,6 +177,7 @@ class UploadExperimentZipUseCase:
         project = await self.repository.get_by_id(project_id, owner_id)
         if not project:
             raise ProjectUploadNotFoundError("Project not found or access denied")
+        screen_geometry = with_planned_viewing_distance(screen_geometry, getattr(project, "pre_experiment", None))
 
         # Configure Google Drive client with OAuth credentials from system integrations
         if self.db:
@@ -1072,7 +1093,7 @@ class UploadExperimentZipUseCase:
         for user_index, parquet_path in user_parquet_paths:
             code = participant_codes[parquet_path]
             if len(code) > 50:
-                raise ParticipantIdentityError("El codigo de participante excede el maximo de 50 caracteres.")
+                raise ParticipantIdentityError("El código de participante excede el máximo de 50 caracteres.")
             if code in seen:
                 raise ParticipantIdentityError(
                     f"El codigo de participante '{code}' aparece en los bloques "

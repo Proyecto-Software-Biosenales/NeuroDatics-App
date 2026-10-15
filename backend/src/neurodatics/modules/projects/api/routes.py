@@ -118,27 +118,30 @@ def _build_screen_geometry(
     screen_height_mm: Optional[float],
     viewing_distance_mm: Optional[float],
 ) -> Optional[ScreenGeometry]:
-    """Build physical screen geometry only when the complete tuple is supplied."""
+    """Build physical screen geometry only when the screen tuple is supplied.
 
-    values = (
+    The viewing distance is optional: the CSV's per-sample distance is the
+    measured one, so a typed distance only backs it up.
+    """
+
+    screen = (
         screen_width_px,
         screen_height_px,
         screen_width_mm,
         screen_height_mm,
-        viewing_distance_mm,
     )
-    supplied = tuple(value is not None for value in values)
-    if not any(supplied):
+    supplied = tuple(value is not None for value in screen)
+    if not any(supplied) and viewing_distance_mm is None:
         return None
     if not all(supplied):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=(
                 "Screen geometry requires screen_width_px, screen_height_px, "
-                "screen_width_mm, screen_height_mm and viewing_distance_mm together"
+                "screen_width_mm and screen_height_mm together"
             ),
         )
-    if any(value <= 0 for value in values if value is not None):
+    if any(value <= 0 for value in (*screen, viewing_distance_mm) if value is not None):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="All screen geometry values must be greater than zero",
@@ -864,7 +867,9 @@ async def get_project(
                 "id": p.id,
                 "participant_code": p.participant_code,
                 "age": p.age,
-                "sex": p.sex.value if p.sex else None
+                "sex": p.sex.value if p.sex else None,
+                "name": p.name,
+                "document": p.effective_document,
             }
             for p in project.participants
         ],
@@ -1033,7 +1038,7 @@ async def _spool_upload_to_disk(file: UploadFile, destination: Path) -> int:
             total += len(chunk)
             if total > max_bytes:
                 raise ZipValidationService.ValidationError(
-                    f"ZIP excede el maximo permitido de {settings.project_zip_max_size_mb}MB"
+                    f"ZIP excede el máximo permitido de {settings.project_zip_max_size_mb}MB"
                 )
 
             await anyio.to_thread.run_sync(buffer.write, chunk)

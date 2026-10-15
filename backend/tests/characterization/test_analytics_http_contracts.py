@@ -71,6 +71,16 @@ def test_successful_analytics_contract(http_client, endpoint, snapshot):
             # v2 adds provenance/full-resolution statistics. Keep the v1 shape
             # baseline unchanged and explicitly verify the added contract here.
             legacy_body = dict(body) if isinstance(body, dict) else body
+            if endpoint == "/participants":
+                # name/document are display labels added after the v1 baseline:
+                # with nothing entered, no name and the extracted code as document.
+                assert [(item["name"], item["document"]) for item in body] == [
+                    (None, item["participant_code"]) for item in body
+                ]
+                legacy_body = [
+                    {key: value for key, value in item.items() if key not in ("name", "document")}
+                    for item in body
+                ]
             if endpoint == "/comparison/charts":
                 assert body["contract_version"] == "comparison-charts-v3"
                 assert body["statistics_schema_version"] == "comparison-statistics-v1"

@@ -517,10 +517,67 @@ async def test_participant_route_keeps_response_contract_and_repository_order(
         project_id, request, current_user=str(uuid4()), db=object()
     )
 
+    # name/document were added later: unset name, and the code stands in as document.
     assert [item.model_dump() for item in response] == [
-        {"participant_code": "B", "age": 20, "sex": "other"},
-        {"participant_code": "A", "age": None, "sex": None},
+        {"participant_code": "B", "age": 20, "sex": "other", "name": None, "document": "B"},
+        {"participant_code": "A", "age": None, "sex": None, "name": None, "document": "A"},
     ]
+
+
+def test_participant_request_sends_labels_only_when_present():
+    request = UpdateParticipantsRequest.model_validate(
+        {
+            "participants": [
+                {"participant_code": "B", "name": "  Ana   María ", "document": " "},
+                {"participant_code": "A"},
+            ]
+        }
+    )
+    first, second = request.participants
+    assert (first.name, first.document) == ("Ana María", None)
+    assert first.model_fields_set >= {"name", "document"}
+    assert not {"name", "document"} & second.model_fields_set
+
+
+@pytest.mark.asyncio
+async def test_participant_upsert_stores_name_and_document_corrections(database):
+    _engine, factory = database
+    with factory() as session:
+        project = add_project(session)
+        session.add(
+            Participant(
+                project_id=project.id,
+                participant_code="1033176186",
+                name="Ana",
+                document="1033176187",
+            )
+        )
+        session.commit()
+        repository = SQLParticipantRepository(SyncSessionAdapter(session))
+
+        # A client that does not know the labels must not clear them.
+        [kept] = await repository.upsert_participants(
+            project.id, [{"participant_code": "1033176186", "age": 30, "sex": "female"}]
+        )
+        assert (kept.name, kept.document, kept.age) == ("Ana", "1033176187", 30)
+
+        # Restoring the extracted value stores no correction; blank name clears it.
+        [restored] = await repository.upsert_participants(
+            project.id,
+            [{"participant_code": "1033176186", "age": 30, "sex": "female",
+              "name": None, "document": "1033176186"}],
+        )
+        assert (restored.name, restored.document) == (None, None)
+        assert restored.effective_document == "1033176186"
+
+        [created] = await repository.upsert_participants(
+            project.id,
+            [{"participant_code": "P2", "age": 22, "sex": "male",
+              "name": "Luis", "document": "998877"}],
+        )
+        assert (created.name, created.document, created.effective_document) == (
+            "Luis", "998877", "998877",
+        )
 
 
 @pytest.mark.asyncio

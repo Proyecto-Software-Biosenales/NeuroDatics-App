@@ -55,6 +55,14 @@ class SQLParticipantRepository(ParticipantRepository):
                 self.session.add(participant)
                 existing_by_code[participant_code] = participant
 
+            # Older clients omit these keys: keep what is stored instead of clearing it.
+            if "name" in data:
+                participant.name = data["name"] or None
+            if "document" in data:
+                # The extracted code is already the default document; store only corrections.
+                document = data["document"] or None
+                participant.document = None if document == participant_code else document
+
         if not participant_codes:
             await self.session.commit()
             return []
