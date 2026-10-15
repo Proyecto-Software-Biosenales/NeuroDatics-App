@@ -1,166 +1,180 @@
+<div align="center">
+
+<img src="frontend/public/assets/NeuroDatics-logo.png" alt="NeuroDatics" width="96">
+
 # NeuroDatics
 
-Plataforma de análisis de bioseñales para neuromarketing: ingesta de experimentos de seguimiento ocular,
-EEG, GSR, pupila y distancia, analítica por escenario y participante, e informes.
+**Análisis de bioseñales para estudios de neuromarketing**
 
-El mismo código (`backend/` y `frontend/`) se entrega en **dos ediciones**:
+Convierte la sesión cruda de un laboratorio —eye tracker, EEG y sensor galvánico— en analítica consultable:
+fijaciones, mapas de calor, áreas de interés, espectros de EEG e informes en PDF.
 
-- **Edición servidor.** Un stack de Docker Compose (`docker-compose.yml`) con interfaz, API, PostgreSQL 16
-  y Redis. Inicio de sesión con Google, archivos en Google Drive y proxy opcional de red.
-- **NeuroDatics Estudiantes.** El mismo backend con `APP_MODE=local`, para Windows y sin internet:
-  congelado con PyInstaller, sirve el frontend como exportación estática desde su propio origen y lleva
-  dentro PostgreSQL 16 embebido y ffmpeg. No tiene cuentas, ni Drive, ni Docker, ni Redis: todo escucha
-  en `127.0.0.1`.
+![Versión](https://img.shields.io/badge/versión-1.0.0-0f766e)
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Licencia](https://img.shields.io/badge/licencia-todos%20los%20derechos%20reservados-lightgrey)
 
-Cualquier cambio en análisis, ingesta, informes, pre-experimentos, cuestionarios, migraciones o interfaz
-tiene que funcionar en las dos. Las reglas están en [AGENTS.md](AGENTS.md) y
-[CONTRIBUTING.md](CONTRIBUTING.md).
+[Funciones](#qué-puede-hacer) · [Ediciones](#dos-ediciones) · [Inicio rápido](#inicio-rápido) ·
+[Documentación](#documentación) · [Desarrollo](#desarrollo)
 
-## Edición servidor
+<img src="docs/assets/proyectos.png" alt="Lista de proyectos de NeuroDatics" width="860">
 
-Requisitos: Docker Desktop y Git. No necesitas instalar Node.js, Python, PostgreSQL ni Redis.
+</div>
+
+## Qué es
+
+En un estudio de neuromarketing, el software de adquisición exporta una carpeta por sesión: un CSV con las
+grabaciones sincronizadas de todos los participantes y las imágenes y vídeos que se les mostraron. NeuroDatics
+recibe esa carpeta, la valida, **recalcula las fijaciones desde la mirada cruda** en lugar de fiarse de las del
+fabricante, lleva cada coordenada al sistema del estímulo y guarda el resultado en un formato columnar que se
+consulta rápido. Encima de eso ofrece un tablero interactivo y genera informes por dispositivo.
+
+Tres principios guían cada número que muestra: **nada se inventa** (un dato ausente sigue ausente y una
+coordenada fuera de rango se rechaza, no se recorta), **la procedencia viaja con el resultado** (cada respuesta
+dice qué algoritmo la produjo y con qué parámetros) y **la pantalla y el PDF no pueden discrepar**, porque usan
+los mismos servicios.
+
+## Qué puede hacer
+
+| | |
+| --- | --- |
+| **Proyectos y pre-experimentos** | Registrar un estudio antes de tener datos: participantes, pantalla, cuestionarios de antes y después y notas. La carpeta del experimento se agrega cuando existe. |
+| **Ingesta del experimento** | Sube la carpeta del laboratorio desde el navegador; interpreta CSV europeos multi-participante con distintas codificaciones y frecuencias de muestreo, y publica todo en una sola operación. |
+| **Eye tracker** | Dilatación pupilar, punto de mirada, histograma de fijaciones, mapa de calor, recorrido de la mirada y distancia al dispositivo, sobre el estímulo real. |
+| **Áreas de interés** | AOIs dibujadas sobre cada estímulo, con tiempo hasta la primera fijación, permanencia, revisitas, transiciones y hallazgos clave. |
+| **EEG** | Señal por canal, densidad espectral (Welch), espectrograma y topografía, con avisos de calidad explícitos. |
+| **Sensor galvánico** | Respuesta galvánica de la piel con sus estadísticas y su línea base. |
+| **Comparar participantes** | Varias personas lado a lado, con el mismo instante marcado en todas las gráficas. |
+| **Informes** | Un PDF por dispositivo, para un participante o para el grupo, con gráficas y tablas. |
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/pupila.png" alt="Dilatación pupilar en el tablero"></td>
+    <td width="50%"><img src="docs/assets/eeg-espectrograma.png" alt="Espectrograma de EEG por canal"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Eye tracker: dilatación pupilar con sus estadísticas</sub></td>
+    <td align="center"><sub>EEG: espectrograma de frecuencias por canal</sub></td>
+  </tr>
+</table>
+
+<sub>Las capturas usan datos sintéticos.</sub>
+
+## Dos ediciones
+
+El mismo código se entrega de dos formas:
+
+| | Edición servidor | NeuroDatics Estudiantes |
+| --- | --- | --- |
+| **Para quién** | Un laboratorio o grupo que comparte proyectos | Un estudiante en su propio portátil |
+| **Cómo se usa** | Navegador contra un servidor con Docker | Un programa de Windows, sin instalación |
+| **Cuenta** | Inicio de sesión con Google | Ninguna |
+| **Archivos** | Google Drive | Una carpeta en el equipo |
+| **Red** | Red local o institucional | Ninguna: todo ocurre en `127.0.0.1` |
+
+## Inicio rápido
+
+### Edición servidor
+
+Requisitos: Docker Desktop y Git.
 
 ```powershell
 git clone https://github.com/Proyecto-Software-Biosenales/NeuroDatics-App.git
 cd NeuroDatics-App
-Copy-Item .env.example .env
-```
-
-Edita `.env` antes de iniciar:
-
-- `POSTGRES_PASSWORD`: una contraseña única para la base de datos del stack.
-- `AUTH_JWT_SECRET`: un secreto aleatorio de al menos 32 caracteres.
-- `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET`: necesarios para el inicio de sesión real con Google.
-
-El resto de las opciones (Google Drive, base de datos externa, límites de carga, proxy) están comentadas en
-[.env.example](.env.example), que es el contrato de configuración del stack.
-
-```powershell
+Copy-Item .env.example .env      # completa POSTGRES_PASSWORD, AUTH_JWT_SECRET y las credenciales de Google
 docker compose up -d --build
-docker compose ps
 ```
 
-El stack crea y conecta `frontend`, `backend`, `db` y `redis`. El contenedor del backend aplica las
-migraciones (`alembic upgrade head`) antes de arrancar Uvicorn.
+La aplicación queda en **http://localhost:3000** (la API en `/api` y su documentación en `/docs`). El contenedor
+del backend aplica las migraciones antes de arrancar. [`.env.example`](.env.example) documenta todas las
+opciones, y [deployment/CONFIGURACION-GOOGLE.md](deployment/CONFIGURACION-GOOGLE.md) explica cómo obtener las
+credenciales de Google y conectar Drive.
 
-| Recurso | URL |
-| --- | --- |
-| Aplicación | http://localhost:3000 |
-| API mediante el proxy | http://localhost:3000/api |
-| Swagger UI | http://localhost:3000/docs |
+Para instalarla en un equipo sin entorno de desarrollo existe un instalador en español con dos botones,
+**INSTALAR** e **INICIAR**: ver [deployment/README.md](deployment/README.md).
 
-El backend no publica un puerto en el host: el frontend reenvía `/api`, `/docs`, `/openapi.json` y `/redoc`
-dentro de la red de Docker (`frontend/next.config.mjs`). PostgreSQL y Redis quedan en una red interna.
-
-Google Drive se conecta desde **Configuración** dentro de la aplicación, con las credenciales del proyecto
-de Google; el procedimiento completo está en
-[deployment/CONFIGURACION-GOOGLE.md](deployment/CONFIGURACION-GOOGLE.md).
-
-### Entregar la edición servidor sin entorno de desarrollo
-
-Para instalarla en un equipo ajeno al desarrollo existe el
-[paquete instalable en español](deployment/README.md): en Windows se abre `INSTALAR.bat`, que comprueba y
-prepara WSL y Docker Desktop, configura el entorno y carga las imágenes incluidas; después, cada día, se
-abre `INICIAR.bat` o el icono «NeuroDatics» del escritorio, que enciende Docker si hace falta y abre el
-navegador. La guía del mantenedor está en [deployment/MANTENIMIENTO.md](deployment/MANTENIMIENTO.md).
-
-## NeuroDatics Estudiantes
-
-El estudiante recibe un ZIP cuya carpeta muestra solo `neurodatics-estudiantes.exe` y `LEEME.txt`
-(el resto viaja oculto en `_internal`). Al abrirlo, el programa arranca su PostgreSQL embebido, aplica las
-migraciones y abre el navegador en `127.0.0.1`. Los datos no viven junto al programa, sino en
-`%LOCALAPPDATA%\NeuroDatics Estudiantes`, así que borrar la carpeta extraída no borra los proyectos.
-
-La construcción, el empaquetado y las puertas de calidad del paquete están en
-[student/README.md](student/README.md). En resumen:
+<details>
+<summary>Comandos de operación</summary>
 
 ```powershell
-student\build.ps1 -Work output\student
-student\run-frozen.ps1 -Work output\student -Assemble
-student\run-frozen.ps1 -Work output\student
-student\package.ps1 -Work output\student -Version <versión>
+docker compose logs -f                 # registros de todos los servicios
+docker compose up -d --build           # reconstruir tras actualizar el código
+docker compose down                    # detener sin borrar datos
+docker compose down -v                 # borrar base de datos y cachés (destructivo)
 ```
 
-## Operación diaria (edición servidor)
+Si un servicio aparece como `unhealthy`, revisa `docker compose logs --tail=200 backend` antes de borrar nada. El
+backend expone `/health` y `/health/ready`. Para una red universitaria o corporativa, ver
+[docs/tecnica/despliegue-en-red.md](docs/tecnica/despliegue-en-red.md).
 
-Puedes crear un **Pre-experimento** antes de tener la carpeta del experimento y organizar sus
-participantes, pantalla y cuestionarios opcionales desde su tarjeta, con **Editar**. **Configuración**
-guarda solo ajustes globales: la pantalla del experimento (por defecto 1280×1024) y, en esta edición,
-Google Drive. Consulta la
-[guía de pre-experimentos y cuestionarios](docs/PRE_EXPERIMENTO.md).
+</details>
 
-```powershell
-# Ver registros de todos los servicios
-docker compose logs -f
+### NeuroDatics Estudiantes
 
-# Reconstruir después de cambiar el código
-docker compose up -d --build
+El estudiante recibe un zip; al extraerlo ve solo `neurodatics-estudiantes.exe` y `LEEME.txt`. Al abrir el
+programa, arranca su propia base de datos y abre el navegador. Los proyectos se guardan en
+`%LOCALAPPDATA%\NeuroDatics Estudiantes`, así que borrar la carpeta del programa no los borra. La guía del
+estudiante es [student/LEEME.txt](student/LEEME.txt), y cómo se construye el paquete está en
+[student/README.md](student/README.md).
 
-# Detener el stack sin borrar datos
-docker compose down
+## Cómo funciona
 
-# Borrar base de datos, cachés y datos locales (acción destructiva)
-docker compose down -v
+```mermaid
+flowchart LR
+    A["Carpeta del laboratorio<br/>CSV + imágenes + vídeos"] --> B["Validación<br/>y extracción"]
+    B --> C["Parseo por participante<br/>detección de fijaciones"]
+    C --> D[("Parquet por<br/>participante y escenario")]
+    D --> E["Analítica<br/>con caché"]
+    E --> F["Tablero"]
+    E --> G["Informes PDF"]
 ```
 
-Después de actualizar el repositorio, ejecuta de nuevo `docker compose up -d --build`. Al actualizar desde
-una versión con el worker RQ, usa `docker compose up -d --build --remove-orphans` para retirar su
-contenedor antiguo.
-
-## Solución de problemas
-
-```powershell
-docker compose config --quiet
-docker compose ps
-docker compose logs --tail=200 backend
-```
-
-Si un servicio aparece como `unhealthy`, revisa sus registros antes de borrar volúmenes o recrear datos.
-El backend expone `/health` y `/health/ready`; el segundo informa del estado de la base de datos y de Redis.
-
-Para un despliegue en una red universitaria o corporativa, consulta
-[docs/NETWORK_DEPLOYMENT.md](docs/NETWORK_DEPLOYMENT.md).
-
-## Desarrollo
-
-**`./verify.ps1` desde la raíz es la única puerta de verificación.** Ejecuta las pruebas del backend, Ruff,
-Vulture, deptry, los contratos de importación, el arranque de la aplicación, TypeScript, las pruebas de
-Node del frontend, las regresiones de hooks de React en Chromium real y el trinquete de ESLint.
-
-```powershell
-cd frontend; npx playwright install chromium   # una sola vez
-cd ..; .\verify.ps1
-```
-
-El entorno virtual de Python es el de la raíz (`.venv`), no `backend\.venv`. El detalle de cada puerta, las
-convenciones y la regla de las dos ediciones están en [CONTRIBUTING.md](CONTRIBUTING.md).
-
-Las migraciones están en `backend/migrations/versions/`. La cabeza actual se consulta en lugar de fijarla
-en la documentación:
-
-```powershell
-cd backend; ..\.venv\Scripts\python.exe -m alembic heads
-```
-
-## Estructura
-
-- `backend/`: API FastAPI, ingesta, analítica, informes, migraciones y el código de la edición local
-  ([backend/README.md](backend/README.md)).
-- `frontend/`: interfaz Next.js, común a las dos ediciones.
-- `student/`: construcción, empaquetado y puertas de NeuroDatics Estudiantes, más su guía `LEEME.txt`.
-- `deployment/`: paquete instalable de la edición servidor para Windows (asistente, scripts y guías).
-- `docs/`: documentación técnica y de usuario ([docs/README.md](docs/README.md)).
-- `docker-compose.yml`: punto de inicio único del stack de la edición servidor.
-- `docker-compose.delivery.yml`: complemento que fija las imágenes de entrega; lo usa `deployment/package.ps1`.
-- `verify.ps1`: la puerta de verificación del repositorio.
-- `.env.example`: contrato de configuración del stack Docker.
-- `AGENTS.md`: reglas de trabajo en el repositorio, incluida la de las dos ediciones.
-
-Las carpetas `delivery/` y `output/` no están en el repositorio: las generan los scripts de empaquetado.
+El backend es **FastAPI** con SQLAlchemy asíncrono, pandas, NumPy, SciPy y PyArrow; los informes se componen con
+**Typst**. El frontend es **Next.js** con React, TypeScript, Tailwind, shadcn/Radix y Recharts. Los datos
+relacionales viven en **PostgreSQL 16** y los bytes (estímulos y Parquet) en Google Drive o en disco. El recorrido
+completo está en [docs/tecnica/arquitectura.md](docs/tecnica/arquitectura.md).
 
 ## Documentación
 
-- [docs/README.md](docs/README.md): índice de la documentación.
-- [docs/arquitectura.md](docs/arquitectura.md): cómo encajan backend, frontend y las dos ediciones.
-- [CONTRIBUTING.md](CONTRIBUTING.md): verificación, contratos y convenciones.
-- [docs/LICENCIAMIENTO.md](docs/LICENCIAMIENTO.md): licencias y avisos de terceros.
+| Si quieres… | Lee |
+| --- | --- |
+| Entender la aplicación de un vistazo | [Arquitectura](docs/tecnica/arquitectura.md) |
+| Saber qué cambió | [CHANGELOG](docs/CHANGELOG.md) |
+| Preparar un estudio sin datos todavía | [Pre-experimento](docs/usuario/pre-experimento.md) |
+| Interpretar la comparación entre participantes | [Comparar participantes](docs/usuario/comparar-participantes.md) |
+| Conocer los algoritmos | [Fijaciones](docs/tecnica/deteccion-de-fijaciones.md) · [Coordenadas](docs/tecnica/coordenadas-pantalla-estimulo.md) · [EEG](docs/tecnica/eeg/metodos.md) · [Informes](docs/tecnica/informes.md) |
+| Ver el índice completo | [docs/README.md](docs/README.md) |
+
+## Estructura del repositorio
+
+```text
+backend/      API FastAPI: ingesta, analítica, informes, migraciones y la edición local
+frontend/     interfaz Next.js, común a las dos ediciones
+student/      construcción y comprobaciones de NeuroDatics Estudiantes, y su guía
+deployment/   instalador de la edición servidor para Windows
+docs/         documentación por público: usuario, técnica y desarrollo
+verify.ps1    la puerta de verificación del repositorio
+```
+
+## Desarrollo
+
+```powershell
+cd frontend; npm ci; npx playwright install chromium; cd ..
+.\verify.ps1
+```
+
+`verify.ps1` es la única puerta de verificación: pruebas del backend con resultados de referencia protegidos,
+Ruff, Vulture, deptry, contratos de importación, arranque de la aplicación, TypeScript, pruebas del frontend en
+Node y en Chromium real, y ESLint. Cómo preparar el entorno, las reglas de las dos ediciones y el detalle de cada
+prueba están en [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Autores
+
+Desarrollado por **Jacobo D'león** y **María Alejandra Muñoz**.
+
+## Licencia
+
+© 2026 Jacobo D'león y María Alejandra Muñoz. Todos los derechos reservados; ver [LICENSE](LICENSE). El
+software de terceros incluido conserva sus propias licencias.

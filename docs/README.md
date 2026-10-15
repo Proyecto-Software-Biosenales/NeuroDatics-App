@@ -1,76 +1,46 @@
 # Documentación de NeuroDatics
 
-Índice de lo que hay aquí. Si llegas por primera vez, empieza por
-[arquitectura.md](arquitectura.md); si vas a programar, por
-[../CONTRIBUTING.md](../CONTRIBUTING.md).
+Ordenada por quien la lee. Si llegas por primera vez, empieza por el [README del repositorio](../README.md) y
+después por [arquitectura.md](tecnica/arquitectura.md).
 
-## Empezar
-
-| Documento | Qué responde |
-| --- | --- |
-| [../README.md](../README.md) | Qué es NeuroDatics, sus dos ediciones y cómo se arranca cada una. |
-| [arquitectura.md](arquitectura.md) | Cómo encajan backend, frontend y las dos ediciones; por dónde pasan los datos. |
-| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Cómo se verifica un cambio, qué contratos existen y qué reglas no se negocian. |
-| [CHANGELOG.md](CHANGELOG.md) | Qué cambió en la aplicación, en lenguaje de quien la usa. |
-
-## Cómo funciona cada parte
+## Para quien usa la aplicación
 
 | Documento | Qué responde |
 | --- | --- |
-| [UPLOAD_PIPELINE.md](UPLOAD_PIPELINE.md) | Qué hace una subida de experimento, en qué orden, qué garantiza y qué no. |
-| [FIXATION_V2.md](FIXATION_V2.md) | Cómo se detectan las fijaciones desde la mirada cruda y cómo se mide su duración. |
-| [SCREEN_TO_STIMULUS_TRANSFORM.md](SCREEN_TO_STIMULUS_TRANSFORM.md) | El contrato que lleva las coordenadas de pantalla al sistema del estímulo. |
-| [REPORTS.md](REPORTS.md) | Los informes en PDF: qué contienen y de dónde salen sus números. |
-| [comparar-participantes.md](comparar-participantes.md) | La vista de comparación entre participantes y qué significan sus estadísticas. |
-| [PRE_EXPERIMENTO.md](PRE_EXPERIMENTO.md) | Registrar un proyecto antes de tener datos: participantes, pantalla y cuestionarios. |
-| [frontend-ui.md](frontend-ui.md) | Convenciones de interfaz y cómo se comprueban. |
-| [rendimiento.md](rendimiento.md) | Qué se midió, qué decisiones quedaron en el código y qué no promete. |
+| [usuario/pre-experimento.md](usuario/pre-experimento.md) | Registrar un proyecto antes de tener datos: participantes, pantalla, cuestionarios y notas. |
+| [usuario/comparar-participantes.md](usuario/comparar-participantes.md) | La vista de comparación entre participantes y qué significan sus estadísticas. |
+| [CHANGELOG.md](CHANGELOG.md) | Qué cambió en cada versión. |
 
-## Ciencia de los datos de EEG
+## Cómo funciona por dentro
 
 | Documento | Qué responde |
 | --- | --- |
-| [eeg-audit/METHODS.md](eeg-audit/METHODS.md) | Cómo se auditaron las grabaciones de EEG y cómo se reproduce. |
-| [eeg-audit/FINDINGS.md](eeg-audit/FINDINGS.md) | Qué se encontró, qué se corrigió y con qué evidencia. |
-| [eeg-audit/ESCALAS-POR-GRABACION.md](eeg-audit/ESCALAS-POR-GRABACION.md) | Las escalas declaradas por grabación y sus consecuencias. |
+| [tecnica/arquitectura.md](tecnica/arquitectura.md) | Cómo encajan backend, frontend y las dos ediciones; por dónde pasan los datos. |
+| [tecnica/subida-de-experimentos.md](tecnica/subida-de-experimentos.md) | Qué hace una subida de experimento, en qué orden, qué garantiza y qué no. |
+| [tecnica/deteccion-de-fijaciones.md](tecnica/deteccion-de-fijaciones.md) | Cómo se detectan las fijaciones desde la mirada cruda y cómo se mide su duración. |
+| [tecnica/coordenadas-pantalla-estimulo.md](tecnica/coordenadas-pantalla-estimulo.md) | El contrato que lleva las coordenadas de pantalla al sistema del estímulo. |
+| [tecnica/informes.md](tecnica/informes.md) | Los informes en PDF: qué contienen y de dónde salen sus números. |
+| [tecnica/eeg/metodos.md](tecnica/eeg/metodos.md) | Cómo se calcula cada resultado de EEG y con qué límites. |
+| [tecnica/eeg/validacion.md](tecnica/eeg/validacion.md) | La validación contra grabaciones reales: qué se encontró y qué se corrigió. |
+| [tecnica/eeg/escalas-por-grabacion.md](tecnica/eeg/escalas-por-grabacion.md) | Las escalas declaradas por grabación y canal, y cómo se tratan. |
+| [tecnica/despliegue-en-red.md](tecnica/despliegue-en-red.md) | Poner la edición servidor en una red universitaria o corporativa. |
 
-`eeg-audit/reference-evidence.json` y `eeg-audit/diagnostics.png` son la evidencia
-de esa auditoría: los archivos de origen aparecen desreferenciados (`csv-01`…`csv-08`)
-y solo identificados por su SHA-256.
+La carpeta `tecnica/eeg/evidencia/` guarda la evidencia de la validación de EEG; los archivos de origen aparecen
+anonimizados (`csv-01`…`csv-08`) e identificados solo por su SHA-256.
 
-## Despliegue y entrega
+## Para quien trabaja en el código
 
 | Documento | Qué responde |
 | --- | --- |
-| [NETWORK_DEPLOYMENT.md](NETWORK_DEPLOYMENT.md) | Poner la edición servidor en una red universitaria o corporativa. |
-| [student/PLAN.md](student/PLAN.md) | Alcance y decisiones de NeuroDatics Estudiantes. |
-| [student/LAPTOP-TEST.md](student/LAPTOP-TEST.md) | La prueba en un portátil real, que sigue pendiente. |
-| [LICENCIAMIENTO.md](LICENCIAMIENTO.md) | Qué software de terceros se distribuye y qué falta decidir. |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Entorno, verificación, contratos y reglas que no se negocian. |
+| [desarrollo/interfaz.md](desarrollo/interfaz.md) | Convenciones de interfaz y cómo se comprueban. |
+| [../backend/README.md](../backend/README.md) | El backend: rutas, configuración y estructura. |
+| [../frontend/README.md](../frontend/README.md) | El frontend: estructura y comandos. |
+| [../backend/benchmarks/README.md](../backend/benchmarks/README.md) | Cómo medir el rendimiento de las piezas del backend. |
 
-La construcción y el empaquetado del paquete de estudiantes están en
-[../student/README.md](../student/README.md); la entrega de la edición servidor, en
-[../deployment/README.md](../deployment/README.md) y
-[../deployment/MANTENIMIENTO.md](../deployment/MANTENIMIENTO.md).
+## Entregas
 
-## Material explicativo
-
-`presentation/00-README.md` … `presentation/07-cheatsheet.md` son recorridos
-detallados del pipeline, el parseo del CSV, la detección de fijaciones, la
-transformación de coordenadas, los algoritmos de analítica y la pila técnica.
-Se escribieron como repaso para una sustentación, así que su registro es más
-coloquial que el del resto y alguna afirmación puntual quedó atrás respecto al
-código; [arquitectura.md](arquitectura.md) es la versión verificada y resumida.
-
-## Lo que ya no está aquí
-
-Las notas de las campañas de desarrollo (rendimiento, limpieza, auditoría, traspasos
-de entrega) salieron del repositorio el 12 de octubre de 2026. Siguen en el historial
-de Git bajo el tag `docs-archive-pre-release`:
-
-```powershell
-git show docs-archive-pre-release:docs/perf/ejecucion/RESULTADOS.md
-git show docs-archive-pre-release:docs/student/LEDGER.md
-```
-
-`docs/RefererenceExperiments/` contiene grabaciones reales de participantes y está en
-`.gitignore`: no viaja en el repositorio.
+- Edición servidor: [deployment/README.md](../deployment/README.md) (instalación en Windows) y
+  [deployment/MANTENIMIENTO.md](../deployment/MANTENIMIENTO.md) (cómo se genera la entrega).
+- NeuroDatics Estudiantes: [student/README.md](../student/README.md) (construcción y comprobaciones) y
+  [student/LEEME.txt](../student/LEEME.txt) (la guía del estudiante).
