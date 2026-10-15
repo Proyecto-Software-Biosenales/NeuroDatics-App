@@ -93,6 +93,14 @@ Primera entrega. Reúne todo el trabajo anterior a esta fecha; lo más relevante
 - Todo el texto en español llano, dicho una vez: sin jerga técnica, sin «(opcional)» ni ejemplos dentro de los
   campos. Las explicaciones viven en un icono de ayuda junto a cada etiqueta.
 
+### Paquete de estudiantes 1.0
+
+`NeuroDatics-Estudiantes-1.0-win64.zip` (252 MiB), SHA-256
+`ECB3A871E8623AF16E96BDEEC4613B2394FB2D6767EF85AB0D1E51E5C84380CC`. Pasó la autoprueba, las ocho etapas del
+PostgreSQL embebido, la adopción de un servidor huérfano, el servicio real por HTTP, el navegador (5 de 5) y dos
+arranques simultáneos, con 0 conexiones fuera de loopback y ningún proceso de PostgreSQL al salir. Sigue
+pendiente la prueba en un portátil de estudiante real.
+
 ### Acción necesaria al actualizar
 
 - Los proyectos cargados antes de las correcciones de EEG (septiembre de 2026) deben **volver a subirse** para
