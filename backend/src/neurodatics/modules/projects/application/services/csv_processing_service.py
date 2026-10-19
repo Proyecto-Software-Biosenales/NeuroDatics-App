@@ -16,6 +16,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, 
 import numpy as np
 import pandas as pd
 
+from neurodatics.shared.gaze_contract import GAZE_CLEAN_VERSION
 from neurodatics.shared.scenario_identity import resolve_scenario
 
 from .fixation_detection_service import (
@@ -197,6 +198,7 @@ class BlockMetadata:
     stimulus_transform_version: Optional[str] = None
     stimulus_transform_fingerprint: Optional[str] = None
     fixation_coordinate_space: Optional[str] = None
+    gaze_clean_version: int = GAZE_CLEAN_VERSION
     stimulus_placements_by_scenario: Dict[str, Dict[str, Any]] = field(
         default_factory=dict
     )

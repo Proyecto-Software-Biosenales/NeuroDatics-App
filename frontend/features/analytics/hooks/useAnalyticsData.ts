@@ -216,6 +216,11 @@ export const useAoiMetrics = makeAnalyticsHook(
   spatialArgs,
   "Error loading AOI metrics"
 )
+export const useScenarioTiming = makeAnalyticsHook(
+  "getScenarioTiming", AnalyticsApi.getScenarioTiming,
+  selectionArgs,
+  "Error loading scenario timing"
+)
 export const useFixationHistogram = makeAnalyticsHook(
   "getFixationHistogram", AnalyticsApi.getFixationHistogram,
   fixationArgs,

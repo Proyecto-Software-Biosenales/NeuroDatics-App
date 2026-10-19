@@ -178,7 +178,7 @@ class ScanpathAnalyticsService:
         Compute scanpath objectives and statistics from fixation data.
 
         Primary source: fix_x / fix_y fixation-event columns.
-        Fallback: cleaned gx / gy gaze columns (via PupilAnalyticsService._clean_gaze).
+        Fallback: the clean gaze columns written at ingestion.
 
         Returns dict with:
         - objectives: list of {id, cx, cy, duration_s, radius_norm, t_start, t_end, n_points}

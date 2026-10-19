@@ -46,9 +46,10 @@ movimiento y las ubicaciones distintas por participante.
    y toda la analítica espacial usan coordenadas locales del estímulo.
 7. Una coordenada fuera de `[0,1]`, o fuera del viewport visible, no es válida para la analítica del estímulo.
    **Nunca se recorta al borde.** Los intervalos fuera del estímulo son cortes que no se puentean.
-8. Sin metadatos de ubicación, el comportamiento normalizado a pantalla de siempre no cambia numéricamente, pero
-   la procedencia lo marca como paso heredado con aviso. La ausencia de metadatos nunca se interpreta ni se
-   guarda como pantalla completa.
+8. Sin metadatos de ubicación, el estímulo se trata como la pantalla y nada más cambia: la transformación es la
+   identidad y la procedencia lo marca como paso heredado con aviso. La validez de la mirada (pérdidas, su rampa,
+   rango) se aplica siempre, con o sin ubicación. La ausencia de metadatos nunca se interpreta ni se guarda como
+   pantalla completa.
 9. Los valores crudos `gx` y `gy` se conservan intactos en el Parquet para poder auditarlos; las columnas
    derivadas se añaden al lado.
 
@@ -182,7 +183,8 @@ valido        = par crudo válido y tiempo válido y dentro de la pantalla y en_
   navegador recorta una coordenada inválida al borde.
 - Un punto dentro de `[0,1]` pero fuera del viewport tampoco vale: ese contenido no se veía.
 - Se guarda un único motivo principal, con esta precedencia: `signal_missing`, `time_invalid`, `outside_screen`,
-  `outside_viewport`, `outside_stimulus`.
+  `outside_viewport`, `outside_stimulus`. Después de detectar fijaciones, una fila que seguía válida a menos de dos
+  periodos nativos de una `signal_missing` pasa a `signal_transition` (la rampa del exportador hacia `(0,0)`).
 
 `rejected_outside_count` cuenta las filas únicas cuyo par y tiempo eran válidos pero cuyo motivo es uno de los
 tres «fuera de»; `rejected_outside_by_reason` los desglosa y suma lo mismo. Ambos son `null` si no hay ubicación,
@@ -243,7 +245,8 @@ número ni el orden de las filas:
 | `gaze_x_stimulus_norm`, `gaze_y_stimulus_norm` | Resultado sin recortar de la ecuación; puede salir de `[0,1]`. |
 | `is_in_viewport`, `is_in_stimulus` | Máscaras espaciales. |
 | `gaze_invalid_reason` | Nulo si la fila es válida; si no, el motivo. |
-| `is_valid_gaze` | Elegibilidad combinada para el detector y la analítica. |
+| `is_valid_gaze` | Elegibilidad combinada para la analítica; el detector usa la misma sin `signal_transition`. |
+| `gaze_x_clean`, `gaze_y_clean` | Mirada limpia en porcentaje del estímulo (de la pantalla sin ubicación); `NaN` en los huecos. |
 | `stimulus_transform_status` | `applied` o `legacy_passthrough_missing`. |
 | `stimulus_transform_version`, `stimulus_transform_fingerprint` | Versión y huella cuando se aplicó. |
 | `screen_width_px`, `screen_height_px` | Tamaño de pantalla usado para normalizar. |
@@ -297,7 +300,8 @@ caché.
 ### 5.3 Regla para los consumidores
 
 Con `status=applied`, todo lo que mira al estímulo usa `gaze_*_stimulus_norm` o los eventos locales; `gx`/`gy`
-quedan solo para auditoría. La distancia del recorrido (`total_distance_px`) se mide en píxeles de la adquisición
+quedan solo para auditoría. La mirada por muestra (serie, punto, AOI, correlaciones, informe) lee `gaze_*_clean`
+y nunca vuelve a limpiar; un hueco llega al navegador como `null`. La distancia del recorrido (`total_distance_px`) se mide en píxeles de la adquisición
 y dentro de cada segmento del detector:
 
 ```text
@@ -321,8 +325,10 @@ Un Parquet antiguo, o un escenario subido sin ubicación, usa el paso heredado:
 }
 ```
 
-Los números no cambian, no se marca como pantalla completa, no se reescriben Parquet históricos y no se
-retransforman al leerlos con una geometría configurada después. Solo reprocesar desde el origen crudo convierte
+No se marca como pantalla completa, no se reescriben Parquet históricos y no se retransforman al leerlos con una
+geometría configurada después. Un Parquet anterior a `gaze_x_clean`/`gaze_y_clean` no tiene mirada por muestra:
+no hay cálculo de respaldo y la tarjeta del proyecto pide «Actualizar proyecto» (archivos sin
+`block_metadata.gaze_clean_version` vigente). Solo reprocesar desde el origen crudo convierte
 datos antiguos al espacio del estímulo. Una ubicación parcial, inválida o contradictoria es un error, nunca un
 paso heredado silencioso.
 

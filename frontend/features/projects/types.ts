@@ -13,6 +13,8 @@ export interface Project {
   participants?: number
   isPreExperiment?: boolean
   planningParticipantsCount?: number
+  /** Processed before the current gaze cleaning: the folder has to be uploaded again. */
+  needsUpdate?: boolean
 }
 
 /**

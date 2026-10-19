@@ -218,6 +218,8 @@ class ProjectResponse(BaseModel):
     participants_count: int = 0
     is_pre_experiment: bool = False
     planning_participants_count: int = 0
+    # Its data was processed before the current gaze cleaning; upload it again.
+    needs_update: bool = False
 
     class Config:
         from_attributes = True

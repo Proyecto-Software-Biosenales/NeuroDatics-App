@@ -222,3 +222,68 @@ for (const signal of ["gsr", "distance"] as const) {
     expect(errors).toEqual([])
   })
 }
+
+for (const [width, height] of [[1536, 730], [390, 844]]) {
+  test(`a gap in the gaze breaks the line and never counts as a value at ${width}px`, async ({ page }) => {
+    const errors: string[] = []
+    page.on("pageerror", error => errors.push(error.message))
+    await page.setViewportSize({ width, height })
+    await page.addInitScript(() => {
+      localStorage.setItem("neurodatics-auth-session", JSON.stringify({
+        user: { id: "signal-test", email: "signal@test.invalid", name: "Signal Test", authSource: "google-oauth" },
+        session: { accessToken: "signal-test-token", tokenType: "bearer", expiresAt: "2099-01-01T00:00:00.000Z" },
+      }))
+    })
+    // A lost eye: the samples between 1.0 s and 1.5 s are null, never (0, 0).
+    const time = Array.from({ length: 31 }, (_, index) => index / 10)
+    const gap = (t: number) => t > 1.0 && t < 1.5
+    await page.route("**/api/**", async route => {
+      const url = new URL(route.request().url())
+      const path = url.pathname.replace(/\/$/, "")
+      if (path === "/api/projects") {
+        await route.fulfill({ json: [{ id: "gaze-project", name: "Gaze Project", sensors: [{ sensor_type: "EyeTracker" }] }] })
+      } else if (path.endsWith("/analytics/participants")) {
+        await route.fulfill({ json: [{ participant_code: "P01", name: null, document: "P01" }] })
+      } else if (path.endsWith("/analytics/timeseries/gaze")) {
+        await route.fulfill({ json: {
+          time,
+          gx_clean: time.map(t => gap(t) ? null : 40 + 10 * Math.sin(t)),
+          gy_clean: time.map(t => gap(t) ? null : 60 - 10 * Math.sin(t)),
+          warnings: [],
+        } })
+      } else if (path.endsWith("/analytics/statistics/gaze")) {
+        await route.fulfill({ json: {
+          gx_mean: 46, gx_min: 40, gx_max: 50, gx_std: 3, gx_median: 47, gx_baseline: 45,
+          gy_mean: 54, gy_min: 50, gy_max: 60, gy_std: 3, gy_median: 53, gy_baseline: 55, warnings: [],
+        } })
+      } else if (path.includes("/analytics/timeseries/")) {
+        await route.fulfill({ json: { time: [], left: [], right: [], average: [], smooth_left: [], smooth_right: [], distance_cm: [] } })
+      } else if (path.includes("/analytics/statistics/")) {
+        await route.fulfill({ json: {} })
+      } else if (path.endsWith("/analytics/gaze-at")) {
+        const t = Number(url.searchParams.get("t_s"))
+        await route.fulfill({ json: { requested_time_s: t, nearest_time_s: t, scenario: null, gx: null, gy: null, scenario_file_id: null } })
+      } else {
+        await route.fulfill({ json: path === "/api/settings/screen"
+          ? { screen: { width_px: 1280, height_px: 1024, width_cm: null, height_cm: null }, confirmed: true }
+          : path.endsWith("/analytics/aois") ? { aois: [] } : [] })
+      }
+    })
+
+    await page.goto("/dashboard")
+    await page.getByRole("tab", { name: "Punto de mirada", exact: true }).click()
+    await expect(page.locator(".analytics-chart-plot-frame")).toBeVisible()
+    // Each series is drawn as two pieces, one on each side of the gap.
+    const segments = await page.locator(".recharts-line-curve").evaluateAll(paths =>
+      paths.map(path => (path.getAttribute("d")?.match(/M/g) ?? []).length)
+    )
+    expect(segments).toEqual([2, 2])
+    const xRow = page.getByRole("row").filter({ has: page.getByRole("cell", { name: "Mirada X", exact: true }) }).getByRole("cell")
+    await expect(xRow.nth(1)).toHaveText(String(time.filter(t => !gap(t)).length))
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    // Let the line animation finish before the picture.
+    await page.waitForTimeout(1500)
+    await page.screenshot({ path: `../output/mirada-invalida/punto-de-mirada-${width}.png`, fullPage: true })
+    expect(errors).toEqual([])
+  })
+}

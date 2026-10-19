@@ -93,8 +93,8 @@ export interface GazeAtData extends StimulusCoordinateResponse {
 
 export interface GazeTimeseriesData extends StimulusCoordinateResponse {
   time: number[]
-  gx_clean: number[]
-  gy_clean: number[]
+  gx_clean: (number | null)[]
+  gy_clean: (number | null)[]
 }
 
 export interface GazeStatistics extends StimulusCoordinateResponse {

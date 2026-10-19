@@ -45,6 +45,8 @@ def _applied_gaze_frame() -> pd.DataFrame:
             "gy": [80.0, 50.0, 80.0],
             "gaze_x_stimulus_norm": [0.1, -0.1, 0.2],
             "gaze_y_stimulus_norm": [0.5, 0.5, 0.6],
+            "gaze_x_clean": [10.0, np.nan, 20.0],
+            "gaze_y_clean": [50.0, np.nan, 60.0],
             "is_valid_gaze": [True, False, True],
             "gaze_invalid_reason": [None, "outside_stimulus", None],
             **_applied_columns(3),
@@ -74,7 +76,7 @@ def _v2_frame_with_off_stimulus_boundary() -> pd.DataFrame:
     )
 
 
-def test_applied_gaze_uses_local_columns_and_drops_outside_rows_without_clipping():
+def test_applied_gaze_reads_clean_columns_and_keeps_outside_rows_as_gaps():
     frame = _applied_gaze_frame()
     raw_before = frame[["gx", "gy"]].copy(deep=True)
 
@@ -82,9 +84,9 @@ def test_applied_gaze_uses_local_columns_and_drops_outside_rows_without_clipping
     statistics = PupilAnalyticsService.compute_gaze_statistics(frame, "A")
     outside_point = PupilAnalyticsService.find_gaze_at(frame, 0.1, scenario="A")
 
-    assert timeseries["time"] == [0.0, 0.2]
-    assert timeseries["gx_clean"] == [10.0, 20.0]
-    assert timeseries["gy_clean"] == [50.0, 60.0]
+    assert timeseries["time"] == [0.0, 0.1, 0.2]
+    assert timeseries["gx_clean"] == [10.0, None, 20.0]
+    assert timeseries["gy_clean"] == [50.0, None, 60.0]
     assert statistics["gx_min"] == 10.0
     assert statistics["gx_max"] == 20.0
     assert outside_point["gx"] is None
@@ -98,7 +100,7 @@ def test_applied_gaze_uses_local_columns_and_drops_outside_rows_without_clipping
     pd.testing.assert_frame_equal(frame[["gx", "gy"]], raw_before)
 
 
-def test_legacy_gaze_is_numerically_unchanged_and_explicitly_warned():
+def test_parquet_without_clean_gaze_yields_no_gaze_and_is_warned():
     frame = pd.DataFrame(
         {
             "time": [0.0, 0.1],
@@ -110,8 +112,8 @@ def test_legacy_gaze_is_numerically_unchanged_and_explicitly_warned():
 
     result = PupilAnalyticsService.compute_gaze_timeseries(frame, "A")
 
-    assert result["gx_clean"] == [25.0, 25.0]
-    assert result["gy_clean"] == [75.0, 75.0]
+    assert result["gx_clean"] == []
+    assert result["gy_clean"] == []
     assert result["coordinate_transform"]["status"] == "legacy_passthrough_missing"
     assert result["coordinate_transform"]["applied"] is False
     assert result["coordinate_transform"]["contract_fingerprint"] is None
@@ -130,6 +132,8 @@ def test_all_scenario_provenance_reports_applied_and_legacy_as_mixed():
             "gy": [90.0, 70.0],
             "gaze_x_stimulus_norm": [0.1, np.nan],
             "gaze_y_stimulus_norm": [0.2, np.nan],
+            "gaze_x_clean": [10.0, 80.0],
+            "gaze_y_clean": [20.0, 70.0],
             "is_valid_gaze": [True, True],
             "gaze_invalid_reason": [None, None],
             "stimulus_transform_status": ["applied", "legacy_passthrough_missing"],
@@ -173,7 +177,7 @@ def test_off_stimulus_rows_split_events_and_scanpath_pixel_distance():
     assert metadata["coordinate_transform"]["contract_fingerprint"] == FINGERPRINT_A
 
 
-def test_aoi_sample_metrics_use_valid_local_gaze_not_raw_screen_gaze():
+def test_aoi_sample_metrics_use_clean_local_gaze_not_raw_screen_gaze():
     samples = 40
     outside_position = 10
     local_x = (
@@ -193,6 +197,8 @@ def test_aoi_sample_metrics_use_valid_local_gaze_not_raw_screen_gaze():
             "gy": [50.0] * samples,
             "gaze_x_stimulus_norm": local_x,
             "gaze_y_stimulus_norm": [0.5] * samples,
+            "gaze_x_clean": [value * 100.0 if value >= 0 else np.nan for value in local_x],
+            "gaze_y_clean": [50.0] * samples,
             "is_valid_gaze": valid,
             "gaze_invalid_reason": reasons,
             "fix_x": [value * 100.0 for value in local_x],

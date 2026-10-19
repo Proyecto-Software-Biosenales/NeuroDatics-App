@@ -38,7 +38,8 @@ def numeric_columns(value, prefix=""):
         if isinstance(value[0], dict):
             for index, item in enumerate(value):
                 output.update(numeric_columns(item, f"{prefix}.{index}"))
-        elif all(isinstance(item, (int, float, list)) for item in value):
+        # A gap arrives as None and compares as NaN instead of dropping the series.
+        elif all(item is None or isinstance(item, (int, float, list)) for item in value):
             array = np.asarray(value, dtype=float)
             output[prefix] = array.reshape(-1)
             output[f"{prefix}.shape"] = np.asarray(array.shape, dtype=float)

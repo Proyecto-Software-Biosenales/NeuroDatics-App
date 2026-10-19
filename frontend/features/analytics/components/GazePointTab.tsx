@@ -77,8 +77,9 @@ interface GazePointTabProps {
 
 interface LinePoint {
   time: number
-  gx_clean: number
-  gy_clean: number
+  // null is a gap in the gaze; the line breaks there.
+  gx_clean: number | null
+  gy_clean: number | null
 }
 
 interface GazeTooltipPayloadEntry {
@@ -196,7 +197,7 @@ export function GazePointTab({
     let minT = chartData[0].time
     for (const pt of chartData) {
       const v = pt.gx_clean
-      if (v < minVal) {
+      if (v != null && v < minVal) {
         minVal = v
         minT = pt.time
       }
@@ -210,7 +211,7 @@ export function GazePointTab({
     let maxT = chartData[0].time
     for (const pt of chartData) {
       const v = pt.gx_clean
-      if (v > maxVal) {
+      if (v != null && v > maxVal) {
         maxVal = v
         maxT = pt.time
       }
@@ -233,9 +234,11 @@ export function GazePointTab({
   }, [selectedTime, chartData])
 
   const tableRows = useMemo<StatRow[]>(() => {
+    const countX = chartData.filter((pt) => pt.gx_clean != null).length
+    const countY = chartData.filter((pt) => pt.gy_clean != null).length
     const gazeXRow: StatRow = {
       serie: "Mirada X",
-      count: chartData.length > 0 ? chartData.length : null,
+      count: countX > 0 ? countX : null,
       baseline: stats?.gx_baseline ?? null,
       std: stats?.gx_std ?? null,
       median: stats?.gx_median ?? null,
@@ -250,7 +253,7 @@ export function GazePointTab({
     }
     const gazeYRow: StatRow = {
       serie: "Mirada Y",
-      count: chartData.length > 0 ? chartData.length : null,
+      count: countY > 0 ? countY : null,
       baseline: stats?.gy_baseline ?? null,
       std: stats?.gy_std ?? null,
       median: stats?.gy_median ?? null,

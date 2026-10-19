@@ -2,9 +2,11 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+from neurodatics.shared.gaze_contract import GAZE_CLEAN_VERSION, GAZE_CLEAN_VERSION_KEY
 
 from ...scenaries.domain.entities import AOI, Scenaries
 from ...participants.domain.entities import Participant
@@ -75,6 +77,20 @@ class SQLProjectRepository(ProjectRepository):
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def projects_needing_update(self, project_ids: List[UUID]) -> set[UUID]:
+        """Projects with a live Parquet whose gaze was not cleaned by this version."""
+        if not project_ids:
+            return set()
+        version = ProjectFile.file_metadata["block_metadata"][GAZE_CLEAN_VERSION_KEY].as_integer()
+        stmt = select(ProjectFile.project_id).where(
+            ProjectFile.project_id.in_(project_ids),
+            ProjectFile.kind == "processed_parquet",
+            ProjectFile.deleted_at.is_(None),
+            or_(version.is_(None), version != GAZE_CLEAN_VERSION),
+        ).distinct()
+        result = await self.session.execute(stmt)
+        return set(result.scalars().all())
 
     async def get_by_owner_and_name(self, owner_id: UUID, name: str) -> Optional[Project]:
         stmt = select(Project).where(

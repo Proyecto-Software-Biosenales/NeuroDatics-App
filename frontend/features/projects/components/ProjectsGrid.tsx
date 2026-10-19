@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Calendar, Clock3, Folder, Users, MoreVertical, Edit, Trash2, Archive, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { Card } from "@/components/ui/card"
+import { FieldHint } from "@/components/FieldHint"
 import { SensorBadge } from "./SensorBadge"
 import { DeleteProjectDialog } from "./DeleteProjectDialog"
 import { ViewProjectDialog } from "./ViewProjectDialog"
@@ -259,6 +260,15 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
               <span className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />
                 Carpeta sin procesar
+              </span>
+            )}
+            {project.needsUpdate && (
+              <span className="flex items-center gap-2 text-xs font-medium text-red-600 dark:text-red-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
+                Actualizar proyecto
+                <FieldHint label="Por qué actualizar el proyecto">
+                  Se procesó con una versión anterior y no muestra el punto de mirada. Créalo de nuevo con la misma carpeta.
+                </FieldHint>
               </span>
             )}
           </div>

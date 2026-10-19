@@ -8,6 +8,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from ...domain.coordinate_transform import hard_stimulus_boundary_mask, valid_stimulus_gaze_mask
+from neurodatics.shared.gaze_contract import GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN
 from .pupil_analytics_service import PupilAnalyticsService as PupilAnalyticsService
 
 
@@ -291,9 +292,9 @@ def _legacy_events(
         x_norm = np.full(len(working), np.nan, dtype=float)
         y_norm = np.full(len(working), np.nan, dtype=float)
 
-    if not valid.any() and {"gx", "gy"}.issubset(working.columns):
+    if not valid.any() and {GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN}.issubset(working.columns):
         source = "legacy_gaze_fallback"
-        working, _ = PupilAnalyticsService._gaze_in_output_space(working)
+        working = PupilAnalyticsService._with_clean_gaze(working)
         x_norm = pd.to_numeric(working["gx_clean"], errors="coerce").to_numpy(dtype=float) / 100.0
         y_norm = pd.to_numeric(working["gy_clean"], errors="coerce").to_numpy(dtype=float) / 100.0
         valid = (

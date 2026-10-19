@@ -41,6 +41,8 @@ def _overlapping_time_df():
             "scenario": ["Scenario A", "ScenarioB.mp4", "Scenario A", "ScenarioB.mp4"],
             "gx": [10.0, 90.0, 10.0, 90.0],
             "gy": [20.0, 80.0, 20.0, 80.0],
+            "gaze_x_clean": [10.0, 90.0, 10.0, 90.0],
+            "gaze_y_clean": [20.0, 80.0, 20.0, 80.0],
         }
     )
 
@@ -65,6 +67,8 @@ def test_find_gaze_at_uses_cleaned_gaze_at_the_selected_time():
             "scenario": ["Scenario A"] * 5,
             "gx": [40.0, 40.0, None, 40.0, 40.0],
             "gy": [60.0, 60.0, None, 60.0, 60.0],
+            "gaze_x_clean": [40.0, 40.0, 40.5, 40.0, 40.0],
+            "gaze_y_clean": [60.0, 60.0, 60.5, 60.0, 60.0],
         }
     )
     series = PupilAnalyticsService.compute_gaze_timeseries(
@@ -174,7 +178,7 @@ async def test_gaze_at_without_scenario_preserves_unscoped_cache_contract(monkey
             pass
 
         async def read_from_cache_only(self, project_id, participant_code, generation=None):
-            return pd.DataFrame({"time": [0.5], "gx": [25.0], "gy": [75.0]})
+            return pd.DataFrame({"time": [0.5], "gaze_x_clean": [25.0], "gaze_y_clean": [75.0]})
 
     monkeypatch.setattr(routes, "_verify_ownership", allow_ownership)
     monkeypatch.setattr(routes, "_resolve_scenary_for_analytics", should_not_resolve)
@@ -193,7 +197,7 @@ async def test_gaze_at_without_scenario_preserves_unscoped_cache_contract(monkey
     assert response.gx == 25.0
     assert response.gy == 75.0
     assert response.scenario is None
-    frame = pd.DataFrame({"time": [0.5], "gx": [25.0], "gy": [75.0]})
+    frame = pd.DataFrame({"time": [0.5], "gaze_x_clean": [25.0], "gaze_y_clean": [75.0]})
     token = transform_cache_token(frame)
     assert cache.key_args == (
         PROJECT_ID,
@@ -235,8 +239,8 @@ async def test_gaze_at_without_scenario_resolves_stimulus_for_global_time(
                 {
                     "time": [3.0, 20.0, 25.0],
                     "scenario": ["Scenario A", "Scenario B", "Scenario B"],
-                    "gx": [10.0, 82.0, 82.0],
-                    "gy": [20.0, 62.0, 62.0],
+                    "gaze_x_clean": [10.0, 82.0, 82.0],
+                    "gaze_y_clean": [20.0, 62.0, 62.0],
                 }
             )
 
@@ -270,8 +274,8 @@ async def test_gaze_at_without_scenario_resolves_stimulus_for_global_time(
         {
             "time": [3.0, 20.0, 25.0],
             "scenario": ["Scenario A", "Scenario B", "Scenario B"],
-            "gx": [10.0, 82.0, 82.0],
-            "gy": [20.0, 62.0, 62.0],
+            "gaze_x_clean": [10.0, 82.0, 82.0],
+            "gaze_y_clean": [20.0, 62.0, 62.0],
         }
     )
     token = transform_cache_token(frame)

@@ -91,8 +91,8 @@ class GazeAtResponse(BaseModel):
 
 class GazeTimeseriesResponse(BaseModel):
     time: List[float]
-    gx_clean: List[float]
-    gy_clean: List[float]
+    gx_clean: List[Optional[float]]
+    gy_clean: List[Optional[float]]
     warnings: List[str] = []
     coordinate_transform: Optional[CoordinateTransformProvenance] = None
 

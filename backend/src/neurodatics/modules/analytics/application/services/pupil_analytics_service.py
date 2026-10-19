@@ -3,13 +3,8 @@
 from typing import Optional
 import numpy as np
 import pandas as pd
-from ...domain.coordinate_transform import (
-    LOCAL_X_COLUMN,
-    LOCAL_Y_COLUMN,
-    applied_transform_mask,
-    attach_transform_provenance,
-    valid_stimulus_gaze_mask,
-)
+from ...domain.coordinate_transform import attach_transform_provenance
+from neurodatics.shared.gaze_contract import GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN
 from neurodatics.shared.scenario_identity import is_all_scenarios
 from .numeric_helpers import _display_indices
 from .numeric_helpers import _filter_time_window
@@ -30,6 +25,19 @@ def _nearest_sorted_gaze_index(times: np.ndarray, t_s: float) -> int:
     if right < len(times) and abs(times[right] - t_s) < abs(times[left] - t_s):
         return right
     return int(np.searchsorted(times, times[left], side="left"))
+
+
+def _positive_pupils(df: pd.DataFrame) -> pd.DataFrame:
+    """A diameter at or below zero is a lost eye, not a measurement."""
+    df = df.copy()
+    for column in ("lx_pupil", "rx_pupil"):
+        values = pd.to_numeric(df[column], errors="coerce")
+        df[column] = values.where(values > 0)
+    return df
+
+
+def _optional_list(values: np.ndarray) -> list:
+    return [round(float(v), 4) if np.isfinite(v) else None for v in values]
 
 
 class PupilAnalyticsService:
@@ -62,7 +70,7 @@ class PupilAnalyticsService:
                     "smooth_right": [],
                 }
 
-        df = _filter_time_window(df, start_time_s, end_time_s)
+        df = _positive_pupils(_filter_time_window(df, start_time_s, end_time_s))
 
         mask = df["lx_pupil"].notna() | df["rx_pupil"].notna()
         df = df.loc[mask].sort_values("time").reset_index(drop=True)
@@ -134,7 +142,7 @@ class PupilAnalyticsService:
         if "lx_pupil" not in df.columns or "rx_pupil" not in df.columns:
             return _empty
 
-        df = _filter_time_window(df, start_time_s, end_time_s)
+        df = _positive_pupils(_filter_time_window(df, start_time_s, end_time_s))
 
         # Keep rows where at least one eye is valid, sort by time (match timeseries pipeline)
         mask = df["lx_pupil"].notna() | df["rx_pupil"].notna()
@@ -243,55 +251,15 @@ class PupilAnalyticsService:
         if not positions.size:
             return _empty(df.iloc[0:0])
         times = numeric_times.to_numpy()[positions]
-        # Guard the importer ordering assumption. Duplicate times also take the
-        # fallback because the historical pandas sort decides their row order.
-        ordered = bool(np.all(times[1:] > times[:-1]))
-
-        # Resolve the scenario from the original nearest row before cleaning.
-        # For an unscoped lookup this prevents interpolation/smoothing across a
-        # boundary when two scenarios contain overlapping or adjacent times.
-        raw_idx = (
-            _nearest_sorted_gaze_index(times, t_s)
-            if ordered else int(pd.Series(times).sub(t_s).abs().idxmin())
-        )
-        raw_sample = df.iloc[[positions[raw_idx]]]
-        raw_row = raw_sample.iloc[0]
-        has_scenario = "scenario" in df.columns and pd.notna(
-            raw_row.get("scenario")
-        )
-        raw_scenario = str(raw_row["scenario"]).strip() if has_scenario else None
-        if ordered and applied_transform_mask(raw_sample).any():
-            # Applied coordinates depend only on this row. With unique sorted
-            # times, narrowing to its scenario cannot change the nearest sample.
-            clean = raw_sample.copy()
-            clean["time"] = [times[raw_idx]]
-            idx = 0
-        else:
-            if raw_scenario and "scenario" in df.columns:
-                values = df["scenario"].astype(str).iloc[positions]
-                matching = [
-                    value for value in pd.unique(values)
-                    if isinstance(value, str) and value.strip() == raw_scenario
-                ]
-                mask = values.isin(matching).to_numpy()
-                positions, times = positions[mask], times[mask]
-            if not ordered:
-                order = pd.Series(times).sort_values().index.to_numpy()
-                positions, times = positions[order], times[order]
-            idx = _nearest_sorted_gaze_index(times, t_s)
-            selected = df.iloc[[positions[idx]]]
-            if applied_transform_mask(selected).any():
-                clean = selected.copy()
-                clean["time"] = [times[idx]]
-                idx = 0
-            else:
-                # Legacy normalization, interpolation and smoothing require the
-                # entire scenario, including its original sampling frequency.
-                clean = df.iloc[positions].copy()
-                clean["time"] = times
-        clean = clean.reset_index(drop=True)
-        clean, _ = PupilAnalyticsService._gaze_in_output_space(clean)
-        row = clean.loc[idx]
+        # Guard the importer ordering assumption; among duplicate times the
+        # first row wins.
+        if not bool(np.all(times[1:] > times[:-1])):
+            order = np.argsort(times, kind="stable")
+            positions, times = positions[order], times[order]
+        idx = _nearest_sorted_gaze_index(times, t_s)
+        clean = PupilAnalyticsService._with_clean_gaze(df.iloc[[positions[idx]]])
+        clean["time"] = [times[idx]]
+        row = clean.iloc[0]
 
         nearest_time = float(row["time"]) if pd.notna(row.get("time")) else 0.0
         scenario = (
@@ -323,7 +291,7 @@ class PupilAnalyticsService:
             "scenario": scenario,
             "gx": round(gx, 2) if gx is not None else None,
             "gy": round(gy, 2) if gy is not None else None,
-        }, clean.loc[[idx]])
+        }, clean)
 
     @staticmethod
     def compute_scenario_relative_time(
@@ -361,109 +329,18 @@ class PupilAnalyticsService:
         return round(relative_time, 4)
 
     @staticmethod
-    def _clean_gaze(df: pd.DataFrame) -> pd.DataFrame:
-        """Apply gaze cleaning pipeline matching the notebook clean_gaze():
-        normalize to %, invalidate out-of-range/blinks/speed, interpolate, smooth."""
-        if "gx" not in df.columns or "gy" not in df.columns:
-            return df
+    def _with_clean_gaze(df: pd.DataFrame) -> pd.DataFrame:
+        """``gx_clean``/``gy_clean`` in percent, as ingestion cleaned them.
 
-        gx = pd.to_numeric(df["gx"], errors="coerce")
-        gy = pd.to_numeric(df["gy"], errors="coerce")
-        # Normalize to percentage if raw values are in 0..1 range
-        if gx.abs().max(skipna=True) <= 1.0:
-            gx = gx * 100.0
-        if gy.abs().max(skipna=True) <= 1.0:
-            gy = gy * 100.0
-
-        t = df["time"].to_numpy(dtype=float) if "time" in df.columns else np.arange(len(df), dtype=float)
-        dt = np.diff(t)
-        dt = dt[(dt > 0) & np.isfinite(dt)]
-        fs = float(1.0 / np.median(dt)) if dt.size else 60.0
-
-        # 1) Invalidate out-of-range gaze
-        bad = (gx < 0) | (gx > 100) | (gy < 0) | (gy > 100)
-
-        # 2) Invalidate blinks (pupil <= 0 or NaN)
-        for pup in ("lx_pupil", "rx_pupil"):
-            if pup in df.columns:
-                pupil = pd.to_numeric(df[pup], errors="coerce")
-                bad = bad | pupil.isna() | (pupil <= 0)
-
-        # 3) Invalidate unrealistic speed (> 1500 %/s)
-        vx = gx.diff() * fs
-        vy = gy.diff() * fs
-        speed = (vx ** 2 + vy ** 2) ** 0.5
-        bad = bad | (speed > 1500.0)
-
-        gx_clean = gx.copy()
-        gy_clean = gy.copy()
-        gx_clean[bad] = np.nan
-        gy_clean[bad] = np.nan
-
-        # 4) Interpolate short gaps (up to 150 ms)
-        max_gap = max(1, int(round(0.150 * fs)))
-        gx_clean = gx_clean.interpolate(limit=max_gap, limit_direction="both")
-        gy_clean = gy_clean.interpolate(limit=max_gap, limit_direction="both")
-
-        # 5) Median (60 ms) then mean (40 ms) smoothing
-        w_med = max(3, int(round(0.060 * fs)))
-        w_mean = max(3, int(round(0.040 * fs)))
-        gx_clean = (
-            gx_clean.rolling(w_med, center=True, min_periods=1).median()
-            .rolling(w_mean, center=True, min_periods=1).mean()
-        )
-        gy_clean = (
-            gy_clean.rolling(w_med, center=True, min_periods=1).median()
-            .rolling(w_mean, center=True, min_periods=1).mean()
-        )
-
-        df = df.copy()
-        df["gx_clean"] = gx_clean
-        df["gy_clean"] = gy_clean
-        return df
-
-    @staticmethod
-    def _gaze_in_output_space(df: pd.DataFrame) -> tuple[pd.DataFrame, bool]:
-        """Prepare gaze percentages without bridging an off-stimulus row.
-
-        Existing/legacy rows retain the historical cleaning path.  Rows whose
-        persisted transform status is ``applied`` use the authoritative local
-        derivatives and are present only when the ingestion-time eligibility
-        mask and the unclipped ``[0,1]`` bounds both pass.
+        A Parquet ingested before the cleaning existed has no clean columns and
+        yields no gaze: its project has to be uploaded again.
         """
-
-        applied = applied_transform_mask(df)
-        if not applied.any():
-            return PupilAnalyticsService._clean_gaze(df), False
-
         output = df.copy()
-        output["gx_clean"] = np.nan
-        output["gy_clean"] = np.nan
-
-        legacy = ~applied
-        if legacy.any() and {"gx", "gy"}.issubset(output.columns):
-            # Do not smooth one scenario into another in a mixed all-scenario
-            # response. This is numerically identical to the old path for a
-            # concrete legacy scope.
-            if "scenario" in output.columns:
-                groups = output.loc[legacy].groupby("scenario", sort=False, dropna=False)
-                legacy_frames = [
-                    PupilAnalyticsService._clean_gaze(group.copy())
-                    for _, group in groups
-                ]
-                legacy_clean = pd.concat(legacy_frames).sort_index() if legacy_frames else output.iloc[0:0]
-            else:
-                legacy_clean = PupilAnalyticsService._clean_gaze(output.loc[legacy].copy())
-            output.loc[legacy_clean.index, "gx_clean"] = legacy_clean["gx_clean"]
-            output.loc[legacy_clean.index, "gy_clean"] = legacy_clean["gy_clean"]
-
-        eligible = valid_stimulus_gaze_mask(output) & applied
-        if LOCAL_X_COLUMN in output.columns and LOCAL_Y_COLUMN in output.columns:
-            local_x = pd.to_numeric(output[LOCAL_X_COLUMN], errors="coerce") * 100.0
-            local_y = pd.to_numeric(output[LOCAL_Y_COLUMN], errors="coerce") * 100.0
-            output.loc[eligible, "gx_clean"] = local_x.loc[eligible]
-            output.loc[eligible, "gy_clean"] = local_y.loc[eligible]
-        return output, True
+        for target, column in (("gx_clean", GAZE_X_CLEAN_COLUMN), ("gy_clean", GAZE_Y_CLEAN_COLUMN)):
+            output[target] = (
+                pd.to_numeric(df[column], errors="coerce") if column in df.columns else np.nan
+            )
+        return output
 
     @staticmethod
     def compute_gaze_timeseries(
@@ -482,36 +359,23 @@ class PupilAnalyticsService:
             df,
         )
 
-        has_raw = {"gx", "gy"}.issubset(df.columns)
-        has_local = {LOCAL_X_COLUMN, LOCAL_Y_COLUMN}.issubset(df.columns)
-        if "time" not in df.columns or not (has_raw or has_local):
+        if "time" not in df.columns or not {GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN}.issubset(df.columns):
             return _empty
 
         df = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True)
         if df.empty:
             return _empty
 
-        scoped_for_provenance = df.copy()
-        df, has_applied = PupilAnalyticsService._gaze_in_output_space(df)
-        if has_applied:
-            # Applied outside rows stay absent. They must not become zero-valued
-            # points or be interpolated back into the trace.
-            applied = applied_transform_mask(df)
-            eligible = (~applied) | valid_stimulus_gaze_mask(df)
-            df = df.loc[eligible].reset_index(drop=True)
-
-        def _safe_list(arr: np.ndarray) -> list:
-            return [0.0 if not np.isfinite(float(v)) else round(float(v), 4) for v in arr]
-
-        # The envelope reads the values as drawn: non-finite samples become 0.
-        gx_display = np.nan_to_num(df["gx_clean"].to_numpy(dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
-        gy_display = np.nan_to_num(df["gy_clean"].to_numpy(dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
-        indices = _display_indices(len(df), (gx_display, gy_display), max_points, decimation)
+        clean = PupilAnalyticsService._with_clean_gaze(df)
+        gx = clean["gx_clean"].to_numpy(dtype=float)
+        gy = clean["gy_clean"].to_numpy(dtype=float)
+        # Gaps stay null so the chart breaks the line instead of drawing a zero.
+        indices = _display_indices(len(df), (gx, gy), max_points, decimation)
         return attach_transform_provenance({
             "time": df["time"].to_numpy(dtype=float)[indices].tolist(),
-            "gx_clean": _safe_list(df["gx_clean"].to_numpy(dtype=float)[indices]),
-            "gy_clean": _safe_list(df["gy_clean"].to_numpy(dtype=float)[indices]),
-        }, scoped_for_provenance)
+            "gx_clean": _optional_list(gx[indices]),
+            "gy_clean": _optional_list(gy[indices]),
+        }, df)
 
     @staticmethod
     def compute_gaze_statistics(
@@ -530,17 +394,15 @@ class PupilAnalyticsService:
             "gy_std": 0.0, "gy_median": 0.0, "gy_baseline": 0.0,
         }, df)
 
-        has_raw = {"gx", "gy"}.issubset(df.columns)
-        has_local = {LOCAL_X_COLUMN, LOCAL_Y_COLUMN}.issubset(df.columns)
-        if "time" not in df.columns or not (has_raw or has_local):
+        if "time" not in df.columns or not {GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN}.issubset(df.columns):
             return _empty
 
         df = df.dropna(subset=["time"]).sort_values("time").reset_index(drop=True)
         if df.empty:
             return _empty
 
-        scoped_for_provenance = df.copy()
-        df, _ = PupilAnalyticsService._gaze_in_output_space(df)
+        scoped_for_provenance = df
+        df = PupilAnalyticsService._with_clean_gaze(df)
 
         def _axis_stats(arr: np.ndarray) -> dict:
             finite = arr[np.isfinite(arr)]

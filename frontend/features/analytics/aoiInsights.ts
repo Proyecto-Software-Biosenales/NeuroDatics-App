@@ -386,8 +386,7 @@ export function timeTicks(spanS: number, targetTicks = 6): number[] {
 /**
  * Signal extremes computed from the time series, for API instances that do
  * not send `events` yet. Mirrors `AoiAnalyticsService._key_events`: the gaze
- * position at the extreme decides the AOI. The gaze series writes a lost
- * sample as (0, 0), which is skipped instead of being reported as an extreme.
+ * position at the extreme decides the AOI. A lost gaze sample arrives as null.
  */
 export function deriveKeyEvents(
   series: {
@@ -401,11 +400,11 @@ export function deriveKeyEvents(
   const gazeValid = (index: number) => {
     const gx = gaze?.gx_clean[index]
     const gy = gaze?.gy_clean[index]
-    return isFiniteNumber(gx) && isFiniteNumber(gy) && !(gx === 0 && gy === 0)
+    return isFiniteNumber(gx) && isFiniteNumber(gy)
   }
   const gazeAt = (index: number) => (
     gazeValid(index)
-      ? { gx: gaze!.gx_clean[index], gy: gaze!.gy_clean[index] }
+      ? { gx: gaze!.gx_clean[index] as number, gy: gaze!.gy_clean[index] as number }
       : { gx: null, gy: null }
   )
   const nearestGaze = (timeS: number) => {

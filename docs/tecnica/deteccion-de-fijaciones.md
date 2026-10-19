@@ -153,6 +153,21 @@ Pares negativos, el sentinela del proveedor, valores fuera de pantalla, `NaN` y
 tiempos inválidos no pueden formar parte del soporte válido de un evento. La
 columna `is_valid_gaze` hace explícita esta máscara.
 
+El Tobii escribe la pérdida del ojo como `(0, 0)` y el exportador añade una rampa
+lineal hacia 0 de un periodo nativo a cada lado. Tras detectar, las filas válidas a
+menos de dos periodos de `fixation_effective_rate_hz` de una fila
+`signal_missing` del mismo escenario (≈ 33 ms a 60 Hz) pasan a `is_valid_gaze =
+False` con el motivo `signal_transition`. La detección usa la máscara sin ese
+margen; el margen solo afecta a la analítica de muestras (mirada, AOI). Si la rampa
+parte fijaciones queda por verificar aparte.
+
+Con esa máscara la ingesta guarda la mirada limpia de cada escenario en
+`gaze_x_clean` y `gaze_y_clean` (porcentaje del estímulo, o de la pantalla sin
+ubicación): rango, parpadeo por pupila y velocidad, interpolación de hasta 150 ms
+desde cada lado del hueco, mediana de 60 ms y media de 40 ms. Lo que sigue vacío y
+las filas fuera del estímulo quedan `NaN`. La analítica solo lee esas columnas, así
+que una muestra vale lo mismo en cualquier ventana de tiempo.
+
 Una pérdida interna de hasta 75 ms puede puentearse solo para decidir continuidad
 si los extremos son espacialmente compatibles. La interpolación existe únicamente
 en la vista de clasificación. Las filas perdidas siguen siendo inválidas, no
@@ -228,7 +243,8 @@ como mínimo:
 - `fixation_segment_id`/`segment_id`: frontera temporal y de escenario;
 - `fixation_method`/`method` y `fixation_detector_version`/`version`;
 - conteos de detector y fuente, tasa efectiva, unidad, fuente y advertencias;
-- `is_valid_gaze`.
+- `is_valid_gaze`;
+- `gaze_x_clean`, `gaze_y_clean`.
 
 Toda fila que no pertenece a una fijación lleva el par exacto
 `fix_x = -100.0`, `fix_y = -100.0`. No se permiten sentinelas parciales ni

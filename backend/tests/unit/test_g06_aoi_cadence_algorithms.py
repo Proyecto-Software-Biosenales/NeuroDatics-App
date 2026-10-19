@@ -84,8 +84,8 @@ def test_metrics_reuse_one_mask_per_aoi_and_preserve_overlap_priority(monkeypatc
     frame = pd.DataFrame(
         {
             "time": [0.0, 0.1, 0.2, 0.3],
-            "gx": [50.0, 50.0, 80.0, 80.0],
-            "gy": [50.0, 50.0, 50.0, 50.0],
+            "gaze_x_clean": [50.0, 50.0, 80.0, 80.0],
+            "gaze_y_clean": [50.0, 50.0, 50.0, 50.0],
             "lx_pupil": [3.0, 3.1, 3.2, 3.3],
             "rx_pupil": [3.2, 3.3, 3.4, 3.5],
             "distance": [600.0, 600.0, 610.0, 610.0],

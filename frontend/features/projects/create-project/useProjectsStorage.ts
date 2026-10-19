@@ -107,6 +107,7 @@ export const useProjectsStorage = () => {
     participants: bp.participants_count || 0,
     isPreExperiment: bp.is_pre_experiment ?? false,
     planningParticipantsCount: bp.planning_participants_count ?? 0,
+    needsUpdate: bp.needs_update ?? false,
   })
 
   const refreshProjects = async () => {

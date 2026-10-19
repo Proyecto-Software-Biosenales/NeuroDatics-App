@@ -5,6 +5,28 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Mirada: pérdidas del ojo y su rampa
+
+- **Una pérdida del ojo ya no se dibuja como una caída hacia 0.** El Tobii escribe la pérdida como `(0,0)` y
+  su exportador añade una rampa hacia 0 de un periodo nativo a cada lado. La ingesta marca esas muestras de
+  rampa (dos periodos nativos, ≈ 33 ms a 60 Hz, alrededor de cada pérdida) como `signal_transition` y deja la
+  mirada en blanco; un hueco largo llega al navegador como `null` y la gráfica corta la línea. Afecta al punto
+  de mirada, la comparación, las AOI, las correlaciones y el informe.
+- **La mirada se limpia una sola vez, al procesar la carpeta** (columnas `gaze_x_clean`, `gaze_y_clean` del
+  Parquet), con el mismo proceso de antes: rango, parpadeo por pupila, velocidad, interpolación de hasta 150 ms
+  desde cada lado y suavizado. Antes se limpiaba en cada consulta, así que el mismo instante cambiaba con el
+  zoom; ahora vale lo mismo en cualquier ventana. Con ubicación del estímulo se limpia en coordenadas del
+  estímulo (antes no se suavizaba). Las fijaciones no cambian: el detector usa la máscara sin el margen.
+- **Un proyecto procesado antes de este cambio muestra «Actualizar proyecto» en rojo** en su tarjeta y no
+  tiene punto de mirada (no hay cálculo de respaldo). Se crea de nuevo con la misma carpeta.
+- **Pupila:** un diámetro de 0 o negativo (se vio −0,75 mm) ya no cuenta como medida en la serie ni en sus
+  estadísticas.
+- **Comparación:** el TTFF de la tabla de AOI se mide desde el inicio del escenario, como en el resto de
+  vistas, y se muestra en segundos.
+- Pruebas: los goldens numéricos no cambian; el snapshot del esquema del Parquet gana las dos columnas
+  nuevas, añadidas a mano (no regenerado). Las pruebas de la limpieza en consulta se reescribieron sobre las
+  columnas limpias.
+
 ### Dashboard
 
 - **El eje de la dilatación pupilar va de 0 al primer milímetro entero por encima del máximo** (antes podía

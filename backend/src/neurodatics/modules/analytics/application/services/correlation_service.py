@@ -5,6 +5,8 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from neurodatics.shared.gaze_contract import GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN
+
 from .eeg_signal import prepare_eeg
 
 from .analytics_service import (
@@ -187,72 +189,17 @@ class CorrelationAnalyticsService:
         frame: pd.DataFrame,
         total_bins: int,
     ) -> Tuple[pd.Series, pd.Series, Optional[str], Optional[str]]:
-        has_x = "gx" in frame.columns
-        has_y = "gy" in frame.columns
-        gaze_x = cls._empty_series(total_bins)
-        gaze_y = cls._empty_series(total_bins)
-        gaze_x_reason = None if has_x else "No se encontró la columna gx."
-        gaze_y_reason = None if has_y else "No se encontró la columna gy."
+        if not {GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN}.issubset(frame.columns):
+            reason = "Sin datos de mirada."
+            return cls._empty_series(total_bins), cls._empty_series(total_bins), reason, reason
 
-        if has_x and has_y:
-            gaze = PupilAnalyticsService._clean_gaze(frame.copy())
-            gaze_x = cls._aggregate_median(
-                gaze["_bin"],
-                gaze["gx_clean"].to_numpy(dtype=float),
-                total_bins,
-            )
-            gaze_y = cls._aggregate_median(
-                gaze["_bin"],
-                gaze["gy_clean"].to_numpy(dtype=float),
-                total_bins,
-            )
-            return gaze_x, gaze_y, gaze_x_reason, gaze_y_reason
-
-        if has_x:
-            gaze_x = cls._aggregate_median(
-                frame["_bin"],
-                cls._clean_single_gaze_axis(frame, "gx"),
-                total_bins,
-            )
-        if has_y:
-            gaze_y = cls._aggregate_median(
-                frame["_bin"],
-                cls._clean_single_gaze_axis(frame, "gy"),
-                total_bins,
-            )
-        return gaze_x, gaze_y, gaze_x_reason, gaze_y_reason
-
-    @staticmethod
-    def _clean_single_gaze_axis(frame: pd.DataFrame, column: str) -> np.ndarray:
-        """Apply the established gaze pipeline when only one gaze axis is present."""
-        values = pd.to_numeric(frame[column], errors="coerce")
-        if values.abs().max(skipna=True) <= 1.0:
-            values = values * 100.0
-
-        time_values = frame["time"].to_numpy(dtype=float)
-        sampling_rate = _infer_fs(time_values)
-        bad = (values < 0.0) | (values > 100.0)
-        for pupil_column in ("lx_pupil", "rx_pupil"):
-            if pupil_column in frame.columns:
-                pupil = pd.to_numeric(frame[pupil_column], errors="coerce")
-                bad = bad | pupil.isna() | (pupil <= 0.0)
-
-        speed = values.diff().abs() * sampling_rate
-        bad = bad | (speed > 1500.0)
-        clean = values.copy()
-        clean[bad] = np.nan
-
-        max_gap = max(1, int(round(0.150 * sampling_rate)))
-        clean = clean.interpolate(limit=max_gap, limit_direction="both")
-        median_window = max(3, int(round(0.060 * sampling_rate)))
-        mean_window = max(3, int(round(0.040 * sampling_rate)))
-        clean = (
-            clean.rolling(median_window, center=True, min_periods=1)
-            .median()
-            .rolling(mean_window, center=True, min_periods=1)
-            .mean()
+        gaze = PupilAnalyticsService._with_clean_gaze(frame)
+        return (
+            cls._aggregate_median(gaze["_bin"], gaze["gx_clean"].to_numpy(dtype=float), total_bins),
+            cls._aggregate_median(gaze["_bin"], gaze["gy_clean"].to_numpy(dtype=float), total_bins),
+            None,
+            None,
         )
-        return clean.to_numpy(dtype=float)
 
     @classmethod
     def _distance_signal(
@@ -394,8 +341,8 @@ class CorrelationAnalyticsService:
         }
         source_columns = {
             "pupil_avg_mm": pupil_sources,
-            "gaze_x_pct": ["gx"] if "gx" in frame.columns else [],
-            "gaze_y_pct": ["gy"] if "gy" in frame.columns else [],
+            "gaze_x_pct": [GAZE_X_CLEAN_COLUMN] if gaze_x_reason is None else [],
+            "gaze_y_pct": [GAZE_Y_CLEAN_COLUMN] if gaze_y_reason is None else [],
             "distance_cm": distance_sources,
             "gsr_smoothed_us": gsr_sources,
             "eeg_broadband_power_db": eeg_sources,

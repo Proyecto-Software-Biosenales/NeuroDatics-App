@@ -34,6 +34,9 @@ from neurodatics.shared.fixation_contract import (
     fixation_duration_column,
     validate_fixation_min_duration_ms,
 )
+from neurodatics.shared.gaze_contract import GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN
+
+from . import gaze_cleaning
 
 
 @dataclass(frozen=True)
@@ -551,6 +554,15 @@ class FixationDetectionService:
             if effective_rate <= 0.0:
                 warnings.append("sampling_rate_unavailable")
 
+        # Detection keeps the plain mask; samples next to a lost eye carry the
+        # exporter's ramp toward (0,0), so analytics also drops those.
+        transition = valid & gaze_cleaning.transition_margin(
+            invalid_reason == "signal_missing", time_s, scenario_keys, effective_rate
+        )
+        sample_valid = valid & ~transition
+        sample_invalid_reason = invalid_reason.copy()
+        sample_invalid_reason[transition] = "signal_transition"
+
         distance_mm = cls._distance_mm(samples, metadata, valid, warnings)
         if "distance" in samples:
             raw_distance = pd.to_numeric(samples["distance"], errors="coerce").to_numpy(
@@ -574,10 +586,25 @@ class FixationDetectionService:
             segment_ids,
             method,
             effective_rate,
-            valid,
+            sample_valid,
             gaze_units=gaze_units,
             coordinates=coordinates,
-            invalid_reason=invalid_reason,
+            invalid_reason=sample_invalid_reason,
+        )
+        samples[GAZE_X_CLEAN_COLUMN], samples[GAZE_Y_CLEAN_COLUMN] = (
+            gaze_cleaning.clean_gaze(
+                coordinates["x_centroid_norm"] * 100.0,
+                coordinates["y_centroid_norm"] * 100.0,
+                time_s,
+                ~sample_valid,
+                hard_spatial_invalid,
+                scenario_keys,
+                [
+                    pd.to_numeric(samples[column], errors="coerce").to_numpy(float)
+                    for column in ("lx_pupil", "rx_pupil")
+                    if column in samples
+                ],
+            )
         )
         samples[FIXATION_MIN_DURATION_COLUMN] = np.full(
             row_count,

@@ -57,6 +57,8 @@ La primera vez tarda más (hasta un minuto) porque prepara la base de datos.
    - Para cambiar un proyecto, en su tarjeta pulsa los tres puntos > "Editar". Arriba están sus
      secciones (participantes, cuestionarios, pantalla, áreas de interés y notas);
      cambia lo que necesites y pulsa "Guardar cambios".
+   - Si una tarjeta dice "Actualizar proyecto" en rojo, se procesó con una versión anterior y no
+     muestra el punto de mirada. Crea el proyecto de nuevo con el mismo ZIP.
    - Dashboard: analiza EyeTracker, GSR, EEG y comparaciones.
    - Informes: genera el informe en PDF.
 

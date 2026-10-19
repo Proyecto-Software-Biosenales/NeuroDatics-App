@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { formatSeconds, relativeTtffS } from "../aoiInsights"
 import type { ComparisonData } from "./useComparisonData"
 import type { VisualizationId } from "./registry"
 
@@ -150,6 +151,11 @@ export function ComparisonStatistics({
   pinnedTime: number | null
 }) {
   const selected = useMemo(() => new Set(selectedIds), [selectedIds])
+  const onsetS = data.timing.data?.onset_s ?? null
+  const ttffLabel = (ttffMs: number | null) => {
+    const ttffS = relativeTtffS(ttffMs, onsetS)
+    return ttffS == null ? "—" : formatSeconds(ttffS)
+  }
 
   const numericRows = (() => {
     const rows: Array<NumericRow | NumericStateRow> = []
@@ -659,9 +665,7 @@ export function ComparisonStatistics({
                         {format(item.avg_fixation_duration_ms)} ms
                       </TableCell>
                       <TableCell className="px-3 py-3">
-                        {item.ttff_ms == null
-                          ? "—"
-                          : `${format(item.ttff_ms)} ms`}
+                        {ttffLabel(item.ttff_ms)}
                       </TableCell>
                       <TableCell className="px-3 py-3">
                         {format(item.hit_rate_percent)}%

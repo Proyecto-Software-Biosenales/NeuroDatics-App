@@ -142,8 +142,6 @@ def collect(participant: common.ReportParticipant, scenario: common.ReportScenar
     gaze_x, gaze_y = _array(gaze.get("gx_clean")), _array(gaze.get("gy_clean"))
     if not (gaze_x.size == gaze_y.size == gaze_time.size):
         gaze_x = gaze_y = gaze_time = np.asarray([], dtype=float)
-    # The timeseries encodes an invalid sample as (0, 0); the chart shows a gap instead.
-    lost = (gaze_x == 0) & (gaze_y == 0)
     gaze_stats_payload = _best_effort("gaze statistics", lambda: PupilAnalyticsService.compute_gaze_statistics(frame, name), {})
 
     distance_payload = _best_effort("distance", lambda: PupilAnalyticsService.compute_distance_timeseries(frame, name), {})
@@ -175,8 +173,8 @@ def collect(participant: common.ReportParticipant, scenario: common.ReportScenar
             "Derecha": describe(pupil_right, pupil_time),
         },
         gaze_time=gaze_time,
-        gaze_x=np.where(lost, np.nan, gaze_x),
-        gaze_y=np.where(lost, np.nan, gaze_y),
+        gaze_x=gaze_x,
+        gaze_y=gaze_y,
         gaze_stats={
             "X": from_service(gaze_stats_payload, gaze_time.size, "gx_"),
             "Y": from_service(gaze_stats_payload, gaze_time.size, "gy_"),

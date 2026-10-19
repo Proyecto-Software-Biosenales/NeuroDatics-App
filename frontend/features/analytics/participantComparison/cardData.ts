@@ -146,11 +146,11 @@ async function loadCardDataUnsafe(context: CardContext, signal: AbortSignal): Pr
         { startTimeS: window.start, endTimeS: window.end, maxPoints: CARD_POINT_BUDGET, decimation: "minmax_envelope" },
         signal
       )
-      const columns: Record<string, number[]> =
+      const columns: Record<string, ReadonlyArray<number | null>> =
         kind === "pupil"
           ? { left: (data as { smooth_left: number[] }).smooth_left, right: (data as { smooth_right: number[] }).smooth_right }
           : kind === "gaze"
-            ? { x: (data as { gx_clean: number[] }).gx_clean, y: (data as { gy_clean: number[] }).gy_clean }
+            ? { x: (data as { gx_clean: (number | null)[] }).gx_clean, y: (data as { gy_clean: (number | null)[] }).gy_clean }
             : kind === "distance"
               ? { distance: (data as { distance_cm: number[] }).distance_cm }
               : { smooth: (data as { gsr_smooth: number[] }).gsr_smooth, raw: (data as { gsr: number[] }).gsr }

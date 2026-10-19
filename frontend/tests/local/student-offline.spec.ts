@@ -342,6 +342,9 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
     .filter({ has: page.getByText(name, { exact: true }) })
     .filter({ has: page.getByRole("button", { name: "Ver proyecto" }) })
     .last()
+  // Processed by this version: its gaze was cleaned at ingestion, so nothing asks for an update.
+  await expect(card.getByRole("button", { name: "Ver proyecto" })).toBeVisible()
+  await expect(card.getByText("Actualizar proyecto", { exact: true })).toHaveCount(0)
   await card.getByRole("button", { name: "Ver proyecto" }).click()
   const view = page.getByRole("dialog")
   await expect(view.getByText(`Ver proyecto: ${name}`)).toBeVisible()

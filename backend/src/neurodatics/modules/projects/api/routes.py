@@ -797,6 +797,7 @@ async def list_projects(
     use_case = ListProjectsUseCase(repository)
 
     projects = await use_case.execute(owner_id=UUID(current_user))
+    needing_update = await repository.projects_needing_update([project.id for project in projects])
 
     return [
         ProjectResponse(
@@ -813,6 +814,7 @@ async def list_projects(
             sensors=[{"id": s.id, "sensor_type": s.sensor_type} for s in project.sensors],
             participants_count=len(project.participants),
             **planning_summary(project),
+            needs_update=project.id in needing_update,
         )
         for project in projects
     ]

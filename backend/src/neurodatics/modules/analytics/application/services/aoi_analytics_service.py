@@ -4,11 +4,10 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from ...domain.coordinate_transform import (
-    LOCAL_X_COLUMN,
-    LOCAL_Y_COLUMN,
     applied_transform_mask,
     valid_stimulus_gaze_mask,
 )
+from neurodatics.shared.gaze_contract import GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN
 from .numeric_helpers import _infer_fs as _infer_fs
 from .numeric_helpers import _moving_average as _moving_average
 from .numeric_helpers import _robust_baseline as _robust_baseline
@@ -209,9 +208,7 @@ class AoiAnalyticsService:
     def _sample_frame(cls, df: pd.DataFrame, scenario: str) -> tuple[pd.DataFrame, Optional[float], Optional[float]]:
         df = scope_to_scenario(df, scenario)
 
-        has_raw = {"gx", "gy"}.issubset(df.columns)
-        has_local = {LOCAL_X_COLUMN, LOCAL_Y_COLUMN}.issubset(df.columns)
-        if "time" not in df.columns or not (has_raw or has_local):
+        if "time" not in df.columns or not {GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN}.issubset(df.columns):
             return pd.DataFrame(), None, None
 
         sample_df = (
@@ -220,9 +217,9 @@ class AoiAnalyticsService:
         if sample_df.empty:
             return sample_df, None, None
 
-        sample_df, has_applied = PupilAnalyticsService._gaze_in_output_space(sample_df)
-        if has_applied:
-            applied = applied_transform_mask(sample_df)
+        sample_df = PupilAnalyticsService._with_clean_gaze(sample_df)
+        applied = applied_transform_mask(sample_df)
+        if applied.any():
             eligible = (~applied) | valid_stimulus_gaze_mask(sample_df)
             sample_df = sample_df.loc[eligible].reset_index(drop=True)
 

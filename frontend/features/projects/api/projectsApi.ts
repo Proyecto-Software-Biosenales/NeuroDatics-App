@@ -133,6 +133,7 @@ export type ApiProject = {
   participants_count?: number;
   is_pre_experiment?: boolean;
   planning_participants_count?: number;
+  needs_update?: boolean;
 };
 
 export type ApiProjectParticipant = {

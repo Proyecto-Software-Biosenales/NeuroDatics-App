@@ -15,6 +15,7 @@ import {
   useFixationHistogram,
   useHeatmapOverlay,
   useScanpathData,
+  useScenarioTiming,
 } from "../hooks/useAnalyticsData"
 import type { GazeAtData } from "../types"
 import { isComparisonPointActive } from "./chartInteraction"
@@ -271,6 +272,12 @@ export function useComparisonData({
     participantCode,
     scenario
   )
+  // The AOI table measures TTFF from the scenario onset, like every other view.
+  const timing = useScenarioTiming(
+    enabledProject(concreteScenario && selected.has("aoi")),
+    participantCode,
+    scenario
+  )
   const gazeAt = useComparisonGazeAt(
     pointActive ? projectId : null,
     pointActive ? participantCode : null,
@@ -355,6 +362,7 @@ export function useComparisonData({
     heatmap,
     scanpath,
     aoi,
+    timing,
     pointAoi,
     gazeAt,
     staticImage,

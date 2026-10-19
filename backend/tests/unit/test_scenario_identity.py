@@ -133,8 +133,8 @@ def _signal_frame() -> pd.DataFrame:
             "scenario": [STORED_NAME] * 3 + ["Otra escena"] * 3,
             "lx_pupil": [3.0, 3.1, 3.2, 9.0, 9.1, 9.2],
             "rx_pupil": [3.0, 3.1, 3.2, 9.0, 9.1, 9.2],
-            "gx": [10.0, 11.0, 12.0, 80.0, 81.0, 82.0],
-            "gy": [20.0, 21.0, 22.0, 60.0, 61.0, 62.0],
+            "gaze_x_clean": [10.0, 11.0, 12.0, 80.0, 81.0, 82.0],
+            "gaze_y_clean": [20.0, 21.0, 22.0, 60.0, 61.0, 62.0],
             "distance": [500.0, 501.0, 502.0, 700.0, 701.0, 702.0],
             "gsr": [1.0, 1.1, 1.2, 5.0, 5.1, 5.2],
             "le": [0.1, 0.2, 0.3, 0.7, 0.8, 0.9],
@@ -201,8 +201,8 @@ class TestSignalEndpointsShareTheMatching:
             {
                 "time": [0.5, 0.5],
                 "scenario": [STORED_NAME, "Otra escena"],
-                "gx": [10.0, 90.0],
-                "gy": [20.0, 80.0],
+                "gaze_x_clean": [10.0, 90.0],
+                "gaze_y_clean": [20.0, 80.0],
             }
         )
 
@@ -245,8 +245,8 @@ def _fixation_frame() -> pd.DataFrame:
             "fixation_detector_version": ["fixation-v2.0"] * 6,
             "fixation_detector_sample_count": [3, 3, 3, 3, 3, 3],
             "scenario": [STORED_NAME] * 6,
-            "gx": [10.0, 10.0, 10.0, 40.0, 40.0, 40.0],
-            "gy": [20.0, 20.0, 20.0, 50.0, 50.0, 50.0],
+            "gaze_x_clean": [10.0, 10.0, 10.0, 40.0, 40.0, 40.0],
+            "gaze_y_clean": [20.0, 20.0, 20.0, 50.0, 50.0, 50.0],
         }
     )
 

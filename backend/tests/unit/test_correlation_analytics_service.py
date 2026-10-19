@@ -26,8 +26,8 @@ def _make_multisensor_df(bin_count=12, samples_per_bin=10):
         "scenario": ["Target"] * sample_count,
         "lx_pupil": 2.5 + level * 0.05,
         "rx_pupil": 2.7 + level * 0.05,
-        "gx": 20.0 + level,
-        "gy": 80.0 - level,
+        "gaze_x_clean": 20.0 + level,
+        "gaze_y_clean": 80.0 - level,
         "distance": 500.0 + level * 10.0,
         "gsr": 1.0 + level * 0.1,
         "le": 1000.0 + level * 100.0,
@@ -187,10 +187,8 @@ def test_non_positive_pupil_samples_are_invalid_and_fall_back_to_valid_eye():
     assert signals["pupil_avg_mm"].iloc[0] == 4.0
 
 
-def test_gaze_is_cleaned_to_percent_and_gsr_uses_scenario_relative_smoothed_bins():
+def test_gaze_reads_clean_percent_and_gsr_uses_scenario_relative_smoothed_bins():
     df = _make_multisensor_df()
-    df["gx"] = df["gx"] / 100.0
-    df["gy"] = df["gy"] / 100.0
 
     _, total_bins, signals, _ = CorrelationAnalyticsService.build_binned_signals(
         df, "Target"
@@ -222,34 +220,17 @@ def test_delayed_first_valid_gsr_sample_keeps_scenario_relative_bin():
     assert gsr_metadata["coverage"] == 0.75
 
 
-@pytest.mark.parametrize(
-    ("missing_column", "present_id", "missing_id"),
-    [
-        ("gy", "gaze_x_pct", "gaze_y_pct"),
-        ("gx", "gaze_y_pct", "gaze_x_pct"),
-    ],
-)
-def test_gaze_axes_remain_independently_available(
-    missing_column,
-    present_id,
-    missing_id,
-):
-    df = _make_multisensor_df().drop(columns=[missing_column])
+def test_file_without_clean_gaze_reports_both_axes_unavailable():
+    df = _make_multisensor_df().drop(columns=["gaze_y_clean"])
 
     result = CorrelationAnalyticsService.compute(df, "Target")
-    present = _metadata(result, present_id)
-    missing = _metadata(result, missing_id)
 
-    assert present["available"] is True
-    assert present["valid_bins"] == 12
-    assert present["source_columns"] == ["gx" if present_id == "gaze_x_pct" else "gy"]
-    assert present["unavailable_reason"] is None
-    assert missing["available"] is False
-    assert missing["valid_bins"] == 0
-    assert missing["source_columns"] == []
-    assert missing_column in missing["unavailable_reason"]
-    assert _cell(result, "pupil_avg_mm", present_id)["status"] == "ok"
-    assert _cell(result, "pupil_avg_mm", missing_id)["status"] == "unavailable"
+    for signal_id in ("gaze_x_pct", "gaze_y_pct"):
+        metadata = _metadata(result, signal_id)
+        assert metadata["available"] is False
+        assert metadata["source_columns"] == []
+        assert metadata["unavailable_reason"] == "Sin datos de mirada."
+        assert _cell(result, "pupil_avg_mm", signal_id)["status"] == "unavailable"
 
 
 def test_eeg_broadband_power_uses_scalp_channels_and_excludes_le():
