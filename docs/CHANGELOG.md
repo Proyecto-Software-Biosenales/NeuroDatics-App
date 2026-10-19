@@ -26,6 +26,13 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 - Pruebas: los goldens numéricos no cambian; el snapshot del esquema del Parquet gana las dos columnas
   nuevas, añadidas a mano (no regenerado). Las pruebas de la limpieza en consulta se reescribieron sobre las
   columnas limpias.
+- **Paquete de estudiantes 1.11** (`delivery/NeuroDatics-Estudiantes-1.11-win64.zip`, SHA-256
+  `4E1C5DC3B411003F2FA2319684755C37757BBE07D18381746E09F38A5718518B`), compilado con `verify.ps1` en verde.
+  `run-frozen.ps1`: selftest, pg-check, pg-adopt, http-check y carrera de arranques correctos; navegador 7/7
+  `passed` (incluye que un proyecto recién procesado no pide actualizarse); 0 conexiones fuera de loopback; 0
+  procesos postgres al salir. Siguen abiertos los 3 bloqueos de publicación de la 1.10. El árbol de trabajo
+  llevaba también los cambios aún sin commit de Configuración y Google Drive y del eje de la pupila, así que el
+  paquete los incluye.
 
 ### Dashboard
 
