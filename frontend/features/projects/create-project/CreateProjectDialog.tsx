@@ -52,6 +52,9 @@ export const CreateProjectDialog = ({
     updateFolderPath,
     toggleSensor,
     updateParticipant,
+    preparation,
+    assignParticipant,
+    repeatedParticipantDocument,
     updateScenaryAois,
     canGoNext,
     nextStep,
@@ -176,7 +179,8 @@ export const CreateProjectDialog = ({
 
         {mode === "pre" ? <PreExperimentCreateForm onBusyChange={setPreBusy} onCancel={() => handleOpenChange(false)} onCreated={project => { setIsOpen(false); setMode("folder"); reset(); onProjectCreated?.(project); onStep1Complete?.() }} /> : <>
 
-        <div className="py-4 xl:py-6">
+        {/* min-w-0: a long participant header truncates instead of widening the dialog. */}
+        <div className="min-w-0 py-4 xl:py-6">
           {currentStep === 1 && (
             <CreateProjectStep1
               projectName={formData.projectName}
@@ -193,7 +197,6 @@ export const CreateProjectDialog = ({
               onFolderPathChange={updateFolderPath}
               onFolderSelected={setExperimentFolder}
               onSelectionChange={setFolderStructureSelection}
-              zipRequired
             />
           )}
 
@@ -211,6 +214,17 @@ export const CreateProjectDialog = ({
             <CreateProjectStep3
               participants={formData.participants}
               onUpdateParticipant={updateParticipant}
+              matching={
+                preparation
+                  ? {
+                      planned: preparation.envelope.config.participants,
+                      detected: preparation.detected,
+                      assignments: preparation.assignments,
+                      onAssign: assignParticipant,
+                      repeatedDocument: repeatedParticipantDocument,
+                    }
+                  : undefined
+              }
             />
           )}
 

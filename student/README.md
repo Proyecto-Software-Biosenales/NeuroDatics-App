@@ -117,7 +117,7 @@ La misma prueba de navegador se ejecuta contra cualquier aplicación local en ma
 el código:
 
 ```powershell
-$env:STUDENT_BASE_URL = 'http://127.0.0.1:8765'
+$env:STUDENT_BASE_URL = 'http://neurodatics.localhost:8765'
 $env:STUDENT_RAW_FOLDER = '<carpeta de un experimento crudo>'   # datos privados; sin ella se omite el flujo completo
 npx playwright test -c playwright.local.config.ts
 ```

@@ -12,7 +12,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import Column, MetaData, Table, Uuid, create_engine, event, inspect, select
+from sqlalchemy import JSON, Column, MetaData, Table, Uuid, create_engine, event, inspect, select
 from sqlalchemy.orm import Session
 
 from neurodatics.api.deps import get_current_user, get_db
@@ -22,6 +22,7 @@ from neurodatics.modules.projects.api.pre_experiment_routes import guard_revisio
 from neurodatics.modules.projects.api.pre_experiment_schemas import PreExperimentConfig, PreExperimentConfigInput
 from neurodatics.modules.projects.application.services.fixation_detection_service import ScreenGeometry
 from neurodatics.modules.projects.application.use_cases.upload_experiment_zip import with_planned_viewing_distance
+from neurodatics.modules.participants.domain.entities import Participant
 from neurodatics.modules.projects.domain.entities import Project, PreExperimentResponse
 from neurodatics.modules.projects.infrastructure.repository_impl import SQLProjectRepository
 
@@ -83,7 +84,7 @@ def storage(tmp_path):
 def configuration():
     return {
         "participants": [{"id": str(uuid4()), "name": "Participante", "identification_document": "1234", "gender": "other", "age": 22}],
-        "screen": {"model": "Monitor", "width_px": 1920, "height_px": 1080, "width_cm": 52.5},
+        "screen": {"width_px": 1920, "height_px": 1080, "width_cm": 52.5},
         "notes": "Recordar la iluminación",
         "project_notes": [{"id": str(uuid4()), "title": "Sala", "text": "Reservar la sala"}],
         "questionnaires": {
@@ -149,6 +150,13 @@ def test_create_persist_capture_export_and_history_survive_edits_and_ingestion(s
     detail = client.get(f"/api/projects/{project_id}").json()
     assert not detail["is_pre_experiment"]
     assert detail["participants"][0]["participant_code"] == "ACQ-02"
+    # The editor reads a participant's name and corrected document from the detail.
+    with Session(engine) as session:
+        recorded = session.scalars(select(Participant).where(Participant.project_id == UUID(project_id))).one()
+        recorded.name, recorded.document = "Ana", "DOC-2"
+        session.commit()
+    shown = client.get(f"/api/projects/{project_id}").json()["participants"][0]
+    assert (shown["name"], shown["document"]) == ("Ana", "DOC-2")
     export = client.get(path + "/export")
     assert export.status_code == 200 and "attachment" in export.headers["content-disposition"]
     assert export.json()["responses"][0] == saved.json()
@@ -309,6 +317,33 @@ def test_migration_upgrade_preserves_existing_projects_and_downgrade(tmp_path):
         assert [column["name"] for column in inspect(connection).get_columns("projects")] == ["id"]
         assert connection.execute(select(projects.c.id)).scalar_one() == project_id
     engine.dispose()
+
+
+def test_retired_screen_name_is_dropped_from_saves_and_stored_plans(storage, tmp_path):
+    client, _engine, _app, _owner = storage
+    config = configuration()
+    config["screen"]["model"] = "Monitor"
+    project = create(client, config)
+    saved = client.get(f"/api/projects/{project['id']}/pre-experiment").json()["config"]["screen"]
+    assert "model" not in saved and saved["width_px"] == 1920
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'screen-model.sqlite'}")
+    metadata = MetaData()
+    projects = Table("projects", metadata, Column("id", Uuid(), primary_key=True), Column("pre_experiment", JSON()))
+    metadata.create_all(engine)
+    stored = {"notes": "Sala", "screen": {"model": "Dell", "width_px": 1280}}
+    rows = {uuid4(): stored, uuid4(): None, uuid4(): {"notes": "Sin pantalla"}}
+    filename = Path(__file__).parents[2] / "migrations" / "versions" / "029_drop_planning_screen_model.py"
+    spec = importlib.util.spec_from_file_location("screen_model_migration", filename)
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+    with engine.begin() as connection:
+        connection.execute(projects.insert(), [{"id": key, "pre_experiment": value} for key, value in rows.items()])
+        with Operations.context(MigrationContext.configure(connection)):
+            migration.upgrade()
+        after = dict(connection.execute(select(projects.c.id, projects.c.pre_experiment)).all())
+    engine.dispose()
+    assert after == {**rows, next(iter(rows)): {"notes": "Sala", "screen": {"width_px": 1280}}}
 
 
 def test_planning_flag_preserves_acquisition_identity():

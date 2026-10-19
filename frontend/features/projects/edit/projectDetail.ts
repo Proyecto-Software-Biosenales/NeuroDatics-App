@@ -84,18 +84,3 @@ export const parseScenaries = (project: ApiProjectDetail): scenaries[] => {
     aois: (s.aois || []).map((a, index) => apiAoiToFormAoi(a, index)),
   }))
 }
-
-export const getCurrentZipFilename = (project: ApiProjectDetail): string => {
-  if (project.source_folder_name) return project.source_folder_name
-  // Projects ingested before the folder name was recorded kept the uploaded ZIP.
-  const zipFiles = (project.files || []).filter((file) => file.kind === "experiment_zip")
-  if (zipFiles.length === 0) return ""
-
-  const latestZip = [...zipFiles].sort((a, b) => {
-    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
-    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
-    return dateB - dateA
-  })[0]
-
-  return latestZip?.filename || ""
-}

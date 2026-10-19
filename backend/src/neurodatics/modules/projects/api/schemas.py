@@ -194,6 +194,9 @@ class ParticipantResponse(BaseModel):
     participant_code: str
     age: Optional[int]
     sex: Optional[str]
+    # The editor shows and saves these; leaving them out made it show them empty and clear them on save.
+    name: Optional[str] = None
+    document: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -1,14 +1,18 @@
 "use client"
 
+import { useId, useState } from "react"
+import { ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-
-import { useState } from "react"
-import { ChevronDown, ChevronRight } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { FieldHint } from "@/components/FieldHint"
+import {
+  ParticipantAssignment,
+  ParticipantDataFields,
+  ParticipantHeading,
+  ParticipantNotes,
+  type ParticipantFields,
+} from "@/features/projects/pre-experiment/PlanningParticipants"
+import { participantLabel, type PlanningParticipant } from "@/features/projects/pre-experiment/types"
+import { UNASSIGNED, assignmentOptions } from "@/features/projects/edit/participants"
 import type { ParticipantData, ParticipantField } from "./types"
 
 interface CreateProjectStep3Props {
@@ -18,15 +22,17 @@ interface CreateProjectStep3Props {
     field: ParticipantField,
     value: string
   ) => void
-  /** The section already has its title elsewhere (the editor's tab). */
-  hideTitle?: boolean
+  /** A pre-experiment that receives its folder: who of its preparation is who in the data. */
+  matching?: {
+    planned: PlanningParticipant[]
+    /** The participants as read from the data, before taking the details of the preparation. */
+    detected: ParticipantData[]
+    /** Participant of the preparation → code read from the data. */
+    assignments: Record<string, string>
+    onAssign: (plannedId: string, code: string | null) => void
+    repeatedDocument: string | null
+  }
 }
-
-const sexOptions = [
-  { label: "Masculino", value: "male" },
-  { label: "Femenino", value: "female" },
-  { label: "Otro", value: "other" },
-] as const
 
 // Name and document are optional: only sex and age gate the step.
 const isParticipantComplete = (p: ParticipantData): boolean => {
@@ -36,26 +42,48 @@ const isParticipantComplete = (p: ParticipantData): boolean => {
   return p.id.trim() !== "" && hasValidSex && hasValidAge
 }
 
+/** A card of the step: a participant of the preparation, of the data, or one of each that are the same person. */
+type Card = { key: string; planned?: PlanningParticipant; participant?: ParticipantData }
+
+const badgeClass = "shrink-0 text-xs font-medium text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5"
+
 export const CreateProjectStep3 = ({
   participants,
   onUpdateParticipant,
-  hideTitle = false,
+  matching,
 }: CreateProjectStep3Props) => {
-  const [openParticipant, setOpenParticipant] = useState<string>(
-    participants[0]?.id || ""
-  )
+  const byCode = new Map(participants.map((participant) => [participant.id, participant]))
+  const assignments = matching?.assignments ?? {}
+  const assigned = new Set(Object.values(assignments))
+  // The participants of the preparation first, each with the one of the data it is; then those only in the data.
+  const cards: Card[] = [
+    ...(matching?.planned ?? []).map((planned) => ({
+      key: `preparacion-${planned.id}`,
+      planned,
+      participant: assignments[planned.id] ? byCode.get(assignments[planned.id]) : undefined,
+    })),
+    ...participants
+      .filter((participant) => !assigned.has(participant.id))
+      .map((participant) => ({ key: `datos-${participant.id}`, participant })),
+  ]
+  const [openParticipant, setOpenParticipant] = useState<string>(cards[0]?.key || "")
+  const baseId = useId()
+
+  // The shared fields report a change by its name; the sex select only offers valid values.
+  const updateFields = (id: string, change: Partial<ParticipantFields>) => {
+    for (const [field, value] of Object.entries(change)) onUpdateParticipant(id, field as ParticipantField, value)
+  }
 
   const incompleteCount = participants.filter((p) => !isParticipantComplete(p)).length
+  const unassignedCount = (matching?.planned ?? []).filter((planned) => !assignments[planned.id]).length
 
   return (
     <div className="space-y-6">
-      {!hideTitle && (
-        <div>
-          <h3 className="text-xl font-semibold text-foreground mb-2">
-            Datos del participante
-          </h3>
-        </div>
-      )}
+      <div>
+        <h3 className="text-xl font-semibold text-foreground mb-2">
+          Datos del participante
+        </h3>
+      </div>
 
       {participants.length > 0 && incompleteCount > 0 && (
         <div className="p-3 bg-muted border border-border rounded-lg text-sm text-foreground">
@@ -65,128 +93,102 @@ export const CreateProjectStep3 = ({
         </div>
       )}
 
+      {unassignedCount > 0 && (
+        <div className="p-3 bg-muted border border-border rounded-lg text-sm text-foreground">
+          {unassignedCount === 1
+            ? "1 participante del pre-experimento queda sin asignar."
+            : `${unassignedCount} participantes del pre-experimento quedan sin asignar.`}{" "}
+          Seguirán en el proyecto con sus cuestionarios y notas, pero no aparecerán en el dashboard, los informes
+          ni las estadísticas.
+        </div>
+      )}
+
+      {matching?.repeatedDocument && (
+        <div role="alert" className="p-3 bg-muted border border-border rounded-lg text-sm text-foreground">
+          Hay dos participantes con el documento {matching.repeatedDocument}. Asigna ese documento a quien
+          corresponde.
+        </div>
+      )}
+
       <div className="space-y-3">
-        {participants.map((participant, index) => {
-          const isOpen = openParticipant === participant.id
+        {cards.map((card, index) => {
+          const { planned, participant } = card
+          const isOpen = openParticipant === card.key
           // DOM ids from the position: the extracted code may contain any character.
-          const fieldId = `participant-${index}`
-          const name = participant.name ?? ""
-          const documentValue = participant.document ?? participant.id
-          const documentCorrected =
-            documentValue.trim() !== "" && documentValue.trim() !== participant.id
+          const fieldId = `${baseId}-${index}`
+          const code = planned ? assignments[planned.id] ?? null : null
+          // A participant of the data can be assigned only once: the choices are the free ones and its own.
+          const choices =
+            planned && matching
+              ? assignmentOptions(
+                  planned,
+                  matching.detected.filter((item) => !assigned.has(item.id) || item.id === code)
+                )
+              : []
+
+          const detail = planned
+            ? participantLabel(planned)
+            : [participant?.document.trim() || participant?.id, participant?.name.trim()].filter(Boolean).join(" — ")
 
           return (
             <Collapsible
-              key={participant.id}
+              key={card.key}
               open={isOpen}
-              onOpenChange={(open) => setOpenParticipant(open ? participant.id : "")}
-              className="border border-border rounded-xl bg-card overflow-hidden"
+              onOpenChange={(open) => setOpenParticipant(open ? card.key : "")}
+              className="min-w-0 rounded-xl border bg-card"
             >
-              <CollapsibleTrigger asChild><Button variant="ghost"
-                type="button"
-                className="h-auto w-full justify-between p-4"
-              >
-                <div className="flex items-center">
-                  <span className="font-medium text-foreground">
-                    Participante {index + 1}
-                  </span>
-                  {!isParticipantComplete(participant) && (
-                    <span className="ml-2 text-xs font-medium text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5">
-                      Completar
-                    </span>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className="h-auto w-full min-w-0 justify-start gap-3 rounded-xl px-4 py-3 whitespace-normal"
+                >
+                  <ParticipantHeading number={index + 1} detail={detail} />
+                  {planned && !participant && <span className={badgeClass}>Sin asignar</span>}
+                  {participant && !isParticipantComplete(participant) && (
+                    <span className={badgeClass}>Completar</span>
                   )}
-                </div>
-                {isOpen ? (
-                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  {isOpen ? (
+                    <ChevronDown aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent className="grid gap-3 border-t p-4">
+                {planned && matching && (
+                  <ParticipantAssignment
+                    fieldId={fieldId}
+                    value={code ?? UNASSIGNED}
+                    options={choices}
+                    onChange={(value) => matching.onAssign(planned.id, value === UNASSIGNED ? null : value)}
+                  >
+                    El documento con el que aparece en los datos del experimento; se sugiere el más parecido al que
+                    registraste. Si no participó, déjalo sin asignar: seguirá en el proyecto con sus cuestionarios y
+                    notas, pero no aparecerá en el dashboard, los informes ni las estadísticas.
+                  </ParticipantAssignment>
                 )}
-              </Button></CollapsibleTrigger>
-
-                <CollapsibleContent className="px-4 pb-4 space-y-4 border-t border-border">
-                  <div className="pt-4">
-                    <div className="mb-2 flex items-center gap-1.5">
-                      <Label htmlFor={`${fieldId}-nombre`} className="text-sm font-medium text-foreground">
-                        Nombre
-                      </Label>
-                      <FieldHint id={`${fieldId}-nombre-ayuda`}>
-                        Opcional. Si lo dejas vacío, el Dashboard mostrará el documento.
-                      </FieldHint>
-                    </div>
-                    <Input
-                      id={`${fieldId}-nombre`}
-                      type="text"
-                      autoComplete="off"
-                      maxLength={120}
-                      aria-describedby={`${fieldId}-nombre-ayuda`}
-                      value={name}
-                      onChange={(e) => onUpdateParticipant(participant.id, "name", e.target.value)}
+                {participant && (
+                  <>
+                    <ParticipantDataFields
+                      fieldId={fieldId}
+                      recordedCode={participant.id}
+                      fields={{
+                        name: participant.name ?? "",
+                        document: participant.document ?? participant.id,
+                        sex: participant.sex ?? "",
+                        age: participant.age,
+                      }}
+                      onChange={(change) => updateFields(participant.id, change)}
                     />
-                  </div>
-
-                  <div>
-                    <div className="mb-2 flex items-center gap-1.5">
-                      <Label htmlFor={`${fieldId}-documento`} className="text-sm font-medium text-foreground">
-                        Documento
-                      </Label>
-                      <FieldHint id={`${fieldId}-documento-ayuda`}>
-                        {documentCorrected
-                          ? `Detectado en los datos: ${participant.id}. Si lo dejas vacío, se usa este valor.`
-                          : "Tomado de los datos del experimento. Corrígelo si está mal."}
-                      </FieldHint>
-                    </div>
-                    <Input
-                      id={`${fieldId}-documento`}
-                      type="text"
-                      autoComplete="off"
-                      maxLength={50}
-                      placeholder={participant.id}
-                      aria-describedby={`${fieldId}-documento-ayuda`}
-                      value={documentValue}
-                      onChange={(e) => onUpdateParticipant(participant.id, "document", e.target.value)}
+                    <ParticipantNotes
+                      value={participant.notes ?? ""}
+                      onChange={(notes) => onUpdateParticipant(participant.id, "notes", notes)}
                     />
-                  </div>
-
-                  <div>
-                    <Label id={`${fieldId}-sexo`} className="mb-3 block">
-                      Sexo
-                    </Label>
-                    <RadioGroup aria-labelledby={`${fieldId}-sexo`} value={participant.sex} onValueChange={(value) => onUpdateParticipant(participant.id, "sex", value)} className="flex flex-wrap gap-2">
-                      {sexOptions.map((option) => (
-                        <Label
-                          key={option.value}
-                          htmlFor={`${fieldId}-sexo-${option.value}`}
-                          className="flex-1 cursor-pointer rounded-lg border border-border px-3 py-2 has-[[data-state=checked]]:bg-muted"
-                        >
-                          <RadioGroupItem id={`${fieldId}-sexo-${option.value}`} value={option.value} />
-                          {option.label}
-                        </Label>
-                      ))}
-                    </RadioGroup>
-                  </div>
-
-                  <div>
-                    <Label
-                      htmlFor={`${fieldId}-edad`}
-                      className="text-sm font-medium text-foreground mb-2 block"
-                    >
-                      Edad
-                    </Label>
-                    <Input
-                      id={`${fieldId}-edad`}
-                      type="text"
-                      inputMode="numeric"
-                      value={participant.age}
-                      onChange={(e) =>
-                        onUpdateParticipant(
-                          participant.id,
-                          "age",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </div>
-                </CollapsibleContent>
+                  </>
+                )}
+              </CollapsibleContent>
             </Collapsible>
           )
         })}

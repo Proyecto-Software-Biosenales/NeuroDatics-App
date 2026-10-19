@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { Download, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +23,8 @@ interface FiltersBarProps {
   onParticipantChange: (participantCode: string) => void
   scenariosLoading: boolean
   participantsLoading: boolean
+  /** Shown right after the participant select, at its height. */
+  compareAction?: ReactNode
 }
 
 export function FiltersBar({
@@ -33,6 +36,7 @@ export function FiltersBar({
   onParticipantChange,
   scenariosLoading,
   participantsLoading,
+  compareAction,
 }: FiltersBarProps) {
   // The value stays the participant code; only the visible text uses the name or document.
   const selected = participants.find((participant) => participant.participant_code === selectedParticipant)
@@ -90,6 +94,8 @@ export function FiltersBar({
           </SelectGroup>
         </SelectContent>
       </Select>
+
+      {compareAction}
 
       <div className="ml-auto shrink-0">
         <Button

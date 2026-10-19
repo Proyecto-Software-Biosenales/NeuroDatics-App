@@ -27,7 +27,6 @@ export type Questionnaire = {
 export type PreExperimentConfig = {
   participants: PlanningParticipant[]
   screen: {
-    model: string
     width_px: number | null
     height_px: number | null
     width_cm: number | null
@@ -88,7 +87,6 @@ export const phaseLabel: Record<Phase, string> = {
 export const emptyConfig = (): PreExperimentConfig => ({
   participants: [],
   screen: {
-    model: "",
     width_px: null,
     height_px: null,
     width_cm: null,

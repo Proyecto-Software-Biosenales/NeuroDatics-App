@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import ctypes
+import errno
 import json
 import os
 import pathlib
@@ -32,7 +33,7 @@ import webbrowser
 from ctypes import wintypes
 from typing import Callable, Optional
 
-from .instance import InstanceLock, wait_for_running_instance
+from .instance import InstanceLock, app_address, wait_for_running_instance
 from .postgres import EmbeddedPostgres, PostgresError
 
 APP_DIR_NAME = "NeuroDatics Estudiantes"
@@ -44,6 +45,8 @@ _CTRL_CLOSE_EVENTS = {2, 5, 6}  # console closed, user logging off, system shutt
 _FILE_ATTRIBUTE_HIDDEN = 0x2
 _INVALID_FILE_ATTRIBUTES = 0xFFFFFFFF
 _console_handlers: list = []
+# Windows reports a port held by another program, or reserved by the system, with WSA codes.
+_PORT_TAKEN = {errno.EADDRINUSE, errno.EACCES, getattr(errno, "WSAEACCES", errno.EACCES)}
 
 
 def package_dir(override: Optional[str]) -> pathlib.Path:
@@ -91,23 +94,42 @@ def migrations_dir() -> pathlib.Path:
     return pathlib.Path(__file__).resolve().parents[3] / "migrations"
 
 
-def bind_listening_socket(preferred: int) -> socket.socket:
-    """Bind the app's port, preferring a stable one.
+def _bind_loopback(family: int, port: int) -> socket.socket:
+    sock = socket.socket(family, socket.SOCK_STREAM)
+    try:
+        # Keeps another program from binding this port beside us (Windows only).
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        if family == socket.AF_INET6:
+            sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+        sock.bind(("::1" if family == socket.AF_INET6 else "127.0.0.1", port))
+        sock.setblocking(False)
+        return sock
+    except OSError:
+        sock.close()
+        raise
 
-    A stable address keeps the browser's saved state for the app between launches; the socket
-    is bound here and handed to the server, so there is no gap in which another program can
-    take the port.
+
+def bind_listening_sockets(preferred: int) -> list[socket.socket]:
+    """Bind the app's port on both loopbacks, preferring a stable one.
+
+    A stable address keeps the browser's saved state for the app between launches; the sockets
+    are bound here and handed to the server, so there is no gap in which another program can
+    take the port. Browsers try ::1 first for a *.localhost name, so the port must be ours there
+    too: a port held by another program on ::1 is skipped, and a machine without IPv6 gets
+    127.0.0.1 alone.
     """
-    for port in (preferred, 0) if preferred else (0,):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    for port in (preferred, 0, 0) if preferred else (0, 0):
         try:
-            # Keeps another program from binding this port beside us (Windows only).
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
-            sock.bind(("127.0.0.1", port))
-            sock.setblocking(False)
-            return sock
+            v4 = _bind_loopback(socket.AF_INET, port)
         except OSError:
-            sock.close()
+            continue
+        try:
+            return [v4, _bind_loopback(socket.AF_INET6, v4.getsockname()[1])]
+        except OSError as exc:
+            if exc.errno in _PORT_TAKEN:
+                v4.close()
+                continue
+            return [v4]
     raise OSError("no free loopback port")
 
 
@@ -198,9 +220,10 @@ def serve(args: argparse.Namespace, pkg: pathlib.Path, data_root: pathlib.Path, 
 
         from neurodatics.main import app
 
-        sock = bind_listening_socket(args.port)
-        port = sock.getsockname()[1]
+        sockets = bind_listening_sockets(args.port)
+        port = sockets[0].getsockname()[1]
         url = f"http://127.0.0.1:{port}/"
+        address = app_address(port)
         server = uvicorn.Server(uvicorn.Config(app, log_level="warning"))
         on_console_close(lambda: setattr(server, "should_exit", True), finished)
         if args.exit_after:
@@ -217,13 +240,14 @@ def serve(args: argparse.Namespace, pkg: pathlib.Path, data_root: pathlib.Path, 
                 return
             lock.publish(port)
             seconds = round(time.perf_counter() - started, 1)
-            print(f"NeuroDatics esta listo en {url} ({seconds} s). Cierra esta ventana para salir.", flush=True)
+            print(f"NeuroDatics esta listo en {address} ({seconds} s). Cierra esta ventana para salir.", flush=True)
+            print(f"Si tu navegador no abre esa direccion, usa {url}", flush=True)
             if should_open:
-                webbrowser.open(url)
+                webbrowser.open(address)
 
         threading.Thread(target=announce, daemon=True).start()
         # psycopg's async driver cannot use the default Windows loop.
-        asyncio.run(server.serve(sockets=[sock]), loop_factory=asyncio.SelectorEventLoop)
+        asyncio.run(server.serve(sockets=sockets), loop_factory=asyncio.SelectorEventLoop)
         if args.offline_guard:
             print(json.dumps({"offline_guard_blocked": blocked}), flush=True)
         return 0
@@ -272,9 +296,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         if running is None:
             print("Otra ventana de NeuroDatics se esta iniciando. Espera unos segundos e intentalo de nuevo.")
             return 1
-        print(f"NeuroDatics ya esta abierto en {running['url']}")
+        address = running.get("address", running["url"])
+        print(f"NeuroDatics ya esta abierto en {address}")
         if not args.no_browser:
-            webbrowser.open(running["url"])
+            webbrowser.open(address)
         return 0
 
     try:

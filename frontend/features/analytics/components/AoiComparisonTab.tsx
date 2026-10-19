@@ -3,7 +3,7 @@
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
 import {
   Bar,
   BarChart,
@@ -209,6 +209,16 @@ export function AoiComparisonTab({
 
   const fixatedAoiCount = aois.filter((aoi) => aoi.fixation_count > 0).length
 
+  // Nothing to compare until the view can draw its own chart.
+  useCompareParticipantsSpec(scenario === "all" ? null : () => ({
+    kind: "aoi",
+    title: "Distribución temporal por áreas de interés (AOI)",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { minFixationDurationMs },
+  }))
+
   if (scenario === "all") {
     return (
       <div className="analytics-stack">
@@ -358,16 +368,6 @@ export function AoiComparisonTab({
               Porcentaje del tiempo total de observación dedicado a cada zona del estímulo.
             </CardDescription>
           </div>
-          <CompareParticipantsButton
-            spec={() => ({
-              kind: "aoi",
-              title: "Distribución temporal por áreas de interés (AOI)",
-              scenario,
-              sourceParticipant: participantCode,
-              origin: "individual",
-              params: { minFixationDurationMs },
-            })}
-          />
         </CardHeader>
         <CardContent>
           <AnalyticsChartShell xAxisLabel="AOI" variant="compact">

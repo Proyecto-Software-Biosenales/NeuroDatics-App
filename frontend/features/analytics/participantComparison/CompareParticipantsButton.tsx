@@ -7,14 +7,16 @@ import { useParticipantComparison } from "./ParticipantComparisonProvider"
 import type { ParticipantComparisonSpec } from "./spec"
 
 /**
- * Small header action that opens the same chart for every participant. The
- * spec is read at click time so it always carries the view's live filters.
+ * Opens the same chart for every participant. The spec is read at click time
+ * so it always carries the view's live filters.
  */
 export function CompareParticipantsButton({
   spec,
+  size = "xs",
   className,
 }: {
   spec: ParticipantComparisonSpec | (() => ParticipantComparisonSpec)
+  size?: "xs" | "default"
   className?: string
 }) {
   const comparison = useParticipantComparison()
@@ -24,12 +26,12 @@ export function CompareParticipantsButton({
     <Button
       type="button"
       variant="outline"
-      size="xs"
+      size={size}
       aria-haspopup="dialog"
       data-testid="compare-participants-button"
       disabled={disabled}
       title={disabled ? "No hay participantes en este proyecto" : "Ver esta gráfica para cada participante"}
-      className={cn("ml-auto shrink-0 bg-card", className)}
+      className={cn("shrink-0 bg-card", className)}
       onClick={(event) => {
         const resolved = typeof spec === "function" ? spec() : spec
         comparison.open(resolved, event.currentTarget)
@@ -39,4 +41,11 @@ export function CompareParticipantsButton({
       Comparar participantes
     </Button>
   )
+}
+
+/** The filters-bar button: compares whatever chart the open view offers. */
+export function FiltersBarCompareButton() {
+  const { barSpec } = useParticipantComparison()
+  if (!barSpec) return null
+  return <CompareParticipantsButton size="default" spec={barSpec.read} className="bg-background" />
 }

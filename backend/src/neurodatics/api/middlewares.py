@@ -9,7 +9,9 @@ from ..config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-_LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
+# neurodatics.localhost is the name the student launcher opens (local/instance.py): browsers
+# resolve it to loopback themselves, so no other site can be reached under it.
+_LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1", "neurodatics.localhost"}
 
 
 def _local_request_refusal(host_header: str, origin_header: Optional[str]) -> Optional[str]:

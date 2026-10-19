@@ -4,7 +4,7 @@ import { EegChannelSelector } from "./EegChannelSelector"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { type Dispatch, type SetStateAction, type ReactNode } from "react"
+import { type Dispatch, type SetStateAction } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Activity, Radio, SlidersHorizontal, SquareDashed, TrendingUp, Waves } from "lucide-react"
@@ -56,8 +56,6 @@ interface EegSpectrogramViewProps {
   /** What the black bands are, counted; null while there is nothing to draw. */
   spectrogramGaps: SpectrogramGaps | null
   view: EegView
-  /** "Comparar participantes" for this chart, built by EegTab. */
-  compareAction?: ReactNode
   visibleSpectrogramChannels: string[]
 }
 
@@ -93,7 +91,6 @@ export function EegSpectrogramView({
   setInterpolateSpectrogram,
   spectrogramGaps,
   view,
-  compareAction,
   visibleSpectrogramChannels,
 }: EegSpectrogramViewProps) {
   return <>
@@ -142,7 +139,6 @@ export function EegSpectrogramView({
                 onReset={handleResetSpectrogramWindow}
               />
             </div>
-            {compareAction}
           </CardHeader>
           <CardContent>
             <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">

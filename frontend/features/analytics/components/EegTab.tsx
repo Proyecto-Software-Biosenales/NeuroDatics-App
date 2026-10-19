@@ -6,7 +6,7 @@ import { EegSpectrogramView } from "./eeg/EegSpectrogramView"
 import { EegTopographyView } from "./eeg/EegTopographyView"
 
 import { useMemo, useState } from "react"
-import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
 import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { useEegPsd, useEegSpectrogram, useEegTimeseries, useEegTopography } from "../hooks/useAnalyticsData"
 import { useTimeWindow, useZoomHistory } from "../hooks/useZoomHistory"
@@ -613,9 +613,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
         }
     }
   }
-  const compareButton = (kind: EegComparisonKind) => (
-    <CompareParticipantsButton className="order-first self-end xl:order-last xl:self-start" spec={() => compareSpec(kind)} />
-  )
+  useCompareParticipantsSpec(() => compareSpec(`eeg_${view}`))
 
   const showArtifactOnChart = (time: number) => {
     setSelectedTime(time)
@@ -665,7 +663,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           timeseriesWindowError={timeseriesWindowState.error}
           view={view}
           visibleChannels={visibleChannels}
-          compareAction={compareButton("eeg_timeseries")}
         />
       ) : null}
 
@@ -710,7 +707,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           setPsdWindowError={psdWindowState.setError}
           view={view}
           visiblePsdChannels={visiblePsdChannels}
-          compareAction={compareButton("eeg_psd")}
         />
       ) : null}
 
@@ -750,7 +746,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           spectrogramGaps={spectrogramGapSummary}
           view={view}
           visibleSpectrogramChannels={visibleSpectrogramChannels}
-          compareAction={compareButton("eeg_spectrogram")}
         />
       ) : null}
 
@@ -780,7 +775,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           handleApplyTopographyWindow={topographyWindowState.apply}
           handleResetTopographyWindow={topographyWindowState.reset}
           view={view}
-          compareAction={compareButton("eeg_topography")}
         />
       ) : null}
 

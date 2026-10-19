@@ -6,7 +6,7 @@ import type { SensorType } from "@/features/projects/types"
 import { DEVICE_REPORTS } from "@/features/reports/reportContents"
 import type { ReportDevice } from "@/features/reports/types"
 import { ReportStepCard } from "./ReportStepCard"
-import { FieldHint } from "@/components/FieldHint"
+import { ReportOptionTitle } from "./ReportOptionTitle"
 
 interface ReportConfigurationCardProps {
   availableSensors: SensorType[]
@@ -56,16 +56,12 @@ export const ReportConfigurationCard = ({
               key={id}
               htmlFor={`report-device-${id}`}
               className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-xl border border-border p-4 transition-all duration-200",
+                "flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 transition-all duration-200",
                 selectedDevice === id ? "border-foreground/40 bg-muted" : "hover:bg-muted/50"
               )}
             >
-              <RadioGroupItem id={`report-device-${id}`} value={id} />
-              <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-foreground">
-                <Icon className="size-4 shrink-0" aria-hidden="true" />
-                {title}
-                <FieldHint>{description}</FieldHint>
-              </span>
+              <RadioGroupItem id={`report-device-${id}`} value={id} className="mt-0.5" />
+              <ReportOptionTitle icon={Icon} hint={description}>{title}</ReportOptionTitle>
             </Label>
           ))}
         </RadioGroup>

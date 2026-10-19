@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
 import { Clock, MapPin, Route, Ruler, Timer } from "lucide-react"
 import {
   Card,
@@ -101,6 +101,16 @@ export function ScanpathTab({
     }
   }, [data?.n_objectives])
 
+  // Nothing to compare until the view can draw its own chart.
+  useCompareParticipantsSpec(scenario === "all" ? null : () => ({
+    kind: "scanpath",
+    title: "Mapa de recorridos",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { minFixationDurationMs, showAois },
+  }))
+
   if (scenario === "all") {
     return (
       <div className="analytics-stack">
@@ -134,16 +144,6 @@ export function ScanpathTab({
               tamaño representa la misma duración entre participantes.
             </CardDescription>
           </div>
-          <CompareParticipantsButton
-            spec={() => ({
-              kind: "scanpath",
-              title: "Mapa de recorridos",
-              scenario,
-              sourceParticipant: participantCode,
-              origin: "individual",
-              params: { minFixationDurationMs, showAois },
-            })}
-          />
         </CardHeader>
         <CardContent>
           {!participantCode ? (

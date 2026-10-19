@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ReportStepCard } from "./ReportStepCard"
-import { FieldHint } from "@/components/FieldHint"
+import { ReportOptionTitle } from "./ReportOptionTitle"
 import type { ExportOptions } from "@/features/reports/types"
 
 interface ExportOptionsCardProps {
@@ -46,7 +46,7 @@ export const ExportOptionsCard = ({
           <Label
             key={option.key}
             htmlFor={`export-${option.key}`}
-            className={`flex items-center gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
+            className={`flex items-start gap-3 p-4 border border-border rounded-xl cursor-pointer transition-all duration-200 ${
               enabled
                 ? options[option.key]
                   ? "border-foreground/40 bg-muted"
@@ -59,13 +59,9 @@ export const ExportOptionsCard = ({
               checked={options[option.key]}
               onCheckedChange={() => onToggleOption(option.key)}
               disabled={!enabled}
+              className="mt-0.5"
             />
-            <div className="flex flex-1 items-center gap-1.5">
-              <h3 className="text-sm font-semibold text-foreground">
-                {option.title}
-              </h3>
-              <FieldHint>{option.description}</FieldHint>
-            </div>
+            <ReportOptionTitle hint={option.description}>{option.title}</ReportOptionTitle>
           </Label>
         ))}
 

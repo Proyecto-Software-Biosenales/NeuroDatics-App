@@ -48,12 +48,6 @@ interface CreateProjectStep1Props {
     sourceEntryPath: string,
     update: Partial<StimulusPlacementDraft>,
   ) => void
-  /** False when the name and the description are edited elsewhere (the project editor's own section). */
-  showProjectFields?: boolean
-  zipRequired?: boolean
-  isEditMode?: boolean
-  shouldUpdateFolder?: boolean
-  onShouldUpdateFolderChange?: (shouldUpdate: boolean) => void
 }
 
 export const CreateProjectStep1 = ({
@@ -71,11 +65,6 @@ export const CreateProjectStep1 = ({
   stimulusPlacements = [],
   onStimulusPathsChange,
   onStimulusPlacementChange,
-  showProjectFields = true,
-  zipRequired = true,
-  isEditMode = false,
-  shouldUpdateFolder = false,
-  onShouldUpdateFolderChange,
 }: CreateProjectStep1Props) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -224,7 +213,6 @@ export const CreateProjectStep1 = ({
   const onDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setIsDragOver(false)
-    if (isEditMode && !shouldUpdateFolder) return
 
     const item = e.dataTransfer.items?.[0]
     if (!item) return
@@ -271,7 +259,7 @@ export const CreateProjectStep1 = ({
     heightCm: "",
   }
   const geometryDisabled =
-    disableProjectMetadataEditing || (isEditMode && !shouldUpdateFolder)
+    disableProjectMetadataEditing
   const updateGeometry = (
     field: keyof FixationScreenGeometryInput,
     value: string | boolean,
@@ -329,20 +317,18 @@ export const CreateProjectStep1 = ({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        {showProjectFields && (
-          <div className="space-y-2">
-            <Label htmlFor="nombre-proyecto" className="text-base">
-              Nombre del proyecto
-            </Label>
-            <Input
-              id="nombre-proyecto"
-              name="nombre-proyecto"
-              value={projectName}
-              onChange={(e) => onProjectNameChange(e.target.value)}
-              disabled={disableProjectMetadataEditing}
-            />
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label htmlFor="nombre-proyecto" className="text-base">
+            Nombre del proyecto
+          </Label>
+          <Input
+            id="nombre-proyecto"
+            name="nombre-proyecto"
+            value={projectName}
+            onChange={(e) => onProjectNameChange(e.target.value)}
+            disabled={disableProjectMetadataEditing}
+          />
+        </div>
 
         <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
           <div className="flex items-start gap-3">
@@ -368,23 +354,21 @@ export const CreateProjectStep1 = ({
           )}
         </div>
 
-        {showProjectFields && (
-          <div className="space-y-2">
-            <Label htmlFor="descripcion-proyecto" className="text-base">
-              Descripción
-            </Label>
-            <Textarea
-              className="h-20 max-h-20 w-full max-w-full resize-none overflow-y-auto overflow-x-hidden break-all [overflow-wrap:anywhere] [field-sizing:fixed]"
-              id="descripcion-proyecto"
-              name="descripcion-proyecto"
-              wrap="hard"
-              placeholder="Describe brevemente el objetivo del proyecto"
-              value={description}
-              onChange={(e) => onDescriptionChange(e.target.value)}
-              disabled={disableProjectMetadataEditing}
-            />
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label htmlFor="descripcion-proyecto" className="text-base">
+            Descripción
+          </Label>
+          <Textarea
+            className="h-20 max-h-20 w-full max-w-full resize-none overflow-y-auto overflow-x-hidden break-all [overflow-wrap:anywhere] [field-sizing:fixed]"
+            id="descripcion-proyecto"
+            name="descripcion-proyecto"
+            wrap="hard"
+            placeholder="Describe brevemente el objetivo del proyecto"
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            disabled={disableProjectMetadataEditing}
+          />
+        </div>
 
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
@@ -392,24 +376,9 @@ export const CreateProjectStep1 = ({
               Carpeta del experimento
             </Label>
             <FieldHint>
-              {zipRequired || isEditMode ? "" : "Opcional. "}
               La carpeta con las imágenes, los vídeos y los CSV del experimento.
             </FieldHint>
           </div>
-
-          {isEditMode && (
-            <div className="mb-4 flex items-center gap-3 bg-muted border border-border rounded-lg p-3 hover:bg-accent transition-colors">
-              <Checkbox
-                id="actualizar-carpeta"
-                checked={shouldUpdateFolder}
-                onCheckedChange={(checked) => onShouldUpdateFolderChange?.(checked === true)}
-                className="cursor-pointer border-gray-400"
-              />
-              <Label htmlFor="actualizar-carpeta" className="text-sm cursor-pointer">
-                Actualizar carpeta del experimento
-              </Label>
-            </div>
-          )}
 
           {/* input oculto */}
           <input
@@ -421,21 +390,19 @@ export const CreateProjectStep1 = ({
           />
 
           <div
-            onClick={(isEditMode && !shouldUpdateFolder) || disableProjectMetadataEditing ? undefined : pickFile}
+            onClick={disableProjectMetadataEditing ? undefined : pickFile}
             onDragOver={(e) => {
-              if (isEditMode && !shouldUpdateFolder) return
               if (disableProjectMetadataEditing) return
               e.preventDefault()
               setIsDragOver(true)
             }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={(e) => {
-              if (isEditMode && !shouldUpdateFolder) return
               if (disableProjectMetadataEditing) return
               onDrop(e)
             }}
             className={`border-2 border-dashed rounded-xl bg-card transition-all duration-300 ${
-              (isEditMode && !shouldUpdateFolder) || disableProjectMetadataEditing
+              disableProjectMetadataEditing
                 ? "cursor-not-allowed opacity-50 border-border bg-muted"
                 : "cursor-pointer"
             } ${
@@ -465,7 +432,7 @@ export const CreateProjectStep1 = ({
                   e.stopPropagation()
                   pickFile()
                 }}
-                disabled={(isEditMode && !shouldUpdateFolder) || disableProjectMetadataEditing}
+                disabled={disableProjectMetadataEditing}
               >
                 Seleccionar carpeta
               </Button>
@@ -689,7 +656,7 @@ export const CreateProjectStep1 = ({
       <StimulusPlacementEditor
         placements={stimulusPlacements}
         fixationGeometry={fixationGeometry}
-        disabled={disableProjectMetadataEditing || (isEditMode && !shouldUpdateFolder)}
+        disabled={disableProjectMetadataEditing}
         onChange={(sourceEntryPath, update) =>
           onStimulusPlacementChange?.(sourceEntryPath, update)
         }

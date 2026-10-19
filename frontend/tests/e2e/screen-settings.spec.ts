@@ -118,7 +118,7 @@ test("un pre-experimento sin medidas toma la pantalla y el tamaño físico de Co
   state.confirmed = true
   const planning = {
     participants: [],
-    screen: { model: "", width_px: null, height_px: null, width_cm: null, height_cm: null, viewing_distance_cm: null, notes: "" },
+    screen: { width_px: null, height_px: null, width_cm: null, height_cm: null, viewing_distance_cm: null, notes: "" },
     notes: "",
     questionnaires: {
       before: { enabled: false, title: "Cuestionario antes del experimento", questions: [] },
@@ -139,5 +139,6 @@ test("un pre-experimento sin medidas toma la pantalla y el tamaño físico de Co
   await expect(page.getByRole("spinbutton", { name: "Ancho (px)", exact: true })).toHaveValue("1280")
   await expect(page.getByRole("spinbutton", { name: "Ancho (cm)", exact: true })).toHaveValue("37.6")
   await expect(page.getByRole("spinbutton", { name: "Alto (cm)", exact: true })).toHaveValue("30.1")
+  await expect(page.getByRole("textbox", { name: "Modelo de pantalla", exact: true })).toHaveCount(0)
   await expect(page.getByText("Hay cambios sin guardar", { exact: false })).toHaveCount(0)
 })

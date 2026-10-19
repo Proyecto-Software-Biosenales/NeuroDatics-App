@@ -1,11 +1,11 @@
 "use client"
-import { AnalyticsModeSelector } from "@/features/analytics/components/AnalyticsModeSelector"
+import { AnalyticsModeSelector, AnalyticsToggle } from "@/features/analytics/components/AnalyticsModeSelector"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
 import {
   CartesianGrid,
   Line,
@@ -61,6 +61,7 @@ import { MissingStimulusImage } from "./MissingStimulusImage"
 import { AnalyticsChartShell, LINE_CHART_MARGIN } from "./AnalyticsChartShell"
 import { useChartDragZoom } from "./ChartDragZoom"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
+import { pupilAxis } from "../pupilAxis"
 
 type ViewMode = "both" | "left" | "right"
 
@@ -268,6 +269,7 @@ export function PupilDilationTab({
   scenario,
 }: PupilDilationTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("both")
+  const [fitAxis, setFitAxis] = useState(false)
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [scenarioImageUrl, setScenarioImageUrl] = useState<string | null>(null)
   const [scenarioPreviewLoading, setScenarioPreviewLoading] = useState(false)
@@ -362,6 +364,11 @@ export function PupilDilationTab({
     if (chartData.length === 0) return ["dataMin", "dataMax"]
     return [chartData[0].time, chartData[chartData.length - 1].time]
   }, [chartData])
+  // Both pupils set the scale, so switching between them never moves the axis.
+  const yAxis = useMemo(
+    () => pupilAxis(chartData.flatMap((point) => [point.smooth_left, point.smooth_right]), fitAxis),
+    [chartData, fitAxis]
+  )
   const chartLegend = [
     ...(viewMode === "both" || viewMode === "right"
       ? [{ label: "Pupila derecha", color: "#F87171" }]
@@ -539,6 +546,14 @@ export function PupilDilationTab({
 
   // A dragged range behaves exactly like typing it into the window controls.
   const dragZoom = useChartDragZoom(windowState.zoomTo)
+  useCompareParticipantsSpec(() => ({
+    kind: "pupil",
+    title: "Dilatación pupilar",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { eyes: viewMode, window: timeWindow },
+  }))
 
   return (
     <div className="analytics-stack">
@@ -552,6 +567,12 @@ export function PupilDilationTab({
           </div>
 
           <div className="flex max-w-full flex-wrap items-center gap-2">
+            <AnalyticsToggle
+              label="Ajustar"
+              hint="Acerca el eje vertical a los valores de la gráfica."
+              pressed={fitAxis}
+              onPressedChange={setFitAxis}
+            />
             <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
                 { key: "both", label: "Ambas pupilas" },
                 { key: "left", label: "Izquierda" },
@@ -571,16 +592,6 @@ export function PupilDilationTab({
               }
               onApply={windowState.apply}
               onReset={windowState.reset}
-            />
-            <CompareParticipantsButton
-              spec={() => ({
-                kind: "pupil",
-                title: "Dilatación pupilar",
-                scenario,
-                sourceParticipant: participantCode,
-                origin: "individual",
-                params: { eyes: viewMode, window: timeWindow },
-              })}
             />
           </div>
         </CardHeader>
@@ -661,6 +672,9 @@ export function PupilDilationTab({
                 />
                 <YAxis
                   width={72}
+                  domain={yAxis?.domain ?? [0, "auto"]}
+                  ticks={yAxis?.ticks}
+                  allowDataOverflow={Boolean(yAxis)}
                   label={{ value: "Amplitud pupilar (mm)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
                 />
                 <RechartsTooltip content={<PupilTooltip />} />

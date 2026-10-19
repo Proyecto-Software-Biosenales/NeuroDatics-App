@@ -2,16 +2,15 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ApiError } from "@/lib/api/apiFetch"
 import { ProjectsApi, type ApiProjectDetail } from "@/features/projects/api/projectsApi"
-import type { SensorType } from "@/features/projects/types"
 import {
   participantDataFromApi,
   participantToApi,
   type ParticipantData,
-  type ParticipantField,
   type scenaries,
 } from "@/features/projects/create-project/types"
 import { serializeAoisForComparison, serializeScenaryAois } from "@/features/projects/create-project/aoiUtils"
 import { PreExperimentApi, planningError } from "@/features/projects/pre-experiment/api"
+import { newPlanningParticipant, type ParticipantFields } from "@/features/projects/pre-experiment/PlanningParticipants"
 import {
   validateParticipants,
   validateQuestionnaire,
@@ -24,34 +23,35 @@ import {
   type QuestionnaireResponse,
 } from "@/features/projects/pre-experiment/types"
 import { useScreenSettings } from "@/features/settings/screenSettings"
+import {
+  assignedParticipant,
+  linkParticipants,
+  mirroredParticipant,
+  repeatedDocuments,
+  type ParticipantLinks,
+} from "./participants"
 import { describeFailure, extractProjectNameAndId, parseScenaries, toParticipantSex } from "./projectDetail"
-import { useFolderReplacement } from "./useFolderReplacement"
 
 export type EditorSection =
   | "project"
   | "participants"
   | "questionnaires"
   | "screen"
-  | "devices"
   | "aois"
   | "notes"
-  | "data"
 
 /** What the project holds apart from its preparation: its name and, once it has a folder, what was read from it. */
 type ProjectData = {
   name: string
   description: string
-  sensors: SensorType[]
   participants: ParticipantData[]
   scenaries: scenaries[]
 }
 
-const emptyData: ProjectData = { name: "", description: "", sensors: [], participants: [], scenaries: [] }
+const emptyData: ProjectData = { name: "", description: "", participants: [], scenaries: [] }
 
 // Older saves could keep questions in a questionnaire switched off; the editor treats questions as switched on.
 const savedDraft = (envelope: PreExperimentEnvelope) => withDerivedQuestionnaires(structuredClone(envelope.config))
-
-const sameSensors = (a: SensorType[], b: SensorType[]) => a.length === b.length && a.every((sensor) => b.includes(sensor))
 
 const sameParticipants = (a: ParticipantData[], b: ParticipantData[]) =>
   a.length === b.length &&
@@ -87,31 +87,13 @@ export function useProjectEditor(projectId: string) {
   const [data, setData] = useState<ProjectData>(emptyData)
   const [saved, setSaved] = useState<PreExperimentEnvelope | null>(null)
   const [planning, setPlanning] = useState<PreExperimentConfig | null>(null)
+  const [links, setLinks] = useState<ParticipantLinks>({})
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [conflict, setConflict] = useState(false)
   const request = useRef<AbortController | null>(null)
   const inFlight = useRef(false)
-  const finalized = useRef(false)
-
-  const folder = useFolderReplacement({
-    projectId,
-    participants: data.participants,
-    saveMetadata: async () => {
-      if (data.name.trim() === baseline.name.trim() && data.description.trim() === baseline.description.trim()) return
-      await ProjectsApi.update(projectId, { name: data.name.trim(), description: data.description.trim() })
-      setBaseline((previous) => ({ ...previous, name: data.name, description: data.description }))
-    },
-    onProcessed: (processed) =>
-      setData((previous) => ({
-        ...previous,
-        sensors: processed.sensors,
-        participants: processed.participants,
-        scenaries: processed.scenaries,
-      })),
-  })
-  const resetFolder = folder.reset
 
   const load = useCallback(async () => {
     request.current?.abort()
@@ -120,7 +102,6 @@ export function useProjectEditor(projectId: string) {
     setLoading(true)
     setError(null)
     setConflict(false)
-    finalized.current = false
     try {
       const [project, envelope] = await Promise.all([
         ProjectsApi.get(projectId, controller.signal),
@@ -130,7 +111,6 @@ export function useProjectEditor(projectId: string) {
       const next: ProjectData = {
         name: extractProjectNameAndId(project.name || "").name,
         description: project.description || "",
-        sensors: (project.sensors || []).map((sensor) => sensor.sensor_type) as SensorType[],
         participants: (project.participants || []).map((participant) =>
           participantDataFromApi(participant, toParticipantSex(participant.sex))
         ),
@@ -141,7 +121,7 @@ export function useProjectEditor(projectId: string) {
       setData(next)
       setSaved(envelope)
       setPlanning(savedDraft(envelope))
-      resetFolder(project)
+      setLinks(project.is_pre_experiment === true ? {} : linkParticipants(next.participants, envelope.config.participants))
     } catch (failure) {
       if (controller.signal.aborted) return
       setError(
@@ -152,7 +132,7 @@ export function useProjectEditor(projectId: string) {
     } finally {
       if (!controller.signal.aborted) setLoading(false)
     }
-  }, [projectId, resetFolder])
+  }, [projectId])
 
   useEffect(() => {
     void load()
@@ -173,12 +153,11 @@ export function useProjectEditor(projectId: string) {
       JSON.stringify(withScreenDefaults(planning, globalScreen))
   const metadataChanged =
     data.name.trim() !== baseline.name.trim() || data.description.trim() !== baseline.description.trim()
-  const sensorsChanged = hasData && !sameSensors(baseline.sensors, data.sensors)
   const participantsChanged = hasData && !sameParticipants(baseline.participants, data.participants)
   const aoisChanged =
     hasData && serializeAoisForComparison(baseline.scenaries) !== serializeAoisForComparison(data.scenaries)
   const dirty =
-    metadataChanged || planningDirty || sensorsChanged || participantsChanged || aoisChanged || folder.processed
+    metadataChanged || planningDirty || participantsChanged || aoisChanged
 
   useEffect(() => {
     if (!dirty) return
@@ -192,20 +171,6 @@ export function useProjectEditor(projectId: string) {
 
   const setName = (name: string) => setData((previous) => ({ ...previous, name }))
   const setDescription = (description: string) => setData((previous) => ({ ...previous, description }))
-  const toggleSensor = (sensor: SensorType) =>
-    setData((previous) => ({
-      ...previous,
-      sensors: previous.sensors.includes(sensor)
-        ? previous.sensors.filter((item) => item !== sensor)
-        : [...previous.sensors, sensor],
-    }))
-  const updateParticipant = (id: string, field: ParticipantField, value: string) =>
-    setData((previous) => ({
-      ...previous,
-      participants: previous.participants.map((participant) =>
-        participant.id === id ? { ...participant, [field]: value } : participant
-      ),
-    }))
   const updateAois = (scenaryId: string, aois: scenaries["aois"]) =>
     setData((previous) => ({
       ...previous,
@@ -215,30 +180,82 @@ export function useProjectEditor(projectId: string) {
     setPlanning(next)
     setError(null)
   }
+  /** Edits a participant read from the data; the preparation's copy of it, if any, stays equal. Notes live only
+   *  in the preparation, so the first note of a participant without a copy creates it. */
+  const updateRecordedParticipant = (code: string, change: Partial<ParticipantFields>) => {
+    const current = data.participants.find((participant) => participant.id === code)
+    if (!current || !planning) return
+    const next: ParticipantData = {
+      ...current,
+      ...(change.name !== undefined && { name: change.name }),
+      ...(change.document !== undefined && { document: change.document }),
+      ...(change.sex !== undefined && { sex: toParticipantSex(change.sex) }),
+      ...(change.age !== undefined && { age: change.age }),
+    }
+    setData((previous) => ({
+      ...previous,
+      participants: previous.participants.map((participant) => (participant.id === code ? next : participant)),
+    }))
+    const linked = links[code]
+    const notes = change.notes !== undefined ? { notes: change.notes } : {}
+    if (linked)
+      changePlanning({
+        ...planning,
+        participants: planning.participants.map((item) =>
+          item.id === linked ? { ...item, ...mirroredParticipant(next), ...notes } : item
+        ),
+      })
+    else if (change.notes) {
+      const created = { ...newPlanningParticipant(), ...mirroredParticipant(next), notes: change.notes }
+      setLinks((previous) => ({ ...previous, [code]: created.id }))
+      changePlanning({ ...planning, participants: [...planning.participants, created] })
+    }
+  }
 
-  // The two participant lists are checked apart, so the editor can open the one to fix.
-  const planningParticipantsProblem = planning ? validateParticipants(planning) : null
-  const experimentParticipantsProblem =
+  /** Pairs a participant of the preparation with one read from the data that has no pair yet: the one of the data
+   *  takes its document and details, and from then on both are one card. */
+  const assignParticipant = (plannedId: string, code: string) => {
+    const planned = planning?.participants.find((item) => item.id === plannedId)
+    const current = data.participants.find((participant) => participant.id === code)
+    if (!planning || !planned || !current || links[code] || Object.values(links).includes(plannedId)) return
+    const next = assignedParticipant(current, planned)
+    setData((previous) => ({
+      ...previous,
+      participants: previous.participants.map((participant) => (participant.id === code ? next : participant)),
+    }))
+    setLinks((previous) => ({ ...previous, [code]: plannedId }))
+    changePlanning({
+      ...planning,
+      participants: planning.participants.map((item) =>
+        item.id === plannedId ? { ...item, ...mirroredParticipant(next) } : item
+      ),
+    })
+  }
+
+  const repeatedDocument = planning ? repeatedDocuments(data.participants, planning.participants, links).first : null
+  const participantsProblem =
     hasData && !hasValidParticipants(data.participants)
-      ? "Completa sexo y edad de todos los participantes del experimento."
-      : null
+      ? "Completa sexo y edad de los participantes leídos de los datos."
+      : repeatedDocument
+        ? `Hay dos participantes con el documento ${repeatedDocument}.`
+        : planning
+          ? validateParticipants(planning)
+          : null
 
   /** What keeps each section from being saved as it is; null when it can be saved. */
   const problems: Record<EditorSection, string | null> = {
     project: data.name.trim() ? null : "Escribe el nombre del proyecto.",
-    participants: experimentParticipantsProblem ?? planningParticipantsProblem,
+    participants: participantsProblem,
     questionnaires: planning
       ? (validateQuestionnaire(planning, "before") ?? validateQuestionnaire(planning, "after"))
       : null,
     screen: planning ? validateScreen(planning) : null,
-    devices: hasData && data.sensors.length === 0 ? "Selecciona al menos un dispositivo." : null,
     aois: null,
     notes: null,
-    data: null,
   }
   /** The first section to fix, in the order of the tabs. */
   const validate = (): { section: EditorSection; message: string } | null => {
-    const order: EditorSection[] = ["project", "participants", "questionnaires", "screen", "devices"]
+    const order: EditorSection[] = ["project", "participants", "questionnaires", "screen"]
     const section = order.find((item) => problems[item])
     return section ? { section, message: problems[section] as string } : null
   }
@@ -256,10 +273,6 @@ export function useProjectEditor(projectId: string) {
         await ProjectsApi.update(projectId, { name: data.name.trim(), description: data.description.trim() })
         setBaseline((previous) => ({ ...previous, name: data.name, description: data.description }))
       }
-      if (sensorsChanged) {
-        await ProjectsApi.setSensors(projectId, data.sensors as string[])
-        setBaseline((previous) => ({ ...previous, sensors: data.sensors }))
-      }
       if (participantsChanged) {
         await ProjectsApi.setParticipants(projectId, data.participants.map(participantToApi))
         setBaseline((previous) => ({ ...previous, participants: structuredClone(data.participants) }))
@@ -267,11 +280,6 @@ export function useProjectEditor(projectId: string) {
       if (aoisChanged) {
         await ProjectsApi.setAois(projectId, serializeScenaryAois(data.scenaries))
         setBaseline((previous) => ({ ...previous, scenaries: structuredClone(data.scenaries) }))
-      }
-      // Finalize only when a new experiment folder was uploaded, and once even if a later part fails.
-      if (folder.processed && !finalized.current) {
-        await ProjectsApi.finalize(projectId)
-        finalized.current = true
       }
       if (planningDirty) {
         savingPlanning = true
@@ -332,16 +340,15 @@ export function useProjectEditor(projectId: string) {
     data,
     setName,
     setDescription,
-    toggleSensor,
-    updateParticipant,
+    updateRecordedParticipant,
+    assignParticipant,
     updateAois,
     envelope: saved,
     planning,
     planningDirty,
     changePlanning,
-    folder,
+    links,
     problems,
-    planningParticipantsProblem,
     validate,
     save,
     load,

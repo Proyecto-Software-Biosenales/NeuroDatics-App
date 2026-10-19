@@ -131,6 +131,9 @@ def test_local_session_returns_the_fixed_user():
         ("localhost:8765", None, True),
         ("[::1]:8765", None, True),
         ("127.0.0.1:8765", "http://127.0.0.1:8765", True),
+        ("neurodatics.localhost", "http://neurodatics.localhost", True),  # the name the launcher opens
+        ("neurodatics.localhost.evil.example", None, False),
+        ("neurodatics.localhost", "http://127.0.0.1", False),
         ("evil.example:8765", None, False),  # DNS rebinding: a name we do not own
         ("127.0.0.1.evil.example", None, False),
         ("127.0.0.1:8765", "https://evil.example", False),  # another site posting to us

@@ -4,7 +4,7 @@ import { EegChannelSelector } from "./EegChannelSelector"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { useMemo, type Dispatch, type SetStateAction, type ReactNode } from "react"
+import { useMemo, type Dispatch, type SetStateAction } from "react"
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts"
 import { Activity, Brain, ChartSpline, Clock, Crosshair, Gauge, Rows3, Scissors, TrendingDown, TrendingUp, Waves } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -56,8 +56,6 @@ interface EegTimeseriesViewProps {
   timeseriesWindowDraft: TimeWindowDraft
   timeseriesWindowError: string | null
   view: EegView
-  /** "Comparar participantes" for this chart, built by EegTab. */
-  compareAction?: ReactNode
   visibleChannels: string[]
   artifactSpans: EegArtifactSpan[]
   chartLayout: ChartLayout
@@ -101,7 +99,6 @@ export function EegTimeseriesView({
   timeseriesWindowDraft,
   timeseriesWindowError,
   view,
-  compareAction,
   visibleChannels,
   artifactSpans,
   chartLayout,
@@ -220,7 +217,6 @@ export function EegTimeseriesView({
               onReset={handleResetTimeseriesWindow}
             />
           </div>
-          {compareAction}
         </CardHeader>
 
         <CardContent>

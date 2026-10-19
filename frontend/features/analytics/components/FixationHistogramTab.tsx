@@ -26,7 +26,7 @@ import { Activity, TrendingDown, TrendingUp } from "lucide-react"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
 import { AnalyticsChartShell } from "./AnalyticsChartShell"
 import { useFixationHistogram } from "../hooks/useAnalyticsData"
-import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
 import type {
   FixationDurationMs,
   FixationHistogramBin,
@@ -216,6 +216,16 @@ export function FixationHistogramTab({
     scenario,
     minFixationDurationMs
   )
+  // Nothing to compare until the view can draw its own chart.
+  useCompareParticipantsSpec(!participantCode ? null : () => ({
+    kind: "fixation_histogram",
+    title: "Histograma de fijaciones",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { minFixationDurationMs },
+  }))
+
   if (!participantCode) {
     return (
       <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30">
@@ -315,16 +325,6 @@ export function FixationHistogramTab({
                   N = {data.n_fixations} fijaciones.
                 </CardDescription>
               </div>
-              <CompareParticipantsButton
-                spec={() => ({
-                  kind: "fixation_histogram",
-                  title: "Histograma de fijaciones",
-                  scenario,
-                  sourceParticipant: participantCode,
-                  origin: "individual",
-                  params: { minFixationDurationMs },
-                })}
-              />
             </CardHeader>
             <CardContent>
               <AnalyticsChartShell xAxisLabel="Duración (ms)" variant="compact">

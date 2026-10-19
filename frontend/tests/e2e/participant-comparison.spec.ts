@@ -580,3 +580,54 @@ test("spatial and EEG frequency views render per participant without runtime err
   await page.screenshot({ path: test.info().outputPath("participant-comparison-topography.png") })
   expect(errors).toEqual([])
 })
+
+test("the pupil axis starts at zero, Ajustar fits it, and the button sits in the filters bar", async ({ page }) => {
+  await mockApi(page)
+  await page.setViewportSize({ width: 1536, height: 730 })
+  await openPupilView(page)
+  const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Dilatación pupilar" }) })
+  const yTicks = () => card.locator(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value").allTextContents()
+
+  // The source participant spans 2.9-3.98 mm across both pupils.
+  await expect.poll(yTicks).toEqual(["0", "1", "2", "3", "4", "5"])
+  const fit = card.getByRole("button", { name: "Ajustar" })
+  await expect(fit).toHaveAttribute("aria-pressed", "false")
+  await fit.click()
+  await expect(fit).toHaveAttribute("aria-pressed", "true")
+  await expect.poll(yTicks).toEqual(["2", "3", "4"])
+  // Screenshot once the lines finish redrawing, with the pointer off the button.
+  await page.mouse.move(0, 0)
+  await page.waitForTimeout(1600)
+  await page.screenshot({ path: test.info().outputPath("pupil-axis-fitted.png") })
+  // Both pupils set the scale, so switching pupils never moves it.
+  await card.getByRole("button", { name: "Izquierda", exact: true }).click()
+  await expect.poll(yTicks).toEqual(["2", "3", "4"])
+  await fit.click()
+  await expect.poll(yTicks).toEqual(["0", "1", "2", "3", "4", "5"])
+
+  // The header controls share one height.
+  const heights = await Promise.all([
+    card.getByRole("group", { name: "Ajustar" }),
+    card.getByRole("group", { name: "Modo de visualización" }),
+    card.getByRole("button", { name: /^Ventana temporal/ }),
+  ].map(async (control) => (await control.boundingBox())!.height))
+  expect(new Set(heights).size).toBe(1)
+
+  // One compare button, right after the participant select and as tall as it.
+  const compare = page.getByTestId("compare-participants-button")
+  await expect(compare).toHaveCount(1)
+  await expect(card.getByTestId("compare-participants-button")).toHaveCount(0)
+  const participantBox = (await page.locator('[data-slot="select-trigger"]').nth(1).boundingBox())!
+  const compareBox = (await compare.boundingBox())!
+  expect(compareBox.height).toBe(participantBox.height)
+  expect(compareBox.y).toBe(participantBox.y)
+  expect(compareBox.x).toBeGreaterThan(participantBox.x + participantBox.width)
+  expect(compareBox.x - (participantBox.x + participantBox.width)).toBeLessThan(16)
+  await page.screenshot({ path: test.info().outputPath("pupil-axis-and-filters.png") })
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(compare).toBeVisible()
+  const main = page.locator("main.analytics-shell")
+  expect(await main.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0)
+  await page.screenshot({ path: test.info().outputPath("pupil-axis-390.png") })
+})

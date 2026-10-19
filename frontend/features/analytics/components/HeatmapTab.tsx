@@ -5,7 +5,7 @@ import { HintTooltip } from "@/components/HintTooltip"
 import { Button } from "@/components/ui/button"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
 import { Clock, Flame, Hash, Timer } from "lucide-react"
 import {
   Card,
@@ -111,6 +111,16 @@ export function HeatmapTab({
     }
   }, [computeLetterbox, scenarioImageUrl])
 
+  // Nothing to compare until the view can draw its own chart.
+  useCompareParticipantsSpec(scenario === "all" ? null : () => ({
+    kind: "heatmap",
+    title: "Mapa de calor",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { minFixationDurationMs, showAois },
+  }))
+
   if (scenario === "all") {
     return (
       <div className="analytics-stack">
@@ -147,16 +157,6 @@ export function HeatmapTab({
               basada en la duración y frecuencia de las fijaciones.
             </CardDescription>
           </div>
-          <CompareParticipantsButton
-            spec={() => ({
-              kind: "heatmap",
-              title: "Mapa de calor",
-              scenario,
-              sourceParticipant: participantCode,
-              origin: "individual",
-              params: { minFixationDurationMs, showAois },
-            })}
-          />
         </CardHeader>
         <CardContent>
           {!participantCode ? (

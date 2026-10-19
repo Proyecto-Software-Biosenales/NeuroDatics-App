@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
 import {
   CartesianGrid,
   Line,
@@ -333,6 +333,15 @@ export function GazePointTab({
   // A dragged range behaves exactly like typing it into the window controls.
   const dragZoom = useChartDragZoom(windowState.zoomTo)
 
+  useCompareParticipantsSpec(() => ({
+    kind: "gaze",
+    title: "Punto de mirada",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { axes: viewMode, window: timeWindow },
+  }))
+
   return (
     <div className="analytics-stack">
       <Card>
@@ -364,16 +373,6 @@ export function GazePointTab({
               }
               onApply={windowState.apply}
               onReset={windowState.reset}
-            />
-            <CompareParticipantsButton
-              spec={() => ({
-                kind: "gaze",
-                title: "Punto de mirada",
-                scenario,
-                sourceParticipant: participantCode,
-                origin: "individual",
-                params: { axes: viewMode, window: timeWindow },
-              })}
             />
           </div>
         </CardHeader>

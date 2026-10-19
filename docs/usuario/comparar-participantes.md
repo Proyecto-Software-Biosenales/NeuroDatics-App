@@ -1,7 +1,7 @@
 # Comparar participantes
 
-Cada gráfica analítica tiene un botón «Comparar participantes» arriba a la derecha de su
-encabezado. Abre un diálogo a pantalla completa con una tarjeta por participante y la misma
+El botón «Comparar participantes» está en la barra de filtros, junto al selector de participante, y compara
+la gráfica que está abierta. Abre un diálogo a pantalla completa con una tarjeta por participante y la misma
 gráfica, con los mismos parámetros, en todas.
 
 ## Qué se puede comparar
@@ -9,8 +9,9 @@ gráfica, con los mismos parámetros, en todas.
 El botón aparece en las vistas individuales de pupila, punto de mirada, distancia al
 dispositivo, GSR, histograma de fijaciones, mapa de calor, mapa de recorridos y distribución de
 permanencia en AOIs, y en las cuatro vistas EEG: por canal, densidad espectral, espectrograma y
-topografía. También aparece en los paneles de la pestaña «Comparativas», fuera del disparador
-que los pliega.
+topografía. El mapa de calor, el mapa de recorridos y las AOIs lo muestran cuando hay un escenario
+elegido, y el histograma cuando hay un participante. La pestaña «Comparativas» muestra varias gráficas a
+la vez, así que allí cada panel conserva su propio botón, fuera del disparador que lo pliega.
 
 La comparación hereda el escenario y los parámetros de la vista desde la que se abre: ojos o
 ejes seleccionados, ventana temporal, modo crudo o suavizado, canales EEG, frecuencia máxima,

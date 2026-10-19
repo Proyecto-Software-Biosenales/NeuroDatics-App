@@ -20,6 +20,15 @@ from typing import Optional
 
 _ERROR_ALREADY_EXISTS = 183
 INFO_FILE = "instance.json"
+# Browsers resolve every *.localhost name to loopback by themselves (no hosts file, no DNS),
+# so the student sees a name instead of 127.0.0.1. Other programs may not resolve it, so
+# tools keep using ``url``.
+APP_HOST = "neurodatics.localhost"
+
+
+def app_address(port: int) -> str:
+    """The address the browser opens."""
+    return f"http://{APP_HOST}:{port}/"
 
 
 class InstanceLock:
@@ -49,7 +58,9 @@ class InstanceLock:
         self._info_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self._info_path.with_name(INFO_FILE + ".part")
         temporary.write_text(
-            json.dumps({"pid": os.getpid(), "port": port, "url": f"http://127.0.0.1:{port}/"}),
+            json.dumps(
+                {"pid": os.getpid(), "port": port, "url": f"http://127.0.0.1:{port}/", "address": app_address(port)}
+            ),
             encoding="utf-8",
         )
         temporary.replace(self._info_path)

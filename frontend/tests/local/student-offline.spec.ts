@@ -3,13 +3,13 @@ import { expect, test, type Page } from "@playwright/test"
 // Runs against a live student edition. The browser is started with name resolution turned off
 // for everything but loopback, and every test also fails on any request that leaves the machine.
 //
-//   STUDENT_BASE_URL     the address the launcher printed, e.g. http://127.0.0.1:8765
+//   STUDENT_BASE_URL     the address the launcher printed, e.g. http://neurodatics.localhost:8765
 //   STUDENT_RAW_FOLDER   an extracted raw experiment folder (private data, never committed);
 //                        the full-flow test is skipped without it
 //   npx playwright test -c playwright.local.config.ts
 
 const rawFolder = process.env.STUDENT_RAW_FOLDER
-const LOOPBACK = new Set(["127.0.0.1", "localhost"])
+const LOOPBACK = new Set(["127.0.0.1", "localhost", "neurodatics.localhost"])
 const SESSION_KEY = "neurodatics-auth-session"
 
 type Watch = { external: string[]; failed: string[]; errors: string[]; fonts: string[] }
@@ -69,6 +69,18 @@ test("the first visit asks to review the screen, and Configuración holds only g
   await page.reload()
   await expect(page.getByRole("heading", { name: "Proyectos", exact: true })).toBeVisible()
   await expect(notice).toHaveCount(0)
+  expectClean(seen)
+})
+
+test("the browser tab shows the NeuroDatics name and icon", async ({ page }) => {
+  const seen = watch(page)
+  await page.goto("/")
+  await expect(page).toHaveTitle("NeuroDatics")
+  const icon = await page.locator('link[rel="icon"]').first().getAttribute("href")
+  expect(icon).toMatch(/favicon\.ico/)
+  const response = await page.request.get(new URL(icon as string, page.url()).toString())
+  expect(response.status()).toBe(200)
+  expect(response.headers()["content-type"]).toMatch(/icon/)
   expectClean(seen)
 })
 
@@ -201,6 +213,85 @@ test("a pre-experiment is prepared tab by tab without a folder, then deleted", a
   expectClean(seen)
 })
 
+test("a pre-experiment receiving its folder assigns its participants to the ones of the data", async ({ page }) => {
+  test.skip(!rawFolder, "set STUDENT_RAW_FOLDER to an extracted raw experiment folder")
+  const seen = watch(page)
+  const name = `Pre-experimento con carpeta ${Date.now()}`
+
+  await page.goto("/proyectos/")
+  await page.getByRole("button", { name: "Crear proyecto", exact: true }).first().click()
+  const dialog = page.getByRole("dialog")
+  await dialog.getByRole("button", { name: "Pre-experimento", exact: true }).click()
+  await dialog.getByRole("textbox", { name: "Nombre del proyecto *", exact: true }).fill(name)
+  await dialog.getByRole("tab", { name: /^Participantes/ }).click()
+  for (const [participant, document] of [["Planeada", "PLAN-1"], ["Ausente", "AUSENTE-2"]]) {
+    await dialog.getByRole("button", { name: "Agregar participante", exact: true }).click()
+    await dialog.getByRole("textbox", { name: "Nombre", exact: true }).last().fill(participant)
+    await dialog.getByRole("textbox", { name: "Documento *", exact: true }).last().fill(document)
+  }
+  await dialog.getByRole("button", { name: "Crear pre-experimento", exact: true }).click()
+  await expect(dialog).toBeHidden({ timeout: 30_000 })
+
+  const cardWith = (has: ReturnType<Page["getByRole"]>) =>
+    page.locator("div").filter({ has: page.getByText(name, { exact: true }) }).filter({ has }).last()
+  await cardWith(page.getByRole("button", { name: "Subir", exact: true })).getByRole("button", { name: "Subir", exact: true }).click()
+  await dialog.locator("input[type=file]").setInputFiles(rawFolder!)
+  await expect(dialog.getByText("CSV a procesar")).toBeVisible()
+  await dialog.getByRole("button", { name: "Siguiente" }).click()
+  await expect(dialog.getByText("Paso 2 de 4")).toBeVisible({ timeout: 5 * 60_000 })
+  await dialog.getByRole("button", { name: "Siguiente" }).click()
+
+  // The participants of the preparation come first; no document of the data looks like theirs, so they wait.
+  await expect(dialog.getByText("Paso 3 de 4")).toBeVisible()
+  await expect(dialog.getByText("2 participantes del pre-experimento quedan sin asignar.", { exact: false })).toBeVisible()
+  await expect(dialog.getByRole("button", { name: /^Participante 1.*Planeada.*Sin asignar/ })).toBeVisible()
+  await dialog.getByRole("combobox", { name: "Asignar documento" }).click()
+  await page.getByRole("option").nth(1).click()
+  await expect(dialog.getByText("1 participante del pre-experimento queda sin asignar.", { exact: false })).toBeVisible()
+  await expect(dialog.getByLabel("Nombre", { exact: true })).toHaveValue("Planeada")
+  await expect(dialog.getByLabel("Documento", { exact: true })).toHaveValue("PLAN-1")
+  const headers = dialog.getByRole("button", { name: /^Participante \d+/ })
+  const count = await headers.count()
+  for (let index = 1; index <= count; index += 1) {
+    const header = dialog.getByRole("button", { name: new RegExp(`^Participante ${index}(\\D|$)`) })
+    if ((await header.getAttribute("aria-expanded")) !== "true") await header.click()
+    // The one left out has only its assignment to choose.
+    if (index !== 2) {
+      await dialog.getByRole("combobox", { name: "Sexo", exact: true }).click()
+      await page.getByRole("option", { name: "Masculino", exact: true }).click()
+      await dialog.getByLabel("Edad *", { exact: true }).fill("25")
+    }
+    await header.click()
+  }
+  await expect(dialog.getByText("Completar", { exact: true })).toHaveCount(0)
+  await dialog.getByRole("button", { name: "Siguiente" }).click()
+  await expect(dialog.getByText("Paso 4 de 4")).toBeVisible()
+  await dialog.getByRole("button", { name: "Guardar proyecto" }).click()
+  await expect(dialog).toBeHidden({ timeout: 60_000 })
+
+  // In the editor the assigned one is the card of its data; the one left out stays, ready to be assigned.
+  const card = cardWith(page.getByRole("button", { name: "Opciones del proyecto" }))
+  await card.getByRole("button", { name: "Opciones del proyecto" }).click()
+  await page.getByRole("menuitem", { name: "Editar", exact: true }).click()
+  await page.getByRole("tab", { name: /^Participantes/ }).click()
+  await expect
+    .poll(() => page.getByRole("textbox", { name: "Documento", exact: true }).evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)))
+    .toContain("PLAN-1")
+  await expect(page.getByRole("textbox", { name: "Documento *", exact: true })).toHaveValue("AUSENTE-2")
+  await expect(page.getByRole("combobox", { name: "Asignar documento" })).toHaveCount(1)
+
+  await page.goto("/proyectos/")
+  await card.getByRole("button", { name: "Opciones del proyecto" }).click()
+  await page.getByRole("menuitem", { name: "Eliminar" }).click()
+  const confirm = page.getByRole("alertdialog")
+  await confirm.getByRole("button", { name: "Continuar" }).click()
+  await confirm.getByPlaceholder('Escribe "eliminar"').fill("eliminar")
+  await confirm.getByRole("button", { name: "Eliminar proyecto" }).click()
+  await expect(page.getByText(name, { exact: true })).toHaveCount(0, { timeout: 60_000 })
+
+  expectClean(seen)
+})
+
 test("the whole flow works with the network off: upload, analyze, view, delete", async ({ page }) => {
   test.skip(!rawFolder, "set STUDENT_RAW_FOLDER to an extracted raw experiment folder")
   const seen = watch(page)
@@ -229,8 +320,9 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
     if ((await header.getAttribute("aria-expanded")) !== "true") await header.click()
     await expect(dialog.getByLabel("Documento", { exact: true }).first()).toHaveValue(/[0-9]{10}/)
     if (index === 1) await dialog.getByLabel(/^Nombre/).first().fill(participantName)
-    await dialog.getByText("Masculino", { exact: true }).first().click()
-    await dialog.getByLabel("Edad", { exact: true }).first().fill("25")
+    await dialog.getByRole("combobox", { name: "Sexo", exact: true }).click()
+    await page.getByRole("option", { name: "Masculino", exact: true }).click()
+    await dialog.getByLabel("Edad *", { exact: true }).fill("25")
     await header.click()
   }
   await expect(dialog.getByText("Completar", { exact: true })).toHaveCount(0)
@@ -260,13 +352,20 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
     .toBeGreaterThan(0)
   await page.keyboard.press("Escape")
 
-  // The one editor of a project with its folder also holds its devices and areas of interest.
+  // The one editor of a project with its folder also holds its areas of interest.
   await card.getByRole("button", { name: "Opciones del proyecto" }).click()
   await page.getByRole("menuitem", { name: "Editar", exact: true }).click()
   await expect(page).toHaveURL(/\/proyectos\/editar\/?\?proyecto=/)
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible()
-  await page.getByRole("tab", { name: /^Dispositivos/ }).click()
-  await expect(page.getByRole("checkbox", { name: "Eye tracker" })).toBeChecked()
+  // The folder and the devices read from it stay as the project was created: no tab changes them.
+  await expect(page.getByRole("tab", { name: /^Carpeta/ })).toHaveCount(0)
+  await expect(page.getByRole("tab", { name: /^Dispositivos/ })).toHaveCount(0)
+  // Its participants use the same cards as a pre-experiment; the ones read from the data cannot be removed.
+  await page.getByRole("tab", { name: /^Participantes/ }).click()
+  await expect
+    .poll(() => page.getByRole("textbox", { name: "Nombre", exact: true }).evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)))
+    .toContain(participantName)
+  await expect(page.getByRole("button", { name: /^Quitar participante/ })).toHaveCount(0)
   await page.getByRole("tab", { name: /^Áreas de interés/ }).click()
   await expect(page.locator("main img").first()).toBeVisible()
   await page.goto("/proyectos/")
@@ -283,6 +382,14 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
   await page.getByRole("option", { name: participantName, exact: true }).click()
   await expect(participantFilter).toHaveText(participantName)
   await expect(page.locator('p[title="Ambas pupilas"]')).toBeVisible({ timeout: 90_000 })
+  // The pupil axis starts at zero until "Ajustar" fits it to the values.
+  const pupilTicks = () => page.locator("main .recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value").first().textContent()
+  await expect.poll(pupilTicks).toBe("0")
+  const fitAxis = page.getByRole("button", { name: "Ajustar", exact: true })
+  await fitAxis.click()
+  await expect(fitAxis).toHaveAttribute("aria-pressed", "true")
+  await fitAxis.click()
+  await expect(page.getByTestId("compare-participants-button")).toHaveCount(1)
   await sidebar.getByRole("button", { name: "Electroencefalógrafo" }).click()
   await expect(page.getByText("puntos renderizados")).toBeVisible({ timeout: 90_000 })
   // Technical modes explain themselves on hover.

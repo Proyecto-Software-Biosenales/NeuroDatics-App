@@ -17,8 +17,9 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     launchOptions: {
-      // Every name except loopback fails to resolve: the browser itself is offline.
-      args: ["--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1"],
+      // Every name except loopback fails to resolve: the browser itself is offline. Chromium
+      // answers neurodatics.localhost (the address the launcher opens) without asking any DNS.
+      args: ["--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE neurodatics.localhost"],
     },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

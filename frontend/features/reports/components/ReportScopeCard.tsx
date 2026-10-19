@@ -1,9 +1,9 @@
 
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Users } from "lucide-react"
+import { User, Users } from "lucide-react"
 import { ReportStepCard } from "./ReportStepCard"
-import { FieldHint } from "@/components/FieldHint"
+import { ReportOptionTitle } from "./ReportOptionTitle"
 import {
   Select,
   SelectContent,
@@ -47,15 +47,17 @@ export const ReportScopeCard = ({
           <RadioGroupItem
             id="report-scope-participant"
             value="participant"
-            className="mt-1"
+            className="mt-0.5"
           />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <Label htmlFor="report-scope-participant" className="font-semibold">
+            <ReportOptionTitle
+              icon={User}
+              hint="Gráficas y estadísticas completas de un solo participante en cada escenario."
+            >
+              <Label htmlFor="report-scope-participant" className="inline cursor-pointer leading-5 font-semibold">
                 Un participante
               </Label>
-              <FieldHint>Gráficas y estadísticas completas de un solo participante en cada escenario.</FieldHint>
-            </div>
+            </ReportOptionTitle>
             {scopeKind === "participant" ? (
               <div className="mt-3">
               <Select
@@ -98,17 +100,14 @@ export const ReportScopeCard = ({
             id="report-scope-all"
             value="all-participants"
             disabled={!hasParticipants}
-            className="mt-1"
+            className="mt-0.5"
           />
-          <div className="flex flex-1 items-center gap-1.5">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Users className="h-4 w-4" />
-              Resumen de todos los participantes
-            </h3>
-            <FieldHint>
-              Compara a todos los participantes: mapas agregados, tablas por participante y media del grupo.
-            </FieldHint>
-          </div>
+          <ReportOptionTitle
+            icon={Users}
+            hint="Compara a todos los participantes: mapas agregados, tablas por participante y media del grupo."
+          >
+            Resumen de todos los participantes
+          </ReportOptionTitle>
         </Label>
       </RadioGroup>
     </ReportStepCard>

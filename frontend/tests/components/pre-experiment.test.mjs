@@ -147,7 +147,8 @@ test('optional creation editor allows participants, partial screen geometry and 
   await expect(page.getByRole('checkbox', { name: /Usar cuestionario/ })).toHaveCount(0)
   await page.getByRole('button', { name: 'Agregar pregunta', exact: true }).click()
   await page.getByRole('textbox', { name: 'Pregunta 1', exact: true }).fill('¿Qué aprendiste?')
-  await expect(page.getByRole('tab', { name: /^Cuestionarios/ })).toContainText('1 pregunta')
+  // A tab is only its name: what the section holds is not counted beside it.
+  await expect(page.getByRole('tab', { name: /^Cuestionarios/ })).toHaveText('Cuestionarios')
   await screenshot(page, 'create-questionnaire-mobile.png')
   // The typed distance only backs up the eye tracker's own record, and says so.
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click()
@@ -163,7 +164,6 @@ test('optional creation editor allows participants, partial screen geometry and 
   await page.getByRole('textbox', { name: 'Título de la nota 1', exact: true }).fill('Sala')
   await page.getByRole('textbox', { name: 'Nota 1', exact: true }).fill('Reservar la sala')
   await page.getByRole('button', { name: 'Agregar nota', exact: true }).click()
-  await expect(page.getByRole('tab', { name: /^Notas/ })).toContainText('1 nota')
   await screenshot(page, 'create-notes-mobile.png')
   await page.getByRole('button', { name: 'Crear pre-experimento', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)

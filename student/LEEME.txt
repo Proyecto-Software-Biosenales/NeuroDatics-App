@@ -48,15 +48,21 @@ La primera vez tarda más (hasta un minuto) porque prepara la base de datos.
    - Proyectos > "Crear proyecto": sube el ZIP del experimento. Procesarlo toma unos minutos.
      En "Datos del participante" cada persona aparece como Participante 1, 2, 3... Completa sexo y
      edad. El documento viene de los datos: corrígelo si está mal. El nombre es opcional; si lo
-     escribes, el Dashboard lo muestra en lugar del documento.
+     escribes, el Dashboard lo muestra en lugar del documento. Puedes anotar algo de cada persona en
+     "Notas del participante".
+   - Si el proyecto era un pre-experimento, pulsa "Subir" en su tarjeta. En "Datos del participante"
+     aparecen primero los participantes que registraste, cada uno con "Asignar documento": elige el
+     documento con el que aparece en los datos (se sugiere el más parecido). Quien quede sin asignar
+     sigue en el proyecto con sus cuestionarios, pero no aparece en el Dashboard ni en los informes.
    - Para cambiar un proyecto, en su tarjeta pulsa los tres puntos > "Editar". Arriba están sus
-     secciones (participantes, cuestionarios, pantalla, dispositivos, áreas de interés, notas y
-     carpeta); cambia lo que necesites y pulsa "Guardar cambios".
+     secciones (participantes, cuestionarios, pantalla, áreas de interés y notas);
+     cambia lo que necesites y pulsa "Guardar cambios".
    - Dashboard: analiza EyeTracker, GSR, EEG y comparaciones.
    - Informes: genera el informe en PDF.
 
 Puedes tener el navegador cerrado y volver a abrirlo con doble clic en el .exe: te lleva a la app que
-ya está abierta.
+ya está abierta. Mientras la ventana negra esté abierta, NeuroDatics también está en
+http://neurodatics.localhost:8765/ (si otro programa usa esa dirección, la ventana negra muestra la que usa).
 
 
 4. CERRAR

@@ -46,6 +46,7 @@ export function PlanningSelect({
   options,
   placeholder,
   disabled = false,
+  invalid = false,
   label,
 }: {
   value: string
@@ -53,11 +54,12 @@ export function PlanningSelect({
   options: { value: string; label: string }[]
   placeholder?: string
   disabled?: boolean
+  invalid?: boolean
   label: string
 }) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger aria-label={label} className="w-full">
+      <SelectTrigger aria-label={label} aria-invalid={invalid || undefined} className="w-full">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

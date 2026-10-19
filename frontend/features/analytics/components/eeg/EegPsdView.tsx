@@ -4,7 +4,7 @@ import { EegChannelSelector } from "./EegChannelSelector"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { type Dispatch, type SetStateAction, type ReactNode } from "react"
+import { type Dispatch, type SetStateAction } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts"
@@ -83,8 +83,6 @@ interface EegPsdViewProps {
   setPsdWindowDraft: Dispatch<SetStateAction<TimeWindowDraft>>
   setPsdWindowError: Dispatch<SetStateAction<string | null>>
   view: EegView
-  /** "Comparar participantes" for this chart, built by EegTab. */
-  compareAction?: ReactNode
   visiblePsdChannels: string[]
 }
 
@@ -113,7 +111,6 @@ export function EegPsdView({
   setPsdWindowDraft,
   setPsdWindowError,
   view,
-  compareAction,
   visiblePsdChannels,
 }: EegPsdViewProps) {
   const dragZoom = useChartDragZoom(handleZoomPsdFrequency)
@@ -200,7 +197,6 @@ export function EegPsdView({
               Excluir ventanas con artefacto
             </Label>
           </div>
-          {compareAction}
         </CardHeader>
         <CardContent>
               <div className="analytics-kpi-grid">

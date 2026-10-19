@@ -31,6 +31,81 @@ import { packageExperimentFolder } from "./packageExperimentFolder";
 import { detectedUploadMetadata } from "./uploadMetadata";
 import { resolveScenarioImageUrl } from "../driveFallbackUrl";
 import { storageCopy } from "../storageCopy";
+import { PreExperimentApi } from "../pre-experiment/api";
+import type { PlanningParticipant, PreExperimentEnvelope } from "../pre-experiment/types";
+import {
+  assignedParticipant,
+  linkParticipants,
+  mirroredParticipant,
+  repeatedDocuments,
+  suggestedAssignments,
+} from "../edit/participants";
+import { newPlanningParticipant } from "../pre-experiment/PlanningParticipants";
+
+/** The preparation of a pre-experiment that receives its folder, and who of it is who in the data. */
+export type WizardPreparation = {
+  envelope: PreExperimentEnvelope;
+  /** The participants as read from the data, before any took the details of one of the preparation. */
+  detected: ParticipantData[];
+  /** Participant of the preparation → code read from the data. Those left out stay only in the preparation. */
+  assignments: Record<string, string>;
+};
+
+/** The preparation of a project, or null when it has no participants to assign. Reading it is not required to
+ *  continue: the editor can assign them later. */
+const readPreparation = async (projectId: string, detected: ParticipantData[]): Promise<WizardPreparation | null> => {
+  try {
+    const envelope = await PreExperimentApi.get(projectId);
+    if (!envelope.config.participants.length) return null;
+    return { envelope, detected, assignments: suggestedAssignments(envelope.config.participants, detected) };
+  } catch (error) {
+    console.warn("[CreateProjectWizard] could not read the preparation", { projectId, error });
+    return null;
+  }
+};
+
+/** A participant of the data assigned to one of the preparation, with the notes the preparation keeps of it. */
+const withPlanned = (participant: ParticipantData, planned: PlanningParticipant): ParticipantData => ({
+  ...assignedParticipant(participant, planned),
+  notes: planned.notes,
+});
+
+/** The participants read from the data, each assigned one taking the details of the preparation. */
+const withAssignments = (preparation: WizardPreparation): ParticipantData[] => {
+  const planned = new Map(preparation.envelope.config.participants.map((item) => [item.id, item]));
+  const byCode = new Map(Object.entries(preparation.assignments).map(([id, code]) => [code, planned.get(id)]));
+  return preparation.detected.map((participant) => {
+    const item = byCode.get(participant.id);
+    return item ? withPlanned(participant, item) : participant;
+  });
+};
+
+const assignmentLinks = (preparation: WizardPreparation | null) =>
+  Object.fromEntries(Object.entries(preparation?.assignments ?? {}).map(([id, code]) => [code, id]));
+
+/** Keeps the preparation's copy of each assigned participant equal to what was saved with the data, notes included.
+ *  Notes live only in the preparation, so a participant of the data with notes and no copy gets one. A failure is
+ *  not one of the project: the editor pairs them by document and keeps them equal on the next change. */
+const savePreparation = async (projectId: string, preparation: WizardPreparation | null, participants: ParticipantData[]) => {
+  if (!preparation && !participants.some((participant) => participant.notes?.trim())) return;
+  try {
+    const envelope = preparation?.envelope ?? (await PreExperimentApi.get(projectId));
+    const links = preparation ? assignmentLinks(preparation) : linkParticipants(participants, envelope.config.participants);
+    const byPlanned = new Map(participants.filter((participant) => links[participant.id]).map((participant) => [links[participant.id], participant]));
+    const updated = envelope.config.participants.map((item) => {
+      const participant = byPlanned.get(item.id);
+      return participant ? { ...item, ...mirroredParticipant(participant), notes: participant.notes ?? item.notes } : item;
+    });
+    const created = participants
+      .filter((participant) => !links[participant.id] && participant.notes?.trim())
+      .map((participant) => ({ ...newPlanningParticipant(), ...mirroredParticipant(participant), notes: participant.notes ?? "" }));
+    const next = [...updated, ...created];
+    if (JSON.stringify(next) === JSON.stringify(envelope.config.participants)) return;
+    await PreExperimentApi.save(projectId, envelope.revision, { ...envelope.config, participants: next });
+  } catch (error) {
+    console.warn("[CreateProjectWizard] the preparation keeps its own copy of the participants", { projectId, error });
+  }
+};
 
 const STEP1_LOADING_TOAST_ID = "create-project-step1-drive-sync";
 
@@ -133,6 +208,7 @@ export const useCreateProjectWizard = (
   const preserveDraftRef = useRef(false);
   const resumeLoadIdRef = useRef(0);
   const [folderSelection, setFolderSelection] = useState<FolderSelection | null>(null);
+  const [preparation, setPreparation] = useState<WizardPreparation | null>(null);
 
   const clearStep1RetryState = () => {
     setSaveError(null);
@@ -250,6 +326,35 @@ export const useCreateProjectWizard = (
     }));
   };
 
+  /** Assigns a participant of the preparation the one of the data it is, or none. The one it leaves goes back to
+   *  what was read from the data, and the one it takes gets the preparation's details. */
+  const assignParticipant = (plannedId: string, code: string | null) => {
+    if (!preparation) return;
+    const planned = preparation.envelope.config.participants.find((item) => item.id === plannedId);
+    const previous = preparation.assignments[plannedId];
+    if (!planned || previous === code) return;
+    if (code && Object.entries(preparation.assignments).some(([id, taken]) => taken === code && id !== plannedId)) return;
+    const assignments = { ...preparation.assignments };
+    if (code) assignments[plannedId] = code;
+    else delete assignments[plannedId];
+    const detected = new Map(preparation.detected.map((participant) => [participant.id, participant]));
+    setPreparation({ ...preparation, assignments });
+    setFormData((prev) => ({
+      ...prev,
+      participants: prev.participants.map((participant) => {
+        const original = detected.get(participant.id);
+        if (participant.id === code && original) return withPlanned(original, planned);
+        if (participant.id === previous && original) return original;
+        return participant;
+      }),
+    }));
+  };
+
+  /** A document two cards share: a participant left unassigned has the document of one of the data. */
+  const repeatedParticipantDocument = preparation
+    ? repeatedDocuments(formData.participants, preparation.envelope.config.participants, assignmentLinks(preparation)).first
+    : null;
+
   const updateScenaryAois = (scenaryId: string, aois: ProjectFormData["scenaries"][number]["aois"]) => {
     setFormData((prev) => ({
       ...prev,
@@ -285,7 +390,7 @@ export const useCreateProjectWizard = (
       case 2:
         return formData.sensors.length > 0;
       case 3:
-        return hasValidParticipants();
+        return hasValidParticipants() && !repeatedParticipantDocument;
       default:
         return true;
     }
@@ -427,14 +532,18 @@ export const useCreateProjectWizard = (
 
       if (!attempt.isCurrent()) return;
       const { sensors: detectedSensors, participants: detectedParticipants } =
-        detectedUploadMetadata(uploadedZipResult, formData.participants);
+        detectedUploadMetadata(uploadedZipResult, preparation?.detected ?? formData.participants);
+      // Only a project that existed before its folder (a pre-experiment) can have a preparation.
+      const prepared = isResumedDraft ? await readPreparation(projectIdForUpload, detectedParticipants) : null;
+      if (!attempt.isCurrent()) return;
 
+      setPreparation(prepared);
       setFormData((prev) => ({
         ...prev,
         uploadedZip: uploadedZipResult,
         scenaries: buildStep4ImageScenaries(detail),
         sensors: detectedSensors,
-        participants: detectedParticipants,
+        participants: prepared ? withAssignments(prepared) : detectedParticipants,
       }));
 
       // The ingestion transaction already persisted the detected metadata.
@@ -549,6 +658,7 @@ export const useCreateProjectWizard = (
     setDraftProjectId(null);
     setIsResumedDraft(false);
     setFolderSelection(null);
+    setPreparation(null);
   };
 
   const discardDraftProject = async () => {
@@ -642,7 +752,10 @@ export const useCreateProjectWizard = (
       );
 
       const detectedScenaries = buildStep4ImageScenaries(detail);
+      const prepared = await readPreparation(project.id, detectedParticipants);
+      if (resumeLoadId !== resumeLoadIdRef.current) return;
 
+      setPreparation(prepared);
       setFormData({
         ...baseFormData,
         uploadedZip: {
@@ -657,7 +770,7 @@ export const useCreateProjectWizard = (
           detected_sensors: detectedSensors.map((s) => s as string),
         },
         sensors: detectedSensors.length > 0 ? detectedSensors : [],
-        participants: detectedParticipants.length > 0 ? detectedParticipants : [],
+        participants: prepared ? withAssignments(prepared) : detectedParticipants,
         scenaries: detectedScenaries,
       });
       setCurrentStep(2);
@@ -706,6 +819,7 @@ export const useCreateProjectWizard = (
         const normalizedParticipants = normalizeParticipants(formData.participants);
         await ProjectsApi.setParticipants(draftProjectId, normalizedParticipants);
       }
+      await savePreparation(draftProjectId, preparation, formData.participants);
 
       await ProjectsApi.setAois(draftProjectId, serializeScenaryAois(formData.scenaries));
 
@@ -783,6 +897,9 @@ export const useCreateProjectWizard = (
     updateFolderPath,
     toggleSensor,
     updateParticipant,
+    preparation,
+    assignParticipant,
+    repeatedParticipantDocument,
     updateScenaryAois,
     canGoNext,
     nextStep,

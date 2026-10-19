@@ -205,7 +205,8 @@ if ($Only -in @('', 'serve')) {
     if (-not $node -or -not $npx) { throw 'node and npx must be on PATH for the browser part of the serve gate' }
     $env:PATH = "$(Split-Path $node);$env:SystemRoot\System32;$env:SystemRoot"
     $env:PLAYWRIGHT_BROWSERS_PATH = "$realLocalAppData\ms-playwright"
-    $env:STUDENT_BASE_URL = $info.url.TrimEnd('/')
+    # The name the student's browser opens, so the Host guard is tested with it.
+    $env:STUDENT_BASE_URL = $info.address.TrimEnd('/')
     $env:STUDENT_RAW_FOLDER = $raw
     $browser = Start-Process -FilePath $npx -ArgumentList @('--no-install', 'playwright', 'test', '-c', 'playwright.local.config.ts') `
         -WorkingDirectory "$repo\frontend" -RedirectStandardOutput "$results\browser.out.txt" -RedirectStandardError "$results\browser.err.txt" `

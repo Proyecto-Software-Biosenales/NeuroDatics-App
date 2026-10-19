@@ -26,6 +26,7 @@ import { AoiComparisonTab } from "@/features/analytics/components/AoiComparisonT
 import { FixationDurationControl } from "@/features/analytics/components/FixationDurationControl"
 import { ComparisonTab } from "@/features/analytics/comparison/ComparisonTab"
 import { ParticipantComparisonProvider } from "@/features/analytics/participantComparison/ParticipantComparisonProvider"
+import { FiltersBarCompareButton } from "@/features/analytics/participantComparison/CompareParticipantsButton"
 import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
@@ -261,6 +262,12 @@ export default function DashboardPage() {
         />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <ParticipantComparisonProvider
+            projectId={selectedProjectId}
+            participantCodes={comparisonParticipantCodes}
+            participantLabels={comparisonParticipantLabels}
+            generation={selectedProject?.ingestion_generation ?? null}
+          >
           <FiltersBar
             scenarios={scenarios}
             participants={participants}
@@ -270,14 +277,9 @@ export default function DashboardPage() {
             onParticipantChange={setSelectedParticipantOverride}
             scenariosLoading={scenariosLoading}
             participantsLoading={participantsLoading}
+            compareAction={<FiltersBarCompareButton />}
           />
 
-          <ParticipantComparisonProvider
-            projectId={selectedProjectId}
-            participantCodes={comparisonParticipantCodes}
-            participantLabels={comparisonParticipantLabels}
-            generation={selectedProject?.ingestion_generation ?? null}
-          >
           <main className="analytics-shell min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-4 xl:px-6 xl:pb-6">
             {!selectedProjectId ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">

@@ -15,9 +15,11 @@ export interface ParticipantData {
   name: string
   /** Document shown in the app; starts as the extracted code and can be corrected. */
   document: string
+  /** Notes typed while uploading the folder. Notes live in the preparation, so only the upload keeps them here. */
+  notes?: string
 }
 
-export type ParticipantField = "sex" | "age" | "name" | "document"
+export type ParticipantField = "sex" | "age" | "name" | "document" | "notes"
 
 /** Initial form state for a participant detected in the uploaded data. */
 export const newParticipantData = (id: string): ParticipantData => ({

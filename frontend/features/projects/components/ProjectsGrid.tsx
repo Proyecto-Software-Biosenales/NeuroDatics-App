@@ -98,7 +98,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
           project.status === "draft" && project.ingestionStatus === "PROCESSING"
 
         // PENDING = upload never completed (interrupted or never started).
-        // No backend work is running for these — show a "Retomar" footer.
+        // No backend work is running for these: the footer button resumes the upload.
         // A pre-experiment has no folder by definition, so it uses the common card and footer.
         const isDraftPending =
           project.status === "draft" &&
@@ -119,8 +119,10 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
         }
 
         // One button in the footer, the same size on every card: what the card does next.
-        const footerAction = isDraftProcessing || isDraftPending
+        const footerAction = isDraftProcessing
           ? null
+          : isDraftPending
+            ? { label: "Retomar", run: () => onContinueDraft?.(project) }
           : canContinueDraft
             ? { label: project.isPreExperiment ? "Subir" : "Continuar", run: () => onContinueDraft?.(project) }
             : project.isPreExperiment
@@ -140,9 +142,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             isDeleting ? "animate-pulse scale-[0.99] opacity-70 pointer-events-none" : ""
           } ${
             isDraftProcessing
-              ? "border-border shadow-none bg-muted/40 pb-16 xl:pb-16"
-              : isDraftPending
-              ? "cursor-pointer border-border shadow-sm bg-card pb-14 xl:pb-16 hover:-translate-y-0.5 hover:shadow-lg"
+              ? "border-border shadow-none bg-muted/40"
               : "cursor-pointer border-border shadow-sm bg-card hover:-translate-y-0.5 hover:shadow-lg"
           }`}
         >
@@ -255,10 +255,27 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             {project.sensors.map((sensor) => (
               <SensorBadge key={sensor} sensor={sensor} size="sm" />
             ))}
+            {isDraftPending && (
+              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />
+                Carpeta sin procesar
+              </span>
+            )}
           </div>
 
           {/* The footer sits at the bottom of the card, so its line is at the same height on every card of a row. */}
-          <div className="mt-auto border-t border-border pt-4">
+          <div className="relative z-[10] mt-auto border-t border-border pt-4">
+            {isDraftProcessing ? (
+              <div className="flex min-h-7 items-center gap-3">
+                <div className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-border border-t-foreground animate-spin" />
+                <p className="min-w-0 flex-1 text-sm font-semibold leading-tight text-foreground">Procesando archivos</p>
+                <div className="flex flex-shrink-0 items-end gap-1 pb-0.5">
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "0ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "150ms" }} />
+                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
+            ) : (
             <div className="flex min-h-7 items-center justify-between text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -273,6 +290,7 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
                 </Button>
               )}
             </div>
+            )}
           </div>
 
           {isDraftProcessing && (
@@ -293,47 +311,6 @@ export const ProjectsGrid = ({ projects, onDelete, onEdit, onContinueDraft }: Pr
             </div>
           )}
 
-          {isDraftProcessing && (
-            <div className="absolute bottom-0 left-0 right-0 rounded-b-2xl overflow-hidden z-[10]">
-              {/* Animated shimmer line */}
-              <div className="relative h-0.5 w-full overflow-hidden bg-muted">
-                <Skeleton className="absolute inset-y-0 left-0 w-2/3 animate-pulse bg-gradient-to-r from-transparent via-gray-500 to-transparent" />
-              </div>
-              {/* Footer body */}
-              <div className="flex items-center gap-3 bg-muted/95 backdrop-blur-sm px-4 py-4">
-                {/* Custom spinner */}
-                <div className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-border border-t-foreground animate-spin" />
-                {/* Text */}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold leading-tight text-foreground">Procesando archivos</p>
-                </div>
-                {/* Bouncing dots */}
-                <div className="flex flex-shrink-0 items-end gap-1 pb-0.5">
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "0ms" }} />
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "150ms" }} />
-                  <span className="inline-block h-2 w-2 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: "300ms" }} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {isDraftPending && (
-            <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-border rounded-b-2xl z-[10]">
-              <div className="flex items-center justify-between bg-card px-4 py-2.5">
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  <p className="text-xs text-muted-foreground">Carpeta sin procesar</p>
-                </div>
-                <Button variant="link"
-                  type="button"
-                  className="text-xs"
-                  onClick={() => onContinueDraft?.(project)}
-                >
-                  Retomar
-                </Button>
-              </div>
-            </div>
-          )}
         </Card>
         )
       })}

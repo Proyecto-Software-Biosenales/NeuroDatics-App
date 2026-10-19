@@ -34,13 +34,22 @@ class PlanningParticipant(PlanningModel):
 
 
 class PlanningScreen(PlanningModel):
-    model: str = Field(default="", max_length=255)
+    """``model`` was a screen name nothing used. Older saves and clients still send it, so it is dropped
+    instead of rejected; migration 029 removes it from what was stored."""
+
     width_px: Optional[int] = Field(default=None, gt=0, le=100000, strict=True)
     height_px: Optional[int] = Field(default=None, gt=0, le=100000, strict=True)
     width_cm: Optional[float] = Field(default=None, gt=0, le=10000)
     height_cm: Optional[float] = Field(default=None, gt=0, le=10000)
     viewing_distance_cm: Optional[float] = Field(default=None, gt=0, le=10000)
     notes: str = Field(default="", max_length=10000)
+
+    @model_validator(mode="before")
+    @classmethod
+    def without_retired_model(cls, value):
+        if isinstance(value, dict) and "model" in value:
+            return {key: item for key, item in value.items() if key != "model"}
+        return value
 
 
 class QuestionOption(PlanningModel):

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { ProjectsApi, type ApiDriveUploadProgress } from "../api/projectsApi";
+import { randomId } from "@/lib/randomId";
 
 /** One browser operation, including packaging, transfer and follow-up reads. */
 export const useZipUploadAttempt = (scope?: string) => {
@@ -25,13 +26,8 @@ export const useZipUploadAttempt = (scope?: string) => {
 };
 
 function createAttempt(isCurrent: () => boolean) {
-  // getRandomValues also works for local HTTP installations where randomUUID
-  // is unavailable. Every request, poll and cancel uses this same UUID.
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 15) | 64;
-  bytes[8] = (bytes[8] & 63) | 128;
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  // Every request, poll and cancel uses this same UUID.
+  const id = randomId();
   const controller = new AbortController();
   let projectId: string | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;

@@ -25,7 +25,12 @@ const bundle = browserBundle(`
     const [downloads,setDownloads]=useState(0);
     const [clicks,setClicks]=useState(0);
     const [placement,setPlacement]=useState('contain');
+    const planned=[{id:'a',name:'Ana',identification_document:'1023456798',gender:'female',age:31,notes:''},{id:'b',name:'Beto',identification_document:'77',gender:'',age:null,notes:''}];
+    const detected=[{id:'555',sex:null,age:'',name:'',document:'555'},{id:'1023456789',sex:null,age:'',name:'',document:'1023456789'}];
+    const [assignments,setAssignments]=useState({a:'1023456789'});
     return <>
+      {mode==='matching' && <CreateProjectStep3 participants={detected} onUpdateParticipant={()=>{}} matching={{planned,detected,assignments,repeatedDocument:null,
+        onAssign:(id,code)=>setAssignments(prev=>{const next={...prev}; if(code) next[id]=code; else delete next[id]; return next})}}/>}
       {mode==='wizard' && <><CreateProjectStep2 selectedSensors={sensors} onToggleSensor={sensor=>setSensors(prev=>prev.includes(sensor)?prev.filter(x=>x!==sensor):[...prev,sensor])}/>
       <CreateProjectStep3 participants={participants} onUpdateParticipant={(id,field,value)=>setParticipants(prev=>prev.map(p=>p.id===id?{...p,[field]:value}:p))}/></>}
       {mode==='reports' && <><ReportScopeCard participants={[{participant_code:'P01'},{participant_code:'P02'}]} selectedParticipant={participant} scopeKind={scope} onScopeKindChange={setScope} onParticipantChange={setParticipant} loading={false}/>
@@ -35,7 +40,7 @@ const bundle = browserBundle(`
       {mode==='dialog' && <Dialog defaultOpen><DialogContent><DialogTitle>Presentación</DialogTitle><DialogDescription>Modo del estímulo</DialogDescription>
       <Select value={placement} onValueChange={setPlacement}><SelectTrigger aria-label="Modo de presentación"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="contain">Contain</SelectItem><SelectItem value="cover">Cover</SelectItem></SelectContent></Select>
       </DialogContent></Dialog>}
-      <output id="state">{JSON.stringify({sensors,participants,scope,participant,device,options,downloads,clicks,placement})}</output>
+      <output id="state">{JSON.stringify({assignments,sensors,participants,scope,participant,device,options,downloads,clicks,placement})}</output>
     </>;
   }
   const root=createRoot(document.getElementById('root'));
@@ -66,21 +71,42 @@ test("sensor cards toggle once and participant disclosures preserve demographics
   await page.getByRole("checkbox", { name: "Sensor galvánico", exact: true }).focus()
   await page.keyboard.press("Space")
   assert.deepEqual((await state(page)).sensors, ["EEG"])
-  // Headers are generic and positional; the extracted code prefills the editable document.
-  await expect(page.getByRole("button", { name: /P0[12]/ })).toHaveCount(0)
+  // Cards open one at a time, headed by their number and document; the extracted code prefills the document.
+  await expect(page.getByRole("button", { name: /^Participante \d/ })).toHaveText([/^Participante 1P01$/, /^Participante 2P02Completar$/])
   await page.getByRole("button", { name: /^Participante 2/ }).click()
   await expect(page.getByLabel("Documento", { exact: true })).toHaveValue("P02")
   await page.getByLabel("Nombre", { exact: true }).fill("Ana Pérez")
   await page.getByLabel("Documento", { exact: true }).fill("1033176186")
   await expect(page.getByLabel("Documento", { exact: true })).toHaveAccessibleDescription(/Detectado en los datos: P02/)
-  await page.getByRole("radio", { name: "Femenino", exact: true }).click()
-  await page.getByLabel("Edad", { exact: true }).fill("31")
-  await page.getByRole("button", { name: "Participante 1", exact: true }).click()
-  await expect(page.getByLabel("Edad", { exact: true })).toHaveValue("25")
+  await page.getByRole("combobox", { name: "Sexo", exact: true }).click()
+  await page.getByRole("option", { name: "Femenino", exact: true }).click()
+  // The age takes only numbers.
+  await page.getByLabel("Edad *", { exact: true }).pressSequentially("3a1")
+  await expect(page.getByLabel("Edad *", { exact: true })).toHaveValue("31")
+  await page.getByRole("textbox", { name: "Notas del participante" }).fill("Llegó tarde")
+  await expect(page.getByRole("button", { name: /^Participante 2/ })).toHaveText(/^Participante 21033176186 — Ana Pérez$/)
+  await page.getByRole("button", { name: /^Participante 1/ }).click()
+  await expect(page.getByLabel("Edad *", { exact: true })).toHaveValue("25")
   await expect(page.getByLabel("Nombre", { exact: true })).toHaveValue("")
   assert.deepEqual((await state(page)).participants[1], {
-    id: "P02", sex: "female", age: "31", name: "Ana Pérez", document: "1033176186",
+    id: "P02", sex: "female", age: "31", name: "Ana Pérez", document: "1033176186", notes: "Llegó tarde",
   })
+})
+
+test("a pre-experiment receiving its folder lists its participants first, each assigned a document of the data", async t => {
+  const page = await fixture(t, "matching")
+  // Planned first, then the participant found only in the data.
+  await expect(page.getByRole("button", { name: /^Participante \d/ })).toHaveText([/^Participante 1.*Ana/, /^Participante 2.*Beto.*Sin asignar/, /^Participante 3/])
+  await expect(page.getByText("1 participante del pre-experimento queda sin asignar.", { exact: false })).toContainText("no aparecerán en el dashboard, los informes ni las estadísticas")
+  // The first card is open: its document is the closest of the data, and the one taken is not offered again.
+  await expect(page.getByRole("combobox", { name: "Asignar documento" })).toHaveText("1023456789")
+  await page.getByRole("button", { name: /^Participante 2/ }).click()
+  await page.getByRole("combobox", { name: "Asignar documento" }).click()
+  await expect(page.getByRole("option")).toHaveText(["Sin asignar", "555"])
+  await page.getByRole("option", { name: "555", exact: true }).click()
+  assert.deepEqual((await state(page)).assignments, { a: "1023456789", b: "555" })
+  await expect(page.getByText(/sin asignar\./)).toHaveCount(0)
+  await expect(page.getByRole("button", { name: /^Participante \d/ })).toHaveCount(2)
 })
 
 test("report scope, device radios and export options keep independent selections", async t => {

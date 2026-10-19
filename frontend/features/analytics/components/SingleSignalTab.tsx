@@ -1,7 +1,7 @@
 "use client"
 
 import type { ComponentProps, ReactNode } from "react"
-import { CompareParticipantsButton } from "../participantComparison/CompareParticipantsButton"
+import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
 import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -40,6 +40,7 @@ export function SingleSignalTab({
   label, description, unit, emptyText, statisticsDescription, signal,
   headerActions, compareSpec, kpis, legend, chart, children,
 }: SingleSignalTabProps) {
+  useCompareParticipantsSpec(compareSpec ?? null)
   return (
     <div className="analytics-stack">
       <Card>
@@ -51,7 +52,6 @@ export function SingleSignalTab({
           <div className="flex max-w-full flex-wrap items-center gap-2">
             {headerActions}
             <TimeWindowControls {...signal.timeWindowControls} />
-            {compareSpec ? <CompareParticipantsButton spec={compareSpec} /> : null}
           </div>
         </CardHeader>
         <CardContent>

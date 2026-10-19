@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { FieldHint } from "@/components/FieldHint"
 import type { PreExperimentConfig } from "./types"
 
-type Measure = keyof Omit<PreExperimentConfig["screen"], "model" | "notes">
+type Measure = keyof Omit<PreExperimentConfig["screen"], "notes">
 
 function Group({
   icon,
@@ -19,7 +19,7 @@ function Group({
   children: ReactNode
 }) {
   return (
-    <section className="space-y-3 rounded-xl border bg-card p-4">
+    <section className="@container space-y-3 rounded-xl border bg-card p-4">
       <div className="flex items-center gap-3">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted [&_svg]:size-4">
           {icon}
@@ -79,13 +79,6 @@ export function PlanningScreen({
         icon={<Monitor aria-hidden />}
         title="Pantalla"
       >
-        <Label className="block space-y-1.5 text-sm">
-          <span>Modelo de pantalla</span>
-          <Input
-            value={value.screen.model}
-            onChange={(event) => setScreen({ model: event.target.value })}
-          />
-        </Label>
         <div className="grid grid-cols-2 gap-3">
           {measure("width_px", "Ancho (px)", "px")}
           {measure("height_px", "Alto (px)", "px")}
@@ -95,7 +88,9 @@ export function PlanningScreen({
         icon={<Ruler aria-hidden />}
         title="Medidas físicas"
       >
-        <div className="grid items-end gap-3 sm:grid-cols-3">
+        {/* Three columns only where the distance fits on one line with its hint (the editor, not the
+            creation dialog): wrapped, its label would sit higher than the other two. */}
+        <div className="grid items-end gap-3 @md:grid-cols-2 @3xl:grid-cols-3">
           {measure("width_cm", "Ancho (cm)", "cm")}
           {measure("height_cm", "Alto (cm)", "cm")}
           {measure(

@@ -37,7 +37,6 @@ import { PlanningParticipants } from "./PlanningParticipants"
 import { PlanningScreen } from "./PlanningScreen"
 import { PlanningQuestionnaires } from "./PlanningQuestionnaires"
 import { PlanningNotes } from "./PlanningNotes"
-import { hasScreenData, noteCount, plural, questionCount } from "./summary"
 
 type Step = "project" | "participants" | "screen" | "questionnaires" | "notes"
 type StepInfo = {
@@ -55,41 +54,6 @@ const steps: StepInfo[] = [
 ]
 
 const phases = ["before", "after"] as const
-
-/** What a tab already holds; empty tabs show nothing instead of "Opcional". */
-function stepStatus(step: Step, config: PreExperimentConfig) {
-  switch (step) {
-    case "project":
-      return null
-    case "participants":
-      return config.participants.length
-        ? plural(config.participants.length, "participante", "participantes")
-        : null
-    case "screen":
-      return hasScreenData(config) ? "Con datos" : null
-    case "questionnaires": {
-      const count = questionCount(config)
-      return count ? plural(count, "pregunta", "preguntas") : null
-    }
-    case "notes":
-      return noteCount(config) ? plural(noteCount(config), "nota", "notas") : null
-  }
-}
-
-function stepFilled(step: Step, name: string, config: PreExperimentConfig) {
-  switch (step) {
-    case "project":
-      return !!name.trim()
-    case "participants":
-      return config.participants.length > 0
-    case "screen":
-      return hasScreenData(config)
-    case "questionnaires":
-      return questionCount(config) > 0
-    case "notes":
-      return noteCount(config) > 0
-  }
-}
 
 function stepErrors(name: string, config: PreExperimentConfig) {
   return {
@@ -189,17 +153,7 @@ export function PreExperimentCreateForm({
         <SectionTabs
           label="Secciones del pre-experimento"
           disabled={busy}
-          tabs={steps.map((item) => {
-            const invalid = attempted && !!errors[item.id]
-            return {
-              id: item.id,
-              label: item.label,
-              icon: item.icon,
-              invalid,
-              filled: stepFilled(item.id, name, config),
-              status: stepStatus(item.id, config),
-            }
-          })}
+          tabs={steps.map((item) => ({ ...item, invalid: attempted && !!errors[item.id] }))}
         />
 
         <fieldset disabled={busy} className="min-w-0">

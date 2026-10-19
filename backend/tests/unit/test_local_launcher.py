@@ -54,6 +54,7 @@ def test_the_lock_publishes_the_address_and_clears_it_when_released(tmp_path):
         "pid": os.getpid(),
         "port": 8765,
         "url": "http://127.0.0.1:8765/",
+        "address": "http://neurodatics.localhost:8765/",
     }
     fresh.release()
     assert not (tmp_path / INFO_FILE).exists()
@@ -138,16 +139,39 @@ def test_the_preferred_port_is_used_when_free_and_replaced_when_taken():
     free_port = probe.getsockname()[1]
     probe.close()
 
-    chosen = launcher.bind_listening_socket(free_port)
+    chosen = launcher.bind_listening_sockets(free_port)
     try:
-        assert chosen.getsockname()[1] == free_port
-        fallback = launcher.bind_listening_socket(free_port)  # now taken by `chosen`
+        assert {s.getsockname()[1] for s in chosen} == {free_port}
+        assert {s.family for s in chosen} == ({socket.AF_INET, socket.AF_INET6} if len(chosen) == 2 else {socket.AF_INET})
+        fallback = launcher.bind_listening_sockets(free_port)  # now taken by `chosen`
         try:
-            assert fallback.getsockname()[1] not in (0, free_port)
+            assert fallback[0].getsockname()[1] not in (0, free_port)
         finally:
-            fallback.close()
+            for s in fallback:
+                s.close()
     finally:
-        chosen.close()
+        for s in chosen:
+            s.close()
+
+
+def test_a_port_held_by_another_program_on_ipv6_loopback_is_skipped():
+    # Browsers try ::1 first for neurodatics.localhost: half a port would send them elsewhere.
+    other = socket.socket(socket.AF_INET6)
+    try:
+        other.bind(("::1", 0))
+    except OSError:
+        other.close()
+        pytest.skip("no IPv6 loopback")
+    taken = other.getsockname()[1]
+    try:
+        chosen = launcher.bind_listening_sockets(taken)
+        try:
+            assert chosen[0].getsockname()[1] != taken
+        finally:
+            for s in chosen:
+                s.close()
+    finally:
+        other.close()
 
 
 def test_environment_hands_the_settings_everything_they_need(tmp_path, monkeypatch):
