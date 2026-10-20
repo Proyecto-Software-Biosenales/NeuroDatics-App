@@ -11,7 +11,6 @@ import asyncio
 import hashlib
 import json
 import logging
-import os
 import subprocess
 import tempfile
 
@@ -79,9 +78,6 @@ router = APIRouter(prefix="/projects", tags=["projects"], route_class=ProjectUpl
 router.include_router(pre_experiment_router)
 
 
-# Persistent disk cache for images - survives in-memory eviction, cleared on container restart
-_VIDEO_DISK_CACHE_DIR = os.environ.get("VIDEO_CACHE_DIR", "/data/video_cache")
-_VIDEO_FRAME_CACHE_DIR = os.environ.get("VIDEO_FRAME_CACHE_DIR", "/data/video_frame_cache")
 _VIDEO_FRAME_MIME_TYPE = "image/jpeg"
 _VIDEO_FRAME_TIME_DECIMALS = 1
 _FFMPEG_TIMEOUT_SECONDS = 45
@@ -257,13 +253,15 @@ def _hashed_cache_id(cache_key: str) -> str:
 
 def _video_source_cache_path(project_file: ProjectFile, cache_key: str) -> Path:
     suffix = Path(project_file.filename or "").suffix.lower() or ".video"
-    base = Path(_VIDEO_DISK_CACHE_DIR)
+    # Read at call time from settings: local mode keeps it under the data folder, where the
+    # media cache janitor prunes it.
+    base = Path(settings.video_cache_dir)
     base.mkdir(parents=True, exist_ok=True)
     return base / f"{_hashed_cache_id(cache_key)}{suffix}"
 
 
 def _video_frame_cache_path(cache_key: str, frame_time_s: float) -> Path:
-    base = Path(_VIDEO_FRAME_CACHE_DIR)
+    base = Path(settings.video_frame_cache_dir)
     base.mkdir(parents=True, exist_ok=True)
     frame_key = f"{cache_key}:{frame_time_s:.{_VIDEO_FRAME_TIME_DECIMALS}f}"
     return base / f"{_hashed_cache_id(frame_key)}.jpg"

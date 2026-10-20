@@ -75,6 +75,25 @@ def test_an_explicit_cache_directory_wins_in_local_mode(tmp_path):
     assert Path(local.parquet_cache_dir) == tmp_path / "cache" / "parquet_cache"
 
 
+def test_video_previews_are_cached_where_local_mode_puts_them_and_the_janitor_prunes(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from neurodatics.modules.projects.api import routes
+    from neurodatics.modules.projects.infrastructure.media_cache_janitor import prune_media_caches
+
+    local = local_settings(tmp_path)
+    for name in ("image_cache_dir", "video_cache_dir", "video_frame_cache_dir"):
+        monkeypatch.setattr(settings, name, getattr(local, name))
+
+    source = routes._video_source_cache_path(SimpleNamespace(filename="clip.AVI"), "project:file")
+    frame = routes._video_frame_cache_path("project:file", 1.25)
+
+    assert source.parent == tmp_path / "cache" / "video_cache" and source.suffix == ".avi"
+    assert frame.parent == tmp_path / "cache" / "video_frame_cache"
+    pruned = {Path(result.directory) for result in prune_media_caches()}
+    assert {source.parent, frame.parent} <= pruned
+
+
 # -- identity ------------------------------------------------------------------------------
 @pytest.mark.usefixtures("local_mode")
 def test_local_mode_needs_no_token():
