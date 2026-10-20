@@ -18,14 +18,12 @@ import { ChevronDown } from "lucide-react"
 export function PlanningSection({
   title,
   children,
-  defaultOpen = false,
 }: {
   title: ReactNode
   children: ReactNode
-  defaultOpen?: boolean
 }) {
   return (
-    <Collapsible defaultOpen={defaultOpen} className="rounded-lg border p-4">
+    <Collapsible className="rounded-lg border p-4">
       <CollapsibleTrigger asChild>
         <Button
           type="button"

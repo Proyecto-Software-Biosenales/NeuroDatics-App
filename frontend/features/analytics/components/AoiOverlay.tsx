@@ -117,13 +117,11 @@ function polygonSmoothPath(aoi: AoiMetricItem, box: ContainedImageBox) {
 export function AoiOverlay({
   aois,
   box,
-  showLabels = true,
   fill = true,
   className,
 }: {
   aois: AoiMetricItem[]
   box: ContainedImageBox | null
-  showLabels?: boolean
   fill?: boolean
   className?: string
 }) {
@@ -174,22 +172,20 @@ export function AoiOverlay({
                 vectorEffect="non-scaling-stroke"
               />
             )}
-            {showLabels ? (
-              <text
-                x={rect.x + 8}
-                y={Math.max(rect.y - 8, 16)}
-                fill={aoi.color}
-                fontSize="13"
-                fontWeight="700"
-                style={{
-                  paintOrder: "stroke",
-                  stroke: "white",
-                  strokeWidth: 3,
-                }}
-              >
-                {aoi.name}
-              </text>
-            ) : null}
+            <text
+              x={rect.x + 8}
+              y={Math.max(rect.y - 8, 16)}
+              fill={aoi.color}
+              fontSize="13"
+              fontWeight="700"
+              style={{
+                paintOrder: "stroke",
+                stroke: "white",
+                strokeWidth: 3,
+              }}
+            >
+              {aoi.name}
+            </text>
           </g>
         )
       })}

@@ -152,13 +152,6 @@ export function withDerivedQuestionnaires(
     questionnaires: { before: derive("before"), after: derive("after") },
   }
 }
-export function validateConfig(config: PreExperimentConfig): string | null {
-  return (
-    validateParticipants(config) ??
-    validateScreen(config) ??
-    validateQuestionnaires(config)
-  )
-}
 export function validateParticipants(
   config: PreExperimentConfig
 ): string | null {
@@ -189,14 +182,6 @@ export function validateScreen(config: PreExperimentConfig): string | null {
       return "Las medidas de pantalla deben ser positivas; los píxeles deben ser enteros."
   }
   return null
-}
-export function validateQuestionnaires(
-  config: PreExperimentConfig
-): string | null {
-  return (
-    validateQuestionnaire(config, "before") ??
-    validateQuestionnaire(config, "after")
-  )
 }
 export function validateQuestionnaire(
   config: PreExperimentConfig,

@@ -49,12 +49,9 @@ interface StimulusFixationCardProps {
   selectedValueSub?: string
   selectedValueDecimals?: number
   totalDurationS?: number | null
-  title?: string
   description?: string
   emptyText?: string
   onClearSelection?: () => void
-  canClearSelection?: boolean
-  enableAois?: boolean
 }
 
 function formatMetricValue(value: number | null | undefined, decimals: number) {
@@ -321,12 +318,9 @@ export function StimulusFixationCard({
   selectedValueSub = "valor seleccionado",
   selectedValueDecimals = 2,
   totalDurationS = null,
-  title = "Punto de fijación sobre estímulo visual",
   description = "Ubicación de la mirada del participante durante el estímulo visual.",
   emptyText = "Haz clic en el gráfico o en Mínimo / Máximo para ver la mirada del participante",
   onClearSelection,
-  canClearSelection = true,
-  enableAois = true,
 }: StimulusFixationCardProps) {
   const [showAois, setShowAois] = useState(true)
   const {
@@ -344,7 +338,7 @@ export function StimulusFixationCard({
     gazeX,
     gazeY,
   } = useStimulusPreview({ projectId, participantCode, selectedTime })
-  const canUseAois = enableAois && supportsStimulusAois(gazeData)
+  const canUseAois = supportsStimulusAois(gazeData)
   const canShowAois = canUseAois && showAois
   const aoiScenario = canUseAois
     ? scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
@@ -377,7 +371,7 @@ export function StimulusFixationCard({
       <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <CardTitle className="text-lg">{title}</CardTitle>
+            <CardTitle className="text-lg">Punto de fijación sobre estímulo visual</CardTitle>
             {gazeData?.scenario && (
               <span className="inline-flex items-center gap-1 rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
                 <MapPin className="h-3 w-3 shrink-0" />
@@ -397,16 +391,14 @@ export function StimulusFixationCard({
                 count={aois.length}
               />
             ) : null}
-            {canClearSelection ? (
-              <Button variant="ghost"
-                type="button"
-                onClick={clearSelection}
-                className="gap-1.5 text-muted-foreground"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Limpiar selección
-              </Button>
-            ) : null}
+            <Button variant="ghost"
+              type="button"
+              onClick={clearSelection}
+              className="gap-1.5 text-muted-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Limpiar selección
+            </Button>
           </div>
         )}
       </CardHeader>

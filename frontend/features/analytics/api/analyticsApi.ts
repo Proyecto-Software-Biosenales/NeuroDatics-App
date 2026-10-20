@@ -21,7 +21,6 @@ import type {
   GazeTimeseriesData,
   GsrStatistics,
   GsrTimeseriesData,
-  PupilStatistics,
   PupilTimeseriesData,
   ScanpathData,
   ScenarioTimingData,
@@ -122,25 +121,6 @@ export const AnalyticsApi = {
     appendTimeWindowParams(params, startTimeS, endTimeS)
     return apiFetch<PupilTimeseriesData>(
       `/api/projects/${projectId}/analytics/timeseries/pupil?${params}`,
-      { signal }
-    )
-  },
-
-  getPupilStatistics: (
-    projectId: string,
-    participantCode: string,
-    scenario: string = "all",
-    startTimeS: number | null = null,
-    endTimeS: number | null = null,
-    signal?: AbortSignal
-  ) => {
-    const params = new URLSearchParams({
-      participant_code: participantCode,
-      scenario,
-    })
-    appendTimeWindowParams(params, startTimeS, endTimeS)
-    return apiFetch<PupilStatistics>(
-      `/api/projects/${projectId}/analytics/statistics/pupil?${params}`,
       { signal }
     )
   },

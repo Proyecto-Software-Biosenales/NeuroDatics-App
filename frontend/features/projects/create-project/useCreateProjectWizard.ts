@@ -679,7 +679,7 @@ export const useCreateProjectWizard = (
     }
 
     try {
-      await ProjectsApi.delete(draftProjectId);
+      await ProjectsApi.remove(draftProjectId);
     } catch (error) {
       console.warn("[CreateProjectWizard] failed to delete draft project", { draftProjectId, error });
     } finally {

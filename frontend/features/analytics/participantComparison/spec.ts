@@ -120,8 +120,6 @@ export type ParticipantComparisonSpec =
   | SpecBase<"scanpath", SpatialParams>
   | SpecBase<"aoi", Pick<SpatialParams, "minFixationDurationMs">>
 
-export type SpecOf<Kind extends ComparisonKind> = Extract<ParticipantComparisonSpec, { kind: Kind }>
-
 export interface KindInfo {
   label: string
   sensor: "EyeTracker" | "GSR" | "EEG"

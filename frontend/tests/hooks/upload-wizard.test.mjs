@@ -13,7 +13,7 @@ const bundle = browserBundle(`
   const state = { uploads: [], polls: [], gets: [], deletes: [], creates: [], updates: [], cancels: [], metadata: [] };
   ProjectsApi.create = async (data) => { state.creates.push(data); return { id: 'draft-a' }; };
   ProjectsApi.update = async (id, data) => { state.updates.push({ id, data }); return { id }; };
-  ProjectsApi.delete = async (id) => { state.deletes.push(id); };
+  ProjectsApi.remove = async (id) => { state.deletes.push(id); };
   ProjectsApi.get = (id) => new Promise((resolve, reject) => state.gets.push({ id, resolve, reject }));
   ProjectsApi.getZipUploadProgress = (id, uploadId, signal) => new Promise((resolve, reject) => state.polls.push({ id, uploadId, signal, resolve, reject }));
   ProjectsApi.cancelZipUpload = async (id, uploadId) => { state.cancels.push({ id, uploadId }); };

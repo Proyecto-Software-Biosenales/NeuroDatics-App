@@ -2,7 +2,7 @@
 
 import { ApiError } from "@/lib/api/apiFetch"
 import { AnalyticsApi } from "../api/analyticsApi"
-import { analyticsLoader, requestAnalytics } from "../analyticsCache"
+import { requestAnalytics } from "../analyticsCache"
 import type { TemporalChartPoint } from "../comparison/ComparisonCharts"
 import type {
   AoiMetricsData,
@@ -81,10 +81,6 @@ export function getScenarioTiming(
 ): Promise<ScenarioTiming> {
   return requestAnalytics(projectId, "scenario-timing", [generation, participant, scenario],
     (sharedSignal) => AnalyticsApi.getScenarioTiming(projectId, participant, scenario, sharedSignal), signal)
-}
-
-export function clearScenarioTimingCache() {
-  analyticsLoader.invalidate((key) => key.includes('"scenario-timing"'))
 }
 
 function isNotFound(error: unknown) {

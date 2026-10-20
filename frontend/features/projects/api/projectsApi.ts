@@ -171,18 +171,6 @@ export type ApiAoiPayload = {
   };
 };
 
-export type ApiScenaryPayload = {
-  name: string;
-  type: string;
-  file_id?: string | null;
-  source_entry_path?: string | null;
-  width?: number | null;
-  height?: number | null;
-  fps?: number | null;
-  duration_ms?: number | null;
-  stimulus_placement?: ApiStimulusPlacement | null;
-};
-
 export type ApiProjectScenary = {
   id: string;
   name: string;
@@ -254,32 +242,6 @@ export const ProjectsApi = {
   remove: (projectId: string) =>
     analyticsMutation(projectId, () => apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" })),
 
-  delete: (projectId: string) =>
-    analyticsMutation(projectId, () => apiFetch<DeleteProjectResult>(`/api/projects/${projectId}`, { method: "DELETE" })),
-
-  uploadZip: (
-    projectId: string,
-    file: File,
-    selection?: FolderSelection | null,
-    signal?: AbortSignal,
-    fixationGeometry?: FixationScreenGeometryInput | null,
-    stimulusPlacements?: ApiStimulusPlacementEnvelope[] | null,
-    uploadId?: string,
-  ) => {
-    const form = new FormData();
-    form.append("file", file);
-    if (uploadId) form.append("upload_id", uploadId);
-    appendSelection(form, selection);
-    appendFixationGeometry(form, fixationGeometry);
-    appendStimulusPlacements(form, stimulusPlacements);
-    return analyticsMutation(projectId, () => apiUploadFormWithProgress<UploadedProjectZip>(
-      `/api/projects/${projectId}/files/experiment-zip`,
-      form,
-      undefined,
-      signal,
-    ));
-  },
-
   uploadZipWithProgress: (
     projectId: string,
     file: File,
@@ -312,11 +274,6 @@ export const ProjectsApi = {
       method: "POST",
     }),
 
-  deleteZip: (projectId: string) =>
-    analyticsMutation(projectId, () => apiFetch<{ message: string }>(`/api/projects/${projectId}/files/experiment-zip`, {
-      method: "DELETE",
-    })),
-
   setSensors: (projectId: string, sensors: string[]) =>
     analyticsMutation(projectId, () => apiFetch<void>(`/api/projects/${projectId}/sensors`, {
       method: "PUT",
@@ -336,12 +293,6 @@ export const ProjectsApi = {
     analyticsMutation(projectId, () => apiFetch<void>(`/api/projects/${projectId}/participants`, {
       method: "PUT",
       body: JSON.stringify({ participants }),
-    })),
-
-  setScenaries: (projectId: string, scenaries: ApiScenaryPayload[]) =>
-    analyticsMutation(projectId, () => apiFetch<void>(`/api/projects/${projectId}/scenaries`, {
-      method: "PUT",
-      body: JSON.stringify({ scenaries }),
     })),
 
   setAois: (projectId: string, aois: ApiAoiPayload[]) =>

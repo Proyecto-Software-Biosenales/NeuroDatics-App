@@ -6,18 +6,17 @@ import { useAuth } from '@/lib/providers/AuthProvider'
 
 interface AuthGuardProps {
   children: ReactNode
-  redirectTo?: string
 }
 
-export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
+export function AuthGuard({ children }: AuthGuardProps) {
   const { currentUser, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     if (!loading && !currentUser) {
-      router.replace(redirectTo)
+      router.replace('/login')
     }
-  }, [currentUser, loading, redirectTo, router])
+  }, [currentUser, loading, router])
 
   if (loading) {
     return (

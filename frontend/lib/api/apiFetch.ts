@@ -422,31 +422,3 @@ export async function apiFetchBlob(path: string, init: ApiRequestInit = {}): Pro
   return (await apiFetchBlobWithHeaders(path, init)).blob;
 }
 
-/**
- * Evict cached blobs without waiting out the TTL.
- *
- * An upload that replaces a project's data invalidates every blob derived from
- * it, but those entries stay servable for up to 5 more minutes. Callers that
- * know the data changed drop them immediately. Keys are `<token>:<path>`, so
- * the prefix is matched against the path part only — otherwise a per-project
- * prefix would never match.
- */
-export function clearBlobCache(pathPrefix?: string): void {
-  if (!pathPrefix) {
-    blobCache.clear();
-    inflightBlobRequests.clear();
-    return;
-  }
-
-  const matchesPrefix = (key: string) => {
-    const separator = key.indexOf(":");
-    return separator >= 0 && key.slice(separator + 1).startsWith(pathPrefix);
-  };
-
-  for (const key of blobCache.keys()) {
-    if (matchesPrefix(key)) blobCache.delete(key);
-  }
-  for (const key of inflightBlobRequests.keys()) {
-    if (matchesPrefix(key)) inflightBlobRequests.delete(key);
-  }
-}

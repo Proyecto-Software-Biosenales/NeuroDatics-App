@@ -47,7 +47,6 @@
     --font-sans: "Poppins", sans-serif;
     --app-nav-height: clamp(3.75rem, 5.2vh, 4.5rem);
     --app-page-max-width: 88rem;
-    --app-page-max-width-wide: 96rem;
     --analytics-chart-main-height: clamp(20rem, 43vh, 28.75rem);
     --analytics-chart-mid-height: clamp(18.5rem, 40vh, 22rem);
     --analytics-chart-compact-height: clamp(17.5rem, 36vh, 20rem);
@@ -209,10 +208,6 @@
     @apply mx-auto px-4 py-5 sm:px-5 lg:px-6 2xl:px-8;
   }
 
-  .app-page-container-wide {
-    max-width: var(--app-page-max-width-wide);
-  }
-
   @media (min-width: 1600px) {
     .app-page-container {
       @apply py-8;
@@ -292,24 +287,6 @@
       gap: 0.75rem;
       margin-bottom: 0.75rem;
     }
-  }
-
-  .analytics-chart-frame {
-    height: var(--analytics-chart-main-height) !important;
-    min-height: 15rem;
-    width: 100%;
-  }
-
-  .analytics-chart-frame-mid {
-    height: var(--analytics-chart-mid-height) !important;
-  }
-
-  .analytics-chart-frame-compact {
-    height: var(--analytics-chart-compact-height) !important;
-  }
-
-  .analytics-chart-frame-eeg {
-    height: var(--analytics-chart-eeg-height) !important;
   }
 
   .analytics-chart-shell {
@@ -459,10 +436,6 @@
   .analytics-visual-image {
     max-height: var(--analytics-chart-visual-height);
     @apply w-full object-contain;
-  }
-
-  .analytics-visual-image-compact {
-    max-height: clamp(18rem, 50vh, 31.25rem);
   }
 
   .eeg-spectrogram-canvas {

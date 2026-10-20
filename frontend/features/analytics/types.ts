@@ -32,21 +32,6 @@ export interface PupilTimeseriesData {
   smooth_right: number[]
 }
 
-export interface PupilStatistics {
-  mean: number
-  min: number
-  max: number
-  std: number
-  median: number
-  baseline: number
-  raw_mean: number | null
-  raw_min: number | null
-  raw_max: number | null
-  raw_std: number | null
-  raw_median: number | null
-  raw_baseline: number | null
-}
-
 export interface CoordinateTransformDetails {
   status: "applied" | "legacy_passthrough_missing" | "mixed"
   applied: boolean | null
