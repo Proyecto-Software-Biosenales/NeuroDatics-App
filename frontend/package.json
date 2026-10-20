@@ -1,14 +1,12 @@
 {
-  "name": "app",
-  "version": "0.0.1",
+  "name": "neurodatics-frontend",
+  "version": "1.0.0",
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start",
     "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
     "test": "npm run typecheck && npm run test:unit && npm run test:browser",
     "test:unit": "node --test \"features/**/*.test.mjs\"",
     "test:browser": "node --test tests/hooks/*.test.mjs tests/components/*.test.mjs",

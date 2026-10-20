@@ -1,7 +1,4 @@
-dist/
 node_modules/
 .next/
-.turbo/
+.next-local/
 coverage/
-pnpm-lock.yaml
-.pnpm-store/
