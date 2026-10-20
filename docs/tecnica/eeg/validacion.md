@@ -3,7 +3,9 @@
 Revisión del procesamiento de EEG contra grabaciones de referencia reales: ingesta, analítica, correlación,
 gráficas y métricas de los informes. Ninguna grabación se subió, se reescribió ni se confirmó en el repositorio.
 La evidencia agregada y anónima se reproduce con `backend/scripts/audit_eeg_references.py`
-([métodos](metodos.md)). La alternancia entre `kilo` y unidad vacía, su tratamiento y su persistencia están en
+([métodos](metodos.md)). `backend/scripts/validate_reference_experiments.py` hace la aceptación local con esas
+mismas grabaciones privadas: valida el ZIP, ingesta cada CSV y recorre todos los servicios de analítica,
+rechazando valores no finitos, y escribe un informe agregado sin datos de los participantes. La alternancia entre `kilo` y unidad vacía, su tratamiento y su persistencia están en
 [escalas-por-grabacion.md](escalas-por-grabacion.md).
 
 ![Dos errores de procesamiento de EEG reproducibles](evidencia/diagnostics.png)
