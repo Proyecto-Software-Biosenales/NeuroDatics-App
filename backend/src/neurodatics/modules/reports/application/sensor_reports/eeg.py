@@ -102,27 +102,32 @@ def collect(participant: common.ReportParticipant, scenario: common.ReportScenar
     if scoped.empty or start is None or not any(channel in scoped.columns for channel in EEG_CHANNELS):
         return None
     name = scenario.name
-    try:
-        timeseries = EegAnalyticsService.compute_timeseries(frame, name, smooth_window_s=0.0, max_points=MAX_TRACE_POINTS)
-    except Exception as exc:
-        logger.warning("EEG report timeseries unavailable (%s)", type(exc).__name__)
+    timeseries = common.best_effort(
+        logger,
+        "EEG report timeseries",
+        lambda: EegAnalyticsService.compute_timeseries(frame, name, smooth_window_s=0.0, max_points=MAX_TRACE_POINTS),
+        None,
+    )
+    if timeseries is None:
         return None
     channels = [channel for channel in EEG_CHANNELS if channel in (timeseries.get("channels") or [])]
     if not channels:
         return None
     warnings = list((timeseries.get("metadata") or {}).get("warnings") or [])
-    try:
-        psd = EegAnalyticsService.compute_psd(frame, name, max_freq_hz=45.0, use_db=True, max_points=2048)
-    except Exception as exc:
-        logger.warning("EEG report spectrum unavailable (%s)", type(exc).__name__)
-        psd = {}
-    try:
-        spectrogram = EegAnalyticsService.compute_spectrogram(
+    psd = common.best_effort(
+        logger,
+        "EEG report spectrum",
+        lambda: EegAnalyticsService.compute_psd(frame, name, max_freq_hz=45.0, use_db=True, max_points=2048),
+        {},
+    )
+    spectrogram = common.best_effort(
+        logger,
+        "EEG report spectrogram",
+        lambda: EegAnalyticsService.compute_spectrogram(
             frame, name, max_freq_hz=SPECTROGRAM_MAX_HZ, use_db=True, max_time_bins=240, max_frequency_bins=160
-        )
-    except Exception as exc:
-        logger.warning("EEG report spectrogram unavailable (%s)", type(exc).__name__)
-        spectrogram = {}
+        ),
+        {},
+    )
     psd_metadata = psd.get("metadata") or {}
     warnings.extend(psd_metadata.get("warnings") or [])
     frequency = _array(psd.get("frequency"))

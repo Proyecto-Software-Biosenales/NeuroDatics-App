@@ -41,11 +41,7 @@ INTRO_GROUP = (
 
 
 def _best_effort(label: str, compute: Callable[[], T], default: T) -> T:
-    try:
-        return compute()
-    except Exception as exc:
-        logger.warning("Eye Tracking report %s unavailable (%s)", label, type(exc).__name__)
-        return default
+    return common.best_effort(logger, f"Eye Tracking report {label}", compute, default)
 
 
 @dataclass

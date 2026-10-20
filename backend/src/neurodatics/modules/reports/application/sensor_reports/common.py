@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import io
+import logging
+import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -18,12 +20,33 @@ from . import document as doc
 from . import formatting as fmt
 from .statistics import Descriptive, mean_and_sd
 
+T = TypeVar("T")
+
 LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "brand" / "neurodatics-logo.svg"
 
 MONTHS = (
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 )
+
+
+def log_unavailable(log: logging.Logger, label: str, exc: BaseException) -> None:
+    """Log a report part that could not be built: its exception type and where it was raised.
+
+    The traceback goes in as code locations only. Exception messages can carry tokens or
+    participant file paths, so they stay out of the log (test_cleanup_fallback_logging).
+    """
+    where = "".join(traceback.format_list(traceback.extract_tb(exc.__traceback__))).rstrip()
+    log.warning("%s unavailable (%s)\n%s", label, type(exc).__name__, where)
+
+
+def best_effort(log: logging.Logger, label: str, compute: Callable[[], T], default: T) -> T:
+    """Build one optional part of a report; if it fails, log it and leave its section empty."""
+    try:
+        return compute()
+    except Exception as exc:
+        log_unavailable(log, label, exc)
+        return default
 
 
 @dataclass(frozen=True)

@@ -113,3 +113,54 @@ def test_fixation_warning_preserves_other_report_assets(monkeypatch, caplog):
     assert recording.fixation_count == 0
     assert recording.distance_stats is not None
     assert_safe_warning(caplog, "Eye Tracking report fixation events")
+
+
+# -- report sections: the warning says where it failed, still without the message ----------
+def assert_located_warning(caplog, operation):
+    assert_safe_warning(caplog, operation)
+    located = [record.getMessage() for record in caplog.records if operation in record.getMessage()]
+    assert any("fail_with_sensitive_error" in message for message in located), located
+
+
+def test_report_heatmap_warning_names_the_failing_code(monkeypatch, caplog):
+    monkeypatch.setattr(report.HeatmapAnalyticsService, "render_overlay", fail_with_sensitive_error)
+
+    assert report.heatmap_figure(Image.new("RGBA", (32, 32)), pd.DataFrame()) is None
+    assert_located_warning(caplog, "Report heatmap")
+
+
+def test_unreadable_stimulus_image_is_logged_and_replaced_by_a_placeholder(monkeypatch, caplog):
+    monkeypatch.setattr(report.Image, "open", fail_with_sensitive_error)
+
+    assert report._open_base_image(b"not-an-image") is not None
+    assert_located_warning(caplog, "Report stimulus image")
+
+
+def test_eye_tracking_section_warning_names_the_failing_code(monkeypatch, caplog):
+    monkeypatch.setattr(eye_tracking.FixationEventService, "build_events", fail_with_sensitive_error)
+    frame = pd.DataFrame({"scenario": ["scenario"] * 4, "time": [0.0, 0.1, 0.2, 0.3]})
+    participant = report_common.ReportParticipant("P1", "P1", "#2a78d6", frame)
+
+    eye_tracking.collect(participant, report_common.ReportScenario("scenario", "scenario", 1))
+
+    assert_located_warning(caplog, "Eye Tracking report fixation events")
+
+
+def test_gsr_and_eeg_sections_warn_with_the_failing_code(monkeypatch, caplog):
+    from neurodatics.modules.reports.application.sensor_reports import eeg, gsr
+
+    monkeypatch.setattr(gsr.GsrAnalyticsService, "compute_timeseries", fail_with_sensitive_error)
+    monkeypatch.setattr(eeg.EegAnalyticsService, "compute_timeseries", fail_with_sensitive_error)
+    frame = pd.DataFrame({
+        "scenario": ["scenario"] * 4,
+        "time": [0.0, 0.1, 0.2, 0.3],
+        "gsr": [1.0, 1.1, 1.2, 1.3],
+        eeg.EEG_CHANNELS[0]: [1.0, 2.0, 3.0, 4.0],
+    })
+    participant = report_common.ReportParticipant("P1", "P1", "#2a78d6", frame)
+    scenario = report_common.ReportScenario("scenario", "scenario", 1)
+
+    assert gsr.collect(participant, scenario) is None
+    assert eeg.collect(participant, scenario) is None
+    assert_located_warning(caplog, "GSR report signal")
+    assert_located_warning(caplog, "EEG report timeseries")

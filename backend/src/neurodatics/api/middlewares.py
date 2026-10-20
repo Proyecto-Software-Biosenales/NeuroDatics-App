@@ -59,10 +59,12 @@ def register_middlewares(app: FastAPI):
 
             return response
 
-        except Exception as e:
-            # Log error
+        except Exception:
+            # With the traceback: in local mode app.log is the only diagnosis a student can send.
             process_time = time.time() - start_time
-            logger.error(f"Error: {str(e)} - {process_time:.4f}s")
+            logger.exception(
+                "Unhandled error %s %s - %.4fs", request.method, request.url.path, process_time
+            )
 
             return JSONResponse(
                 status_code=500,

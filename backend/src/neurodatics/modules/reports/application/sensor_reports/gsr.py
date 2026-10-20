@@ -63,12 +63,18 @@ def collect(participant: common.ReportParticipant, scenario: common.ReportScenar
     start = common.scenario_start(scoped)
     if scoped.empty or start is None or "gsr" not in scoped.columns:
         return None
-    try:
-        series = GsrAnalyticsService.compute_timeseries(frame, scenario.name)
-        payload = GsrAnalyticsService.compute_statistics(frame, scenario.name)
-    except Exception as exc:
-        logger.warning("GSR report signal unavailable (%s)", type(exc).__name__)
+    computed = common.best_effort(
+        logger,
+        "GSR report signal",
+        lambda: (
+            GsrAnalyticsService.compute_timeseries(frame, scenario.name),
+            GsrAnalyticsService.compute_statistics(frame, scenario.name),
+        ),
+        None,
+    )
+    if computed is None:
         return None
+    series, payload = computed
     time = np.asarray(series.get("time") or [], dtype=float)
     raw = np.asarray(series.get("gsr") or [], dtype=float)
     smooth = np.asarray(series.get("gsr_smooth") or [], dtype=float)

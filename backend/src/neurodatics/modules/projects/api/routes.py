@@ -392,6 +392,7 @@ async def _serve_project_file_image(
     try:
         loaded = await load_project_image(image_ref, drive_client)
     except Exception as exc:
+        logger.exception("Image download from Drive failed for file_id=%s", project_file.id)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="No se pudo descargar la imagen desde Google Drive"
@@ -489,6 +490,7 @@ async def _ensure_video_source_cached(
             )
         )
     except Exception as exc:
+        logger.exception("Video download from Drive failed for file_id=%s", project_file.id)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="No se pudo descargar el video desde Google Drive"
@@ -997,6 +999,7 @@ async def delete_project(
     try:
         result = await use_case.execute(project_id, UUID(current_user))
     except Exception as exc:
+        logger.exception("Project deletion failed for project_id=%s", project_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo eliminar el proyecto en base de datos"

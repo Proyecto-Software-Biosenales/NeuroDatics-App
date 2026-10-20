@@ -20,6 +20,7 @@ from ....analytics.application.services.analytics_service import (
     HeatmapAnalyticsService,
     ScanpathAnalyticsService,
 )
+from . import common
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +56,10 @@ def _open_base_image(image_bytes: Optional[bytes]) -> Image.Image:
         image = _make_placeholder_image()
         image.info["content_box"] = (0, 0, image.width, image.height)
         return image
-    try:
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
-    except Exception:
+    image = common.best_effort(
+        logger, "Report stimulus image", lambda: Image.open(io.BytesIO(image_bytes)).convert("RGBA"), None
+    )
+    if image is None:
         image = _make_placeholder_image()
         image.info["content_box"] = (0, 0, image.width, image.height)
         return image
@@ -373,10 +375,13 @@ def _draw_heatmap(base_image: Image.Image, overlay_bytes: Optional[bytes]) -> Op
 
     if not overlay_bytes:
         return None
-    try:
-        overlay = Image.open(io.BytesIO(overlay_bytes)).convert("RGBA")
-    except Exception as exc:
-        logger.warning("Executive report heatmap overlay unreadable (%s)", type(exc).__name__)
+    overlay = common.best_effort(
+        logger,
+        "Executive report heatmap overlay",
+        lambda: Image.open(io.BytesIO(overlay_bytes)).convert("RGBA"),
+        None,
+    )
+    if overlay is None:
         return None
     image = base_image.copy()
     offset_x, offset_y, content_width, content_height = _content_box(image)
@@ -413,10 +418,13 @@ def heatmap_figure(
     """Fixation heatmap over the stimulus, cropped to it; ``None`` without fixations."""
 
     _, _, width, height = _content_box(canvas)
-    try:
-        overlay = HeatmapAnalyticsService.render_overlay(events, width=width, height=height)
-    except Exception as exc:
-        logger.warning("Report heatmap unavailable (%s)", type(exc).__name__)
+    overlay = common.best_effort(
+        logger,
+        "Report heatmap",
+        lambda: HeatmapAnalyticsService.render_overlay(events, width=width, height=height),
+        None,
+    )
+    if overlay is None:
         return None
     drawn = _draw_heatmap(canvas, overlay)
     if drawn is None:
