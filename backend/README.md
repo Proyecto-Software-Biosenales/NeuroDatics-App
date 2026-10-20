@@ -54,7 +54,10 @@ necesita un valor por defecto que funcione en local, o establecerse en `apply_en
 `include_routes` (`src/neurodatics/api/router.py`) monta estas familias bajo `/api`:
 
 - `auth`: URL de inicio de sesión de Google y canje del código (servidor) o `local-session` (local).
-- `integrations/google-drive`: autorización, callback y estado de la conexión. **Solo en la edición servidor.**
+- `integrations/google-drive`: solo `GET /callback`, el retorno de OAuth de Google. Acepta únicamente el enlace
+  firmado que emite el comando de administración (`python -m neurodatics.modules.integrations.google_drive.admin
+  estado|conectar`, que se ejecuta en el servidor): la aplicación no ofrece ruta para ver ni cambiar la cuenta.
+  **Solo en la edición servidor.**
 - `projects`: alta, consulta, modificación y borrado del proyecto; carga, progreso, cancelación y borrado del
   ZIP; finalización; sensores, AOIs, participantes, escenarios y pre-experimento (con su exportación y sus
   respuestas); imágenes y vistas previas de los archivos.

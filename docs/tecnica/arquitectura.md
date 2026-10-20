@@ -180,7 +180,7 @@ La superficie HTTP, toda bajo `/api`:
 | `analytics` | Series de tiempo y estadísticas por sensor, PSD, espectrograma y topografía de EEG, fijaciones, histograma, scanpath, mapa de calor, AOI, correlaciones, comparativas, tiempos de escenario. |
 | `reports` | Generación de los informes en PDF. |
 | `settings` | Ajustes globales de cada persona: la pantalla del experimento (por defecto 1280×1024) y si ya la revisó. |
-| `integrations/google-drive` | Conectar, estado y desconectar (solo en servidor), más el callback de OAuth. |
+| `integrations/google-drive` | Solo el retorno (callback) de OAuth, que acepta el enlace firmado que emite el comando de administración `python -m neurodatics.modules.integrations.google_drive.admin`. Solo en servidor. |
 
 Los pre-experimentos y los cuestionarios, que permiten registrar un proyecto antes de tener datos,
 están descritos en [pre-experimento.md](../usuario/pre-experimento.md).
