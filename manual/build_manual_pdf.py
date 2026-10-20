@@ -157,20 +157,20 @@ def parse_markdown(text: str, st):
     toc_entries = [
         "01  Qué hace NeuroDatics",
         "02  Ediciones disponibles",
-        "03  Roles y permisos reales",
-        "04  Módulos de la plataforma",
+        "03  Quién puede hacer qué",
+        "04  Secciones de la aplicación",
         "05  Primer acceso",
-        "06  Crear un proyecto con carpeta",
-        "07  Estados del proyecto y de la ingesta",
-        "08  Revisar un proyecto",
-        "09  Analizar en Dashboard",
+        "06  Crear un proyecto",
+        "07  Estados de un proyecto",
+        "08  Revisar y editar un proyecto",
+        "09  Analizar en el Dashboard",
         "10  Pre-experimento y cuestionarios",
         "11  Google Drive en servidor",
-        "12  Generar reportes",
+        "12  Generar informes",
         "13  Problemas frecuentes",
         "14  Antes de analizar o exportar",
         "15  Glosario breve",
-        "16  Soporte",
+        "16  Ayuda",
         "Anexo A  Puesta en marcha para administración técnica",
     ]
     while i < len(lines):
@@ -210,8 +210,8 @@ def parse_markdown(text: str, st):
                     Paragraph("Guía práctica para organizar, analizar y exportar experimentos de bioseñales.", st["cover_subtitle"]),
                     Spacer(1, 18 * mm),
                     Table([
-                        [Paragraph("EDICIÓN", st["small"]), Paragraph("Servidor y local / estudiantes", st["cover_meta"]), Paragraph("VERSIÓN", st["small"]), Paragraph("2.1", st["cover_meta"])],
-                        [Paragraph("AUDIENCIA", st["small"]), Paragraph("Investigadores, docentes y estudiantes", st["cover_meta"]), Paragraph("FECHA", st["small"]), Paragraph("14 OCT 2026", st["cover_meta"])],
+                        [Paragraph("EDICIÓN", st["small"]), Paragraph("Servidor y local / estudiantes", st["cover_meta"]), Paragraph("VERSIÓN", st["small"]), Paragraph("2.2", st["cover_meta"])],
+                        [Paragraph("AUDIENCIA", st["small"]), Paragraph("Investigadores, docentes y estudiantes", st["cover_meta"]), Paragraph("IDIOMA", st["small"]), Paragraph("Español", st["cover_meta"])],
                     ], colWidths=[22 * mm, 52 * mm, 22 * mm, 46 * mm], style=TableStyle([
                         ("LINEABOVE", (0, 0), (-1, 0), 0.55, LINE),
                         ("LINEBELOW", (0, -1), (-1, -1), 0.55, LINE),
@@ -221,8 +221,7 @@ def parse_markdown(text: str, st):
                         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
                     ])),
                     Spacer(1, 72 * mm),
-                    Paragraph("Revisión editorial basada en la implementación vigente.", st["small"]),
-                    Paragraph("Capturas Playwright  /  datos sintéticos", st["small"]),
+                    Paragraph("Capturas con datos sintéticos de demostración.", st["small"]),
                     PageBreak(),
                     Paragraph("Contenido", st["toc_title"]),
                 ])
@@ -305,7 +304,7 @@ def build():
         bottomMargin=23 * mm,
         title="NeuroDatics - Manual de usuario",
         author="Equipo de desarrollo de NeuroDatics",
-        subject="Manual de usuario revisado contra la implementación vigente",
+        subject="Manual de usuario de NeuroDatics",
     )
     story = parse_markdown(SOURCE.read_text(encoding="utf-8"), styles())
     document.build(story)

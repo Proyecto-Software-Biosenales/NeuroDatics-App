@@ -142,6 +142,7 @@ completo está en [docs/tecnica/arquitectura.md](docs/tecnica/arquitectura.md).
 | --- | --- |
 | Entender la aplicación de un vistazo | [Arquitectura](docs/tecnica/arquitectura.md) |
 | Saber qué cambió | [CHANGELOG](docs/CHANGELOG.md) |
+| Usar la aplicación paso a paso | [Manual de usuario](manual/manual_usuario_neurodatics.md) |
 | Preparar un estudio sin datos todavía | [Pre-experimento](docs/usuario/pre-experimento.md) |
 | Interpretar la comparación entre participantes | [Comparar participantes](docs/usuario/comparar-participantes.md) |
 | Conocer los algoritmos | [Fijaciones](docs/tecnica/deteccion-de-fijaciones.md) · [Coordenadas](docs/tecnica/coordenadas-pantalla-estimulo.md) · [EEG](docs/tecnica/eeg/metodos.md) · [Informes](docs/tecnica/informes.md) |

@@ -58,3 +58,6 @@ CLAUDE.md
 .codex/
 .cursor/
 .agents/
+
+# Manual en PDF (se entrega como adjunto; se genera con manual/build_manual_pdf.py)
+manual/*.pdf
