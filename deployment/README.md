@@ -1,6 +1,6 @@
 # NeuroDatics: instalar y usar
 
-La carpeta de la entrega muestra solo cuatro archivos:
+La entrega es para Windows x64. Su carpeta muestra solo cuatro archivos:
 
 | Archivo | Para qué |
 | --- | --- |
@@ -70,7 +70,3 @@ Servicios: interfaz `frontend`, API `backend`, base `db` y caché `redis`. Los d
 3. Abre `INSTALAR.bat` una vez. Carga las imágenes nuevas, retira contenedores obsoletos del mismo grupo y nunca elimina volúmenes. Después sigue usando INICIAR.
 
 Si la carpeta venía de una entrega anterior con todo en la raíz (`scripts\`, `images\`, `docker-compose.yml`…), INSTALAR retira esos archivos siempre que sigan intactos según el manifiesto antiguo. No toca `.env` ni archivos que alguien haya cambiado, y guarda el registro anterior como `_internal\instalacion-anterior.log`. No ejecutes simultáneamente dos copias del paquete con configuraciones diferentes.
-
-## Otros sistemas
-
-El instalador automático es para Windows x64. En Linux x64 con Docker y Compose ya instalados, `.env` completo en la raíz de la entrega y `sha256sum`, un responsable puede usar `sh _internal/scripts/start.sh` y `sh _internal/scripts/stop.sh`. Este paquete no instala dependencias de macOS/Linux ni ofrece imágenes ARM64 nativas.
