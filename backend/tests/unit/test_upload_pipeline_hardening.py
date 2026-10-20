@@ -17,9 +17,9 @@ client = TestClient(app, raise_server_exceptions=False)
 # --------------------------------------------------------------------- auth
 
 # The shared Drive account is managed only from the server, so the app has no route to
-# read or change it; `connection` and `authorize` were the last ones (2026-10-19).
-# The two project routes at the end had no caller (2026-10-20): the stimulus placement
-# travels with the upload and the ZIP is replaced by uploading again.
+# read or change it. The two project routes at the end had no caller: the stimulus
+# placement travels with the upload and the ZIP is replaced by uploading again.
+# These routes must answer 404 (or 405 where another method shares the URL).
 RETIRED_ROUTES = [
     ("GET", "/api/integrations/google-drive/connection", {}),
     ("GET", "/api/integrations/google-drive/authorize", {}),

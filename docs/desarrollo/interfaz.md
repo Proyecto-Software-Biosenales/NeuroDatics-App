@@ -50,7 +50,7 @@ Lo mismo se ve igual en toda la aplicación. Estas reglas existen por errores qu
   las mismas secciones (`Planning*`, `CreateProjectStep2/3/4`). Si una pantalla nueva necesita algo que
   ya existe en otra, se reutiliza o se extrae a un componente compartido; no se copia con otras clases.
 - **Una entrada por acción.** Un objeto se edita desde un solo lugar. No se añaden al menú dos opciones
-  que llevan a configurar lo mismo (antes había «Editar» y «Pre-experimento y cuestionarios»).
+  que llevan a configurar lo mismo.
 - **Tarjetas de una cuadrícula.** La tarjeta es `flex flex-col` y su pie lleva `mt-auto`, para que la
   línea del pie quede a la misma altura en todas las tarjetas de una fila aunque una no tenga sensores.
   Las filas que pueden quedar vacías reservan su altura (`min-h-*`). Los botones que ocupan el mismo
@@ -70,6 +70,8 @@ Lo mismo se ve igual en toda la aplicación. Estas reglas existen por errores qu
   bordes que la fila. Una tarjeta tiene el mismo margen
   interior arriba que a los lados, también cuando empieza con pestañas. Las pestañas de `SectionTabs`
   reservan siempre la línea de estado para que iconos y nombres queden en la misma línea.
+- **Texto en español llano**, dicho una vez. Sin «(opcional)», sin ejemplos escritos dentro de los campos y
+  sin palabras de desarrollo (backend, ZIP, ingesta). Lo que explica un campo va en un `FieldHint`.
 - **Pestañas que no caben.** Una tira de pestañas que puede desbordarse se desplaza en horizontal y se
   alinea al inicio (`justify-start`): la base `TabsList` centra, y un contenido centrado que se desborda
   deja las primeras pestañas fuera de alcance.
@@ -81,7 +83,7 @@ que no haya scroll horizontal del documento.
 
 ### Adaptaciones deliberadas
 
-- `Card` mantiene la densidad anterior mediante espaciado compartido, títulos semánticos y ausencia de recorte de contenido.
+- `Card` mantiene su densidad mediante espaciado compartido, títulos semánticos y ausencia de recorte de contenido.
 - `Select` abre en modo `popper`, alineado al inicio. Los valores nulos de dominio se traducen a cadena vacía en los consumidores.
 - `Slider` propaga el nombre accesible al thumb. Sus callbacks entregan valores numéricos, no eventos de inputs nativos.
 - `AnalyticsTabs` usa activación manual por teclado y un único contenedor de contenido para conservar el estado de EEG entre vistas.
@@ -94,13 +96,14 @@ que no haya scroll horizontal del documento.
 1. El input oculto `type="file"` de `CreateProjectStep1` conserva `webkitdirectory`/`mozdirectory`, referencias y eventos de selección de carpetas. El área de arrastre es una interacción especializada y cuenta con un `Button` accesible para abrir el selector.
 2. Recharts, canvas, SVG de estímulos, geometría AOI, escalas científicas y su interacción permanecen en sus componentes especializados. Sus controles externos usan las bases compartidas.
 3. Los contenedores de distribución, regiones, leyendas y agrupaciones de datos pueden usar HTML semántico. No representan una alternativa a los controles de shadcn.
-4. Las imágenes de estímulos conservan sus medidas naturales y coordenadas; esta refactorización no cambia su estrategia de carga.
+4. Las imágenes de estímulos conservan sus medidas naturales y coordenadas; su estrategia de carga no se modifica.
 
 ESLint restringe controles nativos e imports de primitivas fuera de `components/ui`. La excepción para inputs de archivo está explícita en la configuración.
 
 ## Validación
 
-Ejecutar desde `frontend`:
+La puerta de todo cambio es `./verify.ps1`; las pruebas e2e no forman parte de ella (ver
+[CONTRIBUTING.md](../../CONTRIBUTING.md)). Para una tarea de interfaz, desde `frontend`:
 
 ```powershell
 npm run typecheck

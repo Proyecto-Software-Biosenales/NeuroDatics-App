@@ -70,19 +70,10 @@ desactualizado: el procedimiento para reconstruirlo y entregarlo está en [stude
 ## Interfaz: consistencia antes que novedad
 
 La aplicación debe verse limpia, espaciosa e igual en todas sus pantallas. Antes de tocar la interfaz, lee
-[docs/desarrollo/interfaz.md](docs/desarrollo/interfaz.md). En resumen:
-
-1. **Reutiliza antes de crear:** `components/ui`, `FieldHint`, `SectionTabs`, `SubTabs`, `Planning*`,
-   `CreateProjectStep*`, `ProjectSaveProgress`, `InfoChip` y las clases `app-page-*`. Si dos pantallas necesitan
-   lo mismo, extráelo a un componente compartido.
-2. **Una sola entrada por acción.** Un proyecto se edita en `/proyectos/editar?proyecto=<id>`, tenga carpeta o no.
-3. **Alineación entre elementos hermanos:** en una cuadrícula de tarjetas, el pie va al fondo
-   (`flex flex-col` + `mt-auto`) y los botones equivalentes comparten tamaño y variante.
-4. **Nada apeñuscado:** divide en pestañas lo que sería una lista larga y explica con `FieldHint`, no con letra
-   pequeña bajo los campos.
-5. **Texto en español llano**, dicho una vez, sin «(opcional)», ejemplos en los campos ni palabras técnicas.
-6. **Compruébalo en pantalla:** con la API simulada en Playwright, fotografía a 1536×730 y a 390 px y mide lo
-   que debe coincidir. Que pasen las pruebas no basta.
+[docs/desarrollo/interfaz.md](docs/desarrollo/interfaz.md), sobre todo «Consistencia visual»: reutilizar antes de
+crear, una sola entrada por acción, alineación entre elementos hermanos, nada apeñuscado y texto en español llano.
+Compruébalo en pantalla: con la API simulada en Playwright, fotografía a 1536×730 y a 390 px y mide lo que debe
+coincidir. Que pasen las pruebas no basta.
 
 ## La verificación: `./verify.ps1`
 
@@ -187,7 +178,7 @@ ya iniciada:
 
 ```powershell
 cd frontend
-$env:STUDENT_BASE_URL = 'http://127.0.0.1:8765'
+$env:STUDENT_BASE_URL = 'http://neurodatics.localhost:8765'
 $env:STUDENT_RAW_FOLDER = '<carpeta de un experimento sin procesar>'   # sin ella se omite el flujo completo
 npx playwright test -c playwright.local.config.ts
 ```
@@ -198,6 +189,9 @@ npx playwright test -c playwright.local.config.ts
   `tecnica/` (cómo funciona) y `desarrollo/` (cómo se trabaja en el código). Su índice es
   [docs/README.md](docs/README.md).
 - `docs/CHANGELOG.md` describe cambios observables por quien usa la aplicación, agrupados por versión.
+- El manual de usuario es [manual/manual_usuario_neurodatics.md](manual/manual_usuario_neurodatics.md): si cambia
+  algo que el usuario ve o hace, se actualiza ahí. Las capturas y el PDF se generan como explica
+  [manual/README.md](manual/README.md); el PDF no se guarda en git.
 - Los números que envejecen (recuentos de pruebas, cabezas de migración) no se fijan en la documentación: se
   explica cómo consultarlos.
 - Las guías que viajan dentro de un paquete viven junto a él: `deployment/` para la edición servidor y

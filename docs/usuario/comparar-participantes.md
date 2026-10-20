@@ -96,13 +96,9 @@ mismos parámetros.
 
 - El inicio del estímulo es el primer registro de ese escenario en la grabación: no hay
   marcadores de evento del equipo.
-- Una consulta que el navegador aborta puede seguir calculándose en el servidor.
 - No se trasladan a las tarjetas el tinte del mapa de calor, el reproductor del recorrido, el
   diseño apilado del EEG (los canales se superponen, y la nota lo dice) ni el zoom interno de los
   paneles de Comparativas.
-- La caché del diálogo vive en la memoria de la pestaña: 48 resultados, cinco minutos y un peso
-  acotado, con un máximo de cuatro consultas simultáneas. Se vacía al reprocesar el proyecto,
-  porque la clave incluye la generación de ingesta. Cerrar el diálogo no deja consultas en curso
-  ni tarjetas montadas.
+- Los resultados ya calculados se reutilizan unos minutos y se descartan al reprocesar el proyecto.
 - Comparar no es inferir: estas gráficas y cifras describen grabaciones concretas y no sostienen
   por sí solas una afirmación sobre emoción, atención o causalidad.

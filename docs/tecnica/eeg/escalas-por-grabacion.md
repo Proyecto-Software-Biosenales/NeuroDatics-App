@@ -4,18 +4,17 @@ Cómo trata la ingesta las escalas de EEG que el archivo declara grabación por 
 
 ## Hallazgo y evidencia de origen
 
-En `SAIO 3 EYT-EEG-GSR alta.csv` (`csv-08` de la auditoría), cada bloque de grabación tiene sus propios metadatos por canal. El bloque 5 declara:
+En la grabación `csv-08` de la auditoría (un CSV multisensor con seis bloques de grabación), cada bloque tiene sus propios metadatos por canal. El bloque 5 declara:
 
 ```text
 155520: Nombre : Electroencefalografía (EEG) / F3
-155521: Tiempo de inicio : 23/07/2026 2:07:37,284 p. m.
 155522: Frecuencia   : 300,287547754407 Hz
 155523: Unidad Tobii : kilo
 ```
 
-Son números de línea del CSV original; una importación en Excel que retire filas puede cambiar su numeración. `Unidad Tobii` es el nombre literal del campo del exportador, no una unidad física. No está confirmado por qué el campo recibe ese nombre también para EEG, ni por qué se eligió `kilo` en esta grabación. No se atribuye el comportamiento al hardware ni a una configuración automática no documentada.
+Son números de línea del CSV original (la 155521, con la fecha de inicio, se omite); una importación en Excel que retire filas puede cambiar su numeración. `Unidad Tobii` es el nombre literal del campo del exportador, no una unidad física. No está confirmado por qué el campo recibe ese nombre también para EEG, ni por qué se eligió `kilo` en esta grabación. No se atribuye el comportamiento al hardware ni a una configuración automática no documentada.
 
-| Grabación del archivo SAIO | Canal F3: unidad declarada | Factor que aplica la app |
+| Bloque de la grabación csv-08 | Canal F3: unidad declarada | Factor que aplica la app |
 |---|---|---:|
 | Bloques 1, 2, 3 y 4 | Vacía | 1 |
 | Bloque 5 | `kilo` | 1.000 |

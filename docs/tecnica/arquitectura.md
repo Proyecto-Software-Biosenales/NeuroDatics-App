@@ -149,9 +149,8 @@ Las fronteras que importan no son una convención: están verificadas por `backe
 | `processing-analytics` | `modules.projects.application` no puede depender de `modules.analytics`, salvo los cruces declarados. |
 | `shared-neutral` | `shared` no puede depender de ningún `modules`. |
 
-Los dos primeros existen porque ingesta y analítica se habían enredado en un ciclo. Hoy la ingesta
-produce artefactos y la analítica los consume, sin que ninguna llame a la otra: lo que comparten pasa
-por `shared/`. El tercero mantiene `shared/` como lo que dice ser, un lugar de contratos sin
+Los dos primeros evitan que ingesta y analítica formen un ciclo: la ingesta produce artefactos y la
+analítica los consume, sin que ninguna llame a la otra; lo que comparten pasa por `shared/`. El tercero mantiene `shared/` como lo que dice ser, un lugar de contratos sin
 dependencias hacia las funciones.
 
 Dos matices de esa frontera, los dos decisiones escritas y no accidentes. El primero es una
@@ -183,7 +182,8 @@ La superficie HTTP, toda bajo `/api`:
 | `integrations/google-drive` | Solo el retorno (callback) de OAuth, que acepta el enlace firmado que emite el comando de administración `python -m neurodatics.modules.integrations.google_drive.admin`. Solo en servidor. |
 
 Los pre-experimentos y los cuestionarios, que permiten registrar un proyecto antes de tener datos,
-están descritos en [pre-experimento.md](../usuario/pre-experimento.md).
+se describen en [usuario/pre-experimento.md](../usuario/pre-experimento.md) (cómo se usan) y en
+[pre-experimento.md](pre-experimento.md) (cómo se guardan y su API).
 
 ### Informes
 
@@ -218,7 +218,7 @@ invocados con una lista de argumentos y tiempos límite acotados, nunca como cad
 
 ## Las cachés y por qué están acotadas
 
-Hay cuatro, y todas tienen un tope:
+Hay cuatro en el servidor, y todas tienen un tope:
 
 | Caché | Dónde | Cómo se acota |
 | --- | --- | --- |
@@ -245,6 +245,13 @@ Hay una pieza más que no es una caché pero se le parece: `analytics/infrastruc
 agrupa, dentro de un proceso, las solicitudes idénticas que llegan a la vez, para que un cálculo caro
 se haga una sola vez. Es local al bucle de eventos, no coordinación distribuida, y quien aporta el
 cálculo es dueño de sus recursos hasta que termina.
+
+**El diálogo de comparar participantes** tiene su propia caché, en la memoria de la pestaña del
+navegador: guarda hasta 48 resultados durante cinco minutos, con un peso acotado, y lanza como máximo
+cuatro consultas a la vez. Su clave incluye la generación de ingesta, así que reprocesar el proyecto la
+vacía. Cerrar el diálogo no deja consultas en curso ni tarjetas montadas. Una consulta que el navegador
+aborta puede seguir calculándose en el servidor. La vista que ve quien usa la aplicación está en
+[comparar-participantes.md](../usuario/comparar-participantes.md).
 
 ### Decisiones de rendimiento
 
@@ -335,7 +342,7 @@ participantes, que es la pieza de interfaz más particular, en
 | Informes en PDF | [informes.md](informes.md) |
 | Comparar participantes | [comparar-participantes.md](../usuario/comparar-participantes.md) |
 | Convenciones de interfaz | [interfaz.md](../desarrollo/interfaz.md) |
-| Pre-experimentos y cuestionarios | [pre-experimento.md](../usuario/pre-experimento.md) |
+| Pre-experimentos y cuestionarios | [pre-experimento.md](pre-experimento.md) · [uso](../usuario/pre-experimento.md) |
 | Métodos de EEG y reproducibilidad | [eeg/metodos.md](eeg/metodos.md) |
 | Edición de estudiantes | [student/README.md](../../student/README.md) |
 | Despliegue en red | [despliegue-en-red.md](despliegue-en-red.md) |

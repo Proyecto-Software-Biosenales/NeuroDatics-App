@@ -18,6 +18,7 @@ después por [arquitectura.md](tecnica/arquitectura.md).
 | --- | --- |
 | [tecnica/arquitectura.md](tecnica/arquitectura.md) | Cómo encajan backend, frontend y las dos ediciones; por dónde pasan los datos. |
 | [tecnica/subida-de-experimentos.md](tecnica/subida-de-experimentos.md) | Qué hace una subida de experimento, en qué orden, qué garantiza y qué no. |
+| [tecnica/pre-experimento.md](tecnica/pre-experimento.md) | Cómo se guarda la preparación de un proyecto y qué expone la API de pre-experimentos. |
 | [tecnica/deteccion-de-fijaciones.md](tecnica/deteccion-de-fijaciones.md) | Cómo se detectan las fijaciones desde la mirada cruda y cómo se mide su duración. |
 | [tecnica/coordenadas-pantalla-estimulo.md](tecnica/coordenadas-pantalla-estimulo.md) | El contrato que lleva las coordenadas de pantalla al sistema del estímulo. |
 | [tecnica/informes.md](tecnica/informes.md) | Los informes en PDF: qué contienen y de dónde salen sus números. |
