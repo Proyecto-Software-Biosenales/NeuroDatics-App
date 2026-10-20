@@ -44,8 +44,8 @@ import {
   HeatmapPanel,
   PointOnStimulusPanel,
   ScanpathPanel,
-  ScenarioRequiredMessage,
 } from "./SpatialPanels"
+import { ScenarioRequiredMessage } from "../components/AnalyticsMessageSurface"
 import { VisualizationSelector } from "./VisualizationSelector"
 import {
   VISUALIZATION_BY_ID,
@@ -519,7 +519,7 @@ function ComparisonWorkspace({
         )
       case "aoi":
         return scenario === "all" ? (
-          <ScenarioRequiredMessage label="la comparativa AOI" />
+          <ScenarioRequiredMessage label="la comparativa de AOIs" />
         ) : (
           <AoiPanel
             data={data.aoi.data}

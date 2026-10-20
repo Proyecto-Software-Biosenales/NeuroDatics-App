@@ -3,7 +3,7 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   CartesianGrid,
   Line,
@@ -56,6 +56,8 @@ import { useSingleSignalData } from "../hooks/useSingleSignalData"
 import { SingleSignalTab } from "./SingleSignalTab"
 import { LINE_CHART_MARGIN } from "./AnalyticsChartShell"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
+import { fittedAxis, fittedYAxisProps } from "../fittedAxis"
+import { FitAxisToggle } from "./AnalyticsModeSelector"
 import { MissingStimulusImage } from "./MissingStimulusImage"
 
 interface DeviceDistanceTabProps {
@@ -147,6 +149,11 @@ export function DeviceDistanceTab({
   )
   const { chartData, chartDomain, minTime, maxTime, selectedPoint, selectedTime, setSelectedTime, stats, statsLoading } = signal
   const selectedValue = selectedPoint?.distance_cm ?? null
+  const [fitAxis, setFitAxis] = useState(false)
+  const yAxis = useMemo(
+    () => (fitAxis ? fittedAxis(chartData.map((point) => point.distance_cm)) : null),
+    [chartData, fitAxis]
+  )
   const chartLegend = [{ label: "Distancia ojo-pantalla", color: "#3B82F6" }]
 
   /**
@@ -230,6 +237,7 @@ export function DeviceDistanceTab({
         origin: "individual",
         params: { window: signal.timeWindowControls.appliedWindow },
       })}
+      headerActions={<FitAxisToggle pressed={fitAxis} onPressedChange={setFitAxis} />}
       kpis={[
         {
           label: "Media",
@@ -284,6 +292,7 @@ export function DeviceDistanceTab({
             />
             <YAxis
               width={72}
+              {...fittedYAxisProps(yAxis)}
               label={{ value: "Distancia (cm)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
             />
             <RechartsTooltip content={<DistanceTooltip />} />

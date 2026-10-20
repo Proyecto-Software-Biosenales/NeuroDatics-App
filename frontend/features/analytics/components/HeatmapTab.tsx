@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
-import { Clock, Flame, Hash, Timer } from "lucide-react"
+import { Clock, Hash, Timer } from "lucide-react"
+import { ScenarioRequiredMessage } from "./AnalyticsMessageSurface"
 import {
   Card,
   CardContent,
@@ -133,13 +134,7 @@ export function HeatmapTab({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
-              <Flame className="h-8 w-8 text-muted-foreground/40" />
-              <span>
-                Selecciona un escenario específico para visualizar el mapa de
-                calor
-              </span>
-            </div>
+            <ScenarioRequiredMessage label="el mapa de calor" />
           </CardContent>
         </Card>
       </div>

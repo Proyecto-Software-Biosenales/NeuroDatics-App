@@ -52,6 +52,7 @@ import {
   type ContainedImageBox,
 } from "./AoiOverlay"
 import { AnalyticsChartShell } from "./AnalyticsChartShell"
+import { ScenarioRequiredMessage } from "./AnalyticsMessageSurface"
 import { AoiFindingsCard } from "./aoi/AoiFindingsCard"
 import { AoiMetricsCard } from "./aoi/AoiMetricsCard"
 import { AoiSequenceCard } from "./aoi/AoiSequenceCard"
@@ -226,13 +227,11 @@ export function AoiComparisonTab({
           <CardHeader>
             <CardTitle>Comparativa AOIs</CardTitle>
             <CardDescription>
-              Selecciona un escenario específico para analizar sus áreas de interés.
+              Fijaciones y concentración visual sobre las áreas definidas del escenario.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
-              Selecciona un escenario para visualizar la comparativa.
-            </div>
+            <ScenarioRequiredMessage label="la comparativa de AOIs" />
           </CardContent>
         </Card>
       </div>

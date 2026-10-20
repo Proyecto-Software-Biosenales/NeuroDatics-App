@@ -401,6 +401,10 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
   await page.mouse.move(0, 0)
   await sidebar.getByRole("button", { name: "Sensor galvánico" }).click()
   await expect(page.locator("main .recharts-surface").first()).toBeVisible({ timeout: 90_000 })
+  // The other signals offer the same "Ajustar".
+  const gsrFit = page.getByRole("button", { name: "Ajustar", exact: true })
+  await gsrFit.click()
+  await expect(gsrFit).toHaveAttribute("aria-pressed", "true")
 
   // Deleting removes the project and says the student's own files went with it (no Drive folder).
   await page.goto("/proyectos/")

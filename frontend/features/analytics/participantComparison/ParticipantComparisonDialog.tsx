@@ -10,6 +10,7 @@ import { ProjectsApi } from "@/features/projects/api/projectsApi"
 import { useComparisonData } from "../comparison/useComparisonData"
 import { PointOnStimulusPanel } from "../comparison/SpatialPanels"
 import { AnalyticsModeSelector } from "../components/AnalyticsModeSelector"
+import { ScenarioRequiredMessage } from "../components/AnalyticsMessageSurface"
 import { FixationDurationControl } from "../components/FixationDurationControl"
 import { useAoiMetrics, useFixationSensitivity } from "../hooks/useAnalyticsData"
 import type { ZoomHistory } from "../chartZoom"
@@ -335,7 +336,9 @@ export default function ParticipantComparisonDialog({
             <div ref={setScrollElement} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/30" data-testid="participant-comparison-scroll">
               <div className="mx-auto flex min-h-full w-full max-w-(--app-page-max-width) flex-col gap-4 p-3 md:p-4 xl:p-6">
               {restriction ? (
-                <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">{restriction}</div>
+                <ScenarioRequiredMessage className="flex-1">
+                  <p className="max-w-xl">{restriction}</p>
+                </ScenarioRequiredMessage>
               ) : selectedList.length === 0 ? (
                 <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
                   No hay participantes seleccionados. Usa «Participantes» para elegirlos.

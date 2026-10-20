@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
-import { Clock, MapPin, Route, Ruler, Timer } from "lucide-react"
+import { Clock, Route, Ruler, Timer } from "lucide-react"
+import { ScenarioRequiredMessage } from "./AnalyticsMessageSurface"
 import {
   Card,
   CardContent,
@@ -123,10 +124,7 @@ export function ScanpathTab({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
-              <MapPin className="h-8 w-8 text-muted-foreground/40" />
-              <span>Selecciona un escenario específico para visualizar el mapa de recorridos</span>
-            </div>
+            <ScenarioRequiredMessage label="el mapa de recorridos" />
           </CardContent>
         </Card>
       </div>

@@ -1,7 +1,7 @@
 "use client"
-import { AnalyticsModeSelector } from "@/features/analytics/components/AnalyticsModeSelector"
+import { AnalyticsModeSelector, FitAxisToggle } from "@/features/analytics/components/AnalyticsModeSelector"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import {
   Area,
   AreaChart,
@@ -40,6 +40,7 @@ import type { GsrTimeseriesData } from "../types"
 import { useSingleSignalData } from "../hooks/useSingleSignalData"
 import { SingleSignalTab } from "./SingleSignalTab"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
+import { fittedAxis, fittedYAxisProps } from "../fittedAxis"
 
 type SignalMode = "smooth" | "raw" | "both"
 
@@ -114,11 +115,17 @@ function readClickedTime(state: unknown): number | null {
 
 export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
   const [signalMode, setSignalMode] = useState<SignalMode>("smooth")
+  const [fitAxis, setFitAxis] = useState(false)
 
   const signal = useSingleSignalData(
     { projectId, participantCode, scenario }, GSR_SIGNAL
   )
   const { chartData, chartDomain, minTime, maxTime, selectedPoint, selectedTime, setSelectedTime, stats, statsLoading } = signal
+  // Smoothed and raw set the scale together, so switching between them never moves the axis.
+  const yAxis = useMemo(
+    () => (fitAxis ? fittedAxis(chartData.flatMap((point) => [point.gsr, point.gsr_smooth])) : null),
+    [chartData, fitAxis]
+  )
   const chartLegend = [
     ...(signalMode === "smooth" || signalMode === "both"
       ? [{ label: "GSR suavizada", color: "#10B981" }]
@@ -156,13 +163,14 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
         origin: "individual",
         params: { signalMode, window: signal.timeWindowControls.appliedWindow },
       })}
-      headerActions={
+      headerActions={<>
+        <FitAxisToggle pressed={fitAxis} onPressedChange={setFitAxis} />
         <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
           { key: "smooth", label: "Suavizada", hint: "Señal promediada en ventanas de un segundo: quita el ruido y deja ver la tendencia." },
           { key: "raw", label: "Cruda", hint: "Valores originales del sensor, sin suavizar." },
           { key: "both", label: "Ambas", hint: "La señal suavizada y la cruda juntas, para compararlas." },
         ]} />
-      }
+      </>}
       kpis={[
         {
           label: "Media",
@@ -239,6 +247,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
             />
             <YAxis
               width={80}
+              {...fittedYAxisProps(yAxis)}
               label={{ value: "Respuesta galvánica (µS)", angle: -90, position: "insideLeft", offset: 4, style: { textAnchor: "middle" } }}
             />
             <RechartsTooltip content={<GsrTooltip />} />

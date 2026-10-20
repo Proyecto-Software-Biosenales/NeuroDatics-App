@@ -1,5 +1,5 @@
 "use client"
-import { AnalyticsModeSelector, AnalyticsToggle } from "@/features/analytics/components/AnalyticsModeSelector"
+import { AnalyticsModeSelector, FitAxisToggle } from "@/features/analytics/components/AnalyticsModeSelector"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -567,12 +567,7 @@ export function PupilDilationTab({
           </div>
 
           <div className="flex max-w-full flex-wrap items-center gap-2">
-            <AnalyticsToggle
-              label="Ajustar"
-              hint="Acerca el eje vertical a los valores de la gráfica."
-              pressed={fitAxis}
-              onPressedChange={setFitAxis}
-            />
+            <FitAxisToggle pressed={fitAxis} onPressedChange={setFitAxis} />
             <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
                 { key: "both", label: "Ambas pupilas" },
                 { key: "left", label: "Izquierda" },

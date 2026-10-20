@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { InfoChip } from "../components/InfoChip"
+import { ScenarioRequiredMessage } from "../components/AnalyticsMessageSurface"
 import { cn } from "@/lib/utils"
 import { AnalyticsApi } from "../api/analyticsApi"
 import type {
@@ -335,10 +336,7 @@ export function CorrelationMatrixSection({
               Selecciona un participante para calcular las correlaciones.
             </Guidance>
           ) : !isConcreteScenario ? (
-            <Guidance>
-              Selecciona un escenario específico. Las correlaciones no están
-              disponibles para &ldquo;Todos los escenarios&rdquo;.
-            </Guidance>
+            <ScenarioRequiredMessage label="las correlaciones" />
           ) : !hasEnoughSelectedSignals ? (
             <Guidance>
               Selecciona al menos dos señales compatibles entre pupila, mirada,

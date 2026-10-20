@@ -5,6 +5,34 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Un solo aviso para «Selecciona un escenario específico»
+
+- **Las gráficas que necesitan un escenario concreto muestran el mismo aviso con «Todos los escenarios»:** un
+  icono de cursor y una frase, «Selecciona un escenario específico para visualizar …». Antes cada vista tenía
+  el suyo (llama, chincheta, solo texto). Llega al mapa de calor, el mapa de recorridos y la comparativa de
+  AOIs (vista individual y Comparativas), a las correlaciones entre señales y a «Comparar participantes»
+  cuando la gráfica no se puede comparar sin escenario.
+- La comparativa de AOIs ya no repite el aviso como descripción: muestra la misma que con un escenario.
+- El componente compartido vive en `features/analytics/components/AnalyticsMessageSurface.tsx`.
+- Pruebas: `verify.ps1` en verde; `comparison-dashboard`, `participant-comparison` y `ui-consistency` pasan;
+  revisado en pantalla a 1536×730 y a 390 px con la API simulada.
+
+### «Ajustar» en todas las gráficas de líneas
+
+- **El botón «Ajustar» de la dilatación pupilar llega a la respuesta galvánica, la distancia al dispositivo,
+  el punto de mirada y la densidad espectral del EEG.** Acerca el eje vertical a los valores de la gráfica en
+  lugar de empezar en cero, con marcas redondas. Como con las dos pupilas, la señal suavizada y la cruda de la
+  GSR, y los ejes X e Y de la mirada, fijan juntos la escala, así que cambiar de modo no la mueve; en la
+  densidad espectral cuentan los canales visibles.
+- No se añade donde no aplica: el histograma de fijaciones y la comparativa de AOI son barras que deben
+  empezar en cero, y la señal EEG por canal y las tarjetas de «Comparar participantes» ya ajustan su eje a los
+  datos.
+- Pruebas: `features/analytics/fittedAxis.test.mjs` (escala ajustada) y `tests/e2e/fit-axis.spec.ts` (las
+  cuatro gráficas a 1536×730 y 390 px, sin desplazamiento horizontal); la prueba sin conexión de estudiantes
+  pulsa «Ajustar» en la GSR. `verify.ps1` en verde.
+- **Paquete de estudiantes no reconstruido:** el árbol de trabajo tenía a la vez otros cambios sin terminar y
+  se acordó esperar a que acabaran para que el paquete no los incluyera a medias.
+
 ### Mirada: pérdidas del ojo y su rampa
 
 - **Una pérdida del ojo ya no se dibuja como una caída hacia 0.** El Tobii escribe la pérdida como `(0,0)` y

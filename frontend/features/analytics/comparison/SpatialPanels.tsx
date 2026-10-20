@@ -16,10 +16,8 @@ import {
 import {
   CircleOff,
   Crosshair,
-  ImageOff,
   Layers,
   LoaderCircle,
-  MousePointerClick,
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -43,6 +41,7 @@ import {
   supportsStimulusAois,
 } from "../components/stimulusState"
 import { MissingStimulusImage } from "../components/MissingStimulusImage"
+import { AnalyticsMessageSurface as MessageSurface } from "../components/AnalyticsMessageSurface"
 import { AnalyticsChartShell } from "../components/AnalyticsChartShell"
 import { ScanpathDurationLegend } from "../components/ScanpathDurationLegend"
 import {
@@ -74,21 +73,6 @@ interface ImageState {
   url: string | null
   loading: boolean
   error: string | null
-}
-
-function MessageSurface({
-  Icon = ImageOff,
-  children,
-}: {
-  Icon?: typeof ImageOff
-  children: ReactNode
-}) {
-  return (
-    <div className="flex min-h-64 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 px-6 text-center text-sm text-muted-foreground">
-      <Icon className="h-8 w-8 text-muted-foreground/40" />
-      {children}
-    </div>
-  )
 }
 
 function StimulusSurface({
@@ -149,14 +133,6 @@ function StimulusSurface({
       />
       {renderOverlay?.(box)}
     </div>
-  )
-}
-
-export function ScenarioRequiredMessage({ label }: { label: string }) {
-  return (
-    <MessageSurface Icon={MousePointerClick}>
-      Selecciona un escenario específico para visualizar {label.toLowerCase()}.
-    </MessageSurface>
   )
 }
 

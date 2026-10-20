@@ -1,5 +1,5 @@
 "use client"
-import { AnalyticsModeSelector } from "@/features/analytics/components/AnalyticsModeSelector"
+import { AnalyticsModeSelector, FitAxisToggle } from "@/features/analytics/components/AnalyticsModeSelector"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -66,6 +66,7 @@ import { MissingStimulusImage } from "./MissingStimulusImage"
 import { AnalyticsChartShell, LINE_CHART_MARGIN } from "./AnalyticsChartShell"
 import { useChartDragZoom } from "./ChartDragZoom"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
+import { fittedAxis, fittedYAxisProps } from "../fittedAxis"
 
 type ViewMode = "both" | "x" | "y"
 
@@ -123,6 +124,7 @@ export function GazePointTab({
   scenario,
 }: GazePointTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("both")
+  const [fitAxis, setFitAxis] = useState(false)
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [showAois, setShowAois] = useState(true)
   const {
@@ -182,6 +184,11 @@ export function GazePointTab({
     if (chartData.length === 0) return ["dataMin", "dataMax"]
     return [chartData[0].time, chartData[chartData.length - 1].time]
   }, [chartData])
+  // Both axes set the scale, so switching between them never moves it.
+  const yAxis = useMemo(
+    () => (fitAxis ? fittedAxis(chartData.flatMap((point) => [point.gx_clean, point.gy_clean])) : null),
+    [chartData, fitAxis]
+  )
   const chartLegend = [
     ...(viewMode === "both" || viewMode === "x"
       ? [{ label: "Mirada X (%)", color: "#818CF8" }]
@@ -357,6 +364,7 @@ export function GazePointTab({
           </div>
 
           <div className="flex max-w-full flex-wrap items-center gap-2">
+            <FitAxisToggle pressed={fitAxis} onPressedChange={setFitAxis} />
             <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
                 { key: "both", label: "Ambos ejes", hint: "Posición horizontal y vertical de la mirada juntas." },
                 { key: "x", label: "Eje X", hint: "Solo la posición horizontal de la mirada (izquierda y derecha)." },
@@ -459,6 +467,7 @@ export function GazePointTab({
                 />
                 <YAxis
                   width={72}
+                  {...fittedYAxisProps(yAxis)}
                   label={{
                     value: "Posición (%)",
                     angle: -90,

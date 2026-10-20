@@ -51,3 +51,18 @@ export function AnalyticsToggle({ label, hint, pressed, onPressedChange }: {
     </SelectionFrame>
   )
 }
+
+/** «Ajustar»: brings the vertical axis in to the chart's values instead of zero. */
+export function FitAxisToggle({ pressed, onPressedChange }: {
+  pressed: boolean
+  onPressedChange: (pressed: boolean) => void
+}) {
+  return (
+    <AnalyticsToggle
+      label="Ajustar"
+      hint="Acerca el eje vertical a los valores de la gráfica."
+      pressed={pressed}
+      onPressedChange={onPressedChange}
+    />
+  )
+}

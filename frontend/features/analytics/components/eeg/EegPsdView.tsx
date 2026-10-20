@@ -4,7 +4,7 @@ import { EegChannelSelector } from "./EegChannelSelector"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { type Dispatch, type SetStateAction } from "react"
+import { type Dispatch, type SetStateAction, useMemo, useState } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts"
@@ -17,6 +17,8 @@ import { AnalyticsChartShell, type AnalyticsChartNote, LINE_CHART_MARGIN } from 
 import { InfoChip } from "../InfoChip"
 import { useChartDragZoom } from "../ChartDragZoom"
 import { axisTickDecimals, formatAxisTick } from "../../chartZoom"
+import { fittedAxis, fittedYAxisProps } from "../../fittedAxis"
+import { FitAxisToggle } from "../AnalyticsModeSelector"
 import { type EegPsdData } from "../../types"
 import { formatChannel } from "../../eegPresentation"
 import { EEG_CHANNELS, CHANNEL_COLORS, type EegView, type EegPsdChartPoint, type PsdStats } from "./eegViewShared"
@@ -114,6 +116,13 @@ export function EegPsdView({
   visiblePsdChannels,
 }: EegPsdViewProps) {
   const dragZoom = useChartDragZoom(handleZoomPsdFrequency)
+  const [fitAxis, setFitAxis] = useState(false)
+  const yAxis = useMemo(
+    () => (fitAxis
+      ? fittedAxis(psdChartData.flatMap((point) => visiblePsdChannels.map((channel) => point[channel])))
+      : null),
+    [fitAxis, psdChartData, visiblePsdChannels]
+  )
   // One reason per channel: the backend also names a channel whose every
   // window was excluded, which is not in incomplete_channels.
   const unavailable = Object.entries(psdData?.metadata?.channel_unavailable_reason ?? {})
@@ -165,6 +174,7 @@ export function EegPsdView({
               <span className="block text-xs uppercase tracking-widest text-muted-foreground">Intervalos</span>
               <span className="font-semibold text-foreground">{psdChartData.length.toLocaleString()}</span>
             </div>
+            <FitAxisToggle pressed={fitAxis} onPressedChange={setFitAxis} />
             <TimeWindowControls
               draftStart={psdWindowDraft.start}
               draftEnd={psdWindowDraft.end}
@@ -277,6 +287,7 @@ export function EegPsdView({
                 />
                 <YAxis
                   width={92}
+                  {...fittedYAxisProps(yAxis)}
                   label={{
                     value: `PSD (${psdData?.unit ?? "dB"})`,
                     angle: -90,
