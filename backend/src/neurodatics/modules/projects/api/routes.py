@@ -944,7 +944,10 @@ async def update_project(
             drive_folder_name = (
                 f"{request.name}-{str(project.id)[:8]}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
             )
-            renamed = gdrive_client.rename_file(project.drive_root_folder_id, drive_folder_name)
+            # Synchronous Drive HTTP call: keep it off the event loop.
+            renamed = await asyncio.to_thread(
+                gdrive_client.rename_file, project.drive_root_folder_id, drive_folder_name
+            )
             if not renamed or not renamed.get("name"):
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,

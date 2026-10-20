@@ -93,6 +93,53 @@ def test_incomplete_google_response_rejected_without_db_write(google_auth, token
     db.commit.assert_not_awaited()
 
 
+GOOGLE_ERROR = {'error': 'invalid_grant', 'error_description': 'google-private-detail'}
+
+
+@pytest.mark.parametrize('failing', ['token', 'userinfo'])
+def test_google_error_bodies_stay_in_the_server_log(google_auth, caplog, failing):
+    client, outbound, db = google_auth
+    if failing == 'token':
+        outbound.post.return_value = httpx.Response(400, json=GOOGLE_ERROR)
+    else:
+        outbound.get.return_value = httpx.Response(401, json=GOOGLE_ERROR)
+
+    response = client.post('/api/auth/google/authorize', json={'code': 'one-time-code'})
+
+    assert response.status_code == 400
+    assert 'google-private-detail' not in response.text
+    assert 'google-private-detail' in caplog.text
+    db.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize('failing', ['token', 'userinfo'])
+def test_drive_connection_keeps_google_error_bodies_in_the_server_log(monkeypatch, caplog, failing):
+    import asyncio
+
+    from fastapi import HTTPException
+
+    from neurodatics.modules.integrations.google_drive.application import service as drive_service
+
+    monkeypatch.setattr(settings, 'google_oauth_client_id', 'test-client')
+    monkeypatch.setattr(settings, 'google_oauth_client_secret', 'test-client-secret')
+    monkeypatch.setattr(settings, 'google_oauth_redirect_uri', 'http://localhost/auth/callback')
+    outbound = AsyncMock()
+    outbound.__aenter__.return_value = outbound
+    outbound.post.return_value = httpx.Response(
+        400 if failing == 'token' else 200, json=GOOGLE_ERROR if failing == 'token' else {'access_token': 'x'}
+    )
+    outbound.get.return_value = httpx.Response(401, json=GOOGLE_ERROR)
+    monkeypatch.setattr(drive_service.httpx, 'AsyncClient', Mock(return_value=outbound))
+    integration = drive_service.GoogleDriveIntegrationService(AsyncMock())
+
+    with pytest.raises(HTTPException) as refused:
+        asyncio.run(integration.connect_from_callback(code='c', state=integration._create_signed_state()))
+
+    assert refused.value.status_code == 400
+    assert 'google-private-detail' not in str(refused.value.detail)
+    assert 'google-private-detail' in caplog.text
+
+
 def test_google_network_failure_is_502(google_auth):
     client, outbound, db = google_auth
     outbound.post.side_effect = httpx.ConnectError('offline')

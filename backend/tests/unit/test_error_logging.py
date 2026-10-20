@@ -34,6 +34,21 @@ def test_an_unhandled_error_is_logged_with_its_traceback(caplog):
     assert "GET /explota" in logged[0].getMessage()
 
 
+def test_requests_are_logged_by_path_without_their_query(caplog):
+    app = FastAPI()
+    middlewares.register_middlewares(app)
+
+    @app.get("/api/analytics")
+    async def analytics():
+        return {}
+
+    caplog.set_level(logging.INFO, logger="neurodatics.api.middlewares")
+    TestClient(app).get("/api/analytics?participant_code=P01&state=oauth-state")
+
+    assert "GET /api/analytics" in caplog.text
+    assert "P01" not in caplog.text and "oauth-state" not in caplog.text
+
+
 @pytest.mark.asyncio
 async def test_a_failed_project_deletion_is_logged_before_answering_500(monkeypatch, caplog):
     use_case = SimpleNamespace(execute=AsyncMock(side_effect=RuntimeError("db down")))

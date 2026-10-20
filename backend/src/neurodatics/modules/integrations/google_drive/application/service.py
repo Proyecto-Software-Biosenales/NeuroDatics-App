@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,8 @@ from .....config.settings import settings
 from ..infrastructure.configure_client import reset_gdrive_oauth_configuration_cache
 from ..infrastructure.repository import SystemIntegrationRepository
 
+
+logger = logging.getLogger(__name__)
 
 GOOGLE_DRIVE_PROVIDER = "google_drive"
 GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive"
@@ -67,9 +70,15 @@ class GoogleDriveIntegrationService:
             ) from exc
 
         if token_response.status_code >= 400:
+            # Google's answer stays in the server log; the browser gets a fixed message.
+            logger.warning(
+                "Drive token exchange failed (HTTP %s): %s",
+                token_response.status_code,
+                token_response.text[:1000],
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Google token exchange failed: {token_response.text}",
+                detail="Google rechazó la conexión de Google Drive. Vuelve a intentarlo.",
             )
 
         token_json = token_response.json()
@@ -99,9 +108,14 @@ class GoogleDriveIntegrationService:
             ) from exc
 
         if userinfo_response.status_code >= 400:
+            logger.warning(
+                "Drive userinfo failed (HTTP %s): %s",
+                userinfo_response.status_code,
+                userinfo_response.text[:1000],
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Google userinfo failed: {userinfo_response.text}",
+                detail="No se pudo leer la cuenta de Google Drive. Vuelve a intentarlo.",
             )
 
         userinfo = userinfo_response.json()

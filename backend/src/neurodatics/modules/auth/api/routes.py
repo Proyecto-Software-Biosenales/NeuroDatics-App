@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 import httpx
@@ -14,6 +15,7 @@ from ..infrastructure.user_store import auth_user_store
 from .schemas import GoogleAuthorizeRequest, GoogleAuthorizeResponse, GoogleLoginUrlResponse, AuthUserResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 def _ensure_google_oauth_configured() -> None:
@@ -142,9 +144,13 @@ async def authorize_google(
         ) from exc
 
     if token_response.status_code >= 400:
+        # Google's answer stays in the server log; the browser gets a fixed message.
+        logger.warning(
+            "Google token exchange failed (HTTP %s): %s", token_response.status_code, token_response.text[:1000]
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Google token exchange failed: {token_response.text}",
+            detail="Google rechazó el inicio de sesión. Vuelve a intentarlo.",
         )
 
     token_json = token_response.json()
@@ -169,9 +175,12 @@ async def authorize_google(
         ) from exc
 
     if userinfo_response.status_code >= 400:
+        logger.warning(
+            "Google userinfo failed (HTTP %s): %s", userinfo_response.status_code, userinfo_response.text[:1000]
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Google userinfo failed: {userinfo_response.text}",
+            detail="No se pudo leer el perfil de Google. Vuelve a intentarlo.",
         )
 
     userinfo = userinfo_response.json()

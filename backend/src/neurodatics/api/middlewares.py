@@ -48,7 +48,8 @@ def register_middlewares(app: FastAPI):
         start_time = time.time()
 
         # Log request
-        logger.info(f"Request: {request.method} {request.url}")
+        # The path only: query strings carry participant codes and OAuth code/state.
+        logger.info("Request: %s %s", request.method, request.url.path)
 
         try:
             response = await call_next(request)
