@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { AuthGuard } from "@/features/auth/components/AuthGuard"
 import { ProjectSelectionCard } from "@/features/projects/components/ProjectSelectionCard"
-import { ProjectsApi, type ApiProject } from "@/features/projects/api/projectsApi"
-import type { Project, SensorType } from "@/features/projects/types"
+import { ProjectsApi } from "@/features/projects/api/projectsApi"
+import { toProject } from "@/features/projects/projectMapping"
+import type { Project } from "@/features/projects/types"
 import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
@@ -25,14 +26,6 @@ import type {
   ReportScopeKind,
 } from "@/features/reports/types"
 
-function normalizeSensor(sensor: string): SensorType | null {
-  const compact = sensor.toLowerCase().replace(/[\s_-]/g, "")
-  if (compact === "eyetracker" || compact === "eye") return "EyeTracker"
-  if (compact === "gsr" || compact.includes("galvan")) return "GSR"
-  if (compact === "eeg" || compact.includes("electroencef")) return "EEG"
-  return null
-}
-
 function isVideoScenario(scenario: AnalyticsScenario) {
   const type = String(scenario.type || "").trim().toLowerCase()
   const name = String(scenario.name || "").trim().toLowerCase()
@@ -43,47 +36,6 @@ function isVideoScenario(scenario: AnalyticsScenario) {
       name.endsWith(extension)
     )
   )
-}
-
-function formatProjectDate(value?: string) {
-  if (!value) return "Sin fecha"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString("es-CO", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  })
-}
-
-function mapProject(project: ApiProject): Project {
-  const sensors = (project.sensors ?? [])
-    .map((sensor) => normalizeSensor(sensor.sensor_type))
-    .filter((sensor): sensor is SensorType => sensor != null)
-  const uniqueSensors = Array.from(new Set(sensors))
-
-  return {
-    id: project.id,
-    name: project.name,
-    description: project.description ?? undefined,
-    status:
-      project.status === "draft" ||
-      project.status === "active" ||
-      project.status === "archived"
-        ? project.status
-        : undefined,
-    ingestionStatus:
-      project.ingestion_status === "PENDING" ||
-      project.ingestion_status === "PROCESSING" ||
-      project.ingestion_status === "READY" ||
-      project.ingestion_status === "FAILED"
-        ? project.ingestion_status
-        : undefined,
-    createdAt: formatProjectDate(project.created_at),
-    updatedAt: project.updated_at,
-    sensors: uniqueSensors,
-    participants: project.participants_count,
-  }
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -131,7 +83,7 @@ export default function ReportesPage() {
     setProjectsLoading(true)
     ProjectsApi.list()
       .then((items) => {
-        if (!cancelled) setProjects(items.map(mapProject))
+        if (!cancelled) setProjects(items.map(toProject))
       })
       .catch((error) => {
         if (!cancelled) {

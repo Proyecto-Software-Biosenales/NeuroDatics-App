@@ -19,7 +19,8 @@ import { CreateProjectStep2 } from "./CreateProjectStep2"
 import { CreateProjectStep3 } from "./CreateProjectStep3"
 import { CreateProjectStep4 } from "./CreateProjectStep4"
 import { useEffect, useState, type ReactNode } from "react"
-import type { Project, SensorType } from "@/features/projects/types"
+import type { Project } from "@/features/projects/types"
+import { isSensorType } from "@/features/projects/projectMapping"
 import { PreExperimentCreateForm } from "../pre-experiment/PreExperimentCreateForm"
 
 interface CreateProjectDialogProps {
@@ -204,9 +205,7 @@ export const CreateProjectDialog = ({
             <CreateProjectStep2
               selectedSensors={formData.sensors}
               onToggleSensor={toggleSensor}
-              autoDetectedSensors={(formData.uploadedZip?.detected_sensors ?? []).filter(
-                (s): s is SensorType => ["EEG", "GSR", "EyeTracker"].includes(s)
-              )}
+              autoDetectedSensors={(formData.uploadedZip?.detected_sensors ?? []).filter(isSensorType)}
             />
           )}
 

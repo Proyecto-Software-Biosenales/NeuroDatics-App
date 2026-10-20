@@ -16,6 +16,8 @@ import {
 } from "./types";
 import { useScreenSettings } from "@/features/settings/screenSettings";
 import type { Project } from "@/features/projects/types";
+import { isSensorType, toProject } from "@/features/projects/projectMapping";
+import { describeFailure } from "@/features/projects/projectErrors";
 import { ProjectsApi, asUploadClarification, type ApiProjectDetail } from "@/features/projects/api/projectsApi";
 import { apiAoiToFormAoi, serializeScenaryAois } from "./aoiUtils";
 import { getFileRelativePath, type FolderSelection } from "./folderStructure";
@@ -112,50 +114,6 @@ const STEP1_LOADING_TOAST_ID = "create-project-step1-drive-sync";
 const initialParticipants: ParticipantData[] = [];
 
 const initialscenaries: ProjectFormData["scenaries"] = [];
-
-const formatDate = (iso?: string): string => {
-  const d = iso ? new Date(iso) : new Date();
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
-};
-
-const formatDateTime = (iso?: string): string => {
-  const d = iso ? new Date(iso) : new Date();
-  return d.toLocaleString("es-ES", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const hasRealUpdate = (updatedIso?: string, createdIso?: string): boolean => {
-  if (!updatedIso) return false;
-  if (!createdIso) return true;
-
-  const updatedMs = new Date(updatedIso).getTime();
-  const createdMs = new Date(createdIso).getTime();
-
-  if (!Number.isFinite(updatedMs) || !Number.isFinite(createdMs)) {
-    return updatedIso !== createdIso;
-  }
-
-  return Math.abs(updatedMs - createdMs) > 1000;
-};
-
-const isGoogleSessionExpiredError = (message: string): boolean => {
-  return /google drive|oauth|invalid_grant|refresh token|token has expired|no se pudo configurar google drive/i.test(message);
-};
-
-const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error !== null && typeof error === "object" && "message" in error && typeof error.message === "string") {
-    return error.message;
-  }
-  return fallback;
-};
 
 const buildStep4ImageScenaries = (detail: ApiProjectDetail): ProjectFormData["scenaries"] => {
   const filesById = new Map<string, {
@@ -571,21 +529,9 @@ export const useCreateProjectWizard = (
         return;
       }
 
-      const rawErrorMessage = getErrorMessage(error, "No se pudo procesar la carpeta.");
-      const errorMessage = rawErrorMessage
-        .replace(/^API\s*\d+\s*:\s*/i, "")
-        .replace(/^Error subiendo archivo:\s*/i, "");
-
-      const showSessionHint = isGoogleSessionExpiredError(errorMessage);
-      const wasCanceled = /cancelad|abort/i.test(errorMessage);
+      const { cancelled: wasCanceled, message: errorMessage } = describeFailure(error, "No se pudo procesar la carpeta.");
       setSaveNotice(null);
-      setSaveError(
-        wasCanceled
-          ? null
-          : showSessionHint
-            ? `${errorMessage}. La conexión con Google Drive necesita renovarse: avisa a quien administra NeuroDatics.`
-            : errorMessage
-      );
+      setSaveError(wasCanceled ? null : errorMessage);
 
       if (wasCanceled) {
         setSaveNotice("Subida cancelada.");
@@ -745,7 +691,7 @@ export const useCreateProjectWizard = (
 
       const detectedSensors = (detail.sensors || [])
         .map((sensor) => sensor.sensor_type)
-        .filter((sensorType): sensorType is SensorType => ["EEG", "GSR", "EyeTracker"].includes(sensorType));
+        .filter(isSensorType);
 
       const detectedParticipants: ParticipantData[] = (detail.participants || []).map((p) =>
         participantDataFromApi(p, (p.sex as ParticipantData["sex"] | null) ?? null),
@@ -829,14 +775,10 @@ export const useCreateProjectWizard = (
       const finalized = await ProjectsApi.get(draftProjectId);
 
       const newProject: Project = {
+        ...toProject(finalized),
         id: draftProjectId,
-        name: finalized.name,
         description: finalized.description ?? formData.description,
         status: "active",
-        createdAt: formatDate(finalized.created_at),
-        updatedAt: hasRealUpdate(finalized.updated_at, finalized.created_at)
-          ? formatDateTime(finalized.updated_at)
-          : undefined,
         sensors: formData.sensors,
         participants: formData.participants.length,
       };
@@ -849,11 +791,7 @@ export const useCreateProjectWizard = (
       setIsOpen(false);
       reset();
     } catch (e) {
-      const rawErrorMessage = getErrorMessage(e, "No se pudo guardar el proyecto.");
-      const errorMessage = rawErrorMessage
-        .replace(/^API\s*\d+\s*:\s*/i, "")
-        .replace(/^Error subiendo archivo:\s*/i, "");
-      const showSessionHint = isGoogleSessionExpiredError(errorMessage);
+      const { message: errorMessage, needsDriveRenewal } = describeFailure(e, "No se pudo guardar el proyecto.");
 
       console.error("[CreateProjectWizard] saveProject failed", {
         step: saveProgressMessage,
@@ -863,11 +801,9 @@ export const useCreateProjectWizard = (
 
       setSaveNotice(null);
       setSaveError(
-        showSessionHint
-          ? `${errorMessage}. La conexión con Google Drive necesita renovarse: avisa a quien administra NeuroDatics.`
-          : (saveProgressMessage
-              ? `No se pudo guardar el proyecto. Falló el paso: ${saveProgressMessage}`
-              : errorMessage)
+        needsDriveRenewal || !saveProgressMessage
+          ? errorMessage
+          : `No se pudo guardar el proyecto. Falló el paso: ${saveProgressMessage}`
       );
       toast.error("No se pudo guardar el proyecto.");
     } finally {

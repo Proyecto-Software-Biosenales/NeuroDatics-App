@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
-import type { Project, SensorType } from "@/features/projects/types"
-import { ProjectsApi, type ApiProject } from "@/features/projects/api/projectsApi"
+import type { Project } from "@/features/projects/types"
+import { ProjectsApi } from "@/features/projects/api/projectsApi"
+import { toProject } from "@/features/projects/projectMapping"
 
 const STORAGE_KEY = "neurodatics_projects"
 
@@ -31,13 +32,6 @@ const playStep1ReadySound = () => {
   }
 }
 
-const normalizeStatus = (status: unknown): "draft" | "active" | "archived" => {
-  if (typeof status !== "string") return "active"
-  const normalized = status.toLowerCase()
-  if (normalized === "draft" || normalized === "active" || normalized === "archived") return normalized
-  return "active"
-}
-
 const normalizeIngestionStatus = (status?: string): string | undefined => {
   if (!status) return undefined
   return status.toUpperCase()
@@ -51,36 +45,6 @@ const isDraftStep1Processing = (project: Project): boolean => {
   return ing === "PROCESSING"
 }
 
-const formatDate = (iso?: string): string => {
-  if (!iso) return ""
-  return new Date(iso).toLocaleDateString("es-ES")
-}
-
-const formatDateTime = (iso?: string): string => {
-  if (!iso) return ""
-  return new Date(iso).toLocaleString("es-ES", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
-const hasRealUpdate = (updatedIso?: string, createdIso?: string): boolean => {
-  if (!updatedIso) return false
-  if (!createdIso) return true
-
-  const updatedMs = new Date(updatedIso).getTime()
-  const createdMs = new Date(createdIso).getTime()
-
-  if (!Number.isFinite(updatedMs) || !Number.isFinite(createdMs)) {
-    return updatedIso !== createdIso
-  }
-
-  return Math.abs(updatedMs - createdMs) > 1000
-}
-
 export const useProjectsStorage = () => {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,31 +53,10 @@ export const useProjectsStorage = () => {
   const previousStatusByIdRef = useRef<Map<string, string | undefined>>(new Map())
   const hasProcessingDraftRef = useRef(false)
 
-  const buildProject = (bp: ApiProject): Project => ({
-    id: bp.id,
-    name: bp.name,
-    description: bp.description ?? undefined,
-    status: normalizeStatus(bp.status),
-    ingestionStatus: bp.ingestion_status?.toUpperCase() as Project["ingestionStatus"] || undefined,
-    createdAt: formatDate(bp.created_at),
-    updatedAt: hasRealUpdate(bp.updated_at, bp.created_at)
-      ? formatDateTime(bp.updated_at)
-      : undefined,
-    sensors: bp.sensors && bp.sensors.length > 0
-      ? bp.sensors.map((sensor) => typeof sensor === "string" ? sensor : sensor.sensor_type).filter(
-          (sensor): sensor is SensorType => sensor === "EEG" || sensor === "GSR" || sensor === "EyeTracker"
-        )
-      : [],
-    participants: bp.participants_count || 0,
-    isPreExperiment: bp.is_pre_experiment ?? false,
-    planningParticipantsCount: bp.planning_participants_count ?? 0,
-    needsUpdate: bp.needs_update ?? false,
-  })
-
   const refreshProjects = async () => {
     try {
       const backendProjects = await ProjectsApi.list()
-      const formattedProjects: Project[] = backendProjects.map(buildProject)
+      const formattedProjects: Project[] = backendProjects.map(toProject)
       setProjects(formattedProjects)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(formattedProjects))
     } catch {
@@ -132,7 +75,7 @@ export const useProjectsStorage = () => {
         const backendProjects = await ProjectsApi.list()
         
         // Transform backend response to frontend format if needed
-        const formattedProjects: Project[] = backendProjects.map(buildProject)
+        const formattedProjects: Project[] = backendProjects.map(toProject)
         
         setProjects(formattedProjects)
         // Sync to localStorage for offline support
@@ -180,7 +123,7 @@ export const useProjectsStorage = () => {
         const backendProjects = await ProjectsApi.list()
         const previousMap = previousStatusByIdRef.current
 
-        const nextProjects: Project[] = backendProjects.map(buildProject)
+        const nextProjects: Project[] = backendProjects.map(toProject)
 
         for (const project of nextProjects) {
           const previous = previousMap.get(project.id)

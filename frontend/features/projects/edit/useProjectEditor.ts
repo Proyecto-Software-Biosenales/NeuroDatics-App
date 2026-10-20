@@ -30,7 +30,8 @@ import {
   repeatedDocuments,
   type ParticipantLinks,
 } from "./participants"
-import { describeFailure, extractProjectNameAndId, parseScenaries, toParticipantSex } from "./projectDetail"
+import { extractProjectNameAndId, parseScenaries, toParticipantSex } from "./projectDetail"
+import { describeFailure } from "../projectErrors"
 
 export type EditorSection =
   | "project"

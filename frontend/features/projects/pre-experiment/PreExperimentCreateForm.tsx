@@ -20,6 +20,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { SectionTabs } from "../components/SectionTabs"
 import { ProjectsApi } from "../api/projectsApi"
 import type { Project } from "../types"
+import { toProject } from "../projectMapping"
 import {
   emptyConfig,
   validateParticipants,
@@ -115,16 +116,9 @@ export function PreExperimentCreateForm({
         pre_experiment: withoutEmptyNotes(config),
       })
       onCreated({
-        id: project.id,
-        name: project.name,
-        description: project.description ?? undefined,
+        ...toProject(project),
         status: "draft",
         ingestionStatus: "PENDING",
-        createdAt: new Date(
-          project.created_at || Date.now()
-        ).toLocaleDateString("es-CO"),
-        sensors: [],
-        participants: 0,
         isPreExperiment: true,
         planningParticipantsCount:
           project.planning_participants_count ?? config.participants.length,

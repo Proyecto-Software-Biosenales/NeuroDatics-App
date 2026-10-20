@@ -36,40 +36,6 @@ export const extractProjectNameAndId = (fullName: string): { name: string; id: s
   return { name: fullName, id: "" }
 }
 
-export const toFriendlyErrorMessage = (error: unknown): string => {
-  const raw = error instanceof Error ? error.message : ""
-  if (!raw) return "No se pudieron guardar los cambios del proyecto."
-
-  // Payloads like: API 400: {"detail":"..."}
-  const jsonMatch = raw.match(/\{[\s\S]*\}/)
-  if (jsonMatch) {
-    try {
-      const parsed = JSON.parse(jsonMatch[0])
-      if (typeof parsed?.detail === "string" && parsed.detail.trim()) return parsed.detail
-    } catch {
-      // Fall through to the prefix cleanup below.
-    }
-  }
-
-  return raw
-    .replace(/^API\s*\d+\s*:\s*/i, "")
-    .replace(/^Error subiendo archivo:\s*/i, "")
-    .trim()
-}
-
-export const isGoogleSessionExpiredError = (message: string): boolean =>
-  /google drive|oauth|invalid_grant|refresh token|token has expired|no se pudo configurar google drive/i.test(message)
-
-/** The message to show for a failed save or upload; cancelling is not an error. */
-export function describeFailure(error: unknown) {
-  const friendly = toFriendlyErrorMessage(error)
-  const cancelled = /cancelad|abort/i.test(friendly)
-  const message = isGoogleSessionExpiredError(friendly)
-    ? `${friendly}. La conexión con Google Drive necesita renovarse: avisa a quien administra NeuroDatics.`
-    : friendly
-  return { cancelled, message }
-}
-
 export const parseScenaries = (project: ApiProjectDetail): scenaries[] => {
   const filesById = new Map<string, NonNullable<ApiProjectDetail["files"]>[number]>()
   for (const file of project.files || []) filesById.set(file.id, file)

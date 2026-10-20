@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react"
+import type { SensorType } from "@/features/projects/types"
 import {
   Activity,
   BarChart3,
@@ -29,7 +30,7 @@ export type VisualizationId =
   | "aoi"
 
 export type VisualizationGroup = "temporal" | "frequency" | "spatial"
-export type ComparisonSensor = "EyeTracker" | "GSR" | "EEG"
+export type ComparisonSensor = SensorType
 
 export interface VisualizationDefinition {
   id: VisualizationId
