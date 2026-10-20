@@ -23,7 +23,7 @@ import struct
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO, Optional, Tuple
+from typing import BinaryIO, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -282,7 +282,6 @@ class _IsoTrackState:
         self.width: Optional[int] = None
         self.height: Optional[int] = None
         self.transposed = False
-        self.is_video_track = False
         self.media_duration_s: Optional[float] = None
         self.sample_count: Optional[int] = None
         self._track_committed = False
@@ -314,7 +313,6 @@ class _IsoTrackState:
         self.transposed = self._pending_transposed
         self.media_duration_s = self._pending_media_duration_s
         self.sample_count = self._pending_sample_count
-        self.is_video_track = True
         self._track_committed = True
 
     def to_dimensions(self) -> StimulusDimensions:
@@ -514,10 +512,3 @@ def _round_fps(value: Optional[float]) -> Optional[int]:
     if value is None or value <= 0 or value > 1000:
         return None
     return _positive(round(value))
-
-
-def probe_dimensions_for_kind(local_path: str, kind: str) -> Tuple[Optional[int], Optional[int]]:
-    """Convenience for callers that only need the pixel size."""
-
-    probed = probe_stimulus(local_path, kind)
-    return probed.width, probed.height

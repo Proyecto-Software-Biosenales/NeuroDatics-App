@@ -14,7 +14,3 @@ class ParticipantRepository(ABC):
         participants_data: List[dict]
     ) -> List[Participant]:
         pass
-
-    @abstractmethod
-    async def get_by_project(self, project_id: UUID) -> List[Participant]:
-        pass

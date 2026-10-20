@@ -276,16 +276,3 @@ class SQLscenariesRepository(scenariesRepository):
         loaded_result = await self.session.execute(loaded_stmt)
         loaded_by_id = {aoi.id: aoi for aoi in loaded_result.scalars().all()}
         return [loaded_by_id[record_id] for record_id in record_ids]
-
-    async def get_by_project(self, project_id: UUID) -> List[Scenaries]:
-        stmt = (
-            select(Scenaries)
-            .options(
-                selectinload(Scenaries.aois),
-                selectinload(Scenaries.stimulus_placement),
-            )
-            .where(Scenaries.project_id == project_id)
-            .order_by(Scenaries.name)
-        )
-        result = await self.session.execute(stmt)
-        return list(result.scalars().all())

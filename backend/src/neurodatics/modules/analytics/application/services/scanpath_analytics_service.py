@@ -60,20 +60,6 @@ class ScanpathAnalyticsService:
         return df.loc[valid]
 
     @staticmethod
-    def _infer_durations(times: np.ndarray) -> np.ndarray:
-        """Infer per-sample duration from time differences (dt). Last sample gets median dt."""
-        t = np.asarray(times, dtype=float)
-        if t.size == 0:
-            return np.array([], dtype=float)
-        if t.size == 1:
-            return np.array([0.0], dtype=float)
-        diffs = np.diff(t)
-        diffs = np.clip(diffs, 0.0, None)
-        positive = diffs[diffs > 0]
-        tail = float(np.median(positive)) if positive.size else 0.0
-        return np.concatenate([diffs, [tail]])
-
-    @staticmethod
     def _scale_radius(durations: np.ndarray) -> np.ndarray:
         """
         Encode fixation duration on one absolute, area-proportional scale.
@@ -103,68 +89,6 @@ class ScanpathAnalyticsService:
             "encoding": cls.RADIUS_SCALE_ENCODING,
             "cap_ms": cls.RADIUS_CAP_MS,
         }
-
-    @staticmethod
-    def _group_objectives(
-        xs: np.ndarray,
-        ys: np.ndarray,
-        durs: np.ndarray,
-        times: np.ndarray,
-        proximity_threshold: float = 0.03,
-    ) -> list:
-        """
-        Group consecutive nearby fixation points into objectives using a proximity
-        threshold (as a fraction of image min-dimension, default 3%).
-        Returns list of dicts: {cx, cy, duration_s, t_start, t_end, n_points}.
-        """
-        r2_thr = proximity_threshold ** 2
-        objs = []
-        cx = cy = None
-        dur_sum = 0.0
-        t_start = t_end = None
-        n = 0
-
-        def _flush():
-            nonlocal cx, cy, dur_sum, t_start, t_end, n
-            if n == 0:
-                return
-            objs.append({
-                "cx": cx,
-                "cy": cy,
-                "duration_s": dur_sum,
-                "t_start": t_start,
-                "t_end": t_end,
-                "n_points": n,
-            })
-            cx = cy = None
-            dur_sum = 0.0
-            t_start = t_end = None
-            n = 0
-
-        for x, y, dur, t in zip(xs, ys, durs, times):
-            if cx is None:
-                cx, cy = float(x), float(y)
-                dur_sum = float(dur)
-                t_start = t_end = float(t)
-                n = 1
-                continue
-            dx, dy = float(x) - cx, float(y) - cy
-            if (dx * dx + dy * dy) <= r2_thr:
-                n += 1
-                w = 1.0 / n
-                cx = cx * (1 - w) + float(x) * w
-                cy = cy * (1 - w) + float(y) * w
-                dur_sum += float(dur)
-                t_end = float(t)
-            else:
-                _flush()
-                cx, cy = float(x), float(y)
-                dur_sum = float(dur)
-                t_start = t_end = float(t)
-                n = 1
-
-        _flush()
-        return objs
 
     @classmethod
     def compute_scanpath(

@@ -253,7 +253,3 @@ class DeleteProjectResponse(BaseModel):
     message: str
     drive_folder_found: bool
     drive_folder_deleted: bool
-
-
-def ProjectSchema():
-    return {}

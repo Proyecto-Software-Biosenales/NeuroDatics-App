@@ -103,32 +103,6 @@ class CorrelationAnalyticsService:
         return grouped.reindex(pd.RangeIndex(total_bins)).astype(float)
 
     @classmethod
-    def _aggregate_mean(
-        cls,
-        bins: pd.Series,
-        values: np.ndarray,
-        total_bins: int,
-    ) -> pd.Series:
-        if total_bins <= 0 or len(values) == 0:
-            return cls._empty_series(total_bins)
-
-        work = pd.DataFrame(
-            {
-                "bin": pd.to_numeric(bins, errors="coerce"),
-                "value": pd.to_numeric(pd.Series(values), errors="coerce"),
-            }
-        )
-        finite = np.isfinite(work["bin"].to_numpy(dtype=float)) & np.isfinite(
-            work["value"].to_numpy(dtype=float)
-        )
-        work = work.loc[finite]
-        if work.empty:
-            return cls._empty_series(total_bins)
-
-        grouped = work.groupby(work["bin"].astype(int), sort=True)["value"].mean()
-        return grouped.reindex(pd.RangeIndex(total_bins)).astype(float)
-
-    @classmethod
     def _pupil_signal(
         cls,
         frame: pd.DataFrame,

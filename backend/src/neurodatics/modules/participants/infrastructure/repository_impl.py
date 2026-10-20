@@ -85,13 +85,3 @@ class SQLParticipantRepository(ParticipantRepository):
             participant.id: participant for participant in loaded_result.scalars().all()
         }
         return [loaded_by_id[participant_id] for participant_id in participant_ids]
-
-    async def get_by_project(self, project_id: UUID) -> List[Participant]:
-        """Get participants by project"""
-        stmt = (
-            select(Participant)
-            .where(Participant.project_id == project_id)
-            .order_by(Participant.participant_code)
-        )
-        result = await self.session.execute(stmt)
-        return list(result.scalars().all())

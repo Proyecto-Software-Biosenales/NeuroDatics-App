@@ -14,7 +14,3 @@ class scenariesRepository(ABC):
     @abstractmethod
     async def upsert_aois(self, project_id: UUID, aois_data: List[dict]) -> List[AOI]:
         pass
-    
-    @abstractmethod
-    async def get_by_project(self, project_id: UUID) -> List[Scenaries]:
-        pass

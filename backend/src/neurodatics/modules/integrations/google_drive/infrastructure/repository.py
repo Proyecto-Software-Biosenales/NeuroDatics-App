@@ -107,11 +107,3 @@ class SystemIntegrationRepository:
         if not integration:
             raise RuntimeError("Global integration was not persisted")
         return integration
-
-    async def delete_by_provider(self, provider: str) -> bool:
-        result = await self._db.execute(
-            text("DELETE FROM system_integrations WHERE provider = :provider"),
-            {"provider": provider},
-        )
-        await self._db.commit()
-        return result.rowcount > 0

@@ -405,15 +405,6 @@ class CsvProcessingService:
         return specs
 
     @classmethod
-    def _find_user_blocks(cls, lines: List[str]) -> List[Tuple[int, int, List[str]]]:
-        """Compatibility wrapper around the recording-aware block parser."""
-
-        return [
-            (spec.header_index, spec.block_end, spec.metadata_lines)
-            for spec in cls._find_block_specs(lines)
-        ]
-
-    @classmethod
     def _extract_participant_code(cls, metadata_lines: List[str]) -> Optional[str]:
         for line in metadata_lines:
             normalized = unicodedata.normalize("NFKC", line).replace("\u00a0", " ")
@@ -446,23 +437,6 @@ class CsvProcessingService:
         if canonical & _EYE_COLUMNS:
             sensors.append("EyeTracker")
         return sensors
-
-    @classmethod
-    def _normalize_columns(
-        cls,
-        columns: List[str],
-        rename_vendor_fixations: bool = True,
-    ) -> List[str]:
-        normalized: List[str] = []
-        seen: Dict[str, int] = {}
-        for index, column in enumerate(columns):
-            mapped = cls._canonical_column(column, rename_vendor_fixations)
-            if not mapped:
-                mapped = f"unnamed_{index + 1}"
-            count = seen.get(mapped, 0) + 1
-            seen[mapped] = count
-            normalized.append(mapped if count == 1 else f"{mapped}_{count}")
-        return normalized
 
     @classmethod
     def _metadata_value(cls, line: str) -> Tuple[str, str]:
@@ -718,12 +692,6 @@ class CsvProcessingService:
         )
 
     @classmethod
-    def _build_dataframe(cls, lines: List[str], delimiter: str) -> pd.DataFrame:
-        """Compatibility helper retained for existing internal callers."""
-
-        return cls._build_dataframe_with_info(lines, delimiter).dataframe
-
-    @classmethod
     def _clean_dataframe(cls, df: pd.DataFrame) -> pd.DataFrame:
         cleaned = df.copy()
 
@@ -860,13 +828,6 @@ class CsvProcessingService:
         if len(resolved) > 1:
             raise CsvProcessingError("Unidades incompatibles entre las coordenadas X e Y")
         return next(iter(resolved), "auto")
-
-    @classmethod
-    def _distance_unit(cls, channels: Sequence[ChannelMetadata]) -> str:
-        unit = cls._channel_unit(channels, "distance")
-        if unit in {"mm", "cm", "m"}:
-            return str(unit)
-        return "auto"
 
     @classmethod
     def _normalize_declared_units(

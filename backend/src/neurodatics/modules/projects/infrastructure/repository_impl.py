@@ -117,12 +117,6 @@ class SQLProjectRepository(ProjectRepository):
         await self.session.commit()
         return True
 
-    async def add_file(self, project_file: ProjectFile) -> ProjectFile:
-        self.session.add(project_file)
-        await self.session.commit()
-        await self.session.refresh(project_file)
-        return project_file
-
     async def purge_files_by_kind(self, project_id: UUID, kind: str) -> int:
         # Historical children survive as tombstones. Detach their provenance
         # before deleting the ZIP parent; soft deletion does not release a FK.
@@ -177,20 +171,6 @@ class SQLProjectRepository(ProjectRepository):
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
-
-    async def soft_delete_active_zip(self, project_id: UUID) -> bool:
-        stmt = (
-            update(ProjectFile)
-            .where(
-                ProjectFile.project_id == project_id,
-                ProjectFile.kind == "experiment_zip",
-                ProjectFile.deleted_at.is_(None),
-            )
-            .values(deleted_at=datetime.now(timezone.utc))
-        )
-        result = await self.session.execute(stmt)
-        await self.session.commit()
-        return (result.rowcount or 0) > 0
 
     async def soft_delete_active_files(self, project_id: UUID) -> int:
         stmt = (

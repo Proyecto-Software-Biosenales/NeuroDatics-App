@@ -136,15 +136,6 @@ class LocalStorageClient:
             self._attach(parent_id, folder_id)
         return self._summary(folder_id, meta)
 
-    def find_child_folder_by_name(self, name: str, parent_id: str) -> Optional[Dict[str, Any]]:
-        with self._lock:
-            parent = self._read_meta(parent_id)
-            for child_id in (parent or {}).get("children", []):
-                child = self._read_meta(child_id)
-                if child and child.get("kind") == "folder" and child.get("name") == name:
-                    return self._summary(child_id, child)
-        return None
-
     def upload_file(
         self,
         filename: str,

@@ -13,7 +13,6 @@ from neurodatics.infra.storage.local_client import LocalStorageClient, LocalStor
 STORE_METHODS = (
     "reserve_file_id",
     "create_folder",
-    "find_child_folder_by_name",
     "upload_file",
     "delete_file",
     "rename_file",
@@ -85,16 +84,6 @@ def test_reserved_ids_are_honoured_when_creating_a_folder(store):
     assert folder["drive_file_id"] == reserved
 
 
-def test_find_child_folder_by_name_only_looks_inside_the_parent(store):
-    root_a = store.create_folder("a")["drive_file_id"]
-    root_b = store.create_folder("b")["drive_file_id"]
-    inner = store.create_folder("scenario", parent_id=root_a)
-
-    assert store.find_child_folder_by_name("scenario", root_a)["drive_file_id"] == inner["drive_file_id"]
-    assert store.find_child_folder_by_name("scenario", root_b) is None
-    assert store.find_child_folder_by_name("missing", root_a) is None
-
-
 def test_deleting_a_folder_removes_its_whole_subtree(store):
     root = store.create_folder("root")["drive_file_id"]
     child = store.create_folder("child", parent_id=root)["drive_file_id"]
@@ -131,15 +120,14 @@ def test_ids_that_could_escape_the_root_are_refused(store):
         store.download_file_content(r"..\..\outside")
 
 
-def test_rename_updates_the_name_the_folder_lookup_sees(store):
+def test_rename_updates_the_folder_name(store):
     root = store.create_folder("root")["drive_file_id"]
     inner = store.create_folder("old", parent_id=root)["drive_file_id"]
 
     renamed = store.rename_file(inner, "new")
 
     assert renamed["name"] == "new"
-    assert store.find_child_folder_by_name("old", root) is None
-    assert store.find_child_folder_by_name("new", root)["drive_file_id"] == inner
+    assert renamed["drive_file_id"] == inner
     assert store.rename_file(store.reserve_file_id(), "x") is None
 
 

@@ -160,9 +160,6 @@ def upload(tmp_path, monkeypatch):
         }
 
     monkeypatch.setattr(
-        upload_module.gdrive_client, "find_child_folder_by_name", lambda **kwargs: None
-    )
-    monkeypatch.setattr(
         upload_module.gdrive_client,
         "create_folder",
         lambda name, parent_id=None: {

@@ -33,7 +33,6 @@ KIND_BY_EXTENSION = {
 IMAGES_FOLDER_NAME = "images"
 VIDEOS_FOLDER_NAME = "videos"
 ACQUISITION_FOLDER_NAME = "acquisition"
-SCENARY_ALLOWED_FOLDERS = {IMAGES_FOLDER_NAME, VIDEOS_FOLDER_NAME}
 
 # Acquisition sub-folders are named like:
 #   Sujet_1000000001_Scenario_Scenario 1_Rec1
@@ -291,12 +290,6 @@ class ZipValidationService:
             if parts[index].lower() == folder_name:
                 return "/".join(parts[: index + 1])
         return None
-
-    @classmethod
-    def _is_inside_scenary_folder(cls, entry_path: PurePosixPath) -> bool:
-        """True when file is inside an Images or Videos directory (case-insensitive)."""
-        parent_parts = [part.lower() for part in entry_path.parent.parts]
-        return any(part in SCENARY_ALLOWED_FOLDERS for part in parent_parts)
 
     # ------------------------------------------------------------- entry checks
 

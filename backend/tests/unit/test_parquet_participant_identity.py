@@ -902,9 +902,6 @@ async def _run_upload(tmp_path, monkeypatch, processing_result):
 
     counter = iter(range(1000))
     monkeypatch.setattr(
-        upload_module.gdrive_client, "find_child_folder_by_name", lambda **kwargs: None
-    )
-    monkeypatch.setattr(
         upload_module.gdrive_client,
         "create_folder",
         lambda name, parent_id=None: {"drive_file_id": f"folder-{next(counter)}", "name": name},

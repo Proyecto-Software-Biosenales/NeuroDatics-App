@@ -78,9 +78,6 @@ class ReportContext:
             return f"Resumen de grupo · {count} participante{'s' if count != 1 else ''}"
         return f"Participante {self.participants[0].code}" if self.participants else "Participante"
 
-    def participant_label(self, participant: ReportParticipant) -> str:
-        return participant.alias if self.group else participant.code
-
 
 def looks_like_identifier(value: str) -> bool:
     text = str(value or "").strip()

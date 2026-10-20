@@ -33,7 +33,6 @@ def _escape_key_part(value: object) -> str:
 class AnalyticsRedisCache:
     """Cache for computed analytics results. Sync Redis wrapped for async callers."""
 
-    TTL_SECONDS = 900  # 15 minutes, overridable from settings
     # Namespace bump retires the responses written before cache keys carried an
     # ingestion generation: those keys have nothing a re-ingestion can move away
     # from, so they would keep serving the previous upload's numbers.

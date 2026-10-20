@@ -116,8 +116,7 @@ class Settings(BaseSettings):
     parquet_cache_ttl_hours: int = 4
     analytics_redis_ttl_seconds: int = 900
     # Executive reports retain every participant frame until rendering.  Keep
-    # independent reads small: two full large frames are about 322 MiB transient,
-    # below the 512 MiB G00 candidate budget (retained frames are additional).
+    # independent reads small: two full large frames are about 322 MiB transient (retained frames are additional).
     report_io_max_concurrency: int = Field(default=2, ge=1, le=2)
     report_io_max_waiting: int = Field(default=16, ge=0, le=16)
     image_cache_dir: str = "/data/image_cache"

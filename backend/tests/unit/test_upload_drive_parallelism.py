@@ -108,13 +108,7 @@ async def test_folder_tree_creates_parents_first_without_lookups(monkeypatch):
         created.append((name, parent_id))
         return {"drive_file_id": f"id:{parent_id}/{name}", "name": name}
 
-    def forbidden_lookup(**kwargs):
-        raise AssertionError("a fresh root has no folders to look up")
-
     monkeypatch.setattr(upload_module.gdrive_client, "create_folder", fake_create_folder)
-    monkeypatch.setattr(
-        upload_module.gdrive_client, "find_child_folder_by_name", forbidden_lookup
-    )
     use_case = UploadExperimentZipUseCase(SimpleNamespace())
     use_case.lifecycle = SimpleNamespace(check_canceled=AsyncMock())
     counters = {"folders_created": 0}

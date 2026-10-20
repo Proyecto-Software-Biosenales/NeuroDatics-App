@@ -244,38 +244,6 @@ class GoogleDriveClient:
             "parents": folder.get("parents", []),
         }
 
-    def find_child_folder_by_name(self, name: str, parent_id: str) -> Optional[Dict[str, Any]]:
-        service = self._require_service()
-
-        # Folder names come from ZIP entry paths, so they are user controlled.
-        # The backslash has to be escaped first, otherwise a name ending in `\`
-        # escapes the escape and lets the string literal run into query syntax.
-        safe_name = name.replace("\\", "\\\\").replace("'", "\\'")
-        query = (
-            "mimeType = 'application/vnd.google-apps.folder' "
-            "and trashed = false "
-            f"and name = '{safe_name}' "
-            f"and '{parent_id}' in parents"
-        )
-
-        response = service.files().list(
-            q=query,
-            pageSize=1,
-            fields="files(id,name,webViewLink,parents)",
-        ).execute(num_retries=max(0, int(settings.gdrive_request_retries)))
-
-        files = response.get("files", [])
-        if not files:
-            return None
-
-        folder = files[0]
-        return {
-            "drive_file_id": folder["id"],
-            "name": folder.get("name", name),
-            "drive_web_view_link": folder.get("webViewLink"),
-            "parents": folder.get("parents", []),
-        }
-
     def upload_file(
         self,
         filename: str,

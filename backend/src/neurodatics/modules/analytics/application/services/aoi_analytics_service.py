@@ -192,18 +192,6 @@ class AoiAnalyticsService:
             dtype=bool,
         )
 
-    @staticmethod
-    def _nanmean_pair(left: pd.Series, right: pd.Series) -> np.ndarray:
-        left_arr = left.to_numpy(dtype=float)
-        right_arr = right.to_numpy(dtype=float)
-        left_valid = np.isfinite(left_arr)
-        right_valid = np.isfinite(right_arr)
-        return np.where(
-            left_valid & right_valid,
-            (left_arr + right_arr) / 2.0,
-            np.where(left_valid, left_arr, right_arr),
-        )
-
     @classmethod
     def _sample_frame(cls, df: pd.DataFrame, scenario: str) -> tuple[pd.DataFrame, Optional[float], Optional[float]]:
         df = scope_to_scenario(df, scenario)
@@ -260,31 +248,6 @@ class AoiAnalyticsService:
             )
 
         return sample_df, pupil_baseline, distance_baseline
-
-    @classmethod
-    def _sample_metrics_for_shape(
-        cls,
-        sample_df: pd.DataFrame,
-        shape: dict,
-        pupil_baseline: Optional[float],
-        distance_baseline: Optional[float],
-    ) -> dict:
-        if sample_df.empty or "gx_clean" not in sample_df.columns or "gy_clean" not in sample_df.columns:
-            return cls._sample_metrics_for_mask(
-                sample_df,
-                np.zeros(len(sample_df), dtype=bool),
-                pupil_baseline,
-                distance_baseline,
-            )
-
-        gx = sample_df["gx_clean"].to_numpy(dtype=float)
-        gy = sample_df["gy_clean"].to_numpy(dtype=float)
-        return cls._sample_metrics_for_mask(
-            sample_df,
-            cls._mask_for_shape(shape, gx / 100.0, gy / 100.0),
-            pupil_baseline,
-            distance_baseline,
-        )
 
     @staticmethod
     def _sample_metrics_for_mask(

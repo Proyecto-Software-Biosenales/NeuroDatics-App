@@ -347,9 +347,6 @@ async def test_use_case_forwards_geometry_and_persists_json_safe_block_metadata(
         }
 
     monkeypatch.setattr(
-        upload_module.gdrive_client, "find_child_folder_by_name", lambda **kwargs: None
-    )
-    monkeypatch.setattr(
         upload_module.gdrive_client, "create_folder", fake_create_folder
     )
     monkeypatch.setattr(upload_module.gdrive_client, "upload_file", fake_upload_file)

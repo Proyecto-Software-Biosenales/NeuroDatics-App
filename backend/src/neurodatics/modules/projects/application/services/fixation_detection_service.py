@@ -116,7 +116,7 @@ class FixationDetectionConfig:
 
     coordinate_mode: str = "auto"  # auto | normalized | angular
     normalized_dispersion_threshold: float = 0.03
-    # Retained for configuration compatibility; angular mode uses velocity.
+    # Checked with the other thresholds but not used to detect: angular mode uses velocity.
     angular_dispersion_threshold_deg: float = 1.0
     velocity_fallback_threshold_deg_s: float = 30.0
     velocity_hysteresis_ratio: float = 1.25
@@ -1522,21 +1522,6 @@ class FixationDetectionService:
             warnings.append("gaze_units_ambiguous_assumed_percent")
         warnings.append(f"gaze_units_inferred:{chosen}")
         return chosen
-
-    @staticmethod
-    def _to_normalized(
-        gx: np.ndarray,
-        gy: np.ndarray,
-        units: str,
-        geometry: Optional[ScreenPixelSize],
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        if units == "normalized":
-            return gx.copy(), gy.copy()
-        if units == "percent":
-            return gx / 100.0, gy / 100.0
-        if geometry is None:  # guarded by contract validation
-            raise ValueError("pixel gaze units require screen pixel dimensions")
-        return gx / float(geometry.width_px), gy / float(geometry.height_px)
 
     @staticmethod
     def _distance_mm(

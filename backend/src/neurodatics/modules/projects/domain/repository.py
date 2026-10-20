@@ -34,10 +34,6 @@ class ProjectRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def add_file(self, project_file: ProjectFile) -> ProjectFile:
-        raise NotImplementedError
-
-    @abstractmethod
     async def purge_files_by_kind(self, project_id: UUID, kind: str) -> int:
         raise NotImplementedError
 
@@ -47,10 +43,6 @@ class ProjectRepository(ABC):
 
     @abstractmethod
     async def update_sensors(self, project_id: UUID, sensors: List[str]) -> List[ProjectSensor]:
-        raise NotImplementedError
-
-    @abstractmethod
-    async def soft_delete_active_zip(self, project_id: UUID) -> bool:
         raise NotImplementedError
 
     @abstractmethod

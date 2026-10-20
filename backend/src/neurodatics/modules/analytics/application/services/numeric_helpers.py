@@ -56,9 +56,6 @@ def _decimation_indices(size: int, max_points: int) -> np.ndarray:
     return np.arange(size, dtype=int)
 
 
-DISPLAY_DECIMATIONS = ("linspace", "minmax_envelope")
-
-
 def _envelope_display_indices(
     size: int,
     series: Sequence[np.ndarray],
