@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     auth_jwt_algorithm: str = "HS256"
     auth_jwt_issuer: str = "neurodatics-backend"
     auth_access_token_exp_minutes: int = 14 * 24 * 60
+    # Google accounts allowed to sign in, comma separated and case-insensitive. Empty lets any
+    # Google account in, so installations made before this setting keep working.
+    auth_allowed_emails: str = ""
     auth_user_store_path: str = os.path.join(
         os.path.dirname(__file__), "..", "..", "..", "data", "auth_users.json"
     )
@@ -173,6 +176,12 @@ class Settings(BaseSettings):
     def local_storage_dir(self) -> str:
         """Where local mode keeps the files Google Drive holds in server mode."""
         return os.path.join(self.local_data_dir or "", "storage")
+
+    @property
+    def allowed_sign_in_emails(self) -> frozenset[str]:
+        return frozenset(
+            email.strip().lower() for email in self.auth_allowed_emails.split(",") if email.strip()
+        )
 
     @property
     def cors_origins(self) -> list[str]:

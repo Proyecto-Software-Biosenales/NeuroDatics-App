@@ -37,6 +37,17 @@ def _resolve_google_redirect_uri(redirect_uri: str | None) -> str:
     return resolved_redirect_uri
 
 
+def _may_sign_in(email: str | None, email_verified: object) -> bool:
+    """Whether AUTH_ALLOWED_EMAILS lets this Google account in (an empty list lets everyone in).
+
+    The list trusts the address only when Google says the account owns it.
+    """
+    allowed = settings.allowed_sign_in_emails
+    if not allowed:
+        return True
+    return email_verified is True and (email or "").strip().lower() in allowed
+
+
 async def _ensure_app_user(
     db: AsyncSession,
     *,
@@ -193,6 +204,14 @@ async def authorize_google(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Google userinfo response missing 'sub'.",
+        )
+
+    if not _may_sign_in(email, userinfo.get("email_verified")):
+        # No address in the log: it is personal data of someone who is not a user.
+        logger.warning("Google sign-in refused: account not in AUTH_ALLOWED_EMAILS")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta cuenta de Google no tiene acceso a NeuroDatics. Pide a quien la administra que la añada.",
         )
 
     app_user_id = await _ensure_app_user(

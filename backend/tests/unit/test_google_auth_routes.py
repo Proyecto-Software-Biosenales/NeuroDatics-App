@@ -93,6 +93,40 @@ def test_incomplete_google_response_rejected_without_db_write(google_auth, token
     db.commit.assert_not_awaited()
 
 
+LAB_EMAILS = ' Synthetic@Example.TEST , otra@example.test,'
+
+
+@pytest.mark.parametrize('profile', [
+    {'sub': 'stranger', 'email': 'stranger@example.test', 'email_verified': True},
+    {'sub': 'unverified', 'email': 'synthetic@example.test', 'email_verified': False},
+    {'sub': 'no-email'},
+], ids=['outside-the-list', 'unverified-address', 'no-address'])
+def test_an_account_outside_the_allowed_emails_is_refused_without_a_user_row(google_auth, monkeypatch, profile):
+    client, outbound, db = google_auth
+    monkeypatch.setattr(settings, 'auth_allowed_emails', LAB_EMAILS)
+    outbound.get.return_value = httpx.Response(200, json=profile)
+
+    response = client.post('/api/auth/google/authorize', json={'code': 'one-time-code'})
+
+    assert response.status_code == 403
+    assert 'access_token' not in response.text
+    db.execute.assert_not_awaited()
+    db.commit.assert_not_awaited()
+
+
+def test_an_allowed_email_signs_in_whatever_its_case(google_auth, monkeypatch):
+    client, outbound, db = google_auth
+    monkeypatch.setattr(settings, 'auth_allowed_emails', LAB_EMAILS)
+    outbound.get.return_value = httpx.Response(200, json={
+        'sub': 'synthetic-google-sub', 'email': 'SYNTHETIC@example.test', 'name': 'Synthetic', 'email_verified': True,
+    })
+
+    response = client.post('/api/auth/google/authorize', json={'code': 'one-time-code'})
+
+    assert response.status_code == 200
+    db.commit.assert_awaited_once()
+
+
 GOOGLE_ERROR = {'error': 'invalid_grant', 'error_description': 'google-private-detail'}
 
 
