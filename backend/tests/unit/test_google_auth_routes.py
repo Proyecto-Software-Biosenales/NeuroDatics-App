@@ -1,4 +1,4 @@
-"""Exercise Google auth HTTP contracts without Google, Postgres or user files."""
+"""Exercise Google auth HTTP contracts without Google or Postgres."""
 
 import uuid
 from unittest.mock import AsyncMock, Mock
@@ -13,15 +13,13 @@ from neurodatics.api.deps import get_db
 from neurodatics.config.settings import settings
 from neurodatics.main import app
 from neurodatics.modules.auth.api import routes
-from neurodatics.modules.auth.infrastructure.user_store import JsonAuthUserStore
 
 
 @pytest.fixture
-def google_auth(monkeypatch, tmp_path):
+def google_auth(monkeypatch):
     monkeypatch.setattr(settings, 'google_oauth_client_id', 'test-client')
     monkeypatch.setattr(settings, 'google_oauth_client_secret', 'test-client-secret')
     monkeypatch.setattr(settings, 'google_oauth_redirect_uri', 'http://localhost/auth/callback')
-    monkeypatch.setattr(routes, 'auth_user_store', JsonAuthUserStore(str(tmp_path / 'users.json')))
     db = AsyncMock()
     db.execute.return_value = Mock(scalar_one_or_none=Mock(return_value=None))
 
@@ -73,7 +71,6 @@ def test_authorize_creates_local_identity_and_access_token(google_auth, existing
     claims = jwt.decode(data['access_token'], settings.auth_jwt_secret,
                         algorithms=[settings.auth_jwt_algorithm], issuer=settings.auth_jwt_issuer)
     assert claims['sub'] == expected_id
-    assert routes.auth_user_store.get_user(expected_id).google_sub == 'synthetic-google-sub'
     db.commit.assert_awaited_once()
     assert outbound.post.await_args.kwargs['data']['code'] == 'one-time-code'
     assert outbound.get.await_args.kwargs['headers'] == {'Authorization': 'Bearer google-test-token'}

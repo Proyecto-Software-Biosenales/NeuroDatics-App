@@ -66,9 +66,6 @@ class Settings(BaseSettings):
     # Google accounts allowed to sign in, comma separated and case-insensitive. Empty lets any
     # Google account in, so installations made before this setting keep working.
     auth_allowed_emails: str = ""
-    auth_user_store_path: str = os.path.join(
-        os.path.dirname(__file__), "..", "..", "..", "data", "auth_users.json"
-    )
 
     # Browser access. Docker uses same-origin /api, so only explicit direct clients
     # need to be listed here.

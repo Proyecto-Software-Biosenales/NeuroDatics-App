@@ -1,6 +1,5 @@
-"""Characterize local JWT, auth dependency and file-store behavior offline."""
+"""Characterize local JWT and auth dependency behavior offline."""
 
-import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -11,7 +10,6 @@ from jose import jwt
 from neurodatics.api.deps import get_current_user
 from neurodatics.config.security import create_access_token
 from neurodatics.config.settings import settings
-from neurodatics.modules.auth.infrastructure.user_store import JsonAuthUserStore
 
 
 @pytest.fixture
@@ -72,33 +70,3 @@ def test_wrong_signing_key_is_rejected(auth_client):
     token = jwt.encode({'sub': 'attacker', 'iss': settings.auth_jwt_issuer, 'typ': 'access'},
                        'a-different-test-key', algorithm=settings.auth_jwt_algorithm)
     assert auth_client.get('/protected', headers={'Authorization': f'Bearer {token}'}).status_code == 401
-
-
-def test_user_store_persists_and_updates_same_google_identity(tmp_path):
-    path = tmp_path / 'auth' / 'users.json'
-    store = JsonAuthUserStore(str(path))
-    first = store.upsert_google_user('one@example.test', 'Before', 'google-synthetic')
-    second = store.upsert_google_user('two@example.test', 'After', 'google-synthetic')
-    assert second.id == first.id
-    restored = JsonAuthUserStore(str(path)).get_user(first.id)
-    assert restored.name == 'After'
-    assert restored.email == 'two@example.test'
-    assert restored.provider == 'google'
-    assert len(json.loads(path.read_text())['users']) == 1
-
-
-def test_user_store_respects_database_id_and_keeps_other_users(tmp_path):
-    store = JsonAuthUserStore(str(tmp_path / 'users.json'))
-    first = store.upsert_google_user(None, 'First', 'google-one', user_id_override='database-id')
-    second = store.upsert_google_user(None, 'Second', 'google-two')
-    assert first.id == 'database-id'
-    assert store.get_user(first.id).name == 'First'
-    assert store.get_user(second.id).name == 'Second'
-    assert store.get_user('missing') is None
-
-
-@pytest.mark.parametrize('content', ['', 'invalid json', '[]', '{"users": []}'])
-def test_user_store_current_corrupt_file_fallback(tmp_path, content):
-    path = tmp_path / 'users.json'
-    path.write_text(content)
-    assert JsonAuthUserStore(str(path)).get_user('missing') is None

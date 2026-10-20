@@ -32,11 +32,9 @@ def test_environment_example_parses_without_machine_configuration(monkeypatch):
     assert example.debug is False
     assert example.database_url.endswith("@localhost:5432/neurodatics")
     assert example.auth_jwt_secret == "replace-with-a-long-random-secret"
-    assert example.auth_user_store_path == "./data/auth_users.json"
     local_examples = {
         "database_url",
         "auth_jwt_secret",
-        "auth_user_store_path",
         "google_oauth_redirect_uri",
         "google_drive_oauth_redirect_uri",
     }

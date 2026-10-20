@@ -11,7 +11,6 @@ from urllib.parse import urlencode
 from ....api.deps import get_db
 from ....config.security import create_access_token
 from ....config.settings import settings
-from ..infrastructure.user_store import auth_user_store
 from .schemas import GoogleAuthorizeRequest, GoogleAuthorizeResponse, GoogleLoginUrlResponse, AuthUserResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -222,26 +221,11 @@ async def authorize_google(
         picture_url=picture_url,
     )
 
-    stored_user = auth_user_store.upsert_google_user(
-        email=email,
-        name=name,
-        google_sub=google_sub,
-        user_id_override=app_user_id,
-    )
-
-    access_token = create_access_token(
-        subject=stored_user.id,
-        email=stored_user.email,
-        name=stored_user.name,
-    )
+    access_token = create_access_token(subject=app_user_id, email=email, name=name)
 
     return GoogleAuthorizeResponse(
         access_token=access_token,
         token_type="Bearer",
         expires_in=settings.auth_access_token_exp_minutes * 60,
-        user=AuthUserResponse(
-            id=stored_user.id,
-            email=stored_user.email,
-            name=stored_user.name,
-        ),
+        user=AuthUserResponse(id=app_user_id, email=email, name=name),
     )
