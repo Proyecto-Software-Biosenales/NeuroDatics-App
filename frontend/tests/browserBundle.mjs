@@ -31,8 +31,12 @@ export function browserBundle(entry) {
         dependency = [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find(existsSync)
         assert.ok(dependency, `Cannot resolve ${name}`)
       } else {
-        try { dependency = resolve.resolve(name === "jszip" ? "jszip/dist/jszip.min.js" : name) }
-        catch (error) {
+        try {
+          dependency = resolve.resolve(name === "jszip" ? "jszip/dist/jszip.min.js" : name)
+          // Node 22+ resolves the "module-sync" condition, which @swc/helpers (needed by next/link) maps
+          // to ES modules. This bundle is CommonJS, so use the package's own CommonJS build.
+          dependency = dependency.replace(/([\\/]@swc[\\/]helpers[\\/])esm([\\/].*)\.js$/, "$1cjs$2.cjs")
+        } catch (error) {
           const base = path.resolve(path.dirname(filename), name)
           dependency = [`${base}.ts`, `${base}.tsx`].find(existsSync)
           if (!dependency) throw error

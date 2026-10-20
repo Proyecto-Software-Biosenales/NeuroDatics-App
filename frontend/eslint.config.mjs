@@ -7,6 +7,12 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
+      // Rules that eslint-config-next 16.4 turned on and 16.1 did not have. Following them means
+      // reworking effects and the login redirect, which is a refactor, not part of the Next upgrade:
+      // the first would rewrite how screens reset state, and the redirect to /login is deliberately a
+      // full page load (it drops every in-memory cache) that the static export also needs.
+      "react-hooks/set-state-in-effect": "off",
+      "@next/next/no-location-assign-relative-destination": "off",
       "no-restricted-imports": ["error", {
         patterns: [{
           group: ["@base-ui/react", "@base-ui/react/*"],
