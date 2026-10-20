@@ -85,12 +85,11 @@ function AoiTooltip({
   label,
 }: {
   active?: boolean
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload?: any[]
+  payload?: Array<{ payload?: AoiMetricItem }>
   label?: string
 }) {
   if (!active || !payload?.length) return null
-  const item = payload[0]?.payload as AoiMetricItem | undefined
+  const item = payload[0]?.payload
   if (!item) return null
 
   return (

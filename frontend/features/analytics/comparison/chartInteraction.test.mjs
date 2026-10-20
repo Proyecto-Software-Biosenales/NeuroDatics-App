@@ -3,6 +3,7 @@ import test from "node:test"
 import {
   canPinComparisonPoint,
   isComparisonPointActive,
+  readClickedTime,
   resolveClickedPoint,
 } from "./chartInteraction.ts"
 
@@ -55,4 +56,16 @@ test("enables point-on-stimulus selection for the all-scenarios filter", () => {
 test("requires a participant and selected time for an active point", () => {
   assert.equal(canPinComparisonPoint(null, "all"), false)
   assert.equal(isComparisonPointActive("P-01", "all", null), false)
+})
+
+test("a time-series click reads the point time first, then the clicked x position", () => {
+  assert.equal(readClickedTime(null), null)
+  assert.equal(readClickedTime("2"), null)
+  assert.equal(readClickedTime({ activePayload: [{ payload: { time: 0 } }], activeLabel: "9" }), 0)
+  assert.equal(readClickedTime({ activeLabel: "2.5" }), 2.5)
+  assert.equal(readClickedTime({ activeLabel: "invalid" }), null)
+  assert.equal(readClickedTime({ activePayload: [{ payload: { time: Infinity } }], activeLabel: "9" }), null)
+  // A click with no x position is not a click at time zero.
+  assert.equal(readClickedTime({ activeLabel: null }), null)
+  assert.equal(readClickedTime({ activePayload: [{ payload: "texto" }], activeLabel: 4 }), 4)
 })

@@ -1,7 +1,7 @@
 "use client"
 import { AnalyticsModeSelector, FitAxisToggle } from "@/features/analytics/components/AnalyticsModeSelector"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import {
   Area,
   AreaChart,
@@ -40,7 +40,8 @@ import type { GsrTimeseriesData } from "../types"
 import { useSingleSignalData } from "../hooks/useSingleSignalData"
 import { SingleSignalTab } from "./SingleSignalTab"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
-import { fittedAxis, fittedYAxisProps } from "../fittedAxis"
+import { readClickedTime } from "../comparison/chartInteraction"
+import { useFittedAxis } from "../hooks/useFittedAxis"
 
 type SignalMode = "smooth" | "raw" | "both"
 
@@ -99,33 +100,17 @@ function GsrTooltip({ active, payload, label }: GsrTooltipProps) {
   )
 }
 
-function readClickedTime(state: unknown): number | null {
-  if (!state || typeof state !== "object") return null
-
-  const maybeState = state as {
-    activePayload?: Array<{ payload?: { time?: unknown } }>
-    activeLabel?: unknown
-  }
-  const fromPayload = maybeState.activePayload?.[0]?.payload?.time
-  const fromLabel = maybeState.activeLabel
-  const candidate = typeof fromPayload === "number" ? fromPayload : Number(fromLabel)
-
-  return Number.isFinite(candidate) ? candidate : null
-}
+const gsrValues = (data: GsrLinePoint[]) => data.flatMap((point) => [point.gsr, point.gsr_smooth])
 
 export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
   const [signalMode, setSignalMode] = useState<SignalMode>("smooth")
-  const [fitAxis, setFitAxis] = useState(false)
 
   const signal = useSingleSignalData(
     { projectId, participantCode, scenario }, GSR_SIGNAL
   )
   const { chartData, chartDomain, minTime, maxTime, selectedPoint, selectedTime, setSelectedTime, stats, statsLoading } = signal
   // Smoothed and raw set the scale together, so switching between them never moves the axis.
-  const yAxis = useMemo(
-    () => (fitAxis ? fittedAxis(chartData.flatMap((point) => [point.gsr, point.gsr_smooth])) : null),
-    [chartData, fitAxis]
-  )
+  const { fit: fitAxis, setFit: setFitAxis, yAxisProps } = useFittedAxis(chartData, gsrValues)
   const chartLegend = [
     ...(signalMode === "smooth" || signalMode === "both"
       ? [{ label: "GSR suavizada", color: "#10B981" }]
@@ -247,7 +232,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
             />
             <YAxis
               width={80}
-              {...fittedYAxisProps(yAxis)}
+              {...yAxisProps}
               label={{ value: "Respuesta galvánica (µS)", angle: -90, position: "insideLeft", offset: 4, style: { textAnchor: "middle" } }}
             />
             <RechartsTooltip content={<GsrTooltip />} />

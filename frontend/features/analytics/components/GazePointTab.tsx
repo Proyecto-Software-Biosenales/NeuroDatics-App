@@ -66,7 +66,8 @@ import { MissingStimulusImage } from "./MissingStimulusImage"
 import { AnalyticsChartShell, LINE_CHART_MARGIN } from "./AnalyticsChartShell"
 import { useChartDragZoom } from "./ChartDragZoom"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
-import { fittedAxis, fittedYAxisProps } from "../fittedAxis"
+import { readClickedTime } from "../comparison/chartInteraction"
+import { useFittedAxis } from "../hooks/useFittedAxis"
 
 type ViewMode = "both" | "x" | "y"
 
@@ -82,6 +83,8 @@ interface LinePoint {
   gx_clean: number | null
   gy_clean: number | null
 }
+
+const gazeValues = (data: LinePoint[]) => data.flatMap((point) => [point.gx_clean, point.gy_clean])
 
 interface GazeTooltipPayloadEntry {
   value: number
@@ -124,7 +127,6 @@ export function GazePointTab({
   scenario,
 }: GazePointTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("both")
-  const [fitAxis, setFitAxis] = useState(false)
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [showAois, setShowAois] = useState(true)
   const {
@@ -185,10 +187,7 @@ export function GazePointTab({
     return [chartData[0].time, chartData[chartData.length - 1].time]
   }, [chartData])
   // Both axes set the scale, so switching between them never moves it.
-  const yAxis = useMemo(
-    () => (fitAxis ? fittedAxis(chartData.flatMap((point) => [point.gx_clean, point.gy_clean])) : null),
-    [chartData, fitAxis]
-  )
+  const { fit: fitAxis, setFit: setFitAxis, yAxisProps } = useFittedAxis(chartData, gazeValues)
   const chartLegend = [
     ...(viewMode === "both" || viewMode === "x"
       ? [{ label: "Mirada X (%)", color: "#818CF8" }]
@@ -324,18 +323,9 @@ export function GazePointTab({
 
 
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleChartClick = (state: any) => {
-    if (!state) return
-    // Primary: from payload (when tooltip cursor was active on hover)
-    const fromPayload = state?.activePayload?.[0]?.payload?.time
-    // Fallback: activeLabel is the XAxis value at the clicked position
-    const fromLabel =
-      state?.activeLabel != null && !Number.isNaN(Number(state.activeLabel))
-        ? Number(state.activeLabel)
-        : null
-    const time = fromPayload ?? fromLabel
-    if (typeof time !== "number" || Number.isNaN(time)) return
+  const handleChartClick = (state: unknown) => {
+    const time = readClickedTime(state)
+    if (time === null) return
     setSelectedTime(time)
     fetchGaze(time)
   }
@@ -467,7 +457,7 @@ export function GazePointTab({
                 />
                 <YAxis
                   width={72}
-                  {...fittedYAxisProps(yAxis)}
+                  {...yAxisProps}
                   label={{
                     value: "Posición (%)",
                     angle: -90,

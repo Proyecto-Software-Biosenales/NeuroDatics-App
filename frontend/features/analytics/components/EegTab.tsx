@@ -11,8 +11,9 @@ import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { useEegPsd, useEegSpectrogram, useEegTimeseries, useEegTopography } from "../hooks/useAnalyticsData"
 import { useTimeWindow, useZoomHistory } from "../hooks/useZoomHistory"
 import { normalizeZoomRange, sameZoomRange, zoomSpan, sliceEegPsd, sliceEegSpectrogram, type ZoomRange } from "../chartZoom"
+import { readClickedTime } from "../comparison/chartInteraction"
 import { EEG_CHANNELS, EEG_TIMESERIES_CHART_ID, TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, scrollToSection, type SignalMode, type ChartLayout, type EegTabProps, type EegChartPoint, type EegPsdChartPoint, type PsdStats, type SpectrogramStats } from "./eeg/eegViewShared"
-import { buildStats, finiteValues, fullResolutionStats, montageLanes, nearestTimeIndex, formatChannel, mean, median, readClickedTime, robustDomain, rotateTopographyPositionClockwise, spectrogramGaps, std, visibleArtifactSpans, type ChannelStats, type TopographyFrameRow } from "../eegPresentation"
+import { buildStats, finiteValues, fullResolutionStats, montageLanes, nearestTimeIndex, formatChannel, mean, median, robustDomain, rotateTopographyPositionClockwise, spectrogramGaps, std, visibleArtifactSpans, type ChannelStats, type TopographyFrameRow } from "../eegPresentation"
 import { EegArtifactSpanList, EegChannelQualityTable, EegQualityNotes } from "./eeg/EegQualityPanel"
 const EMPTY_CHANNELS: string[] = []
 

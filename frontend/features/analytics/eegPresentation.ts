@@ -234,20 +234,6 @@ export function rotateTopographyPositionClockwise(x: number, y: number) {
   }
 }
 
-export function readClickedTime(state: unknown): number | null {
-  if (!state || typeof state !== "object") return null
-
-  const maybeState = state as {
-    activePayload?: Array<{ payload?: { time?: unknown } }>
-    activeLabel?: unknown
-  }
-  const fromPayload = maybeState.activePayload?.[0]?.payload?.time
-  const fromLabel = maybeState.activeLabel
-  const candidate = typeof fromPayload === "number" ? fromPayload : Number(fromLabel)
-
-  return Number.isFinite(candidate) ? candidate : null
-}
-
 
 /** Summaries are computed by the backend before plot reduction. Both-mode uses raw. */
 export function fullResolutionStats(data: EegTimeseriesData | null, mode: string): ChannelStats[] {

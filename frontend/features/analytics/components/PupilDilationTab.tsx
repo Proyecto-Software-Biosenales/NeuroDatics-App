@@ -61,6 +61,7 @@ import { MissingStimulusImage } from "./MissingStimulusImage"
 import { AnalyticsChartShell, LINE_CHART_MARGIN } from "./AnalyticsChartShell"
 import { useChartDragZoom } from "./ChartDragZoom"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
+import { readClickedTime } from "../comparison/chartInteraction"
 import { pupilAxis } from "../pupilAxis"
 
 type ViewMode = "both" | "left" | "right"
@@ -528,18 +529,9 @@ export function PupilDilationTab({
     projectId,
   ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleChartClick = (state: any) => {
-    if (!state) return
-    // Primary: from payload (when tooltip cursor was active on hover)
-    const fromPayload = state?.activePayload?.[0]?.payload?.time
-    // Fallback: activeLabel is the XAxis value at the clicked position
-    const fromLabel =
-      state?.activeLabel != null && !Number.isNaN(Number(state.activeLabel))
-        ? Number(state.activeLabel)
-        : null
-    const time = fromPayload ?? fromLabel
-    if (typeof time !== "number" || Number.isNaN(time)) return
+  const handleChartClick = (state: unknown) => {
+    const time = readClickedTime(state)
+    if (time === null) return
     setSelectedTime(time)
     fetchGaze(time)
   }

@@ -3,7 +3,7 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   CartesianGrid,
   Line,
@@ -56,7 +56,8 @@ import { useSingleSignalData } from "../hooks/useSingleSignalData"
 import { SingleSignalTab } from "./SingleSignalTab"
 import { LINE_CHART_MARGIN } from "./AnalyticsChartShell"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
-import { fittedAxis, fittedYAxisProps } from "../fittedAxis"
+import { readClickedTime } from "../comparison/chartInteraction"
+import { useFittedAxis } from "../hooks/useFittedAxis"
 import { FitAxisToggle } from "./AnalyticsModeSelector"
 import { MissingStimulusImage } from "./MissingStimulusImage"
 
@@ -70,6 +71,8 @@ interface LinePoint {
   time: number
   distance_cm: number
 }
+
+const distanceValues = (data: LinePoint[]) => data.map((point) => point.distance_cm)
 
 const DISTANCE_SIGNAL = {
   useTimeseries: useDistanceTimeseries,
@@ -149,11 +152,7 @@ export function DeviceDistanceTab({
   )
   const { chartData, chartDomain, minTime, maxTime, selectedPoint, selectedTime, setSelectedTime, stats, statsLoading } = signal
   const selectedValue = selectedPoint?.distance_cm ?? null
-  const [fitAxis, setFitAxis] = useState(false)
-  const yAxis = useMemo(
-    () => (fitAxis ? fittedAxis(chartData.map((point) => point.distance_cm)) : null),
-    [chartData, fitAxis]
-  )
+  const { fit: fitAxis, setFit: setFitAxis, yAxisProps } = useFittedAxis(chartData, distanceValues)
   const chartLegend = [{ label: "Distancia ojo-pantalla", color: "#3B82F6" }]
 
   /**
@@ -204,18 +203,9 @@ export function DeviceDistanceTab({
 
 
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleChartClick = (state: any) => {
-    if (!state) return
-    // Primary: from payload (when tooltip cursor was active on hover)
-    const fromPayload = state?.activePayload?.[0]?.payload?.time
-    // Fallback: activeLabel is the XAxis value at the clicked position
-    const fromLabel =
-      state?.activeLabel != null && !Number.isNaN(Number(state.activeLabel))
-        ? Number(state.activeLabel)
-        : null
-    const time = fromPayload ?? fromLabel
-    if (typeof time !== "number" || Number.isNaN(time)) return
+  const handleChartClick = (state: unknown) => {
+    const time = readClickedTime(state)
+    if (time === null) return
     setSelectedTime(time)
     fetchGaze(time)
   }
@@ -292,7 +282,7 @@ export function DeviceDistanceTab({
             />
             <YAxis
               width={72}
-              {...fittedYAxisProps(yAxis)}
+              {...yAxisProps}
               label={{ value: "Distancia (cm)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
             />
             <RechartsTooltip content={<DistanceTooltip />} />

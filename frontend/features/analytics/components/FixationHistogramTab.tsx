@@ -46,8 +46,7 @@ interface FixationHistogramTabProps {
 
 interface HistogramTooltipProps {
   active?: boolean
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload?: any[]
+  payload?: Array<{ payload: FixationHistogramBin }>
   label?: string
 }
 
@@ -62,7 +61,7 @@ interface FixationSensitivityCardProps {
 function HistogramTooltip({ active, payload, label }: HistogramTooltipProps) {
   if (!active || !payload || payload.length === 0) return null
 
-  const data = payload[0].payload as FixationHistogramBin
+  const data = payload[0].payload
 
   return (
     <div className="rounded-lg bg-gray-800 px-3 py-2 text-xs text-white shadow-lg">

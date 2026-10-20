@@ -31,6 +31,21 @@ function finiteNumber(value: unknown): number | null {
 }
 
 /**
+ * The time (x value) of a click on a time-series chart: the plotted point's own `time` when Recharts
+ * reports one, otherwise the x position that was clicked.
+ */
+export function readClickedTime(state: unknown): number | null {
+  if (!state || typeof state !== "object") return null
+
+  const { activePayload, activeLabel } = state as RechartsClickState
+  const point = activePayload?.[0]?.payload
+  const fromPayload =
+    point && typeof point === "object" ? (point as { time?: unknown }).time : undefined
+  if (typeof fromPayload === "number") return Number.isFinite(fromPayload) ? fromPayload : null
+  return finiteNumber(activeLabel)
+}
+
+/**
  * Resolve a chart click for both Recharts 2 and Recharts 3.
  *
  * Recharts 3 no longer exposes `activePayload` on chart-level handlers. The

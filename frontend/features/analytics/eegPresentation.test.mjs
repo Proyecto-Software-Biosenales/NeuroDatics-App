@@ -3,7 +3,7 @@ import test from "node:test"
 import {
   buildStats, finiteValues, formatChannel, formatNumber, hexToRgb,
   interpolateColor, interpolateTopographyValue, mean, median, fullResolutionStats, nearestTimeIndex,
-  readClickedTime, rotateTopographyPositionClockwise, scaleSpectrogramValue,
+  rotateTopographyPositionClockwise, scaleSpectrogramValue,
   std, VIRIDIS_GRADIENT, medianHop, packRgba, topographyValueAt, viridisPixel, VIRIDIS_LUT,
   spectrogramColumns, spectrogramGaps,
   channelQualityRows, clusterArtifactSpans, describeArtifactCluster, describeArtifactSpan,
@@ -163,15 +163,6 @@ test("topography interpolation preserves electrode values and clockwise orientat
   assert.deepEqual(interpolateTopographyValue(0, 0, [{ ...left, value: NaN }]), { value: 0, nearest: null })
   assert.deepEqual(interpolateTopographyValue(0, 0, []), { value: 0, nearest: null })
   assert.deepEqual(rotateTopographyPositionClockwise(0.25, 0.75), { x: 0.75, y: -0.25 })
-})
-
-test("EEG click extraction preserves payload priority and numeric labels", () => {
-  assert.equal(readClickedTime(null), null)
-  assert.equal(readClickedTime("2"), null)
-  assert.equal(readClickedTime({ activePayload: [{ payload: { time: 0 } }], activeLabel: "9" }), 0)
-  assert.equal(readClickedTime({ activeLabel: "2.5" }), 2.5)
-  assert.equal(readClickedTime({ activeLabel: "invalid" }), null)
-  assert.equal(readClickedTime({ activePayload: [{ payload: { time: Infinity } }], activeLabel: "9" }), null)
 })
 
 test("a robust y range cannot be stretched by one sample, and says what it hides", () => {
