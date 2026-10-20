@@ -125,6 +125,45 @@ def test_a_path_cannot_climb_out_of_the_site(exported_site):
         assert "private" not in client.get(path).text
 
 
+@pytest.fixture
+def realpath_calls(monkeypatch):
+    """Record every path given to ``os.path.realpath``; a network path never reaches the OS."""
+    calls: list[str] = []
+    real = os.path.realpath
+
+    def spy(path, *args, **kwargs):
+        calls.append(os.fspath(path))
+        if os.fspath(path).startswith(("\\\\", "//")):
+            return os.fspath(path)
+        return real(path, *args, **kwargs)
+
+    monkeypatch.setattr(os.path, "realpath", spy)
+    return calls
+
+
+def test_a_network_share_in_the_url_is_refused_before_the_os_sees_it(exported_site, realpath_calls):
+    client = TestClient(api_with_site(exported_site).app, base_url="http://127.0.0.1:8765", raise_server_exceptions=False)
+
+    for path in (
+        "/%5C%5Cexample.invalid%5Cshare%5Cx",
+        "/%5c%5cexample.invalid%5cshare%5cx",
+        "/proyectos/%5C%5Cexample.invalid%5Cshare",
+        "/C:%5CWindows%5Cwin.ini",
+        "/C%3A/Windows/win.ini",
+    ):
+        assert client.get(path).status_code == 404, path
+
+    assert not [call for call in realpath_calls if call.startswith(("\\\\", "//")) or "example.invalid" in call]
+
+
+def test_ordinary_routes_still_answer_once_network_paths_are_refused(exported_site, realpath_calls):
+    client = api_with_site(exported_site)
+
+    assert client.get("/proyectos/").status_code == 200
+    assert client.get("/proyectos/__next.proyectos.__PAGE__.txt?_rsc=abc").text == "datos de proyectos"
+    assert client.get("/proyectos/pre-experimento/__next.proyectos.pre-experimento.txt").status_code == 200
+
+
 def test_a_folder_without_an_exported_site_is_not_mounted(tmp_path):
     app = FastAPI()
     routes_before = list(app.routes)

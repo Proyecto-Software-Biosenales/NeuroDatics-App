@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 from fastapi import FastAPI
+from starlette.exceptions import HTTPException
 from starlette.staticfiles import StaticFiles
 from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -31,8 +32,27 @@ API_PATH_ALIASES = {"/api/projects": "/api/projects/"}
 _SEGMENT_DATA = re.compile(r"^(?P<folder>(?:.*/)?)__next\.(?P<segments>[^/.]+(?:\.[^/.]+)+)\.txt$")
 
 
+def _leaves_the_site(path: str, scope: Scope) -> bool:
+    """True for a URL that the OS would read as another drive or a network share.
+
+    Starlette 0.27 joins the decoded URL path to the site folder, so on Windows
+    ``/%5C%5Chost%5Cshare`` becomes ``\\\\host\\share`` and ``os.path.realpath`` opens an SMB
+    connection to that host (handing it the student's NTLM hash) before the containment check
+    runs. No exported route carries a backslash or a colon, so the raw URL is rejected outright;
+    the resolved path is checked too, since ``path`` itself uses backslashes on Windows.
+    """
+    url_path = scope.get("path", "")
+    raw_path = bytes(scope.get("raw_path") or b"").lower()
+    if "\\" in url_path or ":" in url_path or b"%5c" in raw_path or b"%3a" in raw_path:
+        return True
+    drive, _ = os.path.splitdrive(path)
+    return bool(drive) or path.startswith(("\\", "/"))
+
+
 class _ExportedSite(StaticFiles):
     async def get_response(self, path: str, scope: Scope) -> Response:
+        if _leaves_the_site(path, scope):
+            raise HTTPException(status_code=404)
         response = await super().get_response(path, scope)
         # Starlette hands over an OS-style relative path, backslashes on Windows.
         if response.status_code == 404 and (match := _SEGMENT_DATA.match(path.replace("\\", "/"))):
