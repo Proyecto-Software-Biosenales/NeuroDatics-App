@@ -144,11 +144,6 @@ class SQLProjectRepository(ProjectRepository):
             await self.session.refresh(file_obj)
         return files
 
-    async def delete_file_by_kind(self, project_id: UUID, kind: str) -> bool:
-        count = await self.purge_files_by_kind(project_id, kind)
-        await self.session.commit()
-        return count > 0
-
     async def update_sensors(self, project_id: UUID, sensors: List[str]) -> List[ProjectSensor]:
         await self.session.execute(delete(ProjectSensor).where(ProjectSensor.project_id == project_id))
 
@@ -162,15 +157,6 @@ class SQLProjectRepository(ProjectRepository):
         for sensor in new_sensors:
             await self.session.refresh(sensor)
         return new_sensors
-
-    async def get_active_zip(self, project_id: UUID) -> Optional[ProjectFile]:
-        stmt = select(ProjectFile).where(
-            ProjectFile.project_id == project_id,
-            ProjectFile.kind == "experiment_zip",
-            ProjectFile.deleted_at.is_(None),
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
 
     async def soft_delete_active_files(self, project_id: UUID) -> int:
         stmt = (

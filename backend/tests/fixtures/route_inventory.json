@@ -1,6 +1,5 @@
 [
   "DELETE /api/projects/{project_id}",
-  "DELETE /api/projects/{project_id}/files/experiment-zip",
   "GET /api/auth/google/login-url",
   "GET /api/integrations/google-drive/callback",
   "GET /api/projects/",
@@ -48,7 +47,6 @@
   "PUT /api/projects/{project_id}/aois",
   "PUT /api/projects/{project_id}/participants",
   "PUT /api/projects/{project_id}/pre-experiment",
-  "PUT /api/projects/{project_id}/scenaries",
   "PUT /api/projects/{project_id}/sensors",
   "PUT /api/settings/screen"
 ]

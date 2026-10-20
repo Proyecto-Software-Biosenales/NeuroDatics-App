@@ -86,10 +86,6 @@ class scenariesRequest(BaseModel):
     stimulus_placement: Optional[StimulusPlacementRequest] = None
 
 
-class UpdatescenariesRequest(BaseModel):
-    scenaries: List[scenariesRequest]
-
-
 class AOIRequest(BaseModel):
     scenaries_name: str
     name: str

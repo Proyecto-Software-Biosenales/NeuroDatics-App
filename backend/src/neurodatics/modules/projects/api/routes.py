@@ -46,7 +46,6 @@ from ..application.services.drive_upload_progress_registry import drive_upload_p
 from ..application.services.fixation_detection_service import ScreenGeometry
 from ..application.use_cases.ingestion_lifecycle import finish_upload_on_disconnect, progress_key
 from ..infrastructure.upload_attempt_store import UploadAttemptStore, UploadAttemptConflict
-from ..infrastructure.drive_cleanup import enqueue_drive_cleanup, drain_drive_cleanup
 from ..infrastructure.image_cache import (
     build_image_etag as _build_image_etag,
     get_cached_project_image,
@@ -1306,41 +1305,6 @@ async def get_experiment_zip_upload_progress(
         elapsed_seconds=0,
         error=None,
     )
-
-
-@router.delete("/{project_id}/files/experiment-zip", dependencies=[Depends(lock_project_for_write)])
-async def delete_experiment_zip(
-    project_id: UUID,
-    current_user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Delete experiment zip file"""
-    repository = SQLProjectRepository(db)
-    project = await repository.get_by_id(project_id, UUID(current_user))
-
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found"
-        )
-
-    active_zip = await repository.get_active_zip(project_id)
-    cleanup_ids = [active_zip.external_id] if active_zip else []
-    await enqueue_drive_cleanup(db, project_id, cleanup_ids)
-    deleted = await repository.delete_file_by_kind(project_id, "experiment_zip")
-
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Experiment zip file not found"
-        )
-
-    try:
-        if cleanup_ids and await configure_gdrive_client_with_oauth(db, silent=True):
-            await drain_drive_cleanup(db, external_ids=cleanup_ids)
-    except Exception:
-        logger.warning("ZIP removed; its Drive cleanup remains queued", exc_info=True)
-    return {"message": "Experiment zip file deleted successfully"}
 
 
 @router.put("/{project_id}/sensors", response_model=List[dict], dependencies=[Depends(lock_project_for_write)])

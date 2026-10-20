@@ -18,6 +18,8 @@ client = TestClient(app, raise_server_exceptions=False)
 
 # The shared Drive account is managed only from the server, so the app has no route to
 # read or change it; `connection` and `authorize` were the last ones (2026-10-19).
+# The two project routes at the end had no caller (2026-10-20): the stimulus placement
+# travels with the upload and the ZIP is replaced by uploading again.
 RETIRED_ROUTES = [
     ("GET", "/api/integrations/google-drive/connection", {}),
     ("GET", "/api/integrations/google-drive/authorize", {}),
@@ -28,13 +30,16 @@ RETIRED_ROUTES = [
     ("POST", "/api/integrations/google-drive/sync-folder-scheduled", {"local_folder_path": "/data"}),
     ("GET", "/api/integrations/google-drive/sync-status/sync_1", {}),
     ("GET", "/api/integrations/google-drive/sync-tasks", {}),
+    ("PUT", "/api/projects/00000000-0000-0000-0000-000000000001/scenaries", {}),
+    ("DELETE", "/api/projects/00000000-0000-0000-0000-000000000001/files/experiment-zip", {}),
 ]
 
 
 @pytest.mark.parametrize("method,path,params", RETIRED_ROUTES)
-def test_retired_google_drive_routes_are_not_mounted(method, path, params):
+def test_retired_routes_are_not_mounted(method, path, params):
     response = client.request(method, path, params=params)
-    assert response.status_code == 404
+    # 405 when the path still serves other verbs (the ZIP upload shares its URL).
+    assert response.status_code in (404, 405)
 
 
 def test_oauth_callback_stays_reachable_without_a_token():

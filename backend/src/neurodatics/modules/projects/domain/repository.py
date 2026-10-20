@@ -38,10 +38,6 @@ class ProjectRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def delete_file_by_kind(self, project_id: UUID, kind: str) -> bool:
-        raise NotImplementedError
-
-    @abstractmethod
     async def update_sensors(self, project_id: UUID, sensors: List[str]) -> List[ProjectSensor]:
         raise NotImplementedError
 
