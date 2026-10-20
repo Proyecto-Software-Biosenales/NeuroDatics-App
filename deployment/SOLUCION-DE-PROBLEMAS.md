@@ -31,7 +31,7 @@ Puedes repetir `INSTALAR.bat` después de corregir un problema. No borres volúm
 | Docker instalado en otra ubicación | Se buscan las ubicaciones estándar y el registro de instalación. Si la instalación está incompleta, repárala con el instalador oficial. |
 | Google muestra redirect_uri_mismatch | Verifica las dos URI en Google Cloud y utiliza localhost con el puerto configurado. |
 | Google rechaza el acceso | El responsable debe revisar las credenciales y qué cuentas pueden usar el proyecto OAuth. |
-| Cargar experimentos falla por Drive | Inicia sesión, abre Configuración y conecta Google Drive. La salud de los contenedores no verifica permisos de Google. |
+| Cargar experimentos falla por Drive | Quien administra la instalación debe conectar o renovar la cuenta de Drive con `_internal\scripts\conectar-drive.ps1` (ver CONFIGURACION-GOOGLE.md). La aplicación no ofrece esa opción y la salud de los contenedores no verifica permisos de Google. |
 | Error de base de datos | Revisa la configuración conservada de `.env`. Para una base externa comprueba TLS, acceso de red y credenciales con el responsable. |
 | Eliminaste los contenedores en Docker Desktop | Abre INICIAR: los vuelve a crear con los volúmenes de datos conservados. |
 | Red institucional bloquea descargas | Solicita acceso a los sitios oficiales de Microsoft, GitHub (WSL), Docker y Google. Configura el proxy del sistema/Docker con TI. No desactives la verificación de firmas. |

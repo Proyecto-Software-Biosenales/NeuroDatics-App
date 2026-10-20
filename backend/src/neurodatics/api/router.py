@@ -19,14 +19,13 @@ def include_routes(app: FastAPI):
     else:
         from ..modules.auth.api.routes import router as auth_router
         from ..modules.integrations.google_drive.api.routes import (
-            router as google_drive_integrations_router,
             public_router as google_drive_public_router,
         )
 
         app.include_router(auth_router, prefix="/api")
         # OAuth callback only — unauthenticated by necessity, guarded by signed state.
+        # The account itself is chosen by administrators on the server, not in the app.
         app.include_router(google_drive_public_router, prefix="/api")
-        app.include_router(google_drive_integrations_router, prefix="/api")
     app.include_router(projects_router, prefix="/api")
     app.include_router(participants_router, prefix="/api")
     app.include_router(scenaries_router, prefix="/api")

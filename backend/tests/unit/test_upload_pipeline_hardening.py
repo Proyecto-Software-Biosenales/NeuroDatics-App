@@ -16,12 +16,11 @@ client = TestClient(app, raise_server_exceptions=False)
 
 # --------------------------------------------------------------------- auth
 
-# Every route that used to be reachable with no credentials at all.
-GUARDED_ROUTES = [
-    ("GET", "/api/integrations/google-drive/authorize", {}),
-]
-
+# The shared Drive account is managed only from the server, so the app has no route to
+# read or change it; `connection` and `authorize` were the last ones (2026-10-19).
 RETIRED_ROUTES = [
+    ("GET", "/api/integrations/google-drive/connection", {}),
+    ("GET", "/api/integrations/google-drive/authorize", {}),
     ("GET", "/api/integrations/google-drive/status", {}),
     ("DELETE", "/api/integrations/google-drive", {}),
     ("POST", "/api/integrations/google-drive/create-folder", {"folder_name": "x"}),
@@ -30,20 +29,6 @@ RETIRED_ROUTES = [
     ("GET", "/api/integrations/google-drive/sync-status/sync_1", {}),
     ("GET", "/api/integrations/google-drive/sync-tasks", {}),
 ]
-
-
-@pytest.mark.parametrize("method,path,params", GUARDED_ROUTES)
-def test_google_drive_routes_reject_anonymous_callers(method, path, params):
-    response = client.request(method, path, params=params)
-    assert response.status_code == 401
-
-
-@pytest.mark.parametrize("method,path,params", GUARDED_ROUTES)
-def test_google_drive_routes_reject_a_forged_bearer_token(method, path, params):
-    response = client.request(
-        method, path, params=params, headers={"Authorization": "Bearer not-a-real-token"}
-    )
-    assert response.status_code == 401
 
 
 @pytest.mark.parametrize("method,path,params", RETIRED_ROUTES)

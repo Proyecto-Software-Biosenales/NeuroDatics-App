@@ -1,6 +1,6 @@
 # Configurar Google una vez
 
-El responsable de la entrega prepara el proyecto de Google. El usuario final solo debe iniciar sesión y autorizar Drive. Un instalador local no puede crear ni autorizar credenciales de otra cuenta.
+El responsable de la entrega prepara el proyecto de Google y quien administra la instalación elige la cuenta de Google Drive que guarda los archivos. El usuario final solo inicia sesión: la aplicación no le muestra ni le deja cambiar esa cuenta. Un instalador local no puede crear ni autorizar credenciales de otra cuenta.
 
 ## Responsable del proyecto
 
@@ -14,16 +14,18 @@ El responsable de la entrega prepara el proyecto de Google. El usuario final sol
 
 No incluyas `.env` en Git ni lo publiques. El generador no copia las credenciales del repositorio automáticamente. Una entrega privada ya configurada puede incluir su propio `.env`.
 
-## Usuario de NeuroDatics
+## Cuenta de Google Drive (solo administradores)
 
-1. Abre la aplicación e inicia sesión con Google.
-2. Entra en **Configuración**. Si es necesario, abre `http://localhost:3000/configuracion`.
-3. Si Drive no está conectado, pulsa el botón para conectarlo y acepta los permisos en Google.
-4. Vuelve a Configuración y comprueba que la conexión se haya guardado. Después podrás cargar experimentos.
+La cuenta de Drive se comparte entre todos los usuarios de esa base de datos y solo se define desde el equipo donde corre NeuroDatics, nunca desde la aplicación. Con NeuroDatics iniciada:
 
-La cuenta de Drive se comparte entre los usuarios de esa base de datos. Si ya aparece una cuenta conectada, consérvala salvo que el responsable quiera sustituirla. La autorización se guarda en la base de datos, no en el antiguo `GDRIVE_REFRESH_TOKEN` del `.env`.
+1. En la carpeta de la entrega, abre PowerShell y ejecuta:
+   `powershell -ExecutionPolicy Bypass -File _internal\scripts\conectar-drive.ps1`
+2. El script muestra la cuenta actual y abre el navegador con el enlace de Google, que caduca en diez minutos. Inicia sesión con la cuenta que guardará los archivos y acepta los permisos.
+3. Cuando el navegador diga «Google Drive conectado», la cuenta queda guardada para todos.
 
-El estado de conexión indica que existe una autorización guardada; si Google la revoca, tendrás que volver a conectarla. Comprobar la URL de login durante la instalación no sustituye un inicio de sesión real.
+Para consultar la cuenta sin cambiarla, añade `-Estado`. Fuera del instalador, el comando equivalente es `docker compose exec backend python -m neurodatics.modules.integrations.google_drive.admin estado` (o `conectar`).
+
+Si ya hay una cuenta conectada, consérvala salvo que quieras sustituirla: la nueva cuenta debe tener acceso a los archivos existentes o los proyectos ya guardados dejarán de abrirse. La autorización se guarda en la base de datos, no en el antiguo `GDRIVE_REFRESH_TOKEN` del `.env`. Si Google la revoca, los usuarios verán un aviso para contactar con quien administra NeuroDatics; repite estos pasos con la misma cuenta. Comprobar la URL de login durante la instalación no sustituye un inicio de sesión real.
 
 ## Puerto y base de datos
 

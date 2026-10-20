@@ -70,8 +70,13 @@ try {
     }
     $oauth = Invoke-RestMethod -Uri "$url/api/auth/google/login-url?redirect_uri=$([uri]::EscapeDataString("$url/authorize"))"
     if ($oauth.authorization_url -notlike 'https://accounts.google.com/*') { throw 'No se generó la URL de Google.' }
-    $anonimo = Invoke-WebRequest -Uri "$url/api/integrations/google-drive/connection" -SkipHttpErrorCheck
-    if ($anonimo.StatusCode -ne 401) { throw 'La configuración de Drive no está protegida.' }
+    # La cuenta de Drive solo la definen los administradores en el servidor: la aplicación no la expone.
+    foreach ($rutaDrive in @('connection', 'authorize')) {
+        $drive = Invoke-WebRequest -Uri "$url/api/integrations/google-drive/$rutaDrive" -SkipHttpErrorCheck
+        if ($drive.StatusCode -ne 404) { throw "La aplicación todavía expone /google-drive/$rutaDrive." }
+    }
+    $estadoDrive = (Invoke-Nativo $docker ($composeArgs + @('exec', '-T', 'backend', 'python', '-m', 'neurodatics.modules.integrations.google_drive.admin', 'estado'))).Texto
+    if ($estadoDrive -notmatch 'Google Drive no está conectado') { throw 'El comando de administración de Drive no respondió.' }
     # La migración actual debe haberse aplicado a la base recién creada.
     $migracion = (Invoke-Nativo $docker ($composeArgs + @('exec', '-T', 'db', 'psql', '-U', 'postgres', '-d', 'neurodatics', '-Atc', 'SELECT version_num FROM alembic_version;'))).Texto.Trim()
     if (-not $migracion) { throw 'No se aplicaron migraciones.' }

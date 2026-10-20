@@ -1,78 +1,72 @@
-"""Estado de instalación de Drive: autenticación, ausencia y filtrado de secretos."""
+"""Cuenta de Drive compartida: solo la administra el servidor, nunca la aplicación."""
 
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from neurodatics.api.deps import get_current_user, get_db
+from neurodatics.api.deps import get_db
 from neurodatics.config.settings import settings
-from neurodatics.modules.integrations.google_drive.api.routes import router
+from neurodatics.modules.integrations.google_drive import admin
 from neurodatics.modules.integrations.google_drive.api import routes
-from neurodatics.modules.integrations.google_drive.infrastructure.repository import (
-    SystemIntegrationRepository,
-)
 
 
 @pytest.fixture
-def connection_api(monkeypatch):
-    app = FastAPI()
-    app.include_router(router, prefix="/api")
-    repository_read = AsyncMock(return_value=None)
-    monkeypatch.setattr(SystemIntegrationRepository, "get_by_provider", repository_read)
+def oauth_configured(monkeypatch):
     monkeypatch.setattr(settings, "google_oauth_client_id", "synthetic-client")
     monkeypatch.setattr(settings, "google_oauth_client_secret", "synthetic-client-secret")
-    app.dependency_overrides[get_db] = lambda: AsyncMock()
-    return app, repository_read
+    monkeypatch.setattr(settings, "google_drive_oauth_redirect_uri", "http://localhost:3000/api/integrations/google-drive/callback")
 
 
-def test_connection_requires_authentication(connection_api):
-    app, repository_read = connection_api
-    response = TestClient(app).get("/api/integrations/google-drive/connection")
-    assert response.status_code == 401
-    repository_read.assert_not_awaited()
+def test_the_app_exposes_only_the_oauth_callback():
+    paths = {route.path for route in routes.public_router.routes}
+    assert paths == {"/integrations/google-drive/callback"}
+    assert not hasattr(routes, "router")
 
 
-@pytest.mark.parametrize("integration,connected,account_email", [
-    (None, False, None),
-    ({"account_email": "owner@example.test", "refresh_token": ""}, False, "owner@example.test"),
+@pytest.mark.parametrize("integration,expected", [
+    (None, "Google Drive no está conectado."),
+    ({"account_email": "owner@example.test", "refresh_token": ""}, "Google Drive no está conectado."),
     ({
         "account_email": "owner@example.test",
         "refresh_token": "synthetic-refresh-secret",
         "access_token": "synthetic-access-secret",
-        "metadata": {"private": "synthetic-private-data"},
-    }, True, "owner@example.test"),
+        "updated_at": datetime(2026, 10, 19, 22, 7, tzinfo=timezone.utc),
+    }, "Cuenta de almacenamiento: owner@example.test (última autorización: 2026-10-19 22:07 UTC)."),
 ])
-def test_connection_returns_only_safe_persisted_status(
-    connection_api, integration, connected, account_email,
-):
-    app, repository_read = connection_api
-    app.dependency_overrides[get_current_user] = lambda: "synthetic-user"
-    repository_read.return_value = integration
-    response = TestClient(app).get("/api/integrations/google-drive/connection")
-    assert response.status_code == 200
-    assert response.json() == {
-        "connected": connected,
-        "account_email": account_email,
-        "oauth_configured": True,
-    }
-    repository_read.assert_awaited_once_with("google_drive")
+def test_admin_status_shows_the_account_and_never_the_tokens(monkeypatch, capsys, integration, expected):
+    monkeypatch.setattr(admin, "_read_integration", AsyncMock(return_value=integration))
+    assert admin.main(["estado"]) == 0
+    output = capsys.readouterr().out
+    assert output.strip() == expected
+    assert "synthetic" not in output
 
 
+@pytest.mark.usefixtures("oauth_configured")
+def test_admin_connect_prints_a_signed_google_link(monkeypatch, capsys):
+    monkeypatch.setattr(admin, "_read_integration", AsyncMock(return_value=None))
+    assert admin.main(["conectar"]) == 0
+    link = capsys.readouterr().out.strip().splitlines()[-1]
+    url = urlparse(link)
+    assert (url.scheme, url.netloc) == ("https", "accounts.google.com")
+    query = parse_qs(url.query)
+    assert query["client_id"] == ["synthetic-client"]
+    assert "synthetic-client-secret" not in link
+    # The callback accepts exactly the state this command signs.
+    admin.GoogleDriveIntegrationService(repository=None)._verify_state(query["state"][0])
+
+
+@pytest.mark.usefixtures("oauth_configured")
 @pytest.mark.parametrize("missing", ["google_oauth_client_id", "google_oauth_client_secret"])
-def test_connection_reports_incomplete_oauth_without_exposing_values(
-    connection_api, monkeypatch, missing,
-):
-    app, _ = connection_api
-    app.dependency_overrides[get_current_user] = lambda: "synthetic-user"
+def test_admin_connect_refuses_without_oauth_credentials(monkeypatch, missing):
+    monkeypatch.setattr(admin, "_read_integration", AsyncMock(return_value=None))
     monkeypatch.setattr(settings, missing, None)
-    response = TestClient(app).get("/api/integrations/google-drive/connection")
-    assert response.status_code == 200
-    assert response.json() == {
-        "connected": False, "account_email": None, "oauth_configured": False,
-    }
+    with pytest.raises(SystemExit, match="GOOGLE_OAUTH_CLIENT"):
+        admin.main(["conectar"])
 
 
 @pytest.mark.parametrize("accept,is_html", [("text/html", True), ("application/json", False)])
@@ -95,7 +89,8 @@ def test_callback_confirms_in_spanish_in_browser_and_preserves_json(monkeypatch,
     if is_html:
         assert response.headers["content-type"].startswith("text/html")
         assert 'lang="es"' in response.text
-        assert 'href="/configuracion"' in response.text
+        assert 'href="/"' in response.text
+        assert "/configuracion" not in response.text
         assert "Google Drive conectado" in response.text
         assert "synthetic-code" not in response.text
         assert "owner@example.test" not in response.text

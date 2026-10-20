@@ -58,7 +58,7 @@ test("the first visit asks to review the screen, and Configuración holds only g
   await expect(page.getByRole("spinbutton", { name: "Ancho (px)", exact: true })).toHaveValue("1280")
   await expect(page.getByRole("spinbutton", { name: "Alto (px)", exact: true })).toHaveValue("1024")
   await expect(page.getByText("Pre-experimento y cuestionarios", { exact: true })).toHaveCount(0)
-  await expect(page.getByRole("spinbutton", { name: "Distancia a la pantalla (cm)", exact: true })).toHaveCount(0)
+  await expect(page.getByRole("spinbutton", { name: "Distancia (cm)", exact: true })).toHaveCount(0)
   await page.getByRole("spinbutton", { name: "Ancho (cm)", exact: true }).fill("53")
   await page.getByRole("button", { name: "Guardar configuración de pantalla", exact: true }).click()
   await expect(page.getByText("Configuración revisada.", { exact: true })).toBeVisible()
@@ -160,7 +160,7 @@ test("a pre-experiment is prepared tab by tab without a folder, then deleted", a
   await expect(dialog.getByRole("spinbutton", { name: "Alto (px)", exact: true })).toHaveValue("1024")
   await expect(dialog.getByRole("spinbutton", { name: "Ancho (cm)", exact: true })).toHaveValue("53")
   // The planned seating distance only backs up the eye tracker's own record, and starts empty.
-  await expect(dialog.getByRole("spinbutton", { name: "Distancia a la pantalla (cm)", exact: true })).toHaveValue("")
+  await expect(dialog.getByRole("spinbutton", { name: "Distancia (cm)", exact: true })).toHaveValue("")
   await dialog.getByRole("spinbutton", { name: "Ancho (px)", exact: true }).fill("1920")
 
   await dialog.getByRole("tab", { name: /^Cuestionarios/ }).click()

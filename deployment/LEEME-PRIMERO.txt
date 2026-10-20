@@ -11,8 +11,9 @@ LA PRIMERA VEZ: INSTALAR (una sola vez)
    cuando vuelvas a entrar en Windows.
 5. Si no hay credenciales de Google preparadas, la ventana te pedirá las dos
    que te dé el responsable del proyecto.
-6. Al terminar se abre NeuroDatics en el navegador. Inicia sesión con Google y,
-   en Configuración, conecta Google Drive.
+6. Al terminar se abre NeuroDatics en el navegador. Inicia sesión con Google.
+   La cuenta de Google Drive donde se guardan los archivos la define quien
+   administra la instalación (ver CONFIGURACION-GOOGLE.md, en _internal).
 
 Al instalar se descarga Docker Desktop y se aceptan sus condiciones de uso:
 https://www.docker.com/legal/docker-subscription-service-agreement/

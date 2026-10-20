@@ -196,10 +196,14 @@ try {
             $url = "http://localhost:$puerto"
             Wait-Aplicacion $url
             if (-not $SinAbrirNavegador) { Install-AccesoDirecto }
-            Write-Registro "Servicios listos en $url. Abre Configuración, inicia sesión con Google y comprueba la conexión de Drive."
+            Write-Registro "Servicios listos en $url."
+            $estadoDrive = Invoke-Nativo $docker ($composeArgs + @('exec', '-T', 'backend', 'python', '-m', 'neurodatics.modules.integrations.google_drive.admin', 'estado')) -PermitirError
+            if ($estadoDrive.Texto -match 'no está conectado') {
+                Write-Host 'Google Drive todavía no está conectado. Quien administra la instalación debe ejecutar _internal\scripts\conectar-drive.ps1 (ver CONFIGURACION-GOOGLE.md).' -ForegroundColor Yellow
+            }
             Write-Host 'Desde ahora, para usar NeuroDatics abre el icono «NeuroDatics» del escritorio o INICIAR.bat.' -ForegroundColor Green
             Write-Host 'Los datos se conservan. No hace falta repetir la instalación.'
-            if (-not $SinAbrirNavegador) { Start-ComoUsuario "$url/configuracion" }
+            if (-not $SinAbrirNavegador) { Start-ComoUsuario $url }
         }
     }
 } catch {

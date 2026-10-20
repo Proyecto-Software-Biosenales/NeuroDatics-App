@@ -78,9 +78,7 @@ Contiene el pre-experimento, la información de pantalla y los cuestionarios. En
 3. Pulse **Continuar con Google**.
 4. Elija la cuenta autorizada por la institución o el equipo de investigación.
 5. Vuelva a NeuroDatics cuando termine la autorización.
-6. Si la instalación usa Google Drive, abra **Configuración** y complete la conexión de almacenamiento.
-
-El inicio de sesión y la autorización de Google Drive son pasos distintos. La cuenta que autoriza Drive debe conservar acceso a los archivos existentes.
+El inicio de sesión no da acceso a la cuenta de Google Drive donde se guardan los archivos: esa cuenta la define la administración de la instalación.
 
 ### Edición local / estudiantes
 
@@ -252,19 +250,13 @@ La versión actual usa la sesión del investigador. No crea cuentas de participa
 
 ![Pre-experimento con participantes, pantalla y cuestionario](assets/screenshots/12-pre-experimento.png)
 
-## 11. Conectar Google Drive en servidor
+## 11. Google Drive en servidor
 
-En la edición servidor, abra **Configuración**.
+En la edición servidor los archivos de todos los usuarios se guardan en una sola cuenta de Google Drive. Esa cuenta la definen los administradores desde el equipo donde corre NeuroDatics; la aplicación no la muestra ni permite cambiarla.
 
-1. Revise el estado de la conexión.
-2. Pulse **Conectar Google Drive** si todavía no hay una cuenta autorizada.
-3. Complete el permiso en la pestaña de Google.
-4. Vuelva a NeuroDatics.
-5. Pulse **Comprobar conexión**.
+Si al cargar un experimento aparece un aviso sobre Google Drive, avise a quien administra NeuroDatics. La administración conecta o renueva la cuenta con `_internal\scripts\conectar-drive.ps1` (ver anexo A) y debe usar la misma cuenta para conservar el acceso a los archivos existentes.
 
-Cuando aparezca **Conexión guardada**, la autorización quedó registrada. La conexión se comparte entre los usuarios de esa base de datos. Para reconectar, seleccione la misma cuenta si necesita conservar acceso a los archivos existentes.
-
-En edición local esta sección no aparece: los archivos se conservan en el equipo y no se usa Drive.
+En edición local no se usa Drive: los archivos se conservan en el equipo.
 
 ## 12. Generar reportes
 
@@ -300,7 +292,7 @@ El reporte se organiza por dispositivo e incluye resumen, estadísticas y seccio
 | Falta un estímulo | Compruebe que la imagen o video exista en la carpeta y que el escenario tenga el archivo asociado. |
 | EEG muestra advertencias | Revise calidad, canales incompletos y artefactos antes de interpretar. |
 | No se habilita un reporte | Debe existir un participante, al menos un escenario de imagen y un dispositivo seleccionado. |
-| Google Drive no conecta | Compruebe la instalación, la configuración OAuth y que se usa la cuenta autorizada. |
+| Google Drive no conecta | Avise a la administración: comprueba la configuración OAuth y reconecta la cuenta autorizada desde el servidor. |
 | El procesamiento termina en `FAILED` | Lea el resumen y las advertencias; corrija los archivos y vuelva a intentar. |
 
 No comparta contraseñas, tokens, archivos `.env`, credenciales de Google ni datos identificables de participantes al pedir soporte.
@@ -364,7 +356,7 @@ Procedimiento resumido:
 3. Autorice WSL o reinicie Windows si el instalador lo solicita.
 4. Inicie el grupo `neurodatics` desde Docker Desktop o use `INICIAR.bat`.
 5. Abra `http://localhost:3000`.
-6. Configure OAuth y Google Drive según la entrega institucional.
+6. Configure OAuth según la entrega institucional y conecte la cuenta de Google Drive con `_internal\scripts\conectar-drive.ps1`.
 
 No elimine volúmenes para resolver un error sin respaldo previo. Antes de actualizar, conserve los datos y el archivo `.env`.
 

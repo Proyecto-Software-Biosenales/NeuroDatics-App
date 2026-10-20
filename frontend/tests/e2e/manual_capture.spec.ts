@@ -168,10 +168,6 @@ async function mockPlatform(page: Page, options: { authenticated?: boolean } = {
       await route.fulfill({ json: comparisonCharts })
       return
     }
-    if (pathname === "/api/integrations/google-drive/connection") {
-      await route.fulfill({ json: { connected: true, account_email: "almacenamiento-demo@neurodatics.local", oauth_configured: true } })
-      return
-    }
     if (pathname.endsWith("/pre-experiment")) {
       await route.fulfill({ json: {
         revision: 1,
@@ -251,7 +247,7 @@ test.describe("capturas del manual", () => {
 
     await page.goto("/configuracion")
     await expect(page.getByRole("heading", { name: "Configuración", exact: true })).toBeVisible()
-    await expect(page.getByText("Conexión guardada")).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole("spinbutton", { name: "Ancho (px)", exact: true })).toBeVisible({ timeout: 20_000 })
     await stable(page)
     await page.screenshot({ path: capturePath("06-configuracion.png"), fullPage: true })
   })

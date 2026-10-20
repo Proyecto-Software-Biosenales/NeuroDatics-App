@@ -65,7 +65,7 @@ export function describeFailure(error: unknown) {
   const friendly = toFriendlyErrorMessage(error)
   const cancelled = /cancelad|abort/i.test(friendly)
   const message = isGoogleSessionExpiredError(friendly)
-    ? `${friendly}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
+    ? `${friendly}. La conexión con Google Drive necesita renovarse: avisa a quien administra NeuroDatics.`
     : friendly
   return { cancelled, message }
 }

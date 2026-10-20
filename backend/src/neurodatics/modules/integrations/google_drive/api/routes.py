@@ -4,59 +4,23 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .....api.deps import get_db, get_current_user
-from .....config.settings import settings
+from .....api.deps import get_db
 from ..application.service import GoogleDriveIntegrationService
 from ..infrastructure.repository import SystemIntegrationRepository
-from .schemas import (
-    GoogleDriveAuthorizeResponse,
-    GoogleDriveCallbackResponse,
-    GoogleDriveConnectionResponse,
-)
+from .schemas import GoogleDriveCallbackResponse
 
 
-# Every route in this router is authenticated at the router level. The only
-# exception is the OAuth callback, which Google redirects the browser to and
-# therefore cannot carry a bearer token; it is registered on a separate,
-# unauthenticated router below and is protected instead by the HMAC-signed,
-# TTL-bounded `state` parameter it validates.
-router = APIRouter(
-    prefix="/integrations/google-drive",
-    tags=["integrations"],
-    dependencies=[Depends(get_current_user)],
-)
-
+# The shared Drive account is chosen by the administrators on the server
+# (`python -m neurodatics.modules.integrations.google_drive.admin`), never from
+# the application, so the only HTTP route left is Google's OAuth redirect. It
+# cannot carry a bearer token and is protected instead by the HMAC-signed,
+# TTL-bounded `state` that only that command issues.
 public_router = APIRouter(prefix="/integrations/google-drive", tags=["integrations"])
 
 
 def _service_from_db(db: AsyncSession) -> GoogleDriveIntegrationService:
     repository = SystemIntegrationRepository(db)
     return GoogleDriveIntegrationService(repository)
-
-
-@router.get("/connection", response_model=GoogleDriveConnectionResponse)
-async def google_drive_connection(db: AsyncSession = Depends(get_db)):
-    """Estado guardado de la conexión compartida, sin exponer credenciales."""
-    integration = await SystemIntegrationRepository(db).get_by_provider("google_drive")
-    return GoogleDriveConnectionResponse(
-        connected=bool(integration and integration.get("refresh_token")),
-        account_email=integration.get("account_email") if integration else None,
-        oauth_configured=bool(
-            settings.google_oauth_client_id and settings.google_oauth_client_secret
-        ),
-    )
-
-
-
-
-@router.get("/authorize", response_model=GoogleDriveAuthorizeResponse)
-async def authorize_google_drive(
-    db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user),
-):
-    service = _service_from_db(db)
-    authorization_url = service.build_authorization_url()
-    return GoogleDriveAuthorizeResponse(authorization_url=authorization_url)
 
 
 @public_router.get("/callback", response_model=GoogleDriveCallbackResponse)
@@ -101,9 +65,8 @@ async def google_drive_callback(
 <title>Google Drive conectado · NeuroDatics</title>
 <style>body{font:18px/1.6 system-ui,sans-serif;max-width:38rem;margin:12vh auto;padding:24px;color:#172033;background:#f5f7fb}main{background:white;padding:32px;border-radius:16px}a{color:#174db5}h1{font-size:1.6rem}</style>
 </head><body><main><h1>Google Drive conectado</h1>
-<p>Tu autorización se guardó correctamente. Ya puedes volver a NeuroDatics y cargar tus experimentos.</p>
-<p><a href="/configuracion">Volver a Configuración</a></p>
-<p>Si dejaste otra pestaña de NeuroDatics abierta, puedes cerrar esta ventana y pulsar «Comprobar conexión» allí.</p>
+<p>La autorización se guardó. NeuroDatics ya guarda los archivos de los proyectos en esta cuenta.</p>
+<p>Puedes cerrar esta ventana o <a href="/">abrir NeuroDatics</a>.</p>
 </main></body></html>""",
             headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
         )

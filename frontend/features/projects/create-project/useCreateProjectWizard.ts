@@ -583,7 +583,7 @@ export const useCreateProjectWizard = (
         wasCanceled
           ? null
           : showSessionHint
-            ? `${errorMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
+            ? `${errorMessage}. La conexión con Google Drive necesita renovarse: avisa a quien administra NeuroDatics.`
             : errorMessage
       );
 
@@ -864,7 +864,7 @@ export const useCreateProjectWizard = (
       setSaveNotice(null);
       setSaveError(
         showSessionHint
-          ? `${errorMessage}. Tu sesión de Google Drive puede haber expirado. Vuelve a conectar Google Drive.`
+          ? `${errorMessage}. La conexión con Google Drive necesita renovarse: avisa a quien administra NeuroDatics.`
           : (saveProgressMessage
               ? `No se pudo guardar el proyecto. Falló el paso: ${saveProgressMessage}`
               : errorMessage)

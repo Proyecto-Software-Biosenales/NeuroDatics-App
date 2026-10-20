@@ -19,10 +19,11 @@ async function signIn(page: Page) {
 }
 
 async function mockApi(page: Page) {
-  const state = { screen: LAB, confirmed: false, saved: [] as Screen[] }
+  const state = { screen: LAB, confirmed: false, saved: [] as Screen[], requests: [] as string[] }
   await page.route("**/api/**", async (route) => {
     const request = route.request()
     const path = new URL(request.url()).pathname
+    state.requests.push(path)
     if (path === "/api/settings/screen") {
       if (request.method() === "PUT") {
         state.screen = request.postDataJSON()
@@ -30,10 +31,6 @@ async function mockApi(page: Page) {
         state.confirmed = true
       }
       await route.fulfill({ json: { screen: state.screen, confirmed: state.confirmed } })
-      return
-    }
-    if (path === "/api/integrations/google-drive/connection") {
-      await route.fulfill({ json: { connected: true, account_email: "storage@example.test", oauth_configured: true } })
       return
     }
     await route.fulfill({ json: [] })
@@ -52,8 +49,10 @@ test("el primer ingreso avisa de revisar la pantalla y lleva a Configuración", 
   await expect(page).toHaveURL(/\/configuracion$/)
   await expect(notice).toHaveCount(0)
 
-  // Only global settings: the screen (laboratory default) and, on the server, Drive.
+  // Only global settings: the screen (laboratory default). The Drive account is the administrators' job.
   await expect(page.getByRole("spinbutton", { name: "Ancho (px)", exact: true })).toHaveValue("1280")
+  await expect(page.getByText("Google Drive", { exact: false })).toHaveCount(0)
+  expect(state.requests.filter((path) => path.includes("google-drive"))).toEqual([])
   await expect(page.getByRole("spinbutton", { name: "Alto (px)", exact: true })).toHaveValue("1024")
   await expect(page.getByText("Pre-experimento y cuestionarios", { exact: true })).toHaveCount(0)
   await expect(page.getByText("Comprueba que estos valores correspondan a tu pantalla", { exact: false })).toBeVisible()
@@ -65,7 +64,7 @@ test("el primer ingreso avisa de revisar la pantalla y lleva a Configuración", 
 
   // The model was a label nothing used, and the distance comes from each CSV: neither is asked here.
   await expect(page.getByRole("textbox", { name: "Modelo de pantalla", exact: true })).toHaveCount(0)
-  await expect(page.getByRole("spinbutton", { name: "Distancia a la pantalla (cm)", exact: true })).toHaveCount(0)
+  await expect(page.getByRole("spinbutton", { name: "Distancia (cm)", exact: true })).toHaveCount(0)
   await page.getByRole("spinbutton", { name: "Alto (px)", exact: true }).fill("1024")
   await page.getByRole("spinbutton", { name: "Ancho (cm)", exact: true }).fill("52.7")
   await page.getByRole("button", { name: "Guardar configuración de pantalla", exact: true }).click()

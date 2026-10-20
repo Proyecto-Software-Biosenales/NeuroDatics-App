@@ -165,7 +165,7 @@ def parse_markdown(text: str, st):
         "08  Revisar un proyecto",
         "09  Analizar en Dashboard",
         "10  Pre-experimento y cuestionarios",
-        "11  Conectar Google Drive en servidor",
+        "11  Google Drive en servidor",
         "12  Generar reportes",
         "13  Problemas frecuentes",
         "14  Antes de analizar o exportar",

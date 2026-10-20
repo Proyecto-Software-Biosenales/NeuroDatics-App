@@ -224,7 +224,7 @@ No requiere inicio de sesión con Google ni conexión a Internet para realizar e
 2. Use **Proyectos** para crear o administrar experimentos.
 3. Use **Dashboard** para consultar análisis.
 4. Use **Reportes** para generar documentos PDF.
-5. Use **Configuración** para gestionar pre-experimentos y, en la edición servidor, Google Drive.
+5. Use **Configuración** para revisar la pantalla del laboratorio.
 
 **Resultado esperado:** la página seleccionada se abre sin perder los datos guardados.
 
@@ -1347,7 +1347,7 @@ La siguiente tabla centraliza el diagnóstico inicial. La columna **Tipo** disti
 | --- | --- | --- | --- | --- |
 | La aplicación no abre | Sistema o infraestructura | Docker Desktop, el lanzador o un servicio no está activo; el puerto local está ocupado | Compruebe la edición utilizada, inicie la instalación según el Anexo A y vuelva a cargar la aplicación | Si el grupo `neurodatics` no inicia, un servicio permanece no saludable o el puerto sigue ocupado |
 | No puedo iniciar sesión | Sistema o infraestructura | Cuenta no autorizada, redirección bloqueada o configuración de Google incompleta | Compruebe la conexión, use la cuenta autorizada y repita `/login` | Si la cuenta correcta es rechazada o la autorización falla de forma persistente |
-| Google Drive no está conectado | Sistema o infraestructura | Cuenta no configurada, permiso revocado o configuración técnica incompleta | Abra `/configuracion`, conecte la cuenta y compruebe la conexión | Si faltan credenciales/configuración del proyecto o no se puede guardar la conexión |
+| Google Drive no está conectado | Sistema o infraestructura | Cuenta no configurada, permiso revocado o configuración técnica incompleta | Avise a quien administra NeuroDatics; la aplicación no permite cambiar la cuenta | Siempre: solo la administración conecta o renueva la cuenta (ver anexo A.5) |
 | La carpeta supera 500 MB | Entrada o acción del usuario | El tamaño de la selección excede el límite de carga | Reduzca la carpeta o divida el experimento según el protocolo; conserve los originales | Si una carpeta dentro del límite se rechaza por tamaño |
 | La estructura de la carpeta es ambigua o incompleta | Entrada o acción del usuario | No se confirmaron CSV, imágenes, vídeos o archivos de adquisición | Responda las preguntas de estructura y vuelva a cargar la carpeta completa | Si la estructura es válida y la interfaz no permite confirmarla |
 | Un sensor no tiene columnas compatibles | Datos del experimento | El archivo no corresponde al formato esperado o no contiene columnas reconocibles | Revise el archivo, el sensor seleccionado y los nombres de columnas; vuelva a cargar una fuente válida | Si el archivo cumple el formato acordado y sigue sin detectarse |
@@ -1388,26 +1388,21 @@ Para proteger los datos, no envíe contraseñas, tokens, archivos `.env` ni dato
 
 ### 23.3. Google Drive no está conectado
 
-**Ruta para acceder:** `/configuracion` > **Google Drive**.
+La cuenta de Google Drive que guarda los archivos la definen los administradores en el servidor; la aplicación no la muestra ni permite cambiarla.
 
 **Pasos:**
 
-1. Abra **Configuración**.
-2. Espere la comprobación de conexión.
-3. Pulse **Conectar Google Drive** si aún no hay cuenta.
-4. Autorice la cuenta en la pestaña de Google.
-5. Regrese a NeuroDatics.
-6. Pulse **Comprobar conexión**.
+1. Si al guardar o cargar un experimento aparece un aviso sobre Google Drive, avise a quien administra NeuroDatics.
+2. La administración conecta o renueva la cuenta como indica el anexo A.5.
+3. Vuelva a intentar la carga.
 
-**Resultado esperado:** aparece **Conexión guardada** y la cuenta de almacenamiento autorizada.
+**Resultado esperado:** la carga termina sin el aviso de Google Drive.
 
 **Posibles errores:**
 
 - Si falta la configuración de Google de la instalación, debe intervenir el responsable técnico.
-- Si el permiso expiró o fue revocado, reconecte la misma cuenta.
+- Si el permiso expiró o fue revocado, la administración debe reconectar la misma cuenta.
 - Usar otra cuenta puede impedir el acceso a archivos existentes.
-
-`[CAPTURA: 38 — sección Google Drive con conexión guardada y botones de comprobación/reconexión]`
 
 ### 23.4. Una carpeta no se puede cargar
 
@@ -1553,7 +1548,7 @@ El paquete no requiere instalar Node.js, Python, PostgreSQL ni Redis por separad
 4. En la bienvenida de Docker Desktop, acepte sus condiciones. No se requiere una cuenta de Docker Hub.
 5. Si la entrega incluye `.env`, consérvelo y utilice esa configuración. Si no lo incluye, el asistente crea secretos locales y solicita las credenciales de Google del proyecto.
 6. Proporcione las credenciales de Google al responsable técnico autorizado. No se obtienen automáticamente desde una cuenta personal.
-7. Cuando NeuroDatics se abra, inicie sesión con Google y entre a `/configuracion` para conectar Google Drive si esa instalación todavía no tiene una cuenta configurada.
+7. Cuando NeuroDatics se abra, inicie sesión con Google. Si la instalación todavía no tiene cuenta de Google Drive, conéctela como indica el anexo A.5.
 
 **Resultado esperado:** el asistente comprueba Windows, procesador, RAM, espacio, virtualización, WSL, Docker Desktop, Docker Compose, archivos, huellas SHA256, configuración, puerto e imágenes; carga las imágenes, aplica migraciones y espera la salud de los cuatro servicios.
 
@@ -1583,7 +1578,7 @@ Solo la interfaz publica el puerto `3000` en el equipo. La API, PostgreSQL y Red
 
 La edición servidor utiliza las variables de configuración de Google del proyecto, normalmente `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET`, junto con la configuración de almacenamiento que corresponda. El responsable técnico debe proporcionar y custodiar esas credenciales.
 
-Después del primer acceso, el propietario de la cuenta autorizada debe conectar Google Drive desde `/configuracion`. La cuenta elegida debe conservar permisos sobre los archivos existentes; cambiarla puede impedir el acceso a proyectos ya almacenados.
+La cuenta de Google Drive se comparte entre todos los usuarios y solo la define la administración desde el equipo donde corre NeuroDatics: la aplicación no ofrece esa opción. Con NeuroDatics iniciada, ejecute en la carpeta de la entrega `powershell -ExecutionPolicy Bypass -File _internal\scripts\conectar-drive.ps1`; el script muestra la cuenta actual y abre el enlace de Google, que debe aceptarse con la cuenta que guardará los archivos. Con `-Estado` solo consulta la cuenta. Fuera del instalador, el equivalente es `docker compose exec backend python -m neurodatics.modules.integrations.google_drive.admin conectar`. La cuenta elegida debe conservar permisos sobre los archivos existentes; cambiarla puede impedir el acceso a proyectos ya almacenados.
 
 No comparta `.env`, secretos JWT, contraseñas de base de datos, tokens ni credenciales OAuth. Para la configuración detallada de Google, consulte el archivo operativo `deployment/CONFIGURACION-GOOGLE.md` cuando esté incluido en la entrega.
 

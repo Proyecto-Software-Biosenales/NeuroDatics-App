@@ -34,6 +34,25 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
   llevaba también los cambios aún sin commit de Configuración y Google Drive y del eje de la pupila, así que el
   paquete los incluye.
 
+### Configuración y Google Drive
+
+- **La cuenta de Google Drive que guarda los archivos ya no se ve ni se cambia desde la aplicación.**
+  Configuración solo muestra la pantalla. La definen los administradores en el equipo donde corre NeuroDatics:
+  `_internal\scripts\conectar-drive.ps1` en la instalación con Docker (o
+  `python -m neurodatics.modules.integrations.google_drive.admin estado|conectar` dentro del backend). El
+  instalador avisa si aún no hay cuenta. Ver `deployment/CONFIGURACION-GOOGLE.md`.
+- **El backend tampoco la expone:** se retiraron `GET /api/integrations/google-drive/connection` y
+  `/authorize`, con los que cualquier usuario con sesión podía sustituir la cuenta compartida. Solo queda
+  `/callback`, que acepta únicamente el enlace firmado y con caducidad que emite el comando de administración.
+  `backend/tests/fixtures/route_inventory.json` pierde esas dos rutas por este motivo.
+- Si Drive falla al guardar un proyecto, el aviso pide contactar con quien administra NeuroDatics en lugar de
+  «Vuelve a conectar Google Drive».
+- La edición de estudiantes no cambia: ya no mostraba Drive. El paquete de estudiantes 1.11 ya se compiló con
+  este cambio en el árbol de trabajo. `verify.ps1` en verde (1231 pruebas del backend).
+- La captura `manual/assets/screenshots/06-configuracion.png` y el PDF del manual aún muestran la tarjeta de
+  Drive. No se pudieron regenerar: `frontend/tests/e2e/manual_capture.spec.ts` busca botones que ya cambiaron
+  de nombre («Crear nuevo proyecto» y el dashboard), así que hay que ponerlo al día antes.
+
 ### Dashboard
 
 - **El eje de la dilatación pupilar va de 0 al primer milímetro entero por encima del máximo** (antes podía
@@ -87,15 +106,37 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 - **Sensores utilizados (crear proyecto):** en la tarjeta marcada, la caja del icono y la etiqueta «Detectado»
   ya no se confunden con el fondo; icono, nombre y etiqueta empiezan en la misma línea, y «Electroencefalógrafo»
   cabe con su ⓘ dentro de la tarjeta.
-- **Pantalla del pre-experimento:** en la ventana de creación, las medidas físicas van en dos columnas para que
-  «Distancia a la pantalla (cm)» no se parta y su etiqueta quede a la altura de las demás; en la edición siguen
-  en tres.
+- **Pantalla del pre-experimento:** las tres medidas físicas van en una sola fila, también en la ventana de
+  creación. La distancia se llama ahora «Distancia (cm)» (su ⓘ dice que es la del participante a la pantalla),
+  así cabe en una línea y su etiqueta queda a la altura de las demás.
 - **Informes:** las opciones de Alcance, Dispositivo y Opciones del informe comparten el mismo diseño: el botón
   o la casilla quedan a la altura de la primera línea, «Un participante» lleva icono como «Resumen de todos los
   participantes», y en el móvil el ⓘ queda pegado a la última palabra en lugar de irse al borde.
 - **Proyectos:** un borrador con la carpeta sin procesar tiene el pie a la misma altura que las demás tarjetas y
   el mismo botón, «Retomar»; «Carpeta sin procesar» pasa a la fila de los dispositivos. «Procesando archivos»
   también se muestra en el pie.
+
+### Paquete de estudiantes 1.10
+
+`NeuroDatics-Estudiantes-1.10-win64.zip` (252 MiB), SHA-256
+`72B6310EE91410B6CC502A90737AB4B349CCDB7AA67DEC1497AC7DAFBC606C10`. Reemplaza al 1.9 (sin publicar) y trae las
+medidas físicas de la pantalla del pre-experimento en una sola fila, con «Distancia (cm)». Pasó la autoprueba, las
+ocho etapas del PostgreSQL embebido, la adopción de un servidor huérfano, el servicio real por HTTP, el navegador
+(7 de 7, con «Distancia (cm)» vacía al crear un pre-experimento), dos arranques simultáneos y el arranque del zip
+extraído en una ruta con tildes, con 0 conexiones fuera de loopback y ningún proceso de PostgreSQL al salir.
+Siguen pendientes la licencia de ffmpeg, la prueba en un portátil de estudiante real y el manejo de los datos de
+participantes.
+
+### Paquete de estudiantes 1.9
+
+`NeuroDatics-Estudiantes-1.9-win64.zip` (252 MiB), SHA-256
+`885FEF4B24DA6CCE10DB83D54276CAB2664C04162B66BCDB6721CDDD56608B38`. Reemplaza al 1.8 (sin publicar) y trae los
+cambios del dashboard: la escala de la dilatación pupilar desde 0, «Ajustar» y «Comparar participantes» en la barra
+de filtros. Pasó la autoprueba, las ocho etapas del PostgreSQL embebido, la adopción de un servidor huérfano, el
+servicio real por HTTP, el navegador (7 de 7, con «Ajustar» y un único botón de comparar), dos arranques
+simultáneos y el arranque del zip extraído en una ruta con tildes, con 0 conexiones fuera de loopback y ningún
+proceso de PostgreSQL al salir. Siguen pendientes la licencia de ffmpeg, la prueba en un portátil de estudiante
+real y el manejo de los datos de participantes.
 
 ### Paquete de estudiantes 1.8
 

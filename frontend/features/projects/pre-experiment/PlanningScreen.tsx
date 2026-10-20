@@ -88,16 +88,15 @@ export function PlanningScreen({
         icon={<Ruler aria-hidden />}
         title="Medidas físicas"
       >
-        {/* Three columns only where the distance fits on one line with its hint (the editor, not the
-            creation dialog): wrapped, its label would sit higher than the other two. */}
-        <div className="grid items-end gap-3 @md:grid-cols-2 @3xl:grid-cols-3">
+        {/* One row in the editor and the creation dialog; inputs align at the bottom if a label wraps. */}
+        <div className="grid items-end gap-3 @lg:grid-cols-3">
           {measure("width_cm", "Ancho (cm)", "cm")}
           {measure("height_cm", "Alto (cm)", "cm")}
           {measure(
             "viewing_distance_cm",
-            "Distancia a la pantalla (cm)",
+            "Distancia (cm)",
             "cm",
-            "Solo se usa si falla el registro de distancia del eye tracker, que es más preciso."
+            "Distancia del participante a la pantalla. Solo se usa si falla el registro de distancia del eye tracker, que es más preciso."
           )}
         </div>
       </Group>
