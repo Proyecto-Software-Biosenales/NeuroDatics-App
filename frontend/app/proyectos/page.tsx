@@ -79,8 +79,8 @@ export default function ProyectosPage() {
             </div>
           )}
 
-          {/* Projects grid or empty state */}
-          {!loading && (
+          {/* Projects grid or empty state; a failed load shows only its error, not "no projects" */}
+          {!loading && !error && (
             <>
               {hasProjects ? (
                 <>

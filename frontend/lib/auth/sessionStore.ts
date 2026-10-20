@@ -57,12 +57,31 @@ export function writeStoredAuthSession(nextSession: StoredAuthSession) {
   emitAuthSessionChanged()
 }
 
+/**
+ * Older versions kept the projects list in localStorage under this key, shared by every user of
+ * the browser. Nothing reads it any more; it is removed so a later user cannot find it.
+ */
+const LEGACY_PROJECTS_MIRROR_KEY = "neurodatics_projects"
+
+export function purgeLegacyProjectsMirror() {
+  if (!isBrowser()) {
+    return
+  }
+
+  try {
+    window.localStorage.removeItem(LEGACY_PROJECTS_MIRROR_KEY)
+  } catch {
+    // Storage can be blocked; there is nothing to clean then.
+  }
+}
+
 export function clearStoredAuthSession() {
   if (!isBrowser()) {
     return
   }
 
   window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY)
+  purgeLegacyProjectsMirror()
   setAnalyticsSession(null, null)
   emitAuthSessionChanged()
 }

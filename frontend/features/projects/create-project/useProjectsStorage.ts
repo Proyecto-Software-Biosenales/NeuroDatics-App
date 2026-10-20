@@ -5,8 +5,7 @@ import { toast } from "sonner"
 import type { Project } from "@/features/projects/types"
 import { ProjectsApi } from "@/features/projects/api/projectsApi"
 import { toProject } from "@/features/projects/projectMapping"
-
-const STORAGE_KEY = "neurodatics_projects"
+import { purgeLegacyProjectsMirror } from "@/lib/auth/sessionStore"
 
 const playStep1ReadySound = () => {
   try {
@@ -58,7 +57,6 @@ export const useProjectsStorage = () => {
       const backendProjects = await ProjectsApi.list()
       const formattedProjects: Project[] = backendProjects.map(toProject)
       setProjects(formattedProjects)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(formattedProjects))
     } catch {
       // Silent - do not overwrite error state
     }
@@ -66,35 +64,17 @@ export const useProjectsStorage = () => {
 
   // Load projects from backend on mount
   useEffect(() => {
+    // Older versions kept a copy of the list in this browser, shared by whoever signed in next.
+    purgeLegacyProjectsMirror()
     const loadProjects = async () => {
       try {
         setLoading(true)
         setError(null)
-        
-        // Fetch from backend
-        const backendProjects = await ProjectsApi.list()
-        
-        // Transform backend response to frontend format if needed
-        const formattedProjects: Project[] = backendProjects.map(toProject)
-        
-        setProjects(formattedProjects)
-        // Sync to localStorage for offline support
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(formattedProjects))
+        setProjects((await ProjectsApi.list()).map(toProject))
       } catch {
-        // If backend fails, try localStorage fallback
-        try {
-          const stored = localStorage.getItem(STORAGE_KEY)
-          if (stored) {
-            const parsed = JSON.parse(stored)
-            setProjects(Array.isArray(parsed) ? parsed : [])
-          } else {
-            setProjects([])
-          }
-          setError("No se pudieron cargar los proyectos.")
-        } catch {
-          setProjects([])
-          setError("No se pudieron cargar los proyectos.")
-        }
+        // With the API down the list is unknown: show the error, never a stored list.
+        setProjects([])
+        setError("No se pudieron cargar los proyectos.")
       } finally {
         setLoading(false)
       }
@@ -173,15 +153,9 @@ export const useProjectsStorage = () => {
   const addProject = (project: Project) => {
     setProjects((prev) => {
       const exists = prev.some((p) => p.id === project.id)
-      const next = exists
+      return exists
         ? prev.map((p) => (p.id === project.id ? project : p))
         : [project, ...prev]
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      } catch {
-        // ignore storage errors
-      }
-      return next
     })
   }
 
@@ -190,25 +164,12 @@ export const useProjectsStorage = () => {
     const deleteResult = await ProjectsApi.remove(id)
     // Then update local state
     setProjects((prev) => prev.filter((p) => p.id !== id))
-    // Sync to localStorage
-    try {
-      const updated = projects.filter((p) => p.id !== id)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-    } catch {
-      // ignore storage errors
-    }
 
     return deleteResult
   }
 
   const updateProject = (updatedProject: Project) => {
     setProjects((prev) => prev.map((p) => (p.id === updatedProject.id ? updatedProject : p)))
-    try {
-      const updated = projects.map((p) => (p.id === updatedProject.id ? updatedProject : p))
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-    } catch {
-      // ignore storage errors
-    }
   }
 
   return { projects, addProject, updateProject, removeProject, refreshProjects, loading, error }
