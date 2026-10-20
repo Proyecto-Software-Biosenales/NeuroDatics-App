@@ -14,6 +14,7 @@
     "test:browser": "node --test tests/hooks/*.test.mjs tests/components/*.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:comparison": "playwright test tests/e2e/comparison-dashboard.spec.ts",
+    "capture:manual": "playwright test -c playwright.manual.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

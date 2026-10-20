@@ -1,3 +1,6 @@
+// Takes the screenshots of manual/manual_usuario_neurodatics.md with the API mocked and synthetic data.
+// It writes into manual/assets/screenshots, so it is not part of `npm run test:e2e`: run it with
+// `npm run capture:manual` (see manual/README.md).
 import { test, expect, type Page } from "@playwright/test"
 import fs from "node:fs"
 import path from "node:path"
@@ -123,6 +126,10 @@ async function mockPlatform(page: Page, options: { authenticated?: boolean } = {
     const url = new URL(route.request().url())
     const pathname = url.pathname
 
+    if (pathname === "/api/settings/screen") {
+      await route.fulfill({ json: { screen: { width_px: 1920, height_px: 1080, width_cm: 53.1, height_cm: 29.9 }, confirmed: true } })
+      return
+    }
     if (pathname === "/api/projects" || pathname === "/api/projects/") {
       await route.fulfill({ json: [project, draftProject, archivedProject] })
       return
@@ -176,8 +183,9 @@ async function mockPlatform(page: Page, options: { authenticated?: boolean } = {
             { id: "planning-1", code: "P-001", name: "Participante 001", identification_document: "", gender: "No especificado", age: 29, notes: "Primera sesión." },
             { id: "planning-2", code: "P-002", name: "Participante 002", identification_document: "", gender: "No especificado", age: 34, notes: "" },
           ],
-          screen: { model: "Dell U2720Q", width_px: 3840, height_px: 2160, width_cm: 59.7, height_cm: 33.6, viewing_distance_cm: 65, notes: "Pantalla calibrada antes de la sesión." },
+          screen: { width_px: 3840, height_px: 2160, width_cm: 59.7, height_cm: 33.6, viewing_distance_cm: 65, notes: "Pantalla calibrada antes de la sesión." },
           notes: "Aplicar el mismo protocolo de iluminación en todas las sesiones.",
+          project_notes: [],
           questionnaires: {
             before: { enabled: true, title: "Cuestionario antes del experimento", questions: [{ id: "q-1", type: "multiple_choice", prompt: "¿Ha usado antes un dispositivo de seguimiento ocular?", required: true, options: [{ id: "yes", label: "Sí" }, { id: "no", label: "No" }] }] },
             after: { enabled: false, title: "Cuestionario después del experimento", questions: [] },
@@ -226,22 +234,23 @@ test.describe("capturas del manual", () => {
     await stable(page)
     await page.screenshot({ path: capturePath("02-proyectos.png"), fullPage: true })
 
-    await page.getByRole("button", { name: "Crear nuevo proyecto" }).first().click()
+    await page.getByRole("button", { name: "Crear proyecto", exact: true }).first().click()
     await expect(page.getByRole("dialog")).toBeVisible()
+    await expect(page.getByRole("button", { name: "Con datos", exact: true })).toBeVisible()
     await stable(page)
     await page.screenshot({ path: capturePath("03-crear-proyecto.png"), fullPage: true })
     await page.keyboard.press("Escape")
 
     await page.goto("/dashboard")
-    await expect(page.getByText("Promedio ambas pupilas")).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText("Estadísticas", { exact: true }).first()).toBeVisible({ timeout: 20_000 })
     await stable(page)
     await page.screenshot({ path: capturePath("04-dashboard.png"), fullPage: true })
 
     await page.goto("/reportes")
-    await expect(page.getByRole("heading", { name: "Reportes", exact: true })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Informes", exact: true })).toBeVisible()
     await page.getByRole("combobox").click()
     await page.getByText(project.name, { exact: true }).last().click()
-    await expect(page.getByText("Informe PDF de Eye Tracking")).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText("Informe PDF de Eye tracker")).toBeVisible({ timeout: 20_000 })
     await stable(page)
     await page.screenshot({ path: capturePath("05-reportes.png"), fullPage: true })
 
@@ -276,7 +285,7 @@ test.describe("capturas del manual", () => {
     await stable(page)
     await page.screenshot({ path: capturePath("09-dashboard-eeg.png"), fullPage: true })
 
-    await page.getByRole("button", { name: "Sensor Galvánico", exact: true }).click()
+    await page.getByRole("button", { name: "Sensor galvánico", exact: true }).click()
     await expect(page.getByText("Respuesta galvánica", { exact: true })).toBeVisible({ timeout: 20_000 })
     await stable(page)
     await page.screenshot({ path: capturePath("10-dashboard-gsr.png"), fullPage: true })
@@ -287,21 +296,21 @@ test.describe("capturas del manual", () => {
     await stable(page)
     await page.screenshot({ path: capturePath("11-dashboard-comparativas.png"), fullPage: true })
 
-    await page.goto("/configuracion?proyecto=manual-demo")
-    await page.getByRole("button", { name: /Pantalla y datos relevantes/ }).click()
-    await expect(page.locator('input[value="Dell U2720Q"]')).toBeVisible({ timeout: 20_000 })
-    await page.getByRole("button", { name: /Pantalla y datos relevantes/ }).scrollIntoViewIfNeeded()
+    await page.goto("/proyectos/editar?proyecto=manual-demo")
+    await expect(page.getByRole("heading", { name: project.name, exact: true })).toBeVisible({ timeout: 20_000 })
+    await page.getByRole("tab", { name: /^Pantalla/ }).click()
+    await expect(page.getByRole("spinbutton", { name: "Ancho (px)", exact: true })).toHaveValue("3840", { timeout: 20_000 })
     await stable(page)
     await page.screenshot({ path: capturePath("12-pre-experimento.png"), fullPage: false })
 
     await page.goto("/reportes")
-    await expect(page.getByRole("heading", { name: "Reportes", exact: true })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Informes", exact: true })).toBeVisible()
     await page.getByRole("combobox").click()
     await page.getByText(project.name, { exact: true }).last().click()
     await expect(page.getByText("Todos los dispositivos", { exact: true })).toBeVisible({ timeout: 20_000 })
     await page.getByText("Resumen de todos los participantes", { exact: true }).click()
     await page.getByText("Todos los dispositivos", { exact: true }).click()
-    await expect(page.getByText("Descargar reportes (ZIP)", { exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText("Descargar informes (ZIP)", { exact: true })).toBeVisible({ timeout: 20_000 })
     await stable(page)
     await page.screenshot({ path: capturePath("13-reportes-grupo.png"), fullPage: true })
   })
