@@ -5,7 +5,6 @@
 **/.env
 **/.env.*
 !**/.env.example
-NeuroDatics-Docker
 
 # Google and OAuth credential files
 *service-account*.json
@@ -29,7 +28,7 @@ frontend/out/
 frontend/build/
 
 # Local app data and caches
-data/
+/data/
 backend/data/
 output/
 
@@ -61,3 +60,12 @@ CLAUDE.md
 
 # Manual en PDF (se entrega como adjunto; se genera con manual/build_manual_pdf.py)
 manual/*.pdf
+
+# Coverage, test reports and other editors
+.mypy_cache/
+.coverage
+htmlcov/
+coverage/
+playwright-report/
+test-results/
+.idea/

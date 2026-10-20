@@ -96,8 +96,11 @@ detiene en la primera puerta que falla. En orden:
 El trinquete de ESLint no se sube para que pase un cambio. `verify.ps1` acepta `-MaxLintErrors` y
 `-MaxLintWarnings` para poder bajarlo, no para relajarlo.
 
-Las pruebas de Playwright (`frontend/tests/e2e/`) y la prueba de la edición de estudiantes no forman parte de
-`verify.ps1`; se ejecutan aparte (ver más abajo).
+Las pruebas de Playwright (`frontend/tests/e2e/`) y la prueba de la edición de estudiantes **no forman parte de
+`verify.ps1`**: tardan demasiado para una puerta que se pasa en cada cambio.
+Ejecuta `npm run test:e2e` (desde `frontend`) cuando el cambio toque pantallas, formularios,
+navegación o lo que se ve en el dashboard, y siempre antes de entregar; la prueba de estudiantes la lanza
+`student/run-frozen.ps1` al reconstruir el paquete (ver más abajo).
 
 ## Los contratos de `backend/.importlinter`
 
@@ -161,6 +164,7 @@ npm run typecheck               # tsc --noEmit
 npm run lint                    # eslint
 npm run test:e2e                # Playwright sobre tests/e2e (levanta el servidor de desarrollo)
 npm run test:e2e:comparison     # solo el panel de comparación
+npm run capture:manual          # no es una prueba: regenera las capturas del manual (ver manual/README.md)
 ```
 
 ### Dónde vive cada prueba del frontend
