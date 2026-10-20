@@ -15,8 +15,8 @@ seleccionados y los Parquet derivados en el almacenamiento de objetos, y publica
 base de datos. La solicitud HTTP permanece abierta hasta que ese trabajo y su limpieza terminan.
 
 Hay **una sola implementación de ingesta**, usada tanto por la creación como por la edición de un
-proyecto. No hay cola ni worker de subidas: el modelo histórico `processing_jobs` y su repositorio
-siguen existiendo, pero el endpoint de subida no crea ni ejecuta esos trabajos. Redis sirve a la caché
+proyecto. No hay cola ni worker de subidas: la tabla histórica `processing_jobs` sigue en el esquema
+sin uso, y el endpoint de subida no crea ni ejecuta esos trabajos. Redis sirve a la caché
 de analítica; no hace durable la subida.
 
 El almacenamiento de objetos lo elige

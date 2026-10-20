@@ -150,7 +150,7 @@ class ProjectSensor(BaseModel):
 
 
 class ProcessingJob(BaseModel):
-    """Tracks background processing jobs for projects."""
+    """Solo esquema: la tabla existe (migración 016) pero nada la lee ni la escribe; se borrará con una migración."""
     __tablename__ = "processing_jobs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
