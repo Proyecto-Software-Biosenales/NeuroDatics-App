@@ -5,6 +5,14 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Paquete de estudiantes 1.12
+
+`delivery/NeuroDatics-Estudiantes-1.12-win64.zip` (252 MiB, 4067 archivos), SHA-256
+`47EBA169CB2CB3298A3D9EFE99D3A0858AB2C2DAF3E2661D0D238094762A9580`, compilado el 20 de octubre tras `8f8154f`:
+incluye todo lo que sigue en esta sección. `run-frozen.ps1`: selftest, pg-check, pg-adopt, http-check y carrera de
+arranques correctos; navegador 7/7 `passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El
+zip extraído en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 bloqueos de publicación de la 1.10.
+
 ### Seguridad y fallos
 
 - **Estudiantes:** la aplicación ya no intenta abrir rutas de red (`\\equipo\carpeta`) que lleguen en la
@@ -46,6 +54,13 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
   servidor ya no trae scripts para Linux.
 - Pruebas: `verify.ps1` en verde (1248 pruebas del backend, 25 snapshots sin regenerar, ESLint 0/6) y 50 pruebas
   e2e.
+- **Paquete de estudiantes 1.12** (`delivery/NeuroDatics-Estudiantes-1.12-win64.zip`, 252 MiB, SHA-256
+  `47EBA169CB2CB3298A3D9EFE99D3A0858AB2C2DAF3E2661D0D238094762A9580`). Trae todo lo anterior de «Sin publicar»
+  (incluidos «Ajustar» y el aviso de escenario, que no estaban en la 1.11). `run-frozen.ps1`: las ocho etapas del
+  PostgreSQL embebido, la adopción de un servidor huérfano, el servicio real por HTTP, el navegador 7/7 `passed`,
+  dos arranques simultáneos sin trazas y el zip extraído en una ruta con tildes; 0 conexiones fuera de loopback y
+  0 procesos de PostgreSQL al salir. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg, prueba en
+  un portátil real, datos de participantes).
 
 ### Un solo aviso para «Selecciona un escenario específico»
 
@@ -72,8 +87,7 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 - Pruebas: `features/analytics/fittedAxis.test.mjs` (escala ajustada) y `tests/e2e/fit-axis.spec.ts` (las
   cuatro gráficas a 1536×730 y 390 px, sin desplazamiento horizontal); la prueba sin conexión de estudiantes
   pulsa «Ajustar» en la GSR. `verify.ps1` en verde.
-- **Paquete de estudiantes no reconstruido:** el árbol de trabajo tenía a la vez otros cambios sin terminar y
-  se acordó esperar a que acabaran para que el paquete no los incluyera a medias.
+- Llega a los estudiantes con el paquete 1.12 (ver «Limpieza del repositorio»).
 
 ### Mirada: pérdidas del ojo y su rampa
 
