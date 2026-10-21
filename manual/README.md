@@ -12,7 +12,7 @@ cd frontend
 npm run capture:manual
 ```
 
-Sobrescribe las imágenes de `manual/assets/screenshots/`. Si el puerto 3000 está ocupado, define
+Sobrescribe las imágenes de `manual/assets/screenshots/`. Si el puerto 3100 está ocupado, define
 `PLAYWRIGHT_PORT` antes de ejecutarlo.
 
 ## PDF

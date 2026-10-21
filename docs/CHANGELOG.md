@@ -5,6 +5,48 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Seguridad y fallos
+
+- **Estudiantes:** la aplicación ya no intenta abrir rutas de red (`\\equipo\carpeta`) que lleguen en la
+  dirección de una página. Antes, una web visitada con NeuroDatics abierto podía hacer que Windows enviara la
+  identidad del estudiante a otro equipo.
+- **Estudiantes:** la caché de vídeos y fotogramas se guarda en la carpeta de datos de NeuroDatics y se limpia
+  sola. Antes crecía sin límite en `C:\data`, que se puede borrar a mano.
+- **Servidor:** nueva opción `AUTH_ALLOWED_EMAILS` para decidir qué cuentas de Google pueden entrar (vacía =
+  todas, como hasta ahora). `deployment/CONFIGURACION-GOOGLE.md` recomienda además dejar la app de Google en modo
+  de prueba con las cuentas del laboratorio.
+- **Servidor:** Next.js 16.4.2, que corrige varios fallos de seguridad del servidor web.
+- Un proyecto ajeno responde «no encontrado» antes de reservarse: nadie puede bloquear la edición de un proyecto
+  que no es suyo.
+- Los errores de Google ya no se muestran tal cual y el registro ya no guarda los parámetros de las direcciones.
+  Los errores internos y las secciones de informe que fallan dejan en el registro dónde fallaron, sin datos del
+  participante.
+- Renombrar un proyecto con carpeta en Drive ya no congela el servidor mientras responde Google.
+- Si la lista de proyectos no se puede cargar, se muestra solo el aviso de error. Ya no se guarda una copia de la
+  lista en el navegador, que otro usuario del mismo equipo podía ver.
+
+### Proyectos
+
+- Las fechas de los proyectos se ven igual en todas las pantallas, también justo después de crear uno.
+- Los errores al guardar un proyecto dicen el motivo, y el aviso de la conexión con Google Drive ya no aparece en
+  NeuroDatics Estudiantes.
+
+### Limpieza del repositorio
+
+- Se retiró código sin uso del backend y del frontend, y dos rutas que nadie llamaba (`PUT
+  /api/projects/{id}/scenaries` y `DELETE /api/projects/{id}/files/experiment-zip`): la colocación del estímulo
+  viaja con la subida y el ZIP se reemplaza subiéndolo de nuevo. `route_inventory.json` pasa de 52 a 50
+  operaciones por este motivo.
+- Se retira `auth_users.json` y la variable `AUTH_USER_STORE_PATH`: los usuarios viven solo en la base de datos.
+- El servidor instala las mismas versiones de pyarrow (25) y Pillow (12) con las que se prueba la aplicación.
+- Un solo manual de usuario, `manual/manual_usuario_neurodatics.md`, al día con la interfaz; capturas
+  regeneradas con `npm run capture:manual` (fuera de las pruebas e2e). El PDF se genera según `manual/README.md`
+  y se entrega como adjunto, fuera de git.
+- La documentación técnica refleja que Google Drive se administra solo desde el servidor. La entrega del
+  servidor ya no trae scripts para Linux.
+- Pruebas: `verify.ps1` en verde (1248 pruebas del backend, 25 snapshots sin regenerar, ESLint 0/6) y 50 pruebas
+  e2e.
+
 ### Un solo aviso para «Selecciona un escenario específico»
 
 - **Las gráficas que necesitan un escenario concreto muestran el mismo aviso con «Todos los escenarios»:** un
@@ -77,9 +119,6 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
   «Vuelve a conectar Google Drive».
 - La edición de estudiantes no cambia: ya no mostraba Drive. El paquete de estudiantes 1.11 ya se compiló con
   este cambio en el árbol de trabajo. `verify.ps1` en verde (1231 pruebas del backend).
-- La captura `manual/assets/screenshots/06-configuracion.png` y el PDF del manual aún muestran la tarjeta de
-  Drive. No se pudieron regenerar: `frontend/tests/e2e/manual_capture.spec.ts` busca botones que ya cambiaron
-  de nombre («Crear nuevo proyecto» y el dashboard), así que hay que ponerlo al día antes.
 
 ### Dashboard
 
