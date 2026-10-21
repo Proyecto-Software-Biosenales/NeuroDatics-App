@@ -5,6 +5,17 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Paquete de estudiantes 1.13
+
+`delivery/NeuroDatics-Estudiantes-1.13-win64.zip` (252 MiB, 4067 archivos), SHA-256
+`0D29744D608EA371D6CB53106ABE542837EBAB68784DF850DCFBA78B078EE2A8`, compilado el 21 de octubre tras `fb2373a`.
+Reemplaza a la 1.12 (sin publicar) y añade las correcciones de la revisión final: la limpieza de la caché de
+vídeo al arrancar y la lista de correos permitidos aplicada a las sesiones abiertas. `run-frozen.ps1`: selftest,
+las ocho etapas del PostgreSQL embebido, pg-adopt, http-check y carrera de arranques correctos; navegador 7/7
+`passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído en una ruta con tildes
+arranca en 10,1 s. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg, prueba en un portátil real,
+datos de participantes).
+
 ### Paquete de estudiantes 1.12
 
 `delivery/NeuroDatics-Estudiantes-1.12-win64.zip` (252 MiB, 4067 archivos), SHA-256
@@ -80,7 +91,7 @@ prueba en un portátil real, datos de participantes).
 - Pruebas: `features/analytics/fittedAxis.test.mjs` (escala ajustada) y `tests/e2e/fit-axis.spec.ts` (las
   cuatro gráficas a 1536×730 y 390 px, sin desplazamiento horizontal); la prueba sin conexión de estudiantes
   pulsa «Ajustar» en la GSR. `verify.ps1` en verde.
-- Llega a los estudiantes con el paquete 1.12.
+- Llega a los estudiantes con el paquete 1.12 (y la 1.13).
 
 ### Mirada: pérdidas del ojo y su rampa
 
