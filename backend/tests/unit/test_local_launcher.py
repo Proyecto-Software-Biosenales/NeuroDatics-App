@@ -394,3 +394,18 @@ def test_a_folder_that_is_never_released_still_fails_loudly(tmp_path, monkeypatc
 
     with pytest.raises(PermissionError):
         postgres._replace_when_released(source, tmp_path / "pgdata", attempts=3, pause=0)
+
+
+def test_the_media_cache_sweep_at_start_never_stops_the_app(monkeypatch):
+    from neurodatics.modules.projects.infrastructure import media_cache_janitor
+
+    calls = []
+    monkeypatch.setattr(media_cache_janitor, "prune_media_caches", lambda: calls.append("swept"))
+    launcher.sweep_media_caches()
+    assert calls == ["swept"]
+
+    def broken():
+        raise OSError("cache folder is locked")
+
+    monkeypatch.setattr(media_cache_janitor, "prune_media_caches", broken)
+    launcher.sweep_media_caches()  # logged, not raised

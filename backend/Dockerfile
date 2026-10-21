@@ -36,4 +36,4 @@ ENV PYTHONPATH=/app/src
 EXPOSE 8000
 
 # ---- Start (with automatic migrations - verbose) ----
-CMD sh -c "echo 'Running Alembic migrations...' && alembic upgrade head && echo 'Migrations complete. Starting Uvicorn...' && uvicorn neurodatics.main:app --host 0.0.0.0 --port 8000"
+CMD sh -c "echo 'Running Alembic migrations...' && alembic upgrade head && echo 'Migrations complete. Starting Uvicorn...' && uvicorn neurodatics.main:app --host 0.0.0.0 --port 8000 --no-access-log"

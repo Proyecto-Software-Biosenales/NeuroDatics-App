@@ -183,3 +183,32 @@ def test_empty_authorization_code_is_validation_error(google_auth):
     client, outbound, _ = google_auth
     assert client.post('/api/auth/google/authorize', json={'code': ''}).status_code == 422
     outbound.post.assert_not_awaited()
+
+
+@pytest.mark.parametrize('email, allowed', [
+    ('stranger@example.test', False),
+    (None, False),
+    ('OTRA@example.test', True),
+], ids=['removed-from-the-list', 'no-address', 'still-on-the-list'])
+def test_an_open_session_follows_the_allowed_emails_too(monkeypatch, email, allowed):
+    import asyncio
+
+    from fastapi import HTTPException
+    from fastapi.security import HTTPAuthorizationCredentials
+
+    from neurodatics.config import security
+
+    token = security.create_access_token(subject=str(uuid.uuid4()), email=email, name='Synthetic')
+    credentials = HTTPAuthorizationCredentials(scheme='Bearer', credentials=token)
+    monkeypatch.setattr(settings, 'auth_allowed_emails', LAB_EMAILS)
+
+    if allowed:
+        assert asyncio.run(security.get_current_user_id(credentials))
+    else:
+        with pytest.raises(HTTPException) as refused:
+            asyncio.run(security.get_current_user_id(credentials))
+        assert refused.value.status_code == 401
+
+    # An empty list keeps every signed-in account, as before the option existed.
+    monkeypatch.setattr(settings, 'auth_allowed_emails', '')
+    assert asyncio.run(security.get_current_user_id(credentials))

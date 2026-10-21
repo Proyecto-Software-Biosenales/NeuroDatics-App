@@ -53,6 +53,16 @@ Con ese `.env`, INSTALAR no pregunta nada. Sin él, pide una vez las dos credenc
 
 `delivery/NeuroDatics-App/.env` guarda la configuración real de la instalación de esta máquina: la contraseña de PostgreSQL y el secreto JWT, entre otras claves. Coincide con la del repositorio y usa el mismo proyecto Compose (`neurodatics`) y los mismos volúmenes, así que arrancar la entrega aquí sustituye los contenedores del stack de desarrollo, conservando sus datos. Nunca debe viajar en un zip, en un correo ni en una copia del repositorio. Por eso `delivery/` está en `.gitignore`: si alguna vez necesitas compartir el árbol de la entrega, saca ese archivo antes y entrégalo por un canal aparte al responsable.
 
+## Al actualizar desde una versión con `auth_users.json`
+
+Las versiones anteriores guardaban una copia de los usuarios (correo, nombre e identificador de Google) en
+`/data/auth_users.json`, dentro del volumen del backend. Ya no se lee ni se escribe: los usuarios están solo en
+la base de datos. Tras actualizar, bórrala con los servicios en marcha:
+
+```powershell
+docker exec neurodatics-backend-1 rm -f /data/auth_users.json
+```
+
 ## Verificación
 
 ```powershell

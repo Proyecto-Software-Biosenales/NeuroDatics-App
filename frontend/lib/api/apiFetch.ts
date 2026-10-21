@@ -98,6 +98,8 @@ type ApiRequestInit = RequestInit & {
 function redirectToLogin(message = SESSION_EXPIRED_MESSAGE): never {
   clearStoredAuthSession();
   if (typeof window !== "undefined") {
+    // A full page load on purpose: it drops every in-memory cache of the signed-out user.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/login";
   }
   throw new Error(message);

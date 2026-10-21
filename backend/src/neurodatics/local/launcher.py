@@ -167,6 +167,16 @@ def migrate() -> dict:
     return {"head": head, "seconds": round(time.perf_counter() - started, 2)}
 
 
+def sweep_media_caches() -> None:
+    """Best effort: a failed sweep must never stop the app from starting."""
+    try:
+        from neurodatics.modules.projects.infrastructure.media_cache_janitor import prune_media_caches
+
+        prune_media_caches()
+    except Exception:
+        traceback.print_exc()
+
+
 def on_console_close(stop: Callable[[], None], finished: threading.Event) -> None:
     """Shut the database down cleanly when the student closes the console window.
 
@@ -215,6 +225,8 @@ def serve(args: argparse.Namespace, pkg: pathlib.Path, data_root: pathlib.Path, 
             offline_guard.install()
             blocked = offline_guard.BLOCKED
         print(f"Migraciones: {migrate()}", flush=True)
+        # Otherwise the video caches only shrink after the next upload.
+        threading.Thread(target=sweep_media_caches, name="media-cache-sweep", daemon=True).start()
 
         import uvicorn
 

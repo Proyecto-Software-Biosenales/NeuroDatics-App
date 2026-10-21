@@ -198,11 +198,13 @@ Abra **Dashboard** y seleccione un proyecto en el panel lateral. El primer senso
 - **Comparar participantes** abre una comparación de la gráfica actual entre los participantes del proyecto.
 - **Exportar informe** no está disponible en esta barra: los informes se generan en **Informes** (apartado 12).
 
+En las gráficas de líneas (dilatación pupilar, punto de mirada, distancia al dispositivo, sensor galvánico y densidad espectral del EEG), el botón **Ajustar** acerca el eje vertical a los valores de la gráfica en lugar de empezar en cero.
+
 ### Eye tracker
 
 Las vistas son:
 
-1. **Dilatación pupilar:** diámetro pupilar a lo largo del tiempo y sus estadísticas. El interruptor **Ajustar** acerca el eje vertical a los valores de la gráfica.
+1. **Dilatación pupilar:** diámetro pupilar a lo largo del tiempo y sus estadísticas.
 2. **Punto de mirada:** dónde miraba la persona en cada momento.
 3. **Histograma de fijaciones:** cuántas fijaciones hubo según su duración.
 4. **Mapa de calor:** zonas del estímulo donde más se detuvo la mirada.

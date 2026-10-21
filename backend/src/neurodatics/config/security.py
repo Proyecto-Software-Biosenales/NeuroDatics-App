@@ -108,4 +108,13 @@ async def get_current_user_id(credentials: Optional[HTTPAuthorizationCredentials
             detail="Invalid token: missing subject (sub) claim",
         )
 
+    # AUTH_ALLOWED_EMAILS applies to sessions already open too: a token issued before the
+    # list changed must not keep an account in for the rest of its lifetime.
+    allowed = settings.allowed_sign_in_emails
+    if allowed and (payload.get("email") or "").strip().lower() not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account is no longer allowed to sign in",
+        )
+
     return user_id

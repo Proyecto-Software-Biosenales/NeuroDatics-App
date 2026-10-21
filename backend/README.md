@@ -58,8 +58,8 @@ necesita un valor por defecto que funcione en local, o establecerse en `apply_en
   firmado que emite el comando de administración (`python -m neurodatics.modules.integrations.google_drive.admin
   estado|conectar`, que se ejecuta en el servidor): la aplicación no ofrece ruta para ver ni cambiar la cuenta.
   **Solo en la edición servidor.**
-- `projects`: alta, consulta, modificación y borrado del proyecto; carga, progreso, cancelación y borrado del
-  ZIP; finalización; sensores, AOIs, participantes, escenarios y pre-experimento (con su exportación y sus
+- `projects`: alta, consulta, modificación y borrado del proyecto; carga, progreso y cancelación del ZIP
+  (para reemplazarlo se sube de nuevo); finalización; sensores, AOIs, participantes, escenarios y pre-experimento (con su exportación y sus
   respuestas); imágenes y vistas previas de los archivos.
 - `projects/{project_id}/analytics`: series temporales y estadísticas por señal (mirada, pupila, GSR,
   distancia, EEG), fijaciones con su histograma y sensibilidad, mapa de calor, scanpath, AOIs, escenarios y

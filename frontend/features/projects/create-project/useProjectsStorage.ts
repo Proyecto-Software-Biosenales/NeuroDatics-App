@@ -57,6 +57,7 @@ export const useProjectsStorage = () => {
       const backendProjects = await ProjectsApi.list()
       const formattedProjects: Project[] = backendProjects.map(toProject)
       setProjects(formattedProjects)
+      setError(null)
     } catch {
       // Silent - do not overwrite error state
     }
@@ -122,6 +123,7 @@ export const useProjectsStorage = () => {
         }
 
         setProjects(nextProjects)
+        setError(null)
         projectsRef.current = nextProjects
         previousStatusByIdRef.current = new Map(
           nextProjects.map((p) => [p.id, normalizeIngestionStatus(p.ingestionStatus)])
@@ -151,6 +153,8 @@ export const useProjectsStorage = () => {
   }, [hasProcessingDraft])
 
   const addProject = (project: Project) => {
+    // The API just answered with this project, so an earlier load error no longer describes the page.
+    setError(null)
     setProjects((prev) => {
       const exists = prev.some((p) => p.id === project.id)
       return exists

@@ -21,25 +21,25 @@ client = TestClient(app, raise_server_exceptions=False)
 # placement travels with the upload and the ZIP is replaced by uploading again.
 # These routes must answer 404 (or 405 where another method shares the URL).
 RETIRED_ROUTES = [
-    ("GET", "/api/integrations/google-drive/connection", {}),
-    ("GET", "/api/integrations/google-drive/authorize", {}),
-    ("GET", "/api/integrations/google-drive/status", {}),
-    ("DELETE", "/api/integrations/google-drive", {}),
-    ("POST", "/api/integrations/google-drive/create-folder", {"folder_name": "x"}),
-    ("POST", "/api/integrations/google-drive/sync-folder", {"local_folder_path": "/data"}),
-    ("POST", "/api/integrations/google-drive/sync-folder-scheduled", {"local_folder_path": "/data"}),
-    ("GET", "/api/integrations/google-drive/sync-status/sync_1", {}),
-    ("GET", "/api/integrations/google-drive/sync-tasks", {}),
-    ("PUT", "/api/projects/00000000-0000-0000-0000-000000000001/scenaries", {}),
-    ("DELETE", "/api/projects/00000000-0000-0000-0000-000000000001/files/experiment-zip", {}),
+    ("GET", "/api/integrations/google-drive/connection", {}, 404),
+    ("GET", "/api/integrations/google-drive/authorize", {}, 404),
+    ("GET", "/api/integrations/google-drive/status", {}, 404),
+    ("DELETE", "/api/integrations/google-drive", {}, 404),
+    ("POST", "/api/integrations/google-drive/create-folder", {"folder_name": "x"}, 404),
+    ("POST", "/api/integrations/google-drive/sync-folder", {"local_folder_path": "/data"}, 404),
+    ("POST", "/api/integrations/google-drive/sync-folder-scheduled", {"local_folder_path": "/data"}, 404),
+    ("GET", "/api/integrations/google-drive/sync-status/sync_1", {}, 404),
+    ("GET", "/api/integrations/google-drive/sync-tasks", {}, 404),
+    ("PUT", "/api/projects/00000000-0000-0000-0000-000000000001/scenaries", {}, 404),
+    ("DELETE", "/api/projects/00000000-0000-0000-0000-000000000001/files/experiment-zip", {}, 405),
 ]
 
 
-@pytest.mark.parametrize("method,path,params", RETIRED_ROUTES)
-def test_retired_routes_are_not_mounted(method, path, params):
+# 405 only where the URL still serves another verb (the ZIP upload shares its URL).
+@pytest.mark.parametrize("method,path,params,expected", RETIRED_ROUTES)
+def test_retired_routes_are_not_mounted(method, path, params, expected):
     response = client.request(method, path, params=params)
-    # 405 when the path still serves other verbs (the ZIP upload shares its URL).
-    assert response.status_code in (404, 405)
+    assert response.status_code == expected
 
 
 def test_oauth_callback_stays_reachable_without_a_token():

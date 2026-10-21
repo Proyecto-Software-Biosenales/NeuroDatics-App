@@ -9,9 +9,11 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 `delivery/NeuroDatics-Estudiantes-1.12-win64.zip` (252 MiB, 4067 archivos), SHA-256
 `47EBA169CB2CB3298A3D9EFE99D3A0858AB2C2DAF3E2661D0D238094762A9580`, compilado el 20 de octubre tras `8f8154f`:
-incluye todo lo que sigue en esta sección. `run-frozen.ps1`: selftest, pg-check, pg-adopt, http-check y carrera de
-arranques correctos; navegador 7/7 `passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El
-zip extraído en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 bloqueos de publicación de la 1.10.
+incluye todo lo que sigue en esta sección (también «Ajustar» y el aviso de escenario, que no estaban en la 1.11).
+`run-frozen.ps1`: las ocho etapas del PostgreSQL embebido, selftest, pg-adopt, http-check y carrera de arranques
+correctos; navegador 7/7 `passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído
+en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg,
+prueba en un portátil real, datos de participantes).
 
 ### Seguridad y fallos
 
@@ -19,25 +21,22 @@ zip extraído en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 blo
   dirección de una página. Antes, una web visitada con NeuroDatics abierto podía hacer que Windows enviara la
   identidad del estudiante a otro equipo.
 - **Estudiantes:** la caché de vídeos y fotogramas se guarda en la carpeta de datos de NeuroDatics y se limpia
-  sola. Antes crecía sin límite en `C:\data`, que se puede borrar a mano.
+  al arrancar y después de cada subida. Antes crecía sin límite en `C:\data\video_cache` y
+  `C:\data\video_frame_cache`, que quien venga de una versión anterior puede borrar a mano.
 - **Servidor:** nueva opción `AUTH_ALLOWED_EMAILS` para decidir qué cuentas de Google pueden entrar (vacía =
-  todas, como hasta ahora). `deployment/CONFIGURACION-GOOGLE.md` recomienda además dejar la app de Google en modo
+  todas, como hasta ahora). Vale también para las sesiones ya abiertas: quitar un correo de la lista lo deja
+  fuera sin esperar a que caduque su sesión. `deployment/CONFIGURACION-GOOGLE.md` recomienda además dejar la app de Google en modo
   de prueba con las cuentas del laboratorio.
 - **Servidor:** Next.js 16.4.2, que corrige varios fallos de seguridad del servidor web.
 - Un proyecto ajeno responde «no encontrado» antes de reservarse: nadie puede bloquear la edición de un proyecto
   que no es suyo.
-- Los errores de Google ya no se muestran tal cual y el registro ya no guarda los parámetros de las direcciones.
+- Los errores de Google ya no se muestran tal cual, y ni el registro de la aplicación ni el de accesos del servidor
+  guardan los parámetros de las direcciones (códigos de participante, código de autorización de Drive).
   Los errores internos y las secciones de informe que fallan dejan en el registro dónde fallaron, sin datos del
   participante.
 - Renombrar un proyecto con carpeta en Drive ya no congela el servidor mientras responde Google.
 - Si la lista de proyectos no se puede cargar, se muestra solo el aviso de error. Ya no se guarda una copia de la
   lista en el navegador, que otro usuario del mismo equipo podía ver.
-
-### Proyectos
-
-- Las fechas de los proyectos se ven igual en todas las pantallas, también justo después de crear uno.
-- Los errores al guardar un proyecto dicen el motivo, y el aviso de la conexión con Google Drive ya no aparece en
-  NeuroDatics Estudiantes.
 
 ### Limpieza del repositorio
 
@@ -46,6 +45,7 @@ zip extraído en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 blo
   viaja con la subida y el ZIP se reemplaza subiéndolo de nuevo. `route_inventory.json` pasa de 52 a 50
   operaciones por este motivo.
 - Se retira `auth_users.json` y la variable `AUTH_USER_STORE_PATH`: los usuarios viven solo en la base de datos.
+  Al actualizar un servidor, el archivo antiguo se borra como indica `deployment/MANTENIMIENTO.md`.
 - El servidor instala las mismas versiones de pyarrow (25) y Pillow (12) con las que se prueba la aplicación.
 - Un solo manual de usuario, `manual/manual_usuario_neurodatics.md`, al día con la interfaz; capturas
   regeneradas con `npm run capture:manual` (fuera de las pruebas e2e). El PDF se genera según `manual/README.md`
@@ -54,13 +54,6 @@ zip extraído en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 blo
   servidor ya no trae scripts para Linux.
 - Pruebas: `verify.ps1` en verde (1248 pruebas del backend, 25 snapshots sin regenerar, ESLint 0/6) y 50 pruebas
   e2e.
-- **Paquete de estudiantes 1.12** (`delivery/NeuroDatics-Estudiantes-1.12-win64.zip`, 252 MiB, SHA-256
-  `47EBA169CB2CB3298A3D9EFE99D3A0858AB2C2DAF3E2661D0D238094762A9580`). Trae todo lo anterior de «Sin publicar»
-  (incluidos «Ajustar» y el aviso de escenario, que no estaban en la 1.11). `run-frozen.ps1`: las ocho etapas del
-  PostgreSQL embebido, la adopción de un servidor huérfano, el servicio real por HTTP, el navegador 7/7 `passed`,
-  dos arranques simultáneos sin trazas y el zip extraído en una ruta con tildes; 0 conexiones fuera de loopback y
-  0 procesos de PostgreSQL al salir. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg, prueba en
-  un portátil real, datos de participantes).
 
 ### Un solo aviso para «Selecciona un escenario específico»
 
@@ -74,7 +67,7 @@ zip extraído en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 blo
 - Pruebas: `verify.ps1` en verde; `comparison-dashboard`, `participant-comparison` y `ui-consistency` pasan;
   revisado en pantalla a 1536×730 y a 390 px con la API simulada.
 
-### «Ajustar» en todas las gráficas de líneas
+### «Ajustar» en más gráficas de líneas
 
 - **El botón «Ajustar» de la dilatación pupilar llega a la respuesta galvánica, la distancia al dispositivo,
   el punto de mirada y la densidad espectral del EEG.** Acerca el eje vertical a los valores de la gráfica en
@@ -87,7 +80,7 @@ zip extraído en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 blo
 - Pruebas: `features/analytics/fittedAxis.test.mjs` (escala ajustada) y `tests/e2e/fit-axis.spec.ts` (las
   cuatro gráficas a 1536×730 y 390 px, sin desplazamiento horizontal); la prueba sin conexión de estudiantes
   pulsa «Ajustar» en la GSR. `verify.ps1` en verde.
-- Llega a los estudiantes con el paquete 1.12 (ver «Limpieza del repositorio»).
+- Llega a los estudiantes con el paquete 1.12.
 
 ### Mirada: pérdidas del ojo y su rampa
 
@@ -156,6 +149,9 @@ zip extraído en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 blo
 
 ### Proyectos
 
+- Las fechas de los proyectos se ven igual en todas las pantallas, también justo después de crear uno.
+- Los errores al guardar un proyecto dicen el motivo, y el aviso de la conexión con Google Drive ya no aparece en
+  NeuroDatics Estudiantes.
 - La edición de un proyecto con carpeta **ya no tiene las pestañas Carpeta ni Dispositivos**: un proyecto
   queda unido a la carpeta y a los dispositivos con los que se creó. Para cambiarlos, se elimina el proyecto y
   se crea de nuevo.

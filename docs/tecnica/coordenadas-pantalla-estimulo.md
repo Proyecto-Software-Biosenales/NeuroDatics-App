@@ -267,10 +267,9 @@ procesado.
 `stimulus_placements_json` (lista de `{source_entry_path, placement}`), independiente de los campos de la
 calibración física. Debe llegar antes de procesar el CSV; las entradas mal formadas o parciales son `422`.
 
-Las respuestas de escenario y de detalle del proyecto incluyen `stimulus_placement`. En `ScenariosRequest`, el
-campo distingue omisión de `null`: en un proyecto sin procesar, un objeto crea o reemplaza, `null` borra y la
-omisión conserva la ubicación solo si el medio es el mismo. Con Parquet ya generados, cambiar el medio o la
-ubicación responde `409 stimulus_placement_requires_reprocessing`.
+Las respuestas de escenario y de detalle del proyecto incluyen `stimulus_placement`. La ubicación solo viaja con
+la subida: no hay una ruta aparte para cambiarla, así que corregirla es volver a subir la carpeta, que vuelve a
+procesar los Parquet.
 
 ### 5.2 Procedencia en la analítica
 
