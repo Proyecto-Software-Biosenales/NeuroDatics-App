@@ -243,7 +243,8 @@ def test_eeg_scale_is_scoped_to_each_recording_and_channel(tmp_path, empty_unit_
         assert first_psd["total_power"]["f4"] == pytest.approx(2)
         warnings = prepare_eeg(frame, None, ["f3", "f4"]).metadata["warnings"]
         assert any("Escala kilo" in warning for warning in warnings) == (unit == "kilo")
-        assert any("Unidad EEG no declarada" in warning for warning in warnings) == (unit in (None, "kilo"))
+        # uV is the fixed assumption for undeclared units: recorded, never a warning.
+        assert not any("Unidad EEG no declarada" in warning for warning in warnings)
         # Repeated analytics must not reapply the import multiplier.
         assert EEG.compute_psd(frame)["total_power"] == first_psd["total_power"]
         np.testing.assert_allclose(frame.f3, f3_source * factor, atol=1e-12)

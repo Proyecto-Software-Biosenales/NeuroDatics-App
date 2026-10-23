@@ -308,15 +308,13 @@ def prepare_eeg(
         )
     excluded = acquisition.get("excluded_channels", [])
     source_units = acquisition.get("source_units", {})
+    # The exports declare no unit; uV is the fixed working assumption, so an
+    # undeclared unit is recorded here but not raised as a warning.
     assumed = [
         c
         for c in channels
         if c in acquisition.get("assumed_uV_channels", []) or not source_units.get(c)
     ]
-    if assumed:
-        warnings.append(
-            "Unidad EEG no declarada: uV es una suposición heredada; confirmar calibración y referencia."
-        )
     if any(c in excluded for c in channels):
         warnings.append(
             "Canales con unidad ambigua excluidos: "

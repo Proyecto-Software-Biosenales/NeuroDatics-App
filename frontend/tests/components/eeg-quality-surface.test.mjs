@@ -65,7 +65,9 @@ const bundle = browserBundle(`
   const root = createRoot(document.getElementById('root'));
   window.mountFixture = clean =>
     root.render(<Fixture metadata={clean
-      ? { version: 'eeg-v2', warnings: [], source_units: { f3: 'uv' }, channels: {} }
+      // An undeclared unit is read as uV and raises nothing.
+      ? { version: 'eeg-v2', warnings: [], source_units: { f3: 'uv', c4: null },
+          assumed_uV_channels: ['c4'], channels: {} }
       : METADATA} />);
 `)
 

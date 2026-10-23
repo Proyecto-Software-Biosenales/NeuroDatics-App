@@ -108,7 +108,6 @@ def eeg() -> List[doc.Block]:
             [
                 "Sin eliminación automática de artefactos (parpadeos, movimiento, actividad muscular): revisar la señal antes de interpretar diferencias.",
                 "En escenarios de pocos segundos la resolución espectral es limitada y las estimaciones de banda son ruidosas.",
-                "Si la unidad del canal no se declaró al exportar, µV es una suposición y debe confirmarse la calibración.",
                 "Estas métricas no permiten, por sí solas, conclusiones diagnósticas, emocionales o de atención.",
             ],
             tone="warning",

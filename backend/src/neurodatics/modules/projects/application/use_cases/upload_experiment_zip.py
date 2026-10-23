@@ -103,6 +103,18 @@ def _parent_folder_path(source_entry_path: str) -> str:
     return "" if parent == "." else parent
 
 
+_MAX_CSV_FAILURE_REASONS = 3
+
+
+def _csv_failure_reason(exc: CsvProcessingError, local_csv_path: str) -> str:
+    # The caller already names the ZIP entry; the extraction temp path means
+    # nothing to the person reading the message.
+    reason = str(exc).replace(f" '{local_csv_path}'", "").strip()
+    if not reason.endswith("."):
+        reason += "."
+    return reason
+
+
 GOOGLE_DRIVE_NOT_CONNECTED_MESSAGE = (
     "Google Drive no esta conectado. Reconecta Google Drive antes de subir proyectos."
 )
@@ -313,12 +325,16 @@ class UploadExperimentZipUseCase:
                 raw_csv_entry_count = sum(
                     1 for entry in ingested_entries if entry.kind == "raw_csv"
                 )
+                csv_failure_reasons: List[str] = []
 
                 for csv_entry in (entry for entry in ingested_entries if entry.kind == "raw_csv"):
                     await self.lifecycle.check_canceled()
                     local_csv_path = extracted.files_by_entry_path.get(csv_entry.source_entry_path)
                     if not local_csv_path:
                         csv_summary["failed"] += 1
+                        csv_failure_reasons.append(
+                            f"{csv_entry.source_entry_path}: no se encontró dentro del ZIP"
+                        )
                         logger.warning("CSV file not found in extraction map: %s", csv_entry.source_entry_path)
                         continue
 
@@ -335,6 +351,10 @@ class UploadExperimentZipUseCase:
                         )
                     except CsvProcessingError as exc:
                         csv_summary["failed"] += 1
+                        csv_failure_reasons.append(
+                            f"{csv_entry.source_entry_path}: "
+                            + _csv_failure_reason(exc, local_csv_path)
+                        )
                         logger.warning("CSV processing failed for %s: %s", csv_entry.source_entry_path, exc)
                         continue
 
@@ -383,9 +403,17 @@ class UploadExperimentZipUseCase:
                 # previous generation's perfectly good cache sits unreachable. Raise
                 # so the transaction rolls back and readers keep the old generation.
                 if raw_csv_entry_count and not csv_summary["processed"]:
+                    # The reason is what lets a student fix the export; without it
+                    # the only copy lives in a log on their machine.
+                    shown_reasons = csv_failure_reasons[:_MAX_CSV_FAILURE_REASONS]
+                    hidden_count = len(csv_failure_reasons) - len(shown_reasons)
+                    detail = " ".join(shown_reasons)
+                    if hidden_count:
+                        detail += f" (y {hidden_count} más)"
                     raise CsvIngestionError(
                         f"Ninguno de los {raw_csv_entry_count} CSV del ZIP pudo procesarse; "
                         "no se reemplazaron los datos previos del proyecto."
+                        + (f" Motivo: {detail}" if detail else "")
                     )
 
                 all_detected_sensors = list(dict.fromkeys(all_detected_sensors))

@@ -32,7 +32,7 @@ import {
 import type { AoiMetricsData } from "../types"
 import { loadCardData, type CardResult } from "./cardData"
 import { participantComparisonLoader, useBlobUrl, useCardVisibility, useLoaderEntry, useStimulusImage, type ViewportTracker } from "./cardHooks"
-import { finiteDomain, paddedDomain, type Domain, type ScaleMode } from "./scales"
+import { finiteDomain, paddedDomain, withQuantiles, type Domain, type ScaleMode } from "./scales"
 import { cardCacheKey, CARD_POINT_BUDGET, EEG_CARD_POINT_BUDGET, KIND_INFO, type ParticipantComparisonSpec, type ZoomRange } from "./spec"
 import type { WindowTransfer } from "./timeAlignment"
 import { analyticsKey } from "../analyticsCache"
@@ -265,18 +265,20 @@ function resolveDomain(scaleMode: ScaleMode, common: Domain | undefined, own: Do
 function TemporalCard(props: ParticipantCardProps & { result: Temporal }) {
   const { spec, result, participant, scaleMode, commonDomains, commonX, pinTime, onPin, onReport, zoomMemory, initialZoom } = props
   const series = useMemo(() => temporalSeries(spec, result), [result, spec])
-  const ownY = useMemo(() => {
+  const { ownY, reportY } = useMemo(() => {
     const values: number[] = []
     for (const point of result.points) for (const item of series) values.push(point[item.key])
+    // The EEG view scales on a robust range so one artefact cannot flatten the rest.
+    let own: Domain | null = finiteDomain(values)
     if (spec.kind === "eeg_timeseries") {
-      // The EEG view scales on a robust range so one artefact cannot flatten the rest.
       const robust = robustDomain(values)
-      return robust ? { min: robust.min, max: robust.max } : null
+      own = robust ? { min: robust.min, max: robust.max } : null
     }
-    return finiteDomain(values)
+    // The common range pools every card's drawn values into one P1-P99.
+    return { ownY: own, reportY: own ? withQuantiles(own, values) : null }
   }, [result.points, series, spec.kind])
   const ownX = useMemo(() => finiteDomain([result.points[0]?.time, result.points.at(-1)?.time]), [result.points])
-  useReport(onReport, participant, ownY && ownX ? { y: ownY, x: ownX } : {})
+  useReport(onReport, participant, reportY && ownX ? { y: reportY, x: ownX } : {})
   const zoom = useCardZoom(zoomMemory, participant, initialZoom)
   const yDomain = resolveDomain(scaleMode, commonDomains.y, ownY)
   const xDomain = result.aligned && scaleMode === "common" && commonX ? commonX : null

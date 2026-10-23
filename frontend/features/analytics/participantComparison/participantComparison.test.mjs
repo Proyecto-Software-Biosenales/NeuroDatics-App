@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { ComparisonLoader, estimateWeight } from "./comparisonLoader.ts"
-import { describeCommonScale, mergeDomains } from "./scales.ts"
+import { commonDomain, describeCommonScale, mergeDomains, withQuantiles } from "./scales.ts"
 import {
   cardCacheKey,
   filterParticipants,
@@ -227,6 +227,27 @@ test("spatial restrictions are explained and scales state their coverage", () =>
   assert.match(describeCommonScale(12, 12), /los 12/)
   assert.deepEqual(mergeDomains([{ min: 1, max: 2 }, null, { min: -1, max: 1.5 }]), { min: -1, max: 2 })
   assert.ok(estimateWeight({ time: [1, 2, 3], power: { a: [[1, 2], [3, 4]] } }) >= 7 * 8)
+})
+
+test("the common range is the pooled P1-P99, so one artefact cannot flatten every card", () => {
+  const card = (values) => withQuantiles({ min: Math.min(...values), max: Math.max(...values) }, values)
+  const steady = Array.from({ length: 200 }, (_, index) => 3 + (index % 10) * 0.1)
+  const spiked = [...steady.slice(1), 40]
+  const domain = commonDomain([card(steady), card(spiked), card(steady)])
+  assert.ok(domain.min >= 3 && domain.min < 3.1, `min ${domain.min}`)
+  assert.ok(domain.max > 3.8 && domain.max <= 3.9 + 1e-9, `max ${domain.max}`)
+  // The union of extremes reaches the artefact.
+  assert.equal(mergeDomains([card(steady), card(spiked)]).max, 40)
+  // Every value weighs the same, so a card with more values counts for more.
+  const low = Array.from({ length: 900 }, () => 1)
+  const high = Array.from({ length: 100 }, () => 2)
+  const weighted = commonDomain([card(low), card(high)])
+  assert.ok(Math.abs(weighted.min - 1) < 1e-9 && Math.abs(weighted.max - 2) < 1e-9, JSON.stringify(weighted))
+  // Ranges without a summary (histograms, colour scales) still merge.
+  assert.deepEqual(commonDomain([{ min: 0, max: 5 }, { min: 0, max: 9 }]), { min: 0, max: 9 })
+  assert.equal(commonDomain([null, undefined]), null)
+  assert.match(describeCommonScale(12, 12, true), /del 1 % al 99 %/)
+  assert.doesNotMatch(describeCommonScale(12, 12), /99 %/)
 })
 
 test("a card scrolled away keeps its running request, which a returning card reuses; deselection aborts it", async () => {

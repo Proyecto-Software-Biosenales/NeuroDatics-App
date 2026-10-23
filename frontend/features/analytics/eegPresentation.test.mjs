@@ -262,8 +262,9 @@ test("the quality card drops warnings another element already states", () => {
     "Canales sin un tramo válido suficiente para la ventana de análisis: P4. Se informan como incompletos.",
     "El gráfico muestra la envolvente (mínimo y máximo) de cada tramo: conserva los extremos reales.",
   ]
-  // Nothing structured to show them: every warning stays.
-  assert.deepEqual(qualityCardWarnings({ version: "eeg-v2", warnings }), warnings)
+  // Nothing structured to show them: every warning stays, except the undeclared
+  // unit, which uV now settles for every export.
+  assert.deepEqual(qualityCardWarnings({ version: "eeg-v2", warnings }), warnings.slice(1))
   assert.deepEqual(qualityCardWarnings(undefined), [])
   assert.equal(envelopeWarning({ version: "eeg-v2", warnings }), null)
 
@@ -304,21 +305,21 @@ test("channel quality rows expose the export resolution the UI never showed", ()
   assert.equal(c4.coarselyQuantized, false)
   assert.equal(f3.repeatedFraction, 0.124)
   assert.equal(f3.sourceUnit, "kilo")
-  assert.equal(f3.assumedUnit, false)
-  assert.equal(c4.assumedUnit, true)
   assert.equal(f3.amplitudeZMax, 94.9)
   assert.deepEqual(channelQualityRows(undefined, ["f3"]), [])
 })
 
-test("the re-ingestion notice fires on rescaled, assumed or excluded units only", () => {
+test("the re-ingestion notice fires on rescaled or excluded units only", () => {
   assert.equal(reingestionNotice({ version: "eeg-v2", warnings: [], source_units: { f3: "uv" } }).needed, false)
   assert.equal(reingestionNotice(undefined).needed, false)
+  // An undeclared unit is read as uV: no notice.
+  assert.equal(reingestionNotice({ version: "eeg-v2", warnings: [], source_units: { f3: null },
+    assumed_uV_channels: ["f3"] }).needed, false)
   const kilo = reingestionNotice({ version: "eeg-v2", warnings: [],
     source_units: { f3: "kilo", c3: "uv", p3: "mV" }, assumed_uV_channels: ["c4"],
     excluded_channels: ["le"] })
   assert.equal(kilo.needed, true)
   assert.deepEqual(kilo.rescaledChannels, ["f3", "p3"])
-  assert.deepEqual(kilo.assumedChannels, ["c4"])
   assert.deepEqual(kilo.excludedChannels, ["le"])
 })
 

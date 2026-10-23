@@ -74,7 +74,8 @@ async function installSession(page: Page) {
   }, { userId: TEST_USER_ID })
 }
 
-async function mockApi(page: Page, options: { delayMs?: number } = {}): Promise<MockState> {
+/** `pupilSpike` gives that participant's card trace one 12 mm artefact sample. */
+async function mockApi(page: Page, options: { delayMs?: number; pupilSpike?: string } = {}): Promise<MockState> {
   const state: MockState = { unhandled: [], cardRequests: [], inFlight: 0, maxInFlight: 0, gazeAt: [], delayMs: options.delayMs ?? 120, aborted: 0 }
   let errorServed = false
   page.on("requestfailed", (request) => {
@@ -121,7 +122,10 @@ async function mockApi(page: Page, options: { delayMs?: number } = {}): Promise<
       }
       const start = params.get("start_time_s")
       const end = params.get("end_time_s")
-      return fulfill({ json: pupilFor(participant, start == null ? null : Number(start), end == null ? null : Number(end)) })
+      const trace = pupilFor(participant, start == null ? null : Number(start), end == null ? null : Number(end))
+      // Every left-pupil field shares one array.
+      if (participant === options.pupilSpike && trace.left.length > 5) trace.left[5] = 12
+      return fulfill({ json: trace })
     }
     if (path.endsWith("/analytics/timeseries/pupil")) return fulfill({ json: pupilFor(participant || "P01", null, null) })
     if (path.endsWith("/analytics/timeseries/eeg")) {
@@ -478,6 +482,34 @@ test("desktop screenshot of the participant grid", async ({ page }) => {
   await page.screenshot({ path: test.info().outputPath("participant-comparison-desktop-notes.png") })
 })
 
+test("the common scale covers P1-P99 of every card, so one artefact flattens no one", async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 730 })
+  await mockApi(page, { delayMs: 20, pupilSpike: "P02" })
+  await openPupilView(page)
+  await openComparison(page)
+  const dialog = dialogOf(page)
+  const topTick = async (code: string) => {
+    const ticks = await cardOf(page, code).locator(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value").allTextContents()
+    return ticks.length ? Math.max(...ticks.map(Number)) : Number.NaN
+  }
+  await expect(cardChart(cardOf(page, "P01"))).toBeVisible()
+  await expect(cardChart(cardOf(page, "P02"))).toBeVisible()
+  // Pupils span about 2.8-4 mm; the 12 mm sample sits outside the shared range.
+  await expect.poll(() => topTick("P01")).toBeLessThan(5)
+  await expect.poll(() => topTick("P02")).toBeLessThan(5)
+  expect(await topTick("P01")).toBe(await topTick("P02"))
+  const notes = dialog.getByRole("region", { name: "Información de la comparación" })
+  await expect(notes.getByTestId("participant-comparison-scale-note")).toContainText("del 1 % al 99 %")
+  await page.mouse.move(0, 0)
+  await page.screenshot({ path: test.info().outputPath("participant-comparison-common-scale.png") })
+
+  // Own scales: the artefact's card reaches it, the others keep theirs.
+  await dialog.getByRole("button", { name: "Escalas propias", exact: true }).click()
+  await expect.poll(() => topTick("P02")).toBeGreaterThanOrEqual(12)
+  await expect.poll(() => topTick("P01")).toBeLessThan(5)
+  await expect(notes.getByTestId("participant-comparison-scale-note")).not.toContainText("99 %")
+})
+
 test("EEG keeps the source signal mode and channels; Comparativas panels open the grid; spatial maps explain their scenario restriction", async ({ page }) => {
   const state = await mockApi(page, { delayMs: 20 })
   await page.goto("/dashboard")
@@ -594,14 +626,14 @@ test("the pupil axis starts at zero, Ajustar fits it, and the button sits in the
   await expect(fit).toHaveAttribute("aria-pressed", "false")
   await fit.click()
   await expect(fit).toHaveAttribute("aria-pressed", "true")
-  await expect.poll(yTicks).toEqual(["2", "3", "4"])
+  await expect.poll(yTicks).toEqual(["3.00", "3.25", "3.50", "3.75", "4.00"])
   // Screenshot once the lines finish redrawing, with the pointer off the button.
   await page.mouse.move(0, 0)
   await page.waitForTimeout(1600)
   await page.screenshot({ path: test.info().outputPath("pupil-axis-fitted.png") })
   // Both pupils set the scale, so switching pupils never moves it.
   await card.getByRole("button", { name: "Izquierda", exact: true }).click()
-  await expect.poll(yTicks).toEqual(["2", "3", "4"])
+  await expect.poll(yTicks).toEqual(["3.00", "3.25", "3.50", "3.75", "4.00"])
   await fit.click()
   await expect.poll(yTicks).toEqual(["0", "1", "2", "3", "4", "5"])
 

@@ -100,7 +100,7 @@ for (const [width, height] of [[1536, 730], [390, 844]]) {
     const noHorizontalScroll = () => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
 
     await page.getByRole("tab", { name: "Distancia al dispositivo", exact: true }).click()
-    await checkFit(page, "Distancia al dispositivo", ["58", "60", "62", "64", "66"], `distance-${width}`)
+    await checkFit(page, "Distancia al dispositivo", ["60", "62", "64"], `distance-${width}`)
     expect(await noHorizontalScroll()).toBe(true)
 
     await page.getByRole("tab", { name: "Punto de mirada", exact: true }).click()
@@ -109,12 +109,12 @@ for (const [width, height] of [[1536, 730], [390, 844]]) {
     expect(await noHorizontalScroll()).toBe(true)
 
     await page.getByRole("button", { name: "Sensor galvánico" }).first().click()
-    await checkFit(page, "Respuesta galvánica", ["3.2", "3.4", "3.6", "3.8", "4.0"], `gsr-${width}`)
+    await checkFit(page, "Respuesta galvánica", ["3.2", "3.4", "3.6", "3.8"], `gsr-${width}`)
     expect(await noHorizontalScroll()).toBe(true)
 
     await page.getByRole("button", { name: "Electroencefalógrafo" }).first().click()
     await page.getByRole("tab", { name: "Densidad espectral", exact: true }).click()
-    await checkFit(page, "Densidad espectral de potencia", ["6", "8", "10", "12", "14"], `psd-${width}`)
+    await checkFit(page, "Densidad espectral de potencia", ["8", "10", "12"], `psd-${width}`)
     expect(await noHorizontalScroll()).toBe(true)
 
     expect(errors).toEqual([])

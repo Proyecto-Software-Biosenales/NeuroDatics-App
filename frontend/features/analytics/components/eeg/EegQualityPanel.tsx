@@ -44,11 +44,6 @@ function unitCaveats(metadata: EegMetadata | undefined): string[] {
         .join(", ")}. El reescalado corrige la magnitud, no recupera la precisión perdida.`
     )
   }
-  if (notice.assumedChannels.length > 0) {
-    lines.push(
-      `Unidad no declarada, uV supuesto: ${notice.assumedChannels.map(formatChannel).join(", ")}.`
-    )
-  }
   if (notice.excludedChannels.length > 0) {
     lines.push(
       `Excluidos por unidad ambigua: ${notice.excludedChannels.map(formatChannel).join(", ")}.`
@@ -389,11 +384,6 @@ export function EegChannelQualityTable({
                       {row.coarselyQuantized ? (
                         <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400">
                           cuantización gruesa
-                        </Badge>
-                      ) : null}
-                      {row.assumedUnit ? (
-                        <Badge variant="outline" className="border-orange-500 text-orange-700 dark:text-orange-400">
-                          uV supuesto
                         </Badge>
                       ) : null}
                       {row.sourceUnit && row.sourceUnit !== "uv" ? (

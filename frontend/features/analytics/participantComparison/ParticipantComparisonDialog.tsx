@@ -20,7 +20,7 @@ import { participantComparisonLoader, useViewportTracker } from "./cardHooks"
 import { NestedComparisonBoundary } from "./ParticipantComparisonProvider"
 import { ParticipantCard, type DomainReport, type PinnedPoint } from "./ParticipantCard"
 import { ParticipantSelector } from "./ParticipantSelector"
-import { describeCommonScale, mergeDomains, type Domain, type ScaleMode } from "./scales"
+import { commonDomain, describeCommonScale, type Domain, type ScaleMode } from "./scales"
 import {
   CARD_POINT_BUDGET,
   EEG_CARD_POINT_BUDGET,
@@ -200,7 +200,7 @@ export default function ParticipantComparisonDialog({
     const keys = new Set<string>()
     for (const code of selectedList) for (const key of Object.keys(reports.get(code) ?? {})) keys.add(key)
     for (const key of keys) {
-      const domain = mergeDomains(selectedList.map((code) => reports.get(code)?.[key]))
+      const domain = commonDomain(selectedList.map((code) => reports.get(code)?.[key]))
       if (domain) merged[key] = domain
     }
     return merged
@@ -272,7 +272,7 @@ export default function ParticipantComparisonDialog({
   const scaleNote =
     info.temporal || spec.kind === "fixation_histogram" || spec.kind === "eeg_psd" || spec.kind === "eeg_spectrogram" || spec.kind === "eeg_topography"
       ? scaleMode === "common"
-        ? describeCommonScale(covered, selectedList.length)
+        ? describeCommonScale(covered, selectedList.length, info.temporal)
         : "Escalas propias: cada tarjeta ajusta sus ejes o colores a sus datos; no compares alturas entre tarjetas."
       : null
 

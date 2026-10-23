@@ -602,8 +602,6 @@ export interface ChannelQualityRow {
   transientCandidates: number
   peakToPeakMaxUV: number | null
   peakToPeakExcursions: number
-  /** The export declared no unit, or declared one that needed rescaling. */
-  assumedUnit: boolean
   sourceUnit: string | null
   /** Coarser than its peers by more than an order of magnitude. */
   coarselyQuantized: boolean
@@ -619,7 +617,6 @@ export function channelQualityRows(
 ): ChannelQualityRow[] {
   const quality = metadata?.channels
   if (!quality) return []
-  const assumed = new Set(metadata?.assumed_uV_channels ?? [])
   const steps = channels
     .map((channel) => quality[channel]?.quantization_step_uV)
     .filter((step): step is number => Number.isFinite(step) && (step as number) > 0)
@@ -644,7 +641,6 @@ export function channelQualityRows(
         transientCandidates: record.transient_candidates,
         peakToPeakMaxUV: record.peak_to_peak_max_uV,
         peakToPeakExcursions: record.peak_to_peak_excursions,
-        assumedUnit: assumed.has(channel),
         sourceUnit: metadata?.source_units?.[channel] ?? null,
         coarselyQuantized:
           finest != null && step != null && step >= finest * 10,
@@ -655,14 +651,14 @@ export function channelQualityRows(
 
 /** Whether this participant predates the unit correction and needs re-ingesting.
  *
- *  `assumed_uV_channels` and `source_units` already say so; nothing in the UI
+ *  `source_units` and `excluded_channels` already say so; nothing in the UI
  *  did. Comparing a corrected participant against an uncorrected one is exactly
- *  the mistake this notice exists to prevent.
+ *  the mistake this notice exists to prevent. An undeclared unit is not one of
+ *  them: uV is the fixed assumption for every export.
  */
 export function reingestionNotice(metadata: EegMetadata | undefined): {
   needed: boolean
   rescaledChannels: string[]
-  assumedChannels: string[]
   excludedChannels: string[]
 } {
   const units = metadata?.source_units ?? {}
@@ -672,12 +668,10 @@ export function reingestionNotice(metadata: EegMetadata | undefined): {
       return unit === "kilo" || unit === "mv" || unit === "v"
     })
     .sort()
-  const assumed = [...(metadata?.assumed_uV_channels ?? [])].sort()
   const excluded = [...(metadata?.excluded_channels ?? [])].sort()
   return {
-    needed: rescaled.length > 0 || assumed.length > 0 || excluded.length > 0,
+    needed: rescaled.length > 0 || excluded.length > 0,
     rescaledChannels: rescaled,
-    assumedChannels: assumed,
     excludedChannels: excluded,
   }
 }
@@ -687,7 +681,8 @@ export function reingestionNotice(metadata: EegMetadata | undefined): {
  *  envelope chip. Prefixes follow `eeg_signal.py` and `eeg_analytics_service.py`;
  *  a prefix that drifts only lets a duplicate back in, it never hides a fact. */
 const SHOWN_ELSEWHERE: { prefix: string; shown: (metadata: EegMetadata) => boolean }[] = [
-  { prefix: "Unidad EEG no declarada", shown: (m) => reingestionNotice(m).assumedChannels.length > 0 },
+  // uV is the fixed assumption now; analyses computed earlier still carry this sentence.
+  { prefix: "Unidad EEG no declarada", shown: () => true },
   { prefix: "Canales con unidad ambigua excluidos", shown: (m) => reingestionNotice(m).excludedChannels.length > 0 },
   {
     prefix: "Escala kilo corregida",

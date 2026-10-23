@@ -405,6 +405,23 @@ async def test_an_ingestion_whose_every_csv_failed_never_advances_the_generation
 
 
 @pytest.mark.asyncio
+async def test_a_failed_csv_names_its_reason_without_the_temp_path(upload, tmp_path):
+    temp_csv = str(tmp_path / "recording.csv")
+    upload.csv_failure = CsvProcessingError(
+        f"Error procesando CSV '{temp_csv}': Timestamps no crecientes en línea 40"
+    )
+
+    with pytest.raises(upload_module.CsvIngestionError) as raised:
+        await upload.run()
+
+    # The student reads this on another machine; the log holding the reason
+    # stays there, so the message itself has to say what to fix.
+    message = str(raised.value)
+    assert "Motivo: recording.csv: Error procesando CSV: Timestamps no crecientes en línea 40." in message
+    assert temp_csv not in message
+
+
+@pytest.mark.asyncio
 async def test_a_media_only_upload_still_swaps(upload, monkeypatch):
     """A ZIP with no CSV at all is not a failed ingestion, so it must still swap."""
 

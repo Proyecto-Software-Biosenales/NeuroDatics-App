@@ -14,6 +14,33 @@ simulada (161 de 167 pasos completados al pie de la letra; los 6 restantes se co
 salen de `frontend/tests/manual/manual_figures.spec.ts`, que ya no deja avisos de ESLint. Paquete de estudiantes no
 reconstruido: el cambio solo toca pruebas de `frontend/tests/manual/` y archivos de `manual/`, que no viajan en él.
 
+### Paquete de estudiantes 1.15
+
+`delivery/NeuroDatics-Estudiantes-1.15-win64.zip` (252 MiB, 4067 archivos), SHA-256
+`375DBFDF904F906771228207141BDEAC0C80E8A6D9ACDA884BF349F4D827AB91`, compilado el 21 de octubre tras `7b55ac6`
+con los cambios de la 1.14 y la escala común P1–P99 de «Comparar participantes». Reemplaza a la 1.14.
+`run-frozen.ps1`: selftest, las ocho etapas del PostgreSQL embebido, pg-adopt, http-check y carrera de arranques
+correctos; navegador 7/7 `passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído
+en una ruta con tildes arranca en 9,5 s. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg,
+prueba en un portátil real, datos de participantes). Antes de compilar: backend (1252 pruebas), unidad del
+frontend (125), navegador (76), TypeScript, Ruff, Vulture, deptry, contratos de importación y las 10 pruebas E2E
+de «Comparar participantes», en verde. `verify.ps1` no queda en verde por ESLint: 9 avisos frente al tope de 6,
+los mismos de la 1.14 (3 imports sin usar de `frontend/tests/manual/manual_figures.spec.ts`, archivo sin
+seguimiento del trabajo del manual); este cambio no añade ninguno.
+
+### Paquete de estudiantes 1.14
+
+`delivery/NeuroDatics-Estudiantes-1.14-win64.zip` (252 MiB, 4067 archivos), SHA-256
+`F9732D1726F8AEFC6E81CD3D7E63D64C31B37C8DE45B06C99E3A6EFF42C4A753`, compilado el 21 de octubre tras `7b55ac6`
+con los cambios de «Ajustar más ceñido y µV como unidad fija del EEG». Reemplaza a la 1.13. `run-frozen.ps1`:
+selftest, las ocho etapas del PostgreSQL embebido, pg-adopt, http-check y carrera de arranques correctos;
+navegador 7/7 `passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído en una ruta
+con tildes arranca en 10,4 s. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg, prueba en un
+portátil real, datos de participantes). Antes de compilar: backend (1252 pruebas), unidad del frontend (124),
+navegador (76), TypeScript y las pruebas E2E de «Ajustar», en verde. ESLint queda con 9 avisos frente al tope
+de 6: los 6 de siempre y 3 imports sin usar de `frontend/tests/manual/manual_figures.spec.ts`, archivo sin
+seguimiento del trabajo del manual.
+
 ### Paquete de estudiantes 1.13
 
 `delivery/NeuroDatics-Estudiantes-1.13-win64.zip` (252 MiB, 4067 archivos), SHA-256
@@ -34,6 +61,29 @@ incluye todo lo que sigue en esta sección (también «Ajustar» y el aviso de e
 correctos; navegador 7/7 `passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído
 en una ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg,
 prueba en un portátil real, datos de participantes).
+
+### «Comparar participantes»: la escala común ya no la estira un artefacto
+
+- **Señales en el tiempo (pupila, mirada, distancia, sensor galvánico y EEG por canal):** «Escala común» ya no
+  va del mínimo al máximo de todos los participantes seleccionados, sino del percentil 1 al 99 de todos sus
+  puntos dibujados, juntos (cada punto pesa lo mismo). Un pico suelto de un participante ya no aplana las
+  gráficas de los demás; lo que queda fuera del rango se corta en el borde, y la nota de la comparación lo dice.
+  «Escalas propias» y la vista de un solo participante no cambian.
+- **Densidad espectral, histograma de fijaciones, espectrograma y topografía** siguen con el rango completo:
+  en la densidad espectral el percentil 99 cortaría justo el pico de baja frecuencia, que es lo que se compara.
+
+### «Ajustar» más ceñido y µV como unidad fija del EEG
+
+- **«Ajustar» se ciñe a los datos con un decimal de margen.** Antes llevaba el eje a los valores redondos que
+  envolvían la gráfica (en la pupila, al milímetro entero: 2,9–3,98 mm quedaba en 2–4); ahora cada extremo se
+  redondea hacia fuera un decimal por debajo del orden del rango (2,8–4,0 mm) y siempre deja un margen pequeño
+  para que la línea no toque el borde. Las marcas del eje siguen siendo valores redondos dentro de ese rango.
+  Igual en dilatación pupilar, punto de mirada, distancia al dispositivo, sensor galvánico y densidad espectral.
+- **EEG: µV es la unidad fija mientras las exportaciones no declaren ninguna.** Desaparecen el aviso «Unidad
+  EEG no declarada», la etiqueta «uV supuesto» de la calidad por canal, la tarjeta «Unidades EEG con salvedades»
+  y su botón «Volver a procesar» cuando ese era el único motivo, y la limitación equivalente de la metodología
+  del informe. La suposición sigue registrada en `assumed_uV_channels`; los avisos de reescalado (`kilo`, `mV`,
+  `V`) y de canales excluidos por unidad ambigua se mantienen.
 
 ### Seguridad y fallos
 

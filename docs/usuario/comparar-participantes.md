@@ -59,7 +59,11 @@ dice y no consulta nada.
 
 «Escala común» calcula un rango único con los participantes ya cargados. Mientras faltan
 tarjetas, la nota lo advierte («Escala común parcial: calculada con n de N participantes cargados
-hasta ahora»). «Escalas propias» ajusta cada tarjeta a sus datos, y entonces las alturas no son
+hasta ahora»). En las señales en el tiempo (pupila, mirada, distancia, sensor galvánico y EEG por
+canal) ese rango va del percentil 1 al 99 de todos los puntos dibujados de esos participantes,
+juntos: un pico suelto de una persona no aplana las gráficas de las demás, y lo poco que queda
+fuera se corta en el borde. La densidad espectral, el histograma, el espectrograma y la topografía
+usan el rango completo. «Escalas propias» ajusta cada tarjeta a sus datos, y entonces las alturas no son
 comparables entre tarjetas. Unidades, colores y normalizaciones son los de la vista de origen.
 En el mapa de calor la intensidad está normalizada por participante, y la nota lo dice; los
 recorridos usan la escala absoluta.

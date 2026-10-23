@@ -23,9 +23,12 @@ function stepDecimals(step: number): number {
 }
 
 /**
- * Vertical axis that brackets the values with round ticks, for the «Ajustar»
- * toggle. Unlike the default scale it does not reach down to zero. Null when
- * there is nothing to scale.
+ * Vertical axis hugging the values, for the «Ajustar» toggle. Each end is the
+ * value rounded outwards one decimal below the span's order of magnitude (a
+ * pupil of 2.9-3.98 mm gets 2.8-4.0), so the lines fill the plot and never
+ * touch its edge; the round ticks are the ones that fall inside. Unlike the
+ * default scale it does not reach down to zero. Null when there is nothing to
+ * scale.
  */
 export function fittedAxis(values: Iterable<number | null | undefined>): FittedAxis | null {
   let min = Number.POSITIVE_INFINITY
@@ -38,22 +41,29 @@ export function fittedAxis(values: Iterable<number | null | undefined>): FittedA
   if (!Number.isFinite(min)) return null
 
   // Flat data gets a band around it instead of a line on the edge.
-  const span = max > min ? max - min : Math.max(Math.abs(max), 1) * 0.1
+  if (!(max > min)) {
+    const half = Math.max(Math.abs(max), 1) * 0.05
+    min -= half
+    max += half
+  }
+  const span = max - min
+  const precision = 10 ** (Math.floor(Math.log10(span)) - 1)
+  const precisionDecimals = stepDecimals(precision)
+  const round = (value: number) => Number(value.toFixed(precisionDecimals))
+  let start = round(Math.floor(min / precision) * precision)
+  let end = round(Math.ceil(max / precision) * precision)
+  if (min - start < precision * 1e-6) start = round(start - precision)
+  if (end - max < precision * 1e-6) end = round(end + precision)
+
   const step = niceStep(span / TARGET_INTERVALS)
   const decimals = stepDecimals(step)
-  let start = Math.floor(min / step) * step
-  let end = Math.ceil(max / step) * step
-  if (!(end > start)) {
-    start -= step
-    end += step
-  }
-
   const ticks: number[] = []
-  const count = Math.round((end - start) / step)
-  for (let index = 0; index <= count; index += 1) {
-    ticks.push(Number((start + index * step).toFixed(decimals)))
+  const first = Math.ceil(start / step - 1e-9)
+  const last = Math.floor(end / step + 1e-9)
+  for (let index = first; index <= last; index += 1) {
+    ticks.push(Number((index * step).toFixed(decimals)))
   }
-  return { domain: [ticks[0], ticks[ticks.length - 1]], ticks, decimals }
+  return { domain: [start, end], ticks, decimals }
 }
 
 /** YAxis props for a fitted axis; none, so the default scale applies, when `axis` is null. */

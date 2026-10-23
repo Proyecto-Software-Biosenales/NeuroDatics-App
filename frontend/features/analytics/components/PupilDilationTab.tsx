@@ -62,6 +62,7 @@ import { AnalyticsChartShell, LINE_CHART_MARGIN } from "./AnalyticsChartShell"
 import { useChartDragZoom } from "./ChartDragZoom"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
 import { readClickedTime } from "../comparison/chartInteraction"
+import { fittedAxis } from "../fittedAxis"
 import { pupilAxis } from "../pupilAxis"
 
 type ViewMode = "both" | "left" | "right"
@@ -366,10 +367,11 @@ export function PupilDilationTab({
     return [chartData[0].time, chartData[chartData.length - 1].time]
   }, [chartData])
   // Both pupils set the scale, so switching between them never moves the axis.
-  const yAxis = useMemo(
-    () => pupilAxis(chartData.flatMap((point) => [point.smooth_left, point.smooth_right]), fitAxis),
-    [chartData, fitAxis]
-  )
+  const yAxis = useMemo(() => {
+    // A zero diameter is a lost sample, not a value to scale to.
+    const values = chartData.flatMap((point) => [point.smooth_left, point.smooth_right]).filter((value) => value > 0)
+    return fitAxis ? fittedAxis(values) : pupilAxis(values)
+  }, [chartData, fitAxis])
   const chartLegend = [
     ...(viewMode === "both" || viewMode === "right"
       ? [{ label: "Pupila derecha", color: "#F87171" }]
@@ -662,6 +664,7 @@ export function PupilDilationTab({
                   domain={yAxis?.domain ?? [0, "auto"]}
                   ticks={yAxis?.ticks}
                   allowDataOverflow={Boolean(yAxis)}
+                  tickFormatter={yAxis ? (value: number) => Number(value).toFixed(yAxis.decimals) : undefined}
                   label={{ value: "Amplitud pupilar (mm)", angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
                 />
                 <RechartsTooltip content={<PupilTooltip />} />

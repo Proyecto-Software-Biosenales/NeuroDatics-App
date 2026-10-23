@@ -40,7 +40,7 @@ Dentro de cada bloque, la normalización se aplica por canal EEG (TRG queda fuer
 | Campo vacío o unidad no declarada | 1 | Conserva valores; base µV asumida |
 | Unidad no reconocida | Sin factor válido | Conserva fuente y marca exclusión del análisis cuantitativo EEG |
 
-**Vacío no significa µV confirmado.** El sistema mantiene la suposición histórica de µV para poder trabajar con estas exportaciones y la declara. Tampoco interpreta `kilo` como kilovoltios. No deduce el factor por la amplitud: un valor grande puede ser un offset o un segmento sospechoso y no autoriza dividirlo por 1.000.
+**Vacío no significa µV confirmado.** El sistema mantiene la suposición de µV como valor fijo para poder trabajar con estas exportaciones: la registra en `assumed_uV_channels`, pero desde el 2026-10-21 ya no la muestra como aviso en el análisis ni en los informes, porque las exportaciones actuales no declaran unidad. Tampoco interpreta `kilo` como kilovoltios. No deduce el factor por la amplitud: un valor grande puede ser un offset o un segmento sospechoso y no autoriza dividirlo por 1.000.
 
 La multiplicación ocurre al importar el CSV hacia el almacenamiento procesado. Consultar PSD repetidamente no vuelve a multiplicar una señal ya normalizada. El CSV fuente no se reescribe.
 
