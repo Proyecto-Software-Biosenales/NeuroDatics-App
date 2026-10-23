@@ -1,4 +1,4 @@
-"""All 24 analytics handlers execute over HTTP against the shared synthetic corpus."""
+"""All 25 analytics handlers execute over HTTP against the shared synthetic corpus."""
 
 import io
 from itertools import product
@@ -17,6 +17,8 @@ ROUTES = [
     "/spectrogram/eeg", "/topography/eeg", "/scanpath", "/fixations", "/heatmap",
     "/fixations/sensitivity", "/fixations/histogram", "/aois", "/scenario-timing",
 ]
+# Routes that take several participants; they have their own contract test below.
+GROUP_ROUTES = ["/heatmap/group"]
 
 
 def response_shape(value):
@@ -34,7 +36,7 @@ def response_shape(value):
 def test_contract_inventory_covers_every_analytics_route():
     mounted = {route.path.split("/analytics", 1)[1] for route in app.routes
                if "/analytics/" in getattr(route, "path", "")}
-    assert mounted == set(ROUTES)
+    assert mounted == set(ROUTES) | set(GROUP_ROUTES)
     assert len(ROUTES) == 24
 
 
@@ -119,3 +121,32 @@ def test_analytics_unknown_participant_is_404(http_client, endpoint):
     })
     assert response.status_code == 404
     assert response.json() == {"detail": "Participant data not found"}
+
+
+def test_group_heatmap_contract(http_client):
+    params = [
+        ("participant_codes", "SYN-02"), ("participant_codes", "SYN-01"),
+        ("participant_codes", "MISSING"), ("scenario", "stimulus-a"),
+    ]
+    response = http_client.get(PREFIX + "/heatmap/group", params=params)
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["cache-control"] == "private, max-age=0, must-revalidate"
+    assert response.headers["vary"] == "Authorization"
+    assert response.headers["x-group-participants"] == "SYN-01,SYN-02"
+    assert response.headers["x-group-participants-skipped"] == "MISSING"
+    assert response.headers["x-stimulus-transform-status"]
+    with Image.open(io.BytesIO(response.content)) as image:
+        assert image.size == (1280, 720)
+    conditional = http_client.get(PREFIX + "/heatmap/group", params=params,
+                                  headers={"If-None-Match": response.headers["etag"]})
+    assert conditional.status_code == 304
+    assert not conditional.content
+
+
+def test_group_heatmap_without_any_data_is_404(http_client):
+    response = http_client.get(PREFIX + "/heatmap/group", params={
+        "participant_codes": "MISSING", "scenario": "stimulus-a",
+    })
+    assert response.status_code == 404
+    assert "participantes" in response.json()["detail"]

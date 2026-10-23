@@ -1,5 +1,6 @@
 """Heatmap analytics service over the canonical event contract."""
 
+from collections.abc import Mapping
 from typing import Optional
 import numpy as np
 import pandas as pd
@@ -99,6 +100,77 @@ class HeatmapAnalyticsService:
         )
         return png_bytes, metadata
 
+    # Optional per-event weight column. When present it replaces the
+    # duration weighting, so a caller can decide how much each event counts.
+    WEIGHT_COLUMN: str = "weight"
+
+    @staticmethod
+    def _duration_weights(events: pd.DataFrame) -> np.ndarray:
+        """Fixation durations, with the median standing in for unusable ones."""
+        durations = events["duration_s"].to_numpy(dtype=float)
+        usable = np.isfinite(durations) & (durations > 0)
+        positive_durations = durations[usable]
+        fallback_weight = float(np.median(positive_durations)) if positive_durations.size else 1.0
+        return np.where(usable, durations, fallback_weight)
+
+    @staticmethod
+    def _pixel_positions(
+        events: pd.DataFrame, out_w: int, out_h: int,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Stimulus-pixel positions plus the mask of those inside the image."""
+        # Normalised (top-left origin) to stimulus pixels. No Y inversion:
+        # y_norm already grows downwards, exactly as scanpath and AOIs read it.
+        x_px = events["x_norm"].to_numpy(dtype=float) * out_w
+        y_px = events["y_norm"].to_numpy(dtype=float) * out_h
+        # Points outside the image are rejected, never clipped to an edge.
+        valid = (
+            np.isfinite(x_px) & np.isfinite(y_px)
+            & (x_px >= 0) & (x_px <= out_w)
+            & (y_px >= 0) & (y_px <= out_h)
+        )
+        return x_px, y_px, valid
+
+    @classmethod
+    def render_group_overlay(
+        cls,
+        events_by_participant: Mapping[str, pd.DataFrame],
+        gamma: float = 0.7,
+        threshold: float = 0.10,
+        alpha: float = 0.75,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ) -> tuple[Optional[bytes], list[str]]:
+        """Render several participants' events so each one counts the same.
+
+        Within a participant, events keep the duration weighting of the
+        individual overlay; across participants, each one's in-image weights
+        are scaled to sum to 1, so a participant with many long fixations
+        cannot drown out the rest. Returns the PNG and the participants that
+        contributed at least one event inside the image, in input order.
+        """
+        out_w, out_h = resolve_output_size(width, height)
+        weighted: list[pd.DataFrame] = []
+        contributors: list[str] = []
+        for participant, events in events_by_participant.items():
+            if events is None or events.empty:
+                continue
+            weights = cls._duration_weights(events)
+            _, _, valid = cls._pixel_positions(events, out_w, out_h)
+            total = float(weights[valid].sum())
+            if not valid.any() or not np.isfinite(total) or total <= 0:
+                continue
+            inside = events.loc[valid, ["x_norm", "y_norm"]].copy()
+            inside[cls.WEIGHT_COLUMN] = weights[valid] / total
+            weighted.append(inside)
+            contributors.append(participant)
+        if not weighted:
+            return None, []
+        pooled = pd.concat(weighted, ignore_index=True)
+        png_bytes = cls.render_overlay(
+            pooled, gamma=gamma, threshold=threshold, alpha=alpha, width=width, height=height,
+        )
+        return png_bytes, contributors if png_bytes else []
+
     @classmethod
     def render_overlay(
         cls,
@@ -113,7 +185,8 @@ class HeatmapAnalyticsService:
 
         Callers that pool events from several recordings, such as the group
         report, share the exact density, smoothing and colour mapping of the
-        single-recording overlay.
+        single-recording overlay. Events are weighted by duration unless the
+        frame carries a ``weight`` column, which is then used as given.
         """
         if events.empty:
             return None
@@ -125,22 +198,13 @@ class HeatmapAnalyticsService:
 
         out_w, out_h = resolve_output_size(width, height)
 
-        durations = events["duration_s"].to_numpy(dtype=float)
-        positive_durations = durations[np.isfinite(durations) & (durations > 0)]
-        fallback_weight = float(np.median(positive_durations)) if positive_durations.size else 1.0
-        weights = np.where(np.isfinite(durations) & (durations > 0), durations, fallback_weight)
+        if cls.WEIGHT_COLUMN in events.columns:
+            weights = events[cls.WEIGHT_COLUMN].to_numpy(dtype=float)
+            weights = np.where(np.isfinite(weights) & (weights > 0), weights, 0.0)
+        else:
+            weights = cls._duration_weights(events)
 
-        # --- Normalised (top-left origin) to stimulus pixels. No Y inversion:
-        # y_norm already grows downwards, exactly as scanpath and AOIs read it.
-        x_px = events["x_norm"].to_numpy(dtype=float) * out_w
-        y_px = events["y_norm"].to_numpy(dtype=float) * out_h
-
-        # --- Reject points outside image bounds; never clip them to an edge ---
-        valid = (
-            np.isfinite(x_px) & np.isfinite(y_px)
-            & (x_px >= 0) & (x_px <= out_w)
-            & (y_px >= 0) & (y_px <= out_h)
-        )
+        x_px, y_px, valid = cls._pixel_positions(events, out_w, out_h)
         x_px = x_px[valid]
         y_px = y_px[valid]
         weights = weights[valid]

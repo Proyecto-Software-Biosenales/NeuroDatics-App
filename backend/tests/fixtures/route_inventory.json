@@ -12,6 +12,7 @@
   "GET /api/projects/{project_id}/analytics/fixations/sensitivity",
   "GET /api/projects/{project_id}/analytics/gaze-at",
   "GET /api/projects/{project_id}/analytics/heatmap",
+  "GET /api/projects/{project_id}/analytics/heatmap/group",
   "GET /api/projects/{project_id}/analytics/participants",
   "GET /api/projects/{project_id}/analytics/psd/eeg",
   "GET /api/projects/{project_id}/analytics/scanpath",
