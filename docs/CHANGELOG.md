@@ -5,6 +5,15 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Manual de uso en Word (primera versión para revisión)
+
+Nuevo manual de uso de las dos ediciones (13 capítulos, 43 figuras con datos de demostración), escrito en
+`manual/fuentes/` y construido con `manual/construir_manual.js`; cómo regenerarlo está en `manual/README.md`. Se
+revisó contra el código, por estilo, página por página y siguiendo sus procedimientos en la interfaz con la API
+simulada (161 de 167 pasos completados al pie de la letra; los 6 restantes se corrigieron en el texto). Las figuras
+salen de `frontend/tests/manual/manual_figures.spec.ts`, que ya no deja avisos de ESLint. Paquete de estudiantes no
+reconstruido: el cambio solo toca pruebas de `frontend/tests/manual/` y archivos de `manual/`, que no viajan en él.
+
 ### Paquete de estudiantes 1.13
 
 `delivery/NeuroDatics-Estudiantes-1.13-win64.zip` (252 MiB, 4067 archivos), SHA-256
