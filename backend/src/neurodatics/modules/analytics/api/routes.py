@@ -3,6 +3,7 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from typing import List, Optional, TypeVar
+from urllib.parse import quote
 from uuid import UUID
 
 import copy
@@ -26,6 +27,7 @@ from ..application.services.analytics_service import (
     EegAnalyticsService,
     FixationDataService,
     FixationDurationVariantService,
+    FixationEventService,
     FixationHistogramService,
     GsrAnalyticsService,
     HeatmapAnalyticsService,
@@ -41,7 +43,12 @@ from ..domain.parquet_projection import (
     TIMING_PROJECTION, EEG_PROJECTION,
 )
 from neurodatics.shared.cache_generation import project_cache_generation
-from ..domain.coordinate_transform import transform_cache_token
+from ..domain.coordinate_transform import (
+    APPLIED_STATUS,
+    MIXED_STATUS,
+    MIXED_WARNING_CODE,
+    transform_cache_token,
+)
 from neurodatics.shared.scenario_identity import is_all_scenarios, resolve_scenario
 from ..infrastructure.singleflight import response_flights, settled_thread, SingleFlightBusy, SingleFlightTimeout
 from ..infrastructure.redis_cache import AnalyticsRedisCache
@@ -1427,6 +1434,208 @@ async def heatmap_overlay(
             **_fixation_metadata_headers(fixation_metadata),
             **_stimulus_transform_headers(fixation_metadata),
         },
+    )
+
+
+def _group_participant_codes(participant_codes: List[str]) -> list[str]:
+    """De-duplicated, sorted codes: the order a client sends must not matter."""
+
+    codes = sorted({str(code).strip() for code in participant_codes or [] if str(code).strip()})
+    if not codes:
+        raise HTTPException(status_code=400, detail="participant_codes must name at least one participant")
+    return codes
+
+
+def _digest(material: object, length: int = 24) -> str:
+    encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()[:length]
+
+
+def _group_transform_provenance(transforms: list[dict]) -> dict:
+    """One transform description for a map pooled from several recordings.
+
+    Equal descriptions pass through. Recordings that were all placed on the
+    stimulus still share its normalized space even when their screen setups
+    differ, so they stay ``applied`` without a single fingerprint; anything
+    else is reported as mixed, as a single recording with mixed rows is.
+    """
+
+    if not transforms:
+        return {}
+    first = transforms[0]
+    if all(item == first for item in transforms[1:]):
+        return first
+    warning_codes = list(dict.fromkeys(
+        str(code) for item in transforms for code in (item.get("warning_codes") or [])
+    ))
+    versions = {item.get("contract_version") for item in transforms}
+    if all(item.get("status") == APPLIED_STATUS for item in transforms):
+        return {
+            "status": APPLIED_STATUS,
+            "output_space": first.get("output_space"),
+            "contract_version": versions.pop() if len(versions) == 1 else None,
+            "contract_fingerprint": None,
+            "warning_codes": warning_codes,
+        }
+    if MIXED_WARNING_CODE not in warning_codes:
+        warning_codes.append(MIXED_WARNING_CODE)
+    return {
+        "status": MIXED_STATUS,
+        "output_space": "mixed",
+        "contract_version": None,
+        "contract_fingerprint": None,
+        "warning_codes": warning_codes,
+    }
+
+
+def _participant_list_header(codes: list[str]) -> str:
+    # Codes come from user files; percent-encoding keeps the header latin-1 safe
+    # and lets a code contain a comma. Plain codes such as "P01" pass unchanged.
+    return ",".join(quote(code, safe="") for code in codes)
+
+
+def _group_heatmap_headers(metadata: dict) -> dict[str, str]:
+    return {
+        **_stimulus_transform_headers(metadata),
+        "X-Group-Participants": _participant_list_header(metadata.get("participants") or []),
+        "X-Group-Participants-Skipped": _participant_list_header(metadata.get("skipped") or []),
+    }
+
+
+@router.get("/heatmap/group")
+async def group_heatmap_overlay(
+    request: Request,
+    project_id: UUID,
+    participant_codes: List[str] = Query(...),
+    scenario: str = Query(...),
+    min_fixation_duration_ms: int = DEFAULT_FIXATION_MIN_DURATION_MS,
+    generation: Optional[int] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    """One heatmap for several participants, each of them weighing the same.
+
+    It uses the individual overlay's events, coordinate transform and stimulus
+    size, so the group map lines up exactly with each participant's own map.
+    Participants without data in the scenario are skipped and reported in
+    ``X-Group-Participants-Skipped``; when none has any, the answer is 404.
+    """
+
+    if is_all_scenarios(scenario):
+        raise HTTPException(status_code=400, detail="scenario must be specified")
+    codes = _group_participant_codes(participant_codes)
+    min_fixation_duration_ms = _fixation_duration(min_fixation_duration_ms)
+    project = await _verify_ownership(db, project_id, current_user)
+    # As in the individual route, `generation` only varies the client's URL; the
+    # cache key uses the project's own counter.
+    cache_generation = _cache_generation(project)
+
+    scenary = await _resolve_scenary_for_analytics(db, project_id, scenario)
+    stimulus_width = getattr(scenary, "width", None) if scenary else None
+    stimulus_height = getattr(scenary, "height", None) if scenary else None
+    size_key = f"{stimulus_width or 0}x{stimulus_height or 0}"
+
+    # Sequential on purpose: the session is shared and may persist each token.
+    tokens: dict[str, Optional[str]] = {}
+    for code in codes:
+        try:
+            tokens[code], _ = await _resolve_transform_token(db, project, code, cache_generation)
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            tokens[code] = None
+
+    cache_key = _redis.build_key(
+        project_id,
+        f"group-{_digest(codes)}",
+        (
+            f"heatmap_group_v1:stimulus-v1:{_digest([[code, tokens[code]] for code in codes], 20)}:"
+            f"{size_key}:{_fixation_duration_cache_token(min_fixation_duration_ms)}"
+        ),
+        scenario,
+        generation=cache_generation,
+    )
+    etag = f'"{hashlib.sha1(cache_key.encode("utf-8")).hexdigest()}"'
+    response_headers = {
+        "Cache-Control": "private, max-age=0, must-revalidate",
+        "ETag": etag,
+        "Vary": "Authorization",
+    }
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=response_headers)
+
+    metadata_cache_key = f"{cache_key}:metadata"
+
+    def usable(metadata: Optional[dict]) -> bool:
+        return bool(metadata) and isinstance(metadata.get("participants"), list)
+
+    cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+    cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+    if cached_bytes and usable(cached_metadata):
+        return StreamingResponse(
+            iter([cached_bytes]),
+            media_type="image/png",
+            headers={**response_headers, **_group_heatmap_headers(cached_metadata)},
+        )
+
+    async def calculate():
+        cached_bytes = await settled_thread(lambda: _redis.get_bytes(cache_key))
+        cached_metadata = await settled_thread(lambda: _redis.get_json(metadata_cache_key))
+        if cached_bytes and usable(cached_metadata):
+            return cached_bytes, cached_metadata
+
+        reader = AnalyticsFrameReader(db)
+        events_by_participant: dict[str, pd.DataFrame] = {}
+        transforms: dict[str, dict] = {}
+        for code in codes:
+            if tokens[code] is None:
+                continue
+            try:
+                frame = await reader.read(project_id, code, cache_generation)
+            except HTTPException as exc:
+                if exc.status_code != 404:
+                    raise
+                continue
+            try:
+                result = await settled_thread(
+                    lambda frame=frame: FixationEventService.build_result(
+                        frame,
+                        scenario=scenario,
+                        min_fixation_duration_ms=min_fixation_duration_ms,
+                    )
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            del frame
+            events_by_participant[code] = result.events
+            transforms[code] = result.metadata.get("coordinate_transform") or {}
+
+        png_bytes, used = await settled_thread(
+            lambda: HeatmapAnalyticsService.render_group_overlay(
+                events_by_participant, width=stimulus_width, height=stimulus_height,
+            )
+        )
+        if not png_bytes:
+            raise HTTPException(
+                status_code=404,
+                detail="Ninguno de los participantes elegidos tiene fijaciones en este escenario",
+            )
+        metadata = {
+            "coordinate_transform": _group_transform_provenance([transforms[code] for code in used]),
+            "participants": used,
+            "skipped": [code for code in codes if code not in used],
+        }
+        await settled_thread(lambda: _redis.set_bytes(cache_key, png_bytes))
+        await settled_thread(lambda: _redis.set_json(metadata_cache_key, metadata))
+        return png_bytes, metadata
+
+    png_bytes, metadata = await _shared_response(
+        (str(project.owner_id), cache_key, "group-png"), calculate,
+    )
+    return StreamingResponse(
+        iter([png_bytes]),
+        media_type="image/png",
+        headers={**response_headers, **_group_heatmap_headers(copy.deepcopy(metadata))},
     )
 
 

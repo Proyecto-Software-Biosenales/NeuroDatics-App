@@ -519,6 +519,42 @@ export const AnalyticsApi = {
     )
   },
 
+  getGroupHeatmapOverlay: async (
+    projectId: string,
+    participantCodes: string[],
+    scenario: string,
+    minFixationDurationMs: FixationDurationMs = DEFAULT_FIXATION_DURATION_MS,
+    generation?: number | null,
+    signal?: AbortSignal
+  ) => {
+    const params = new URLSearchParams()
+    // Sorted so the same group always asks for the same URL.
+    for (const code of [...new Set(participantCodes)].sort()) {
+      params.append("participant_codes", code)
+    }
+    params.set("scenario", scenario)
+    params.set("min_fixation_duration_ms", String(minFixationDurationMs))
+    if (generation != null) {
+      params.set("generation", String(generation))
+    }
+    const { blob, headers } = await apiFetchBlobWithHeaders(
+      `/api/projects/${projectId}/analytics/heatmap/group?${params}`,
+      { signal, cache: "no-store" }
+    )
+    // Each code is percent-encoded by the server, so a comma inside one is safe.
+    const codes = (name: string) =>
+      (headers.get(name) ?? "")
+        .split(",")
+        .filter(Boolean)
+        .map((code) => decodeURIComponent(code))
+    return {
+      blob,
+      headers,
+      participants: codes("X-Group-Participants"),
+      skipped: codes("X-Group-Participants-Skipped"),
+    }
+  },
+
   getFixationHistogram: (
     projectId: string,
     participantCode: string,
