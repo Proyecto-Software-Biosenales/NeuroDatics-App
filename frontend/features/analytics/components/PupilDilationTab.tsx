@@ -64,8 +64,24 @@ import { axisTickDecimals, formatAxisTick } from "../chartZoom"
 import { readClickedTime } from "../comparison/chartInteraction"
 import { fittedAxis } from "../fittedAxis"
 import { pupilAxis } from "../pupilAxis"
+import {
+  computePupilStats,
+  extremePupilSample,
+  isValidPupilValue,
+  pupilSamples,
+  pupilStatRow,
+  pupilTrace,
+  type PupilEyes,
+  type PupilPoint,
+} from "../pupilStats"
+import type { ParticipantComparisonSpec } from "../participantComparison/spec"
+import type { CardResult } from "../participantComparison/cardData"
+import { useGroupView } from "../groupMode/useGroupData"
+import { GroupTemporalChart, type GroupTrace } from "../groupMode/GroupTemporalChart"
+import { GroupKpiGrid, GroupStatsCard, type GroupKpi, type GroupStatEntry } from "../groupMode/GroupStats"
+import { GroupUnsupported } from "../groupMode/GroupUnsupported"
 
-type ViewMode = "both" | "left" | "right"
+type ViewMode = PupilEyes
 
 interface PupilDilationTabProps {
   projectId: string
@@ -73,35 +89,53 @@ interface PupilDilationTabProps {
   scenario: string
 }
 
-interface LinePoint {
-  time: number
-  left: number
-  right: number
-  smooth_left: number
-  smooth_right: number
+type LinePoint = PupilPoint
+
+/** A comparison card's pupil trace as the view's points (smoothed and raw). */
+function cardPupilPoints(result: CardResult): PupilPoint[] {
+  if (result.type !== "temporal") return []
+  return result.points.map((point) => ({
+    time: point.time,
+    // Results cached before the raw columns existed fall back to the smoothed ones.
+    left: "raw_left" in point ? point.raw_left : point.left,
+    right: "raw_right" in point ? point.raw_right : point.right,
+    smooth_left: point.left,
+    smooth_right: point.right,
+  }))
 }
 
-interface PupilSample {
-  time: number
-  value: number
-  rawValue: number
-}
+const GROUP_KPIS: GroupKpi[] = [
+  {
+    label: "Media",
+    field: "mean",
+    tooltip: "Promedio, entre participantes, de la media de cada uno",
+    Icon: Activity,
+    iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
+    iconColorClass: "text-indigo-500",
+    labelColorClass: "text-indigo-600 dark:text-indigo-400",
+  },
+  {
+    label: "Mínimo",
+    field: "min",
+    tooltip: "Promedio, entre participantes, del mínimo de cada uno en la señal suavizada",
+    Icon: TrendingDown,
+    iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
+    iconColorClass: "text-emerald-500",
+    labelColorClass: "text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    label: "Máximo",
+    field: "max",
+    tooltip: "Promedio, entre participantes, del máximo de cada uno en la señal suavizada",
+    Icon: TrendingUp,
+    iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
+    iconColorClass: "text-rose-500",
+    labelColorClass: "text-rose-600 dark:text-rose-400",
+  },
+]
 
-interface ActivePupilStats {
-  count: number
-  mean: number
-  min: number
-  max: number
-  std: number
-  median: number
-  baseline: number
-  raw_mean: number | null
-  raw_min: number | null
-  raw_max: number | null
-  raw_std: number | null
-  raw_median: number | null
-  raw_baseline: number | null
-}
+const BOTH_EYES_DETAIL =
+  "Con ambas pupilas, cada participante aporta en cada instante la media de su pupila izquierda y derecha, o la que tenga dato."
 
 interface PupilTooltipPayloadEntry {
   value: number
@@ -151,120 +185,6 @@ function PupilTooltip({ active, payload, label }: PupilTooltipProps) {
   )
 }
 
-function isValidPupilValue(value: number | null | undefined): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value > 0
-}
-
-function roundMetric(value: number): number {
-  return Number.isFinite(value) ? Math.round(value * 10000) / 10000 : 0
-}
-
-function percentile(sortedValues: number[], percentileValue: number): number {
-  if (sortedValues.length === 0) return 0
-  const position = (percentileValue / 100) * (sortedValues.length - 1)
-  const lower = Math.floor(position)
-  const upper = Math.ceil(position)
-  if (lower === upper) return sortedValues[lower]
-  const weight = position - lower
-  return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight
-}
-
-function robustBaseline(values: number[]): number {
-  const finiteValues = values.filter((value) => Number.isFinite(value))
-  if (finiteValues.length === 0) return 0
-  const sorted = [...finiteValues].sort((a, b) => a - b)
-  const low = percentile(sorted, 5)
-  const high = percentile(sorted, 20)
-  const baselineValues = finiteValues.filter((value) => value >= low && value <= high)
-  const source = baselineValues.length > 0 ? baselineValues : finiteValues
-  return source.reduce((sum, value) => sum + value, 0) / source.length
-}
-
-function computeStats(samples: PupilSample[]): ActivePupilStats | null {
-  const values = samples.map((sample) => sample.value).filter((value) => Number.isFinite(value))
-  if (values.length === 0) return null
-
-  const rawValues = samples.map((sample) => sample.rawValue).filter((value) => Number.isFinite(value))
-  const sorted = [...values].sort((a, b) => a - b)
-  const mean = values.reduce((sum, value) => sum + value, 0) / values.length
-  const varianceDivisor = values.length > 1 ? values.length - 1 : values.length
-  const std = Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / varianceDivisor)
-  const median = values.length % 2 === 0
-    ? (sorted[values.length / 2 - 1] + sorted[values.length / 2]) / 2
-    : sorted[Math.floor(values.length / 2)]
-
-  const rawSorted = [...rawValues].sort((a, b) => a - b)
-  const rawMean = rawValues.length > 0
-    ? rawValues.reduce((sum, value) => sum + value, 0) / rawValues.length
-    : null
-  const rawVarianceDivisor = rawValues.length > 1 ? rawValues.length - 1 : rawValues.length
-  const rawStd = rawValues.length > 0
-    ? Math.sqrt(rawValues.reduce((sum, value) => sum + (value - (rawMean ?? 0)) ** 2, 0) / rawVarianceDivisor)
-    : null
-  const rawMedian = rawValues.length > 0
-    ? rawValues.length % 2 === 0
-      ? (rawSorted[rawValues.length / 2 - 1] + rawSorted[rawValues.length / 2]) / 2
-      : rawSorted[Math.floor(rawValues.length / 2)]
-    : null
-
-  return {
-    count: values.length,
-    mean: roundMetric(mean),
-    min: roundMetric(sorted[0]),
-    max: roundMetric(sorted[sorted.length - 1]),
-    std: roundMetric(std),
-    median: roundMetric(median),
-    baseline: roundMetric(robustBaseline(values)),
-    raw_mean: rawMean != null ? roundMetric(rawMean) : null,
-    raw_min: rawValues.length > 0 ? roundMetric(rawSorted[0]) : null,
-    raw_max: rawValues.length > 0 ? roundMetric(rawSorted[rawSorted.length - 1]) : null,
-    raw_std: rawStd != null ? roundMetric(rawStd) : null,
-    raw_median: rawMedian != null ? roundMetric(rawMedian) : null,
-    raw_baseline: rawValues.length > 0 ? roundMetric(robustBaseline(rawValues)) : null,
-  }
-}
-
-function getSamplesForMode(chartData: LinePoint[], mode: ViewMode): PupilSample[] {
-  return chartData.flatMap((point) => {
-    const leftValid = isValidPupilValue(point.left) && isValidPupilValue(point.smooth_left)
-    const rightValid = isValidPupilValue(point.right) && isValidPupilValue(point.smooth_right)
-
-    if (mode === "left") {
-      return leftValid ? [{ time: point.time, value: point.smooth_left, rawValue: point.left }] : []
-    }
-
-    if (mode === "right") {
-      return rightValid ? [{ time: point.time, value: point.smooth_right, rawValue: point.right }] : []
-    }
-
-    if (leftValid && rightValid) {
-      return [{
-        time: point.time,
-        value: (point.smooth_left + point.smooth_right) / 2,
-        rawValue: (point.left + point.right) / 2,
-      }]
-    }
-
-    if (leftValid) {
-      return [{ time: point.time, value: point.smooth_left, rawValue: point.left }]
-    }
-
-    if (rightValid) {
-      return [{ time: point.time, value: point.smooth_right, rawValue: point.right }]
-    }
-
-    return []
-  })
-}
-
-function getExtremeSample(samples: PupilSample[], kind: "min" | "max"): PupilSample | null {
-  if (samples.length === 0) return null
-  return samples.reduce((best, sample) => {
-    if (kind === "min") return sample.value < best.value ? sample : best
-    return sample.value > best.value ? sample : best
-  }, samples[0])
-}
-
 export function PupilDilationTab({
   projectId,
   participantCode,
@@ -295,9 +215,22 @@ export function PupilDilationTab({
   const [gazeOffset, setGazeOffset] = useState<{ x: number; y: number } | null>(null)
   const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
 
+  // The chart «Comparar participantes» and the group modes both start from.
+  const comparisonSpec = useMemo<ParticipantComparisonSpec>(() => ({
+    kind: "pupil",
+    title: "Dilatación pupilar",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { eyes: viewMode, window: timeWindow },
+  }), [participantCode, scenario, timeWindow, viewMode])
+  const groupView = useGroupView(comparisonSpec)
+  // In a group mode the single recording is not loaded at all.
+  const individualParticipant = groupView.active ? null : participantCode
+
   const { data: timeseriesData, loading: timeseriesLoading } = usePupilTimeseries(
     projectId,
-    participantCode,
+    individualParticipant,
     scenario,
     timeWindow.start,
     timeWindow.end
@@ -308,7 +241,7 @@ export function PupilDilationTab({
     : scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
   const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
     projectId,
-    participantCode,
+    individualParticipant,
     aoiScenario
   )
   const aois = aoiData?.aois ?? []
@@ -338,15 +271,34 @@ export function PupilDilationTab({
   }, [timeseriesData])
 
   const pupilModeData = useMemo(() => {
-    const both = getSamplesForMode(chartData, "both")
-    const left = getSamplesForMode(chartData, "left")
-    const right = getSamplesForMode(chartData, "right")
+    const both = pupilSamples(chartData, "both")
+    const left = pupilSamples(chartData, "left")
+    const right = pupilSamples(chartData, "right")
     return {
-      both: { samples: both, stats: computeStats(both) },
-      left: { samples: left, stats: computeStats(left) },
-      right: { samples: right, stats: computeStats(right) },
+      both: { samples: both, stats: computePupilStats(both) },
+      left: { samples: left, stats: computePupilStats(left) },
+      right: { samples: right, stats: computePupilStats(right) },
     }
   }, [chartData])
+
+  // Group modes: each participant's trace and figures, computed like this view's own.
+  const groupResults = useMemo(() => {
+    const traces: GroupTrace[] = []
+    const stats: GroupStatEntry[] = []
+    for (const entry of groupView.data.entries) {
+      if (entry.status === "empty") stats.push({ participant: entry.participant, row: null })
+      if (entry.status !== "success" || !entry.result) continue
+      const points = cardPupilPoints(entry.result)
+      const trace = pupilTrace(points, viewMode)
+      traces.push({ participant: entry.participant, time: trace.time, value: trace.value })
+      stats.push({ participant: entry.participant, row: pupilStatRow(entry.participant.label, computePupilStats(pupilSamples(points, viewMode))) })
+    }
+    return { traces, stats }
+  }, [groupView.data.entries, viewMode])
+  const groupYAxis = useCallback(
+    (values: number[]) => (fitAxis ? fittedAxis(values) : pupilAxis(values.filter((value) => value > 0))),
+    [fitAxis]
+  )
 
   const activeModeData = pupilModeData[viewMode]
   const activeStats = activeModeData.stats
@@ -382,11 +334,11 @@ export function PupilDilationTab({
   ]
 
   const minTime = useMemo(() => {
-    return getExtremeSample(activeModeData.samples, "min")?.time ?? null
+    return extremePupilSample(activeModeData.samples, "min")?.time ?? null
   }, [activeModeData.samples])
 
   const maxTime = useMemo(() => {
-    return getExtremeSample(activeModeData.samples, "max")?.time ?? null
+    return extremePupilSample(activeModeData.samples, "max")?.time ?? null
   }, [activeModeData.samples])
 
   const selectedValue = useMemo<number | null>(() => {
@@ -400,28 +352,11 @@ export function PupilDilationTab({
     return nearest.value
   }, [selectedTime, activeModeData.samples])
 
-  const tableRows = useMemo<StatRow[]>(() => {
-    const toPeak = (rowStats: ActivePupilStats | null) =>
-      rowStats?.max != null && rowStats?.baseline != null && rowStats.baseline !== 0
-        ? ((rowStats.max - rowStats.baseline) / Math.abs(rowStats.baseline)) * 100
-        : null
-    const toRow = (serie: string, rowStats: ActivePupilStats | null): StatRow => ({
-      serie,
-      count: rowStats?.count ?? null,
-      baseline: rowStats?.baseline ?? null,
-      mean: rowStats?.mean ?? null,
-      std: rowStats?.std ?? null,
-      median: rowStats?.median ?? null,
-      min: rowStats?.min ?? null,
-      max: rowStats?.max ?? null,
-      peak: toPeak(rowStats),
-    })
-
-    const promedioRow = toRow("Promedio", pupilModeData.both.stats)
-    const leftRow = toRow("Izquierda", pupilModeData.left.stats)
-    const rightRow = toRow("Derecha", pupilModeData.right.stats)
-    return [promedioRow, leftRow, rightRow]
-  }, [pupilModeData])
+  const tableRows = useMemo<StatRow[]>(() => [
+    pupilStatRow("Promedio", pupilModeData.both.stats),
+    pupilStatRow("Izquierda", pupilModeData.left.stats),
+    pupilStatRow("Derecha", pupilModeData.right.stats),
+  ], [pupilModeData])
 
   const summaryRow = useMemo(
     () => tableRows.find((row) => row.serie === activeSerie) ?? tableRows[0],
@@ -540,14 +475,27 @@ export function PupilDilationTab({
 
   // A dragged range behaves exactly like typing it into the window controls.
   const dragZoom = useChartDragZoom(windowState.zoomTo)
-  useCompareParticipantsSpec(() => ({
-    kind: "pupil",
-    title: "Dilatación pupilar",
-    scenario,
-    sourceParticipant: participantCode,
-    origin: "individual",
-    params: { eyes: viewMode, window: timeWindow },
-  }))
+  useCompareParticipantsSpec(() => comparisonSpec)
+
+  const groupDetail = viewMode === "both" ? BOTH_EYES_DETAIL : undefined
+  const groupContent = groupView.unsupportedReason ? (
+    <GroupUnsupported reason={groupView.unsupportedReason} className="analytics-state-frame" />
+  ) : groupView.mode ? (
+    <>
+      {groupView.mode === "average" ? (
+        <GroupKpiGrid kpis={GROUP_KPIS} entries={groupResults.stats} loading={groupResults.traces.length === 0 && groupView.data.loading} />
+      ) : null}
+      <GroupTemporalChart
+        mode={groupView.mode}
+        traces={groupResults.traces}
+        data={groupView.data}
+        unit="mm"
+        yLabel="Amplitud pupilar (mm)"
+        yAxis={groupYAxis}
+        averageDetail={groupDetail}
+      />
+    </>
+  ) : null
 
   return (
     <div className="analytics-stack">
@@ -556,7 +504,9 @@ export function PupilDilationTab({
           <div className="min-w-0 flex-1 basis-72">
             <CardTitle className="text-xl">Dilatación pupilar</CardTitle>
             <CardDescription>
-              Diámetro pupilar a lo largo del tiempo (mm), {activeModeLabel}.
+              {groupView.active
+                ? `Diámetro pupilar (mm) de varios participantes, ${activeModeLabel}.`
+                : `Diámetro pupilar a lo largo del tiempo (mm), ${activeModeLabel}.`}
             </CardDescription>
           </div>
 
@@ -567,7 +517,8 @@ export function PupilDilationTab({
                 { key: "left", label: "Izquierda" },
                 { key: "right", label: "Derecha" },
               ]} />
-            <TimeWindowControls
+            {/* Recording seconds belong to one recording: no window in a group mode. */}
+            {groupView.active ? null : <TimeWindowControls
               draftStart={windowState.draft.start}
               draftEnd={windowState.draft.end}
               appliedWindow={timeWindow}
@@ -581,11 +532,12 @@ export function PupilDilationTab({
               }
               onApply={windowState.apply}
               onReset={windowState.reset}
-            />
+            />}
           </div>
         </CardHeader>
 
         <CardContent>
+          {groupView.active ? groupContent : <>
           <div className="analytics-kpi-grid">
             {[
               {
@@ -709,8 +661,19 @@ export function PupilDilationTab({
             </ResponsiveContainer>
             </AnalyticsChartShell>
           )}
+          </>}
         </CardContent>
         </Card>
+      {groupView.active ? (
+        groupView.mode && !groupView.unsupportedReason ? (
+          <GroupStatsCard
+            mode={groupView.mode}
+            entries={groupResults.stats}
+            loading={groupResults.stats.length === 0 && groupView.data.loading}
+            detail={groupDetail}
+          />
+        ) : null
+      ) : <>
         {/* Gaze Snapshot Section */}
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
@@ -928,6 +891,7 @@ export function PupilDilationTab({
           />
         </CardContent>
       </Card>
+      </>}
 
     </div>
   )

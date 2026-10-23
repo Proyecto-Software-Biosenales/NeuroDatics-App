@@ -16,6 +16,9 @@ export function ParticipantSelector({
   selected,
   sourceParticipant,
   onChange,
+  size = "sm",
+  className,
+  colorOf,
 }: {
   participants: string[]
   /** Visible text by code (name or document). */
@@ -23,6 +26,11 @@ export function ParticipantSelector({
   selected: ReadonlySet<string>
   sourceParticipant: string | null
   onChange: (next: Set<string>) => void
+  /** The filters bar uses the default size, level with its selects. */
+  size?: "sm" | "default"
+  className?: string
+  /** A colour swatch per participant, when the chart draws one colour each. */
+  colorOf?: (code: string) => string | undefined
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -53,7 +61,7 @@ export function ParticipantSelector({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="gap-2 bg-card" aria-label={`Participantes: ${selected.size} de ${participants.length} seleccionados`}>
+        <Button type="button" variant="outline" size={size} className={cn("gap-2 bg-card", className)} aria-label={`Participantes: ${selected.size} de ${participants.length} seleccionados`}>
           <Users aria-hidden="true" />
           Participantes
           <span className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground tabular-nums">
@@ -105,6 +113,9 @@ export function ParticipantSelector({
             visible.map((code) => (
               <Label key={code} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm font-normal hover:bg-muted/70">
                 <Checkbox checked={selected.has(code)} onCheckedChange={(value) => toggle(code, value === true)} aria-label={participantDisplay(code, labels)} />
+                {colorOf?.(code) ? (
+                  <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colorOf(code) }} />
+                ) : null}
                 <span className="min-w-0 flex-1 truncate" title={participantDisplay(code, labels)}>{participantDisplay(code, labels)}</span>
                 {code === sourceParticipant ? (
                   <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">Vista de origen</span>

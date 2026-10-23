@@ -14,6 +14,10 @@ export interface StatRow {
   min: number | null
   max: number | null
   peak: number | null // percentage value e.g. 12.3 means 12.3%
+  /** React key when two rows could share a `serie` text (e.g. participant names). */
+  key?: string
+  /** Colour of the row's line in the chart, drawn as a swatch before the name. */
+  color?: string
 }
 
 interface StatisticsTableProps {
@@ -211,7 +215,7 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activ
                 const meta = SERIE_META[row.serie]
                 return (
                   <TableRow
-                    key={row.serie}
+                    key={row.key ?? row.serie}
                     className={cn(
                       "border-b border-border/50 transition-colors hover:bg-muted/30",
                       index === rows.length - 1 && "border-b-0",
@@ -220,7 +224,9 @@ export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activ
                   >
                     <TableCell className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        {meta ? (
+                        {row.color ? (
+                          <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+                        ) : meta ? (
                           <div
                             className={cn(
                               "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",

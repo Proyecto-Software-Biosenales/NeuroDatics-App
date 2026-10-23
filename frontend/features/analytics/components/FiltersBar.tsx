@@ -13,6 +13,14 @@ import {
 } from "@/components/ui/select"
 import type { AnalyticsParticipant, AnalyticsScenario } from "../types"
 import { participantLabel, participantShortLabel } from "../participantLabel"
+import { useGroupMode } from "../groupMode/GroupModeProvider"
+import {
+  GROUP_SELECT_VALUES,
+  GroupModeSelectItems,
+  GroupParticipantsPicker,
+  groupModeFromSelectValue,
+} from "../groupMode/GroupModeControls"
+import { GROUP_MODE_LABELS } from "../groupMode/groupSupport"
 
 interface FiltersBarProps {
   scenarios: AnalyticsScenario[]
@@ -39,10 +47,25 @@ export function FiltersBar({
   compareAction,
 }: FiltersBarProps) {
   // The value stays the participant code; only the visible text uses the name or document.
+  const group = useGroupMode()
   const selected = participants.find((participant) => participant.participant_code === selectedParticipant)
-  const selectedLabel = selectedParticipant == null
-    ? undefined
-    : selected ? participantShortLabel(selected) : selectedParticipant
+  const selectedLabel = group.mode
+    ? GROUP_MODE_LABELS[group.mode]
+    : selectedParticipant == null
+      ? undefined
+      : selected ? participantShortLabel(selected) : selectedParticipant
+  const selectValue = group.mode ? GROUP_SELECT_VALUES[group.mode] : selectedParticipant ?? ""
+  const handleParticipantValue = (value: string) => {
+    if (!value) return
+    const mode = groupModeFromSelectValue(value)
+    if (mode) {
+      group.setMode(mode)
+      return
+    }
+    // A concrete participant always means the individual view.
+    group.setMode(null)
+    onParticipantChange(value)
+  }
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 py-2.5 lg:flex-nowrap xl:gap-3 xl:px-6 roomy:py-4">
       <div className="flex shrink-0 items-center gap-2.5 text-sm font-medium text-muted-foreground">
@@ -73,8 +96,8 @@ export function FiltersBar({
       </Select>
 
       <Select
-        value={selectedParticipant ?? ""}
-        onValueChange={(val) => val && onParticipantChange(val)}
+        value={selectValue}
+        onValueChange={handleParticipantValue}
         disabled={participantsLoading || participants.length === 0}
       >
         <SelectTrigger className="flex w-40 shrink-0 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50 2xl:w-44 2xl:py-2">
@@ -92,10 +115,12 @@ export function FiltersBar({
               </SelectItem>
             ))}
           </SelectGroup>
+          <GroupModeSelectItems />
         </SelectContent>
       </Select>
 
-      {compareAction}
+      <GroupParticipantsPicker />
+      {group.active ? null : compareAction}
 
       <div className="ml-auto shrink-0">
         <Button

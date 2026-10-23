@@ -144,7 +144,13 @@ async function loadCardDataUnsafe(context: CardContext, signal: AbortSignal): Pr
       )
       const columns: Record<string, ReadonlyArray<number | null>> =
         kind === "pupil"
-          ? { left: (data as { smooth_left: number[] }).smooth_left, right: (data as { smooth_right: number[] }).smooth_right }
+          ? {
+              left: (data as { smooth_left: number[] }).smooth_left,
+              right: (data as { smooth_right: number[] }).smooth_right,
+              // Raw diameters: the group modes validate samples like the pupil view does.
+              raw_left: (data as { left: number[] }).left,
+              raw_right: (data as { right: number[] }).right,
+            }
           : kind === "gaze"
             ? { x: (data as { gx_clean: (number | null)[] }).gx_clean, y: (data as { gy_clean: (number | null)[] }).gy_clean }
             : kind === "distance"
