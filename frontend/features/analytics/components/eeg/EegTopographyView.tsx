@@ -15,7 +15,8 @@ import { InfoChip } from "../InfoChip"
 import { type EegTopographyData } from "../../types"
 import { formatChannel, formatNumber, VIRIDIS_GRADIENT, type TopographyFrameRow } from "../../eegPresentation"
 import { TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, type EegView } from "./eegViewShared"
-import { TopographyScene } from "./EegCanvasPanels"
+import { TopographyPanel, TopographyScene } from "./EegCanvasPanels"
+import { groupChart, type EegGroupSlots } from "./EegGroupPieces"
 
 interface EegTopographyViewProps {
   availableTopographyChannels: string[]
@@ -38,6 +39,8 @@ interface EegTopographyViewProps {
   handleApplyTopographyWindow: () => void
   handleResetTopographyWindow: () => void
   view: EegView
+  /** «Promedio»: `topographyData` is the averaged topography on the stimulus-time axis. */
+  group?: EegGroupSlots | null
 }
 
 export function EegTopographyView({
@@ -61,6 +64,7 @@ export function EegTopographyView({
   handleApplyTopographyWindow,
   handleResetTopographyWindow,
   view,
+  group = null,
 }: EegTopographyViewProps) {
   return <>
 {view === "topography" ? (
@@ -72,12 +76,15 @@ export function EegTopographyView({
                 Topografía EEG
               </CardTitle>
               <CardDescription>
-                Distribución espacial de potencia de banda ancha por ventanas temporales.
+                {group
+                  ? "Media de varios participantes por electrodo, en el mismo instante del escenario."
+                  : "Distribución espacial de potencia de banda ancha por ventanas temporales."}
               </CardDescription>
             </div>
             {/* Recomputed on the server, so the colour scale follows the window
-                instead of keeping the whole block's limits. */}
-            <TimeWindowControls
+                instead of keeping the whole block's limits. Recording seconds
+                belong to one recording: no window in a group mode. */}
+            {group ? null : <TimeWindowControls
               draftStart={topographyWindowDraft.start}
               draftEnd={topographyWindowDraft.end}
               appliedWindow={topographyWindow}
@@ -93,7 +100,7 @@ export function EegTopographyView({
               }}
               onApply={handleApplyTopographyWindow}
               onReset={handleResetTopographyWindow}
-            />
+            />}
             <div className="flex items-center gap-6 text-sm">
               <div>
                 <span className="block text-xs uppercase tracking-widest text-muted-foreground">Unidad</span>
@@ -110,7 +117,7 @@ export function EegTopographyView({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+            {group ? group.kpis : <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
               <KpiCard
                 label="Tiempo"
                 value={topographyStats.frameTime}
@@ -147,11 +154,11 @@ export function EegTopographyView({
                 iconColorClass="text-emerald-600 dark:text-emerald-400"
                 labelColorClass="text-emerald-700 dark:text-emerald-400"
               />
-            </div>
+            </div>}
 
             <EegChannelSelector channels={TOPOGRAPHY_CHANNELS} availableChannels={availableTopographyChannels} selectedChannels={selectedChannels} onToggle={handleTopographyChannelToggle} />
 
-            {topographyLoading ? (
+            {group?.chart ? groupChart(group) : topographyLoading ? (
               <Skeleton className="h-[560px] w-full animate-pulse rounded-lg bg-muted" />
             ) : topographyError ? (
               <div className="flex h-[420px] items-center justify-center text-sm text-muted-foreground">
@@ -180,16 +187,27 @@ export function EegTopographyView({
                       label="Montaje esquemático"
                       detail="Potencia por sensor con DC retirado en cada ventana. Montaje esquemático e interpolación visual; no localiza fuentes cerebrales."
                     />
+                    {group?.notes}
                   </div>
 
-                  <TopographyScene
+                  {/* The stimulus preview shows one recording's instant: a group draws the head alone. */}
+                  {group ? (
+                    <div className="flex justify-center overflow-hidden rounded-lg border border-border bg-muted/30 p-2 sm:p-3">
+                      <TopographyPanel
+                        rows={topographyRows}
+                        colorDomain={topographyData.color_domain}
+                        unit={topographyData.unit}
+                        className="max-w-[480px] lg:max-w-[min(480px,calc(100svh-13rem))]"
+                      />
+                    </div>
+                  ) : <TopographyScene
                     rows={topographyRows}
                     colorDomain={topographyData.color_domain}
                     unit={topographyData.unit}
                     projectId={projectId}
                     participantCode={participantCode}
                     selectedTime={topographyStats.frameTime}
-                  />
+                  />}
 
                   <div className="rounded-lg border border-border bg-card p-4">
                     <div className="mb-3 flex items-center justify-between gap-3 text-sm">
@@ -197,7 +215,7 @@ export function EegTopographyView({
                         Ventana {topographyFrameIndex + 1} / {topographyData.time.length}
                       </span>
                       <span className="text-muted-foreground">
-                        t≈{topographyStats.frameTime?.toFixed(2) ?? "0.00"}s
+                        t≈{topographyStats.frameTime?.toFixed(2) ?? "0.00"}s{group ? " desde el inicio del escenario" : ""}
                       </span>
                     </div>
                     <Slider
@@ -216,7 +234,7 @@ export function EegTopographyView({
                   <div className="border-b border-border px-4 py-3">
                     <p className="text-sm font-semibold text-foreground">Potencia por electrodo</p>
                     <p className="text-xs text-muted-foreground">
-                      Valores de la ventana temporal seleccionada.
+                      {group ? "Media de los participantes en la ventana seleccionada." : "Valores de la ventana temporal seleccionada."}
                     </p>
                   </div>
                   <div className="grid grid-cols-1 divide-y divide-border/60 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-3">
@@ -255,5 +273,6 @@ export function EegTopographyView({
           </CardContent>
         </Card>
       ) : null}
+{view === "topography" && group ? group.stats : null}
   </>
 }

@@ -22,6 +22,7 @@ import { ARTIFACT_DETECTOR_COLORS, EEG_ARTIFACT_SPANS_ID, EEG_CHANNELS, EEG_TIME
 import { EegStatsTable } from "./EegStatsTables"
 import { EegTooltip } from "./EegTooltips"
 import { ArtifactDetectorLegend } from "./EegQualityPanel"
+import { groupChart, type EegGroupSlots } from "./EegGroupPieces"
 
 interface EegTimeseriesViewProps {
   availableChannels: string[]
@@ -64,6 +65,8 @@ interface EegTimeseriesViewProps {
   setFocusChannel: Dispatch<SetStateAction<string | null>>
   montage: { lanes: MontageLane[]; spacing: number; domain: [number, number] }
   yDomain: { min: number; max: number; clippedLow: number; clippedHigh: number } | null
+  /** «Superposición» / «Promedio»: one channel per participant; recording-bound controls are hidden. */
+  group?: EegGroupSlots | null
 }
 
 export function EegTimeseriesView({
@@ -107,6 +110,7 @@ export function EegTimeseriesView({
   setFocusChannel,
   montage,
   yDomain,
+  group = null,
 }: EegTimeseriesViewProps) {
   const dragZoom = useChartDragZoom(handleZoomTimeseriesWindow)
   const stacked = chartLayout === "stacked"
@@ -185,21 +189,25 @@ export function EegTimeseriesView({
               EEG por canal
             </CardTitle>
             <CardDescription>
-              Trazas EEG sin corrección de artefactos.
+              {group
+                ? `Canal ${focusLabel} de varios participantes, sin corrección de artefactos.`
+                : "Trazas EEG sin corrección de artefactos."}
             </CardDescription>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 xl:shrink-0">
-            <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
+            {/* Several participants draw one signal each: «Ambas» would double every line. */}
+            <AnalyticsModeSelector value={group && signalMode === "both" ? "raw" : signalMode} onValueChange={setSignalMode} options={[
                 { key: "smooth", label: "Suavizada", hint: "Señal promediada cada 0.2 s: quita las oscilaciones rápidas y deja ver la tendencia." },
                 { key: "raw", label: "Cruda", hint: "Valores originales de cada electrodo, sin suavizar." },
-                { key: "both", label: "Ambas", hint: "La señal suavizada y la cruda juntas, para compararlas." },
+                ...(group ? [] : [{ key: "both" as const, label: "Ambas", hint: "La señal suavizada y la cruda juntas, para compararlas." }]),
               ]} />
-            <AnalyticsModeSelector value={chartLayout} onValueChange={setChartLayout} options={[
+            {group ? null : <AnalyticsModeSelector value={chartLayout} onValueChange={setChartLayout} options={[
                 { key: "overlay", label: "Superpuesta", hint: "Todos los canales sobre el mismo eje, para comparar su amplitud." },
                 { key: "stacked", label: "Montaje", hint: "Cada canal en su propio carril, uno debajo de otro, como en un registro clínico de EEG." },
-              ]} />
-            <TimeWindowControls
+              ]} />}
+            {/* Recording seconds belong to one recording: no window in a group mode. */}
+            {group ? null : <TimeWindowControls
               draftStart={timeseriesWindowDraft.start}
               draftEnd={timeseriesWindowDraft.end}
               appliedWindow={timeseriesWindow}
@@ -215,7 +223,7 @@ export function EegTimeseriesView({
               }}
               onApply={handleApplyTimeseriesWindow}
               onReset={handleResetTimeseriesWindow}
-            />
+            />}
           </div>
         </CardHeader>
 
@@ -226,7 +234,7 @@ export function EegTimeseriesView({
               number over all of them describes nothing. Pick whose it is. */}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm roomy:mb-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground">Estadísticas de:</span>
+              <span className="text-muted-foreground">{group ? "Canal:" : "Estadísticas de:"}</span>
               {visibleChannels.map((channel) => (
                 <Button
                   key={channel}
@@ -252,7 +260,7 @@ export function EegTimeseriesView({
             </div>
 
             {/* Recording facts, not results: one line instead of a second row of cards. */}
-            <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {group ? null : <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               {[
                 { label: "Muestras", value: chartData.length.toLocaleString(), sub: "puntos renderizados", Icon: Activity, iconColor: "text-blue-500" },
                 { label: "Frecuencia", value: `${(timeseriesData?.sampling_rate_hz ?? 0).toFixed(2)}`, sub: "Hz estimados", Icon: Gauge, iconColor: "text-emerald-500" },
@@ -267,10 +275,10 @@ export function EegTimeseriesView({
                   </dd>
                 </div>
               ))}
-            </dl>
+            </dl>}
           </div>
 
-          <div className="analytics-kpi-grid">
+          {group ? group.kpis : <div className="analytics-kpi-grid">
             <KpiCard
               label={`Media · ${focusLabel}`}
               value={timeRepresentativeStats.meanValue}
@@ -315,9 +323,9 @@ export function EegTimeseriesView({
               iconColorClass="text-rose-600 dark:text-rose-400"
               labelColorClass="text-rose-700 dark:text-rose-400"
             />
-          </div>
+          </div>}
 
-          {timeseriesLoading ? (
+          {group ? groupChart(group) : timeseriesLoading ? (
             <Skeleton className="analytics-state-frame-eeg w-full animate-pulse rounded-lg bg-muted" />
           ) : timeseriesError ? (
             <div className="analytics-state-frame-eeg flex items-center justify-center text-sm text-muted-foreground">
@@ -437,7 +445,7 @@ export function EegTimeseriesView({
       </Card>
       ) : null}
 
-{view === "timeseries" ? (
+{view === "timeseries" && !group ? (
         <StimulusFixationCard
           projectId={projectId}
           participantCode={participantCode}
@@ -454,7 +462,9 @@ export function EegTimeseriesView({
         />
       ) : null}
 
-{view === "timeseries" ? (
+{view === "timeseries" && group ? group.stats : null}
+
+{view === "timeseries" && !group ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Estadísticas EEG por canal</CardTitle>
@@ -476,7 +486,7 @@ export function EegTimeseriesView({
         </Card>
       ) : null}
 
-{view === "timeseries" && selectedPoint ? (
+{view === "timeseries" && !group && selectedPoint ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">

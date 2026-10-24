@@ -19,6 +19,7 @@ import { formatChannel, VIRIDIS_GRADIENT, type SpectrogramGaps } from "../../eeg
 import { EEG_CHANNELS, type EegView, type SpectrogramStats } from "./eegViewShared"
 import { SpectrogramStatsTable } from "./EegStatsTables"
 import { SpectrogramPanel } from "./EegCanvasPanels"
+import { groupChart, type EegGroupSlots } from "./EegGroupPieces"
 
 /** Shared so a channel without a matrix keeps the same prop across renders. */
 const EMPTY_MATRIX: Array<Array<number | null>> = []
@@ -57,6 +58,8 @@ interface EegSpectrogramViewProps {
   spectrogramGaps: SpectrogramGaps | null
   view: EegView
   visibleSpectrogramChannels: string[]
+  /** «Promedio»: `spectrogramData` is the averaged spectrogram on the stimulus-time axis. */
+  group?: EegGroupSlots | null
 }
 
 export function EegSpectrogramView({
@@ -92,6 +95,7 @@ export function EegSpectrogramView({
   spectrogramGaps,
   view,
   visibleSpectrogramChannels,
+  group = null,
 }: EegSpectrogramViewProps) {
   return <>
 {view === "spectrogram" ? (
@@ -103,7 +107,9 @@ export function EegSpectrogramView({
                 Espectrograma de frecuencias
               </CardTitle>
               <CardDescription>
-                Densidad espectral por ventana. dB referidos a 1 uV²/Hz; los huecos indican ventanas no disponibles.
+                {group
+                  ? "Media de varios participantes en cada ventana y frecuencia, desde el inicio del escenario. dB referidos a 1 uV²/Hz."
+                  : "Densidad espectral por ventana. dB referidos a 1 uV²/Hz; los huecos indican ventanas no disponibles."}
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
@@ -120,8 +126,9 @@ export function EegSpectrogramView({
                 <span className="font-semibold text-foreground">{(spectrogramData?.frequency.length ?? 0).toLocaleString()}</span>
               </div>
               {/* The window is recomputed on the server, so the colour limits
-                  follow what is visible instead of the whole block. */}
-              <TimeWindowControls
+                  follow what is visible instead of the whole block. Recording
+                  seconds belong to one recording: no window in a group mode. */}
+              {group ? null : <TimeWindowControls
                 draftStart={spectrogramWindowDraft.start}
                 draftEnd={spectrogramWindowDraft.end}
                 appliedWindow={spectrogramWindow}
@@ -137,11 +144,11 @@ export function EegSpectrogramView({
                 }}
                 onApply={handleApplySpectrogramWindow}
                 onReset={handleResetSpectrogramWindow}
-              />
+              />}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+            {group ? group.kpis : <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
               <KpiCard
                 label="Frecuencia máxima"
                 value={spectrogramRepresentativeStats.maxFrequency}
@@ -180,11 +187,11 @@ export function EegSpectrogramView({
                 iconColorClass="text-emerald-600 dark:text-emerald-400"
                 labelColorClass="text-emerald-700 dark:text-emerald-400"
               />
-            </div>
+            </div>}
 
             <EegChannelSelector channels={EEG_CHANNELS} availableChannels={availableChannels} selectedChannels={selectedChannels} onToggle={handleChannelToggle} />
 
-            {spectrogramLoading ? (
+            {group?.chart ? groupChart(group) : spectrogramLoading ? (
               <Skeleton className="h-[520px] w-full animate-pulse rounded-lg bg-muted" />
             ) : spectrogramError ? (
               <div className="flex h-[420px] items-center justify-center text-sm text-muted-foreground">
@@ -286,6 +293,7 @@ export function EegSpectrogramView({
                       }
                     />
                   ) : null}
+                  {group?.notes}
                   {perChannelColorDomain && spectrogramData.channel_color_domain ? (
                     <InfoChip
                       Icon={SlidersHorizontal}
@@ -342,7 +350,7 @@ export function EegSpectrogramView({
         </Card>
       ) : null}
 
-{view === "spectrogram" ? (
+{view === "spectrogram" && !group ? (
         <StimulusFixationCard
           projectId={projectId}
           participantCode={participantCode}
@@ -359,7 +367,9 @@ export function EegSpectrogramView({
         />
       ) : null}
 
-{view === "spectrogram" ? (
+{view === "spectrogram" && group ? group.stats : null}
+
+{view === "spectrogram" && !group ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Estadísticas del espectrograma</CardTitle>

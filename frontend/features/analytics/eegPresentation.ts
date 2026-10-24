@@ -235,6 +235,200 @@ export function rotateTopographyPositionClockwise(x: number, y: number) {
 }
 
 
+export interface PsdStats extends ChannelStats {
+  peakFrequency: number
+  peakPower: number
+}
+
+export interface SpectrogramStats {
+  channel: string
+  frequencyBins: number
+  timeBins: number
+  peakFrequency: number
+  peakTime: number
+  peakPower: number
+  meanPower: number
+  stdPower: number
+  medianPower: number
+  minPower: number
+  maxPower: number
+}
+
+/**
+ * One PSD line's row of the statistics table: the level statistics of its
+ * finite values and where its highest value sits. Shared by the individual
+ * view (one line per channel) and the group modes (one line per participant).
+ */
+export function psdSeriesStats(
+  channel: string,
+  frequency: ArrayLike<number>,
+  power: ArrayLike<number | null | undefined>
+): PsdStats | null {
+  const values = finiteValues(Array.from(power))
+  const stats = buildStats(channel, values)
+  if (!stats || values.length === 0) return null
+  let peakIndex = -1
+  for (let index = 0; index < power.length; index += 1) {
+    const value = power[index]
+    if (typeof value === "number" && Number.isFinite(value) && (peakIndex < 0 || value > (power[peakIndex] ?? -Infinity))) {
+      peakIndex = index
+    }
+  }
+  return { ...stats, peakFrequency: frequency[peakIndex] ?? 0, peakPower: power[peakIndex] as number }
+}
+
+/** The PSD cards: the highest peak among the lines and the mean of every visible value. */
+export function psdSummary(
+  stats: PsdStats[],
+  power: Readonly<Record<string, ArrayLike<number | null | undefined> | undefined>>
+): { peakFrequency: null; peakPower: null; meanPower: null } | { peakFrequency: number; peakPower: number; meanPower: number | null } {
+  if (stats.length === 0) return { peakFrequency: null, peakPower: null, meanPower: null }
+  const peak = stats.reduce((best, row) => (row.peakPower > best.peakPower ? row : best))
+  const allPower = stats.flatMap((row) => finiteValues(Array.from(power[row.channel] ?? [])))
+  return {
+    peakFrequency: peak.peakFrequency,
+    peakPower: peak.peakPower,
+    meanPower: allPower.length > 0 ? mean(allPower) : null,
+  }
+}
+
+type SpectrogramMatrix = ReadonlyArray<ArrayLike<number | null | undefined>>
+
+/**
+ * Statistics of the visible cells of one or more spectrogram matrices (rows
+ * are frequencies, columns times): the channel's row in the individual view,
+ * every visible channel pooled for one participant in the group modes.
+ */
+export function spectrogramStatsOf(
+  channel: string,
+  frequency: ArrayLike<number>,
+  time: ArrayLike<number>,
+  matrices: readonly SpectrogramMatrix[]
+): SpectrogramStats | null {
+  const values: number[] = []
+  let peakPower = Number.NEGATIVE_INFINITY
+  let minPower = Number.POSITIVE_INFINITY
+  let peakFrequencyIndex = 0
+  let peakTimeIndex = 0
+  let frequencyBins = 0
+  let timeBins = 0
+  for (const matrix of matrices) {
+    frequencyBins = Math.max(frequencyBins, matrix.length)
+    timeBins = Math.max(timeBins, matrix[0]?.length ?? 0)
+    for (let frequencyIndex = 0; frequencyIndex < matrix.length; frequencyIndex += 1) {
+      const row = matrix[frequencyIndex]
+      for (let timeIndex = 0; timeIndex < row.length; timeIndex += 1) {
+        const value = row[timeIndex]
+        if (typeof value !== "number" || !Number.isFinite(value)) continue
+        values.push(value)
+        if (value > peakPower) {
+          peakPower = value
+          peakFrequencyIndex = frequencyIndex
+          peakTimeIndex = timeIndex
+        }
+        if (value < minPower) minPower = value
+      }
+    }
+  }
+  if (values.length === 0) return null
+  return {
+    channel,
+    frequencyBins,
+    timeBins,
+    peakFrequency: frequency[peakFrequencyIndex] ?? 0,
+    peakTime: time[peakTimeIndex] ?? 0,
+    peakPower,
+    meanPower: mean(values),
+    stdPower: std(values),
+    medianPower: median(values),
+    minPower,
+    maxPower: peakPower,
+  }
+}
+
+/** The spectrogram cards: highest and mean level over the visible channels, and the top frequency. */
+export function spectrogramSummary(data: {
+  channels: string[]
+  frequency: number[]
+  power: Readonly<Record<string, SpectrogramMatrix | undefined>>
+} | null): { maxPower: number | null; meanPower: number | null; maxFrequency: number | null } {
+  if (!data) return { maxPower: null, meanPower: null, maxFrequency: null }
+  const values = data.channels.flatMap((channel) => (data.power[channel] ?? []).flatMap((row) => finiteValues(Array.from(row))))
+  const maxPower = values.reduce((currentMax, value) => (value > currentMax ? value : currentMax), values[0] ?? 0)
+  return {
+    maxPower: values.length > 0 ? maxPower : null,
+    meanPower: values.length > 0 ? mean(values) : null,
+    maxFrequency: data.frequency.length > 0 ? data.frequency[data.frequency.length - 1] : null,
+  }
+}
+
+/** The electrodes of one topography frame with a position and a finite value, turned like the head. */
+export function topographyRowsOf(
+  channels: readonly string[],
+  positions: Readonly<Record<string, number[] | undefined>>,
+  valueOf: (channel: string) => number | null | undefined
+): TopographyFrameRow[] {
+  return channels.flatMap((channel) => {
+    const position = positions[channel]
+    const value = valueOf(channel)
+    if (!position || position.length < 2 || typeof value !== "number" || !Number.isFinite(value)) return []
+    const rotated = rotateTopographyPositionClockwise(position[0], position[1])
+    return [{ channel, value, x: rotated.x, y: rotated.y }]
+  })
+}
+
+/** The topography cards for one frame: mean, extremes and strongest electrode. */
+export function topographyFrameStats(rows: TopographyFrameRow[], frameTime: number | null) {
+  const values = rows.map((row) => row.value).filter(Number.isFinite)
+  const strongest = rows.reduce<TopographyFrameRow | null>((best, row) => (!best || row.value > best.value ? row : best), null)
+  return {
+    frameTime,
+    meanPower: values.length > 0 ? mean(values) : null,
+    minPower: values.length > 0 ? Math.min(...values) : null,
+    maxPower: values.length > 0 ? Math.max(...values) : null,
+    strongest,
+  }
+}
+
+export interface AveragedFigures<K extends string> {
+  values: Record<K, number | null>
+  /** Participants with a finite value for each figure. */
+  n: Record<K, number>
+  /** Participants with at least one finite figure. */
+  participants: number
+}
+
+/**
+ * The «Promedio» of the group modes: each figure is the mean, over
+ * participants, of that participant's own figure. Figures named in `db` are
+ * power levels in decibels and are averaged in linear power, then converted
+ * back; figures in `round` (counts) are rounded.
+ */
+export function averageFigures<K extends string>(
+  records: ReadonlyArray<Partial<Record<K, unknown>> | null | undefined>,
+  fields: readonly K[],
+  options: { db?: readonly K[]; round?: readonly K[] } = {}
+): AveragedFigures<K> {
+  const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value)
+  const present = records.filter((record): record is Partial<Record<K, unknown>> => record != null)
+  const values = {} as Record<K, number | null>
+  const n = {} as Record<K, number>
+  for (const field of fields) {
+    const db = options.db?.includes(field) ?? false
+    const numbers = present.map((record) => record[field]).filter(isNumber)
+    n[field] = numbers.length
+    if (numbers.length === 0) {
+      values[field] = null
+      continue
+    }
+    const average = mean(db ? numbers.map((value) => 10 ** (value / 10)) : numbers)
+    const value = db ? (average > 0 ? 10 * Math.log10(average) : null) : average
+    values[field] = value != null && options.round?.includes(field) ? Math.round(value) : value
+  }
+  const participants = present.filter((record) => fields.some((field) => isNumber(record[field]))).length
+  return { values, n, participants }
+}
+
 /** Summaries are computed by the backend before plot reduction. Both-mode uses raw. */
 export function fullResolutionStats(data: EegTimeseriesData | null, mode: string): ChannelStats[] {
   if (!data?.statistics) return []

@@ -9,6 +9,7 @@ import type {
   EegMetadata,
   EegPsdData,
   EegSpectrogramData,
+  EegTimeseriesData,
   EegTopographyData,
   FixationData,
   FixationHistogramData,
@@ -56,6 +57,8 @@ export type CardResult =
       keys: string[]
       channels: string[]
       metadata: EegMetadata | null
+      /** EEG only: the server's full-resolution figures per channel, as the EEG view shows them. */
+      statistics?: EegTimeseriesData["statistics"] | null
     } & TimeAxis)
   | { type: "histogram"; data: FixationHistogramData }
   | { type: "psd"; data: EegPsdData }
@@ -186,7 +189,10 @@ async function loadCardDataUnsafe(context: CardContext, signal: AbortSignal): Pr
         }
         return point
       })
-      return { type: "temporal", points, keys, channels: data.channels, metadata: data.metadata ?? null, ...axis }
+      return {
+        type: "temporal", points, keys, channels: data.channels, metadata: data.metadata ?? null,
+        statistics: data.statistics ?? null, ...axis,
+      }
     }
     case "fixation_histogram": {
       const data = await AnalyticsApi.getFixationHistogram(projectId, participant, scenario, spec.params.minFixationDurationMs, signal)

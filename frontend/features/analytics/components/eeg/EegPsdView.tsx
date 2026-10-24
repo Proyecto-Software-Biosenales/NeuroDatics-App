@@ -24,6 +24,7 @@ import { formatChannel } from "../../eegPresentation"
 import { EEG_CHANNELS, CHANNEL_COLORS, type EegView, type EegPsdChartPoint, type PsdStats } from "./eegViewShared"
 import { PsdStatsTable } from "./EegStatsTables"
 import { PsdTooltip } from "./EegTooltips"
+import { groupChart, type EegGroupSlots } from "./EegGroupPieces"
 
 /** What the response says about contaminated windows, as a chart chip. */
 function psdWindowFlagNote(psdData: EegPsdData | null): AnalyticsChartNote | null {
@@ -86,6 +87,8 @@ interface EegPsdViewProps {
   setPsdWindowError: Dispatch<SetStateAction<string | null>>
   view: EegView
   visiblePsdChannels: string[]
+  /** «Superposición» / «Promedio»; the chart slot receives the «Ajustar» toggle. */
+  group?: EegGroupSlots | null
 }
 
 export function EegPsdView({
@@ -114,6 +117,7 @@ export function EegPsdView({
   setPsdWindowError,
   view,
   visiblePsdChannels,
+  group = null,
 }: EegPsdViewProps) {
   const dragZoom = useChartDragZoom(handleZoomPsdFrequency)
   const psdValues = useCallback(
@@ -160,7 +164,9 @@ export function EegPsdView({
               Densidad espectral de potencia
             </CardTitle>
             <CardDescription>
-              Potencia por frecuencia de los canales EEG seleccionados.
+              {group
+                ? "Potencia por frecuencia de varios participantes, con la media de los canales seleccionados."
+                : "Potencia por frecuencia de los canales EEG seleccionados."}
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-6 text-sm">
@@ -168,12 +174,13 @@ export function EegPsdView({
               <span className="block text-xs uppercase tracking-widest text-muted-foreground">Unidad</span>
               <span className="font-semibold text-foreground">{psdData?.unit ?? "dB"}</span>
             </div>
-            <div>
+            {group ? null : <div>
               <span className="block text-xs uppercase tracking-widest text-muted-foreground">Intervalos</span>
               <span className="font-semibold text-foreground">{psdChartData.length.toLocaleString()}</span>
-            </div>
+            </div>}
             <FitAxisToggle pressed={fitAxis} onPressedChange={setFitAxis} />
-            <TimeWindowControls
+            {/* Recording seconds belong to one recording: no window in a group mode. */}
+            {group ? null : <TimeWindowControls
               draftStart={psdWindowDraft.start}
               draftEnd={psdWindowDraft.end}
               appliedWindow={psdWindow}
@@ -190,7 +197,7 @@ export function EegPsdView({
               onApply={handleApplyPsdWindow}
               onReset={handleResetPsdWindow}
               zoomHint="Arrastra sobre la gráfica para ampliar un rango de frecuencias."
-            />
+            />}
             {/* Welch overlaps its windows by 50 %, so one artifact sample lands
                 in two of them. The contaminated number is the default. */}
             <Label
@@ -207,7 +214,7 @@ export function EegPsdView({
           </div>
         </CardHeader>
         <CardContent>
-              <div className="analytics-kpi-grid">
+          {group ? group.kpis : <div className="analytics-kpi-grid">
             <KpiCard
               label="Frecuencia pico"
               value={psdRepresentativeStats.peakFrequency}
@@ -244,11 +251,11 @@ export function EegPsdView({
               iconColorClass="text-emerald-600 dark:text-emerald-400"
               labelColorClass="text-emerald-700 dark:text-emerald-400"
             />
-          </div>
+          </div>}
 
           <EegChannelSelector channels={EEG_CHANNELS} availableChannels={availableChannels} selectedChannels={selectedChannels} onToggle={handleChannelToggle} />
 
-          {psdLoading ? (
+          {group ? groupChart(group, { fit: fitAxis }) : psdLoading ? (
             <Skeleton className="analytics-state-frame-mid w-full animate-pulse rounded-lg bg-muted" />
           ) : psdError ? (
             <div className="analytics-state-frame-mid flex items-center justify-center text-sm text-muted-foreground">
@@ -317,7 +324,9 @@ export function EegPsdView({
       </Card>
       ) : null}
 
-{view === "psd" ? (
+{view === "psd" && group ? group.stats : null}
+
+{view === "psd" && !group ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Estadísticas de densidad espectral</CardTitle>
