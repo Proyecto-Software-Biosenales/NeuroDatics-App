@@ -114,6 +114,20 @@ const COLUMNS: GroupFigureColumn[] = [
   { key: "mean", label: "Duración media", format: formatMilliseconds },
 ]
 
+// The heatmap PNG, individual or of the group, pinned to the measured stimulus box.
+function HeatmapOverlayImage({ src, alt, box, testId }: { src: string; alt: string; box: ContainedImageBox; testId?: string }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      aria-hidden="true"
+      data-testid={testId}
+      className="pointer-events-none z-10"
+      style={{ ...containedImageBoxStyle(box), opacity: OVERLAY_OPACITY }}
+    />
+  )
+}
+
 function CenteredMessage({ children }: { children: ReactNode }) {
   return <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">{children}</div>
 }
@@ -394,14 +408,7 @@ export function HeatmapTab({
     return stimulus((box) =>
       groupMode === "average" ? (
         groupHeatmap.overlayUrl ? (
-          <img
-            src={groupHeatmap.overlayUrl}
-            alt="Mapa de calor del grupo"
-            aria-hidden="true"
-            data-testid="group-heatmap-overlay"
-            className="pointer-events-none z-10"
-            style={{ ...containedImageBoxStyle(box), opacity: OVERLAY_OPACITY }}
-          />
+          <HeatmapOverlayImage src={groupHeatmap.overlayUrl} alt="Mapa de calor del grupo" box={box} testId="group-heatmap-overlay" />
         ) : null
       ) : (
         <GroupFixationLayer layers={groupLayers} box={box} />
@@ -464,16 +471,7 @@ export function HeatmapTab({
               ) : (
                 <>
                   {stimulus((box) =>
-                    // Heatmap PNG overlay, pinned to the measured stimulus box
-                    overlayUrl ? (
-                      <img
-                        src={overlayUrl}
-                        alt="Mapa de calor"
-                        aria-hidden="true"
-                        className="pointer-events-none z-10"
-                        style={{ ...containedImageBoxStyle(box), opacity: OVERLAY_OPACITY }}
-                      />
-                    ) : null
+                    overlayUrl ? <HeatmapOverlayImage src={overlayUrl} alt="Mapa de calor" box={box} /> : null
                   )}
                   {controls}
                 </>
