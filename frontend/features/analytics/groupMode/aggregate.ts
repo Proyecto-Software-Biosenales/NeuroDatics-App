@@ -307,6 +307,122 @@ export function meanSpectra(spectra: readonly Spectrum[], options: { db: boolean
   return { frequency, mean, lower, upper, n: summary.n }
 }
 
+/** One participant's spectrogram: rows are frequencies, columns are times (the API's layout). */
+export interface SpectrogramInput {
+  time: ArrayLike<number>
+  frequency: ArrayLike<number>
+  power: Readonly<Record<string, ReadonlyArray<ArrayLike<number | null>>>>
+}
+
+export interface SpectrogramMean {
+  time: Float64Array
+  frequency: Float64Array
+  /** Per key, rows (frequencies) × columns (times), in the input's unit; NaN where nobody has a value. */
+  mean: Record<string, number[][]>
+  n: Record<string, number[][]>
+}
+
+const traceOf = (axis: ArrayLike<number>): Trace => ({ x: axis, y: axis })
+
+function sameAxisAs(axis: ArrayLike<number>, grid: ArrayLike<number>): boolean {
+  if (axis.length !== grid.length) return false
+  for (let index = 0; index < axis.length; index += 1) if (axis[index] !== grid[index]) return false
+  return true
+}
+
+/**
+ * Cell-wise mean of spectrograms (per key, e.g. per channel) on one common
+ * time × frequency grid. Each spectrogram is taken to linear power, resampled
+ * along time and then along frequency without extrapolating or bridging gaps,
+ * averaged, and taken back to dB when `db`.
+ */
+export function meanSpectrograms(
+  inputs: readonly SpectrogramInput[],
+  keys: readonly string[],
+  options: { db: boolean; maxTimePoints?: number; maxFrequencyPoints?: number }
+): SpectrogramMean {
+  const usable = inputs.filter((input) => input.time.length > 0 && input.frequency.length > 0)
+  const time = commonGrid(usable.map((input) => traceOf(input.time)), options.maxTimePoints ?? MAX_GRID_POINTS)
+  const frequency = usable.length && sameAxis(usable.map((input) => input.frequency))
+    ? Float64Array.from(usable[0].frequency)
+    : commonGrid(usable.map((input) => traceOf(input.frequency)), options.maxFrequencyPoints ?? MAX_GRID_POINTS)
+  const toLinear = (value: number | null | undefined) =>
+    isFiniteNumber(value) ? (options.db ? fromDb(value) : value) : Number.NaN
+  const mean: Record<string, number[][]> = {}
+  const n: Record<string, number[][]> = {}
+  for (const key of keys) {
+    const grids: Float64Array[][] = []
+    for (const input of usable) {
+      const matrix = input.power[key]
+      if (!matrix || matrix.length === 0) continue
+      // Along time first, one frequency row at a time.
+      const rows = Array.from({ length: Math.min(matrix.length, input.frequency.length) }, (_, row) =>
+        resampleTrace({ x: input.time, y: Array.from(matrix[row], toLinear) }, time)
+      )
+      if (sameAxisAs(input.frequency, frequency)) {
+        grids.push(rows)
+        continue
+      }
+      // Then along frequency, one time column at a time.
+      const resampled = Array.from({ length: frequency.length }, () => new Float64Array(time.length).fill(Number.NaN))
+      const axis = Array.from(input.frequency).slice(0, rows.length)
+      for (let column = 0; column < time.length; column += 1) {
+        const values = resampleTrace({ x: axis, y: rows.map((row) => row[column]) }, frequency)
+        values.forEach((value, row) => {
+          resampled[row][column] = value
+        })
+      }
+      grids.push(resampled)
+    }
+    const summary = meanGrids(grids)
+    mean[key] = options.db ? summary.mean.map((row) => row.map(toDb)) : summary.mean
+    n[key] = summary.n
+  }
+  return { time, frequency, mean, n }
+}
+
+/** Series per key over time, e.g. a topography's power per electrode and window. */
+export interface KeyedSeriesInput {
+  time: ArrayLike<number>
+  values: Readonly<Record<string, ArrayLike<number | null> | undefined>>
+}
+
+export interface KeyedSeriesMean {
+  grid: Float64Array
+  /** Per key, the mean over inputs at each grid point. */
+  mean: Record<string, Float64Array>
+  n: Record<string, Uint16Array>
+  /** Per key, each input resampled on `grid`, in input order. */
+  resampled: Record<string, Float64Array[]>
+}
+
+/**
+ * Per-key mean of time series on one common grid (every key shares it), with
+ * linear interpolation that never extrapolates or bridges a gap. Inputs
+ * without a key do not count toward its mean.
+ */
+export function meanKeyedSeries(
+  inputs: readonly KeyedSeriesInput[],
+  keys: readonly string[],
+  maxPoints = MAX_GRID_POINTS
+): KeyedSeriesMean {
+  const grid = commonGrid(inputs.map((input) => traceOf(input.time)), maxPoints)
+  const mean: Record<string, Float64Array> = {}
+  const n: Record<string, Uint16Array> = {}
+  const resampled: Record<string, Float64Array[]> = {}
+  for (const key of keys) {
+    const columns = inputs.map((input) => {
+      const values = input.values[key]
+      return values ? resampleTrace({ x: input.time, y: values as ArrayLike<number> }, grid) : new Float64Array(grid.length).fill(Number.NaN)
+    })
+    const summary = summarize(columns, grid.length)
+    mean[key] = summary.mean
+    n[key] = summary.n
+    resampled[key] = columns
+  }
+  return { grid, mean, n, resampled }
+}
+
 export interface GridMean {
   mean: number[][]
   n: number[][]

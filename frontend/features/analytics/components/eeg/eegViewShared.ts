@@ -1,4 +1,3 @@
-import type { ChannelStats } from "../../eegPresentation"
 import type { EegArtifactSpan } from "../../types"
 
 export const EEG_CHANNELS = ["le", "f4", "c4", "p4", "p3", "c3", "f3"]
@@ -70,21 +69,4 @@ export interface EegPsdChartPoint {
   [key: string]: number
 }
 
-export interface PsdStats extends ChannelStats {
-  peakFrequency: number
-  peakPower: number
-}
-
-export interface SpectrogramStats {
-  channel: string
-  frequencyBins: number
-  timeBins: number
-  peakFrequency: number
-  peakTime: number
-  peakPower: number
-  meanPower: number
-  stdPower: number
-  medianPower: number
-  minPower: number
-  maxPower: number
-}
+export type { PsdStats, SpectrogramStats } from "../../eegPresentation"

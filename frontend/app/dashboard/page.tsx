@@ -103,7 +103,7 @@ const EEG_TAB_KINDS: Record<EegTabKey, ComparisonKind> = {
  * Every other view shows why it cannot, in place of its chart.
  */
 const GROUP_READY_TABS = new Set<AnalyticsTabKey>(["pupil_dilation"])
-const GROUP_READY_EEG_TABS = new Set<EegTabKey>([])
+const GROUP_READY_EEG_TABS = new Set<EegTabKey>(["timeseries", "psd", "spectrogram", "topography"])
 const GROUP_READY_GSR = false
 
 function groupBlockedReason(mode: GroupMode, kind: ComparisonKind | "comparativas", scenario: string): string {
