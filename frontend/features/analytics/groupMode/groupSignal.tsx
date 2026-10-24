@@ -81,11 +81,12 @@ export interface GroupSignalResults {
 }
 
 /**
- * The drawn series `column` of every participant (already aligned on the
- * scenario onset) and a table row per participant built by `statRow` from its
- * own statistics, the same function the individual view uses. A participant
- * whose recording could not be aligned is left out of the chart, with an empty
- * row, like one without data.
+ * The drawn series `column` of every participant (on `view.timeAxis`: aligned
+ * on the scenario onset, or each recording's own time with «Todos los
+ * escenarios») and a table row per participant built by `statRow` from its
+ * own statistics, the same function the individual view uses. With a concrete
+ * scenario, a participant whose recording could not be aligned is left out of
+ * the chart, with an empty row, like one without data.
  */
 export function useGroupSignal<T>(
   view: GroupView,
@@ -104,11 +105,12 @@ export function useGroupSignal<T>(
   }
 ): GroupSignalResults {
   const entries = view.data.entries
+  const needsAlignment = view.timeAxis.aligned
   const drawn = useMemo(() => {
     const series = new Map<string, GroupTrace & { count: number }>()
     for (const entry of entries) {
       const result = entry.result
-      if (entry.status !== "success" || result?.type !== "temporal" || !result.aligned) continue
+      if (entry.status !== "success" || result?.type !== "temporal" || (needsAlignment && !result.aligned)) continue
       const time = result.points.map((point) => point.time)
       const value = result.points.map((point) => {
         const sample = point[column]
@@ -118,7 +120,7 @@ export function useGroupSignal<T>(
       series.set(entry.participant.code, { participant: entry.participant, time, value, count })
     }
     return series
-  }, [column, entries])
+  }, [column, entries, needsAlignment])
   const codes = useMemo(() => [...drawn.keys()], [drawn])
   const statisticsOf = useGroupStatistics(operation, request, scenario, codes)
 
@@ -143,9 +145,9 @@ export function useGroupSignal<T>(
   }, [drawn, entries, statRow, statisticsOf])
 }
 
-/** What a participant row of these views is computed from. */
-export const SIGNAL_STATS_BASIS =
-  "Cada fila se calcula sobre la señal completa de ese participante en el escenario, igual que en su vista individual; «Número» cuenta las muestras dibujadas."
+/** What a participant row of these views is computed from; `scope` is `GroupTimeAxis.scope`. */
+export const signalStatsBasis = (scope: string) =>
+  `Cada fila se calcula sobre la señal completa de ese participante en ${scope}, igual que en su vista individual; «Número» cuenta las muestras dibujadas.`
 
 /**
  * The chart area in a group mode: the unsupported message, or the «Promedio»
@@ -185,6 +187,7 @@ export function GroupSignalChart({
         mode={view.mode}
         traces={results.traces}
         data={view.data}
+        timeAxis={view.timeAxis}
         unit={unit}
         yLabel={yLabel}
         yAxis={yAxis}
@@ -215,7 +218,7 @@ export function GroupSignalStats({
       loading={results.stats.length === 0 && (view.data.loading || results.statsLoading)}
       unit={unit}
       detail={detail}
-      basis={SIGNAL_STATS_BASIS}
+      basis={signalStatsBasis(view.timeAxis.scope)}
     />
   )
 }

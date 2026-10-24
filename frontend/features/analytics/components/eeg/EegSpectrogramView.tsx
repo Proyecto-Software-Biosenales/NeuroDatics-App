@@ -108,7 +108,7 @@ export function EegSpectrogramView({
               </CardTitle>
               <CardDescription>
                 {group
-                  ? "Media de varios participantes en cada ventana y frecuencia, desde el inicio del escenario. dB referidos a 1 uV²/Hz."
+                  ? group.description
                   : "Densidad espectral por ventana. dB referidos a 1 uV²/Hz; los huecos indican ventanas no disponibles."}
               </CardDescription>
             </div>

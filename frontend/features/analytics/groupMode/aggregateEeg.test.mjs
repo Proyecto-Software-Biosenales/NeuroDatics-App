@@ -57,6 +57,23 @@ test("a key missing in one spectrogram is averaged over the others only", () => 
   assert.equal(meanSpectrograms([], ["f3"], { db: true }).time.length, 0)
 })
 
+test("a long run of missing windows still leaves a hole in a keyed series", () => {
+  const time = Array.from({ length: 30 }, (_, k) => k)
+  const values = time.map((t) => (t >= 10 && t < 20 ? null : 1))
+  const result = meanKeyedSeries([{ time, values: { f3: values } }], ["f3"])
+  const at = (value) => Array.from(result.grid).indexOf(value)
+  assert.equal(result.mean.f3[at(5)], 1)
+  assert.ok(Number.isNaN(result.mean.f3[at(15)]))
+  assert.equal(result.mean.f3[at(25)], 1)
+})
+
+test("an isolated missing cell does not blank a spectrogram's time row", () => {
+  const time = [0, 1, 2, 3, 4]
+  const a = { time, frequency: [5], power: { c3: [[1, 1, null, 1, 1]] } }
+  const mean = meanSpectrograms([a], ["c3"], { db: false })
+  assert.deepEqual(mean.mean.c3[0], [1, 1, 1, 1, 1])
+})
+
 test("keyed series share one grid and keep each input resampled on it", () => {
   const result = meanKeyedSeries(
     [
@@ -72,8 +89,9 @@ test("keyed series share one grid and keep each input resampled on it", () => {
   // Only the first input reaches 1 s and only the second 4 s.
   assert.equal(result.n.f3[at(1)], 1)
   assert.equal(result.mean.f3[at(4)], 5)
-  // The first input's c3 gap is never bridged, and the second has no c3.
-  assert.ok(Number.isNaN(result.mean.c3[at(2)]))
+  // The first input's single missing c3 value is bridged, and the second has no c3.
+  assert.equal(result.mean.c3[at(2)], 20)
+  assert.equal(result.n.c3[at(2)], 1)
   assert.equal(result.mean.c3[at(1)], 10)
   assert.equal(result.resampled.c3.length, 2)
   assert.ok(result.resampled.c3[1].every(Number.isNaN))

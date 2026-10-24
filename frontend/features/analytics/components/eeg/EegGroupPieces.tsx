@@ -40,6 +40,8 @@ export interface EegGroupSlots {
   notes?: ReactNode
   /** No group data yet: the view shows its loading placeholder. */
   loading?: boolean
+  /** Replaces the card's description, when the group view says something else. */
+  description?: string
 }
 
 /** The chart slot, given the view's display toggles. */
@@ -108,6 +110,7 @@ export function EegGroupStatsCard<K extends string>({
   loading,
   db,
   detail,
+  scope,
 }: {
   mode: GroupMode
   columns: EegGroupColumn<K>[]
@@ -117,6 +120,8 @@ export function EegGroupStatsCard<K extends string>({
   /** Some figures are power levels in dB. */
   db?: boolean
   detail?: ReactNode
+  /** What each row covers: `GroupTimeAxis.scope` («todo el escenario» or «toda la grabación»). */
+  scope: string
 }) {
   const rows = useMemo(
     () => [
@@ -138,7 +143,7 @@ export function EegGroupStatsCard<K extends string>({
           label="Cómo se calcula"
           detail={
             <>
-              <span>Cada fila de participante usa su propio escenario completo, desde el inicio.</span>
+              <span>Cada fila de participante usa sus propios datos de {scope}.</span>
               {mode === "average" ? (
                 <span>
                   La fila «Promedio» es la media, entre participantes, de la cifra de cada uno; solo cuentan los
@@ -432,7 +437,7 @@ export function EegGroupPsdChart({
               domain={axis?.domain ?? ["auto", "auto"]}
               ticks={axis?.ticks}
               allowDataOverflow={Boolean(axis)}
-              tickFormatter={axis ? (value: number) => Number(value).toFixed(axis.decimals) : undefined}
+              tickFormatter={axis ? (value: number) => formatAxisTick(value, axis.decimals) : undefined}
               label={{ value: `PSD (${psd.unit})`, angle: -90, position: "insideLeft", offset: 4, style: { textAnchor: "middle" } }}
             />
             <RechartsTooltip content={<GroupPsdTooltip mode={mode} psd={psd} />} />

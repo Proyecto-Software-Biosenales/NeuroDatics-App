@@ -23,13 +23,26 @@ const participants = CODES.map((code, index) => ({ participant_code: code, user_
 const indexOf = (code: string) => CODES.indexOf(code)
 const onsetOf = (code: string) => 50 + indexOf(code) * 7
 
-/** Each participant has its own onset, length and level; both eyes stay valid. */
-function pupilFor(code: string) {
+/**
+ * Each participant has its own onset, length and level; both eyes stay valid.
+ * With `blinks`, every fifth sample is lost in both eyes, as the drawn
+ * envelope keeps a lost sample in almost every bucket of a real recording.
+ */
+function pupilFor(code: string, blinks = false) {
   const i = indexOf(code)
   const time = Array.from({ length: 61 + i * 10 }, (_, k) => onsetOf(code) + k * 0.25)
+  const lost = (k: number) => blinks && k % 5 === 2
   const left = time.map((_, k) => 3 + i * 0.25 + Math.sin(k / 6 + i) * 0.3)
   const right = time.map((_, k) => 3.2 + i * 0.25 + Math.cos(k / 7 + i) * 0.25)
-  return { time, left, right, average: left, smooth_left: left, smooth_right: right }
+  // The server smooths across a loss (its smoothed series stays finite); the raw diameters are 0 there.
+  return {
+    time,
+    left: left.map((value, k) => (lost(k) ? 0 : value)),
+    right: right.map((value, k) => (lost(k) ? 0 : value)),
+    average: left,
+    smooth_left: left,
+    smooth_right: right,
+  }
 }
 
 /** The view's «Media» for one participant with both eyes: mean of the per-sample eye mean. */
@@ -44,9 +57,19 @@ interface MockState {
   groupTraces: URLSearchParams[]
 }
 
-async function mockApi(page: Page, errors: string[]): Promise<MockState> {
+interface MockOptions {
+  /** Isolated lost samples in every participant's pupil. */
+  blinks?: boolean
+  /** Names entered for some participants. */
+  names?: Record<string, string>
+  /** P04 without data and P05 failing once (the default). */
+  failures?: boolean
+}
+
+async function mockApi(page: Page, errors: string[], options: MockOptions = {}): Promise<MockState> {
   const state: MockState = { unhandled: [], groupTraces: [] }
-  let errorServed = false
+  const { blinks = false, names = {}, failures = true } = options
+  let errorServed = !failures
   page.on("pageerror", (error) => errors.push(error.message))
   await page.addInitScript(() => {
     window.localStorage.setItem(
@@ -71,7 +94,9 @@ async function mockApi(page: Page, errors: string[]): Promise<MockState> {
     }
     if (path === "/api/projects") return fulfill({ json: [project] })
     if (path === `/api/projects/${project.id}`) return fulfill({ json: project })
-    if (path.endsWith("/analytics/participants")) return fulfill({ json: participants })
+    if (path.endsWith("/analytics/participants")) {
+      return fulfill({ json: participants.map((item) => ({ ...item, name: names[item.participant_code] ?? null })) })
+    }
     if (path.endsWith("/analytics/scenarios")) return fulfill({ json: [{ name: SCENARIO, type: "image", file_id: "scenario-image" }] })
     if (path.endsWith("/analytics/scenario-timing")) {
       return fulfill({
@@ -81,13 +106,13 @@ async function mockApi(page: Page, errors: string[]): Promise<MockState> {
     if (path.endsWith("/analytics/timeseries/pupil")) {
       if (params.get("decimation") === "minmax_envelope") {
         state.groupTraces.push(params)
-        if (participant === NO_DATA) return fulfill({ status: 404, json: { detail: "Participant data not found" } })
+        if (failures && participant === NO_DATA) return fulfill({ status: 404, json: { detail: "Participant data not found" } })
         if (participant === ERROR_ONCE && !errorServed) {
           errorServed = true
           return fulfill({ status: 500, json: { detail: "Fallo simulado del servidor" } })
         }
       }
-      return fulfill({ json: pupilFor(participant || "P01") })
+      return fulfill({ json: pupilFor(participant || "P01", blinks) })
     }
     if (path.endsWith("/analytics/aois")) {
       return fulfill({
@@ -206,10 +231,13 @@ test("average shows the mean curve, averaged figures and leaves group mode on de
   await page.goto("/dashboard")
   await chooseScenario(page, SCENARIO)
 
-  // «Todos los escenarios» has no common onset.
+  // «Todos los escenarios» has no common onset: each recording counts from its own start.
   await chooseGroupMode(page, "Promedio")
   await chooseScenario(page, "Todos los escenarios")
-  await expect(page.getByTestId("group-unsupported")).toContainText("Selecciona un escenario concreto")
+  await expect(groupChart(page)).toHaveAttribute("data-mode", "average")
+  await expect(page.getByTestId("group-unsupported")).toHaveCount(0)
+  await expect(page.getByText("Tiempo desde el inicio de la grabación (s)")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Tiempo de grabación" })).toBeVisible()
   await chooseScenario(page, SCENARIO)
 
   const chart = groupChart(page)
@@ -279,6 +307,107 @@ test("phone width keeps the filters bar and the group chart inside the screen", 
   await page.screenshot({ path: `${SHOTS}/overlay-390-top.png` })
   await groupChart(page).scrollIntoViewIfNeeded()
   await page.screenshot({ path: `${SHOTS}/overlay-390.png` })
+  expect(state.unhandled).toEqual([])
+  expect(errors).toEqual([])
+})
+
+/** The x of a time on the chart's horizontal axis, from its first and last tick labels. */
+async function xOfTime(page: Page, time: number) {
+  const ticks = await groupChart(page)
+    .locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value")
+    .evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const box = node.getBoundingClientRect()
+        return { value: Number(node.textContent), x: box.x + box.width / 2 }
+      })
+    )
+  const [a, b] = [ticks[0], ticks[ticks.length - 1]]
+  return a.x + ((time - a.value) * (b.x - a.x)) / (b.value - a.value)
+}
+
+const curves = (page: Page) =>
+  groupChart(page).locator(".recharts-line-curve").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("d") ?? ""))
+
+test("isolated lost samples keep each line whole, repeated names are told apart, and «Todos los escenarios» works", async ({ page }) => {
+  const errors: string[] = []
+  await page.setViewportSize({ width: 1536, height: 730 })
+  const names = { P01: "232", P03: "232", P05: "232" }
+  const state = await mockApi(page, errors, { blinks: true, names, failures: false })
+  await page.goto("/dashboard")
+  await chooseScenario(page, SCENARIO)
+  await chooseGroupMode(page, "Superposición")
+
+  const chart = groupChart(page)
+  await expect(chart).toHaveAttribute("data-series", "5")
+  // One lost sample in every five: still one unbroken path per participant.
+  const paths = await curves(page)
+  expect(paths).toHaveLength(5)
+  for (const d of paths) expect(d.match(/M/g)).toHaveLength(1)
+
+  // Three people named «232»: each one carries its code wherever it is shown.
+  const labels = ["232 (P01)", "Participante P02", "232 (P03)", "Participante P04", "232 (P05)"]
+  const legend = page.getByRole("group", { name: "Leyenda de la gráfica" })
+  for (const label of labels) await expect(legend.getByText(label, { exact: true })).toBeVisible()
+  const table = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Estadísticas" }) })
+  await expect(table.getByRole("row", { name: /232 \(P03\)/ })).toHaveCount(1)
+
+  // The tooltip lists every participant with data at that instant (all five at 5 s).
+  const plot = await chart.locator(".recharts-cartesian-grid").boundingBox()
+  await page.mouse.move(await xOfTime(page, 5), plot!.y + plot!.height / 2)
+  const tooltip = chart.locator(".recharts-tooltip-wrapper")
+  for (const label of labels) await expect(tooltip).toContainText(`${label}:`)
+  await page.screenshot({ path: `${SHOTS}/fix/overlay-scenario-tooltip-1536.png` })
+  await page.mouse.move(0, 0)
+
+  await page.getByRole("button", { name: "Participantes: 5 de 5 seleccionados" }).click()
+  await expect(page.getByRole("dialog", { name: "Seleccionar participantes" }).getByRole("checkbox", { name: "232 (P05)" })).toBeVisible()
+  await page.keyboard.press("Escape")
+
+  // «Todos los escenarios»: each participant on its own recording time.
+  await chooseScenario(page, "Todos los escenarios")
+  await expect(chart).toHaveAttribute("data-mode", "overlay")
+  await expect(page.getByText("Tiempo desde el inicio de la grabación (s)")).toBeVisible()
+  await expect(chart).toHaveAttribute("data-series", "5")
+  const firstTick = Number(await chart.locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value").first().textContent())
+  expect(firstTick).toBeGreaterThanOrEqual(50)
+  for (const d of await curves(page)) expect(d.match(/M/g)).toHaveLength(1)
+  expect(state.groupTraces.filter((params) => params.get("scenario") === "all")).toHaveLength(5)
+  await page.getByRole("button", { name: "Tiempo de grabación" }).hover()
+  await expect(page.getByRole("tooltip").first()).toContainText("estímulos distintos")
+  await page.screenshot({ path: `${SHOTS}/fix/overlay-all-1536.png` })
+  await page.mouse.move(0, 0)
+
+  await chooseGroupMode(page, "Promedio")
+  await expect(chart).toHaveAttribute("data-mode", "average")
+  await expect(chart.locator(".recharts-area-area")).toHaveCount(1)
+  await expect(page.getByRole("button", { name: "Tiempo de grabación" })).toBeVisible()
+  const mean = await curves(page)
+  expect(mean).toHaveLength(1)
+  expect(mean[0].match(/M/g)).toHaveLength(1)
+  await expect(page.getByTestId("group-kpis")).toContainText("Promedio de 5 participantes")
+  await page.screenshot({ path: `${SHOTS}/fix/average-all-1536.png` })
+
+  await noHorizontalScroll(page)
+  expect(state.unhandled).toEqual([])
+  expect(errors).toEqual([])
+})
+
+test("phone width: pupil overlay and average with «Todos los escenarios»", async ({ page }) => {
+  const errors: string[] = []
+  await page.setViewportSize({ width: 390, height: 844 })
+  const state = await mockApi(page, errors, { blinks: true, names: { P01: "232", P03: "232" }, failures: false })
+  await page.goto("/dashboard")
+  await chooseGroupMode(page, "Superposición")
+  await expect(groupChart(page)).toHaveAttribute("data-series", "5")
+  await expect(page.getByText("Tiempo desde el inicio de la grabación (s)")).toBeVisible()
+  await noHorizontalScroll(page)
+  await groupChart(page).scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `${SHOTS}/fix/overlay-all-390.png` })
+  await chooseGroupMode(page, "Promedio")
+  await expect(groupChart(page)).toHaveAttribute("data-mode", "average")
+  await noHorizontalScroll(page)
+  await groupChart(page).scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `${SHOTS}/fix/average-all-390.png` })
   expect(state.unhandled).toEqual([])
   expect(errors).toEqual([])
 })

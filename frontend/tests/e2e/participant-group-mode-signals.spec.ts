@@ -11,6 +11,7 @@ const SCENARIO = "Escenario concreto"
 const NO_DATA = "P04"
 const WITH_DATA = CODES.filter((code) => code !== NO_DATA)
 const SHOTS = process.env.GROUP_MODE_SHOTS ?? "../output/group-mode/signals"
+const FIX_SHOTS = "../output/group-mode/fix"
 
 type Sensor = "EyeTracker" | "GSR"
 
@@ -347,6 +348,45 @@ test("GSR aligns each participant on the scenario onset in overlay and average",
   await expect(table.getByRole("row").nth(1)).toContainText(`Promedio (${WITH_DATA.length} participantes)`)
   await page.screenshot({ path: `${SHOTS}/gsr-average-1536.png` })
   expectWholeScenario(state)
+  await noHorizontalScroll(page)
+
+  expect(state.unhandled).toEqual([])
+  expect(errors).toEqual([])
+})
+
+test("GSR with «Todos los escenarios» keeps each participant on its own GSR time", async ({ page }) => {
+  const errors: string[] = []
+  await page.setViewportSize({ width: 1536, height: 730 })
+  const state = await mockApi(page, errors, "GSR")
+  await page.goto("/dashboard")
+  await expect(page.getByRole("heading", { name: "Respuesta galvánica", exact: true })).toBeVisible()
+  await expect(page.locator('[data-slot="select-trigger"]').first()).toContainText("Todos los escenarios")
+  await chooseGroupMode(page, "Superposición")
+
+  const chart = groupChart(page)
+  await expect(chart).toHaveAttribute("data-mode", "overlay")
+  await expect(chart).toHaveAttribute("data-series", String(WITH_DATA.length))
+  // No common onset: the axis is the individual view's, from each first GSR sample.
+  await expect(page.getByText("Tiempo desde la primera muestra de GSR (s)")).toBeVisible()
+  await expect(chart.locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value").first()).toHaveText(String(GSR_LEAD_S))
+  await page.getByRole("button", { name: "Tiempo de grabación" }).hover()
+  await expect(page.getByRole("tooltip").first()).toContainText("estímulos distintos")
+  await page.mouse.move(0, 0)
+  for (const params of state.groupTraces) expect(params.get("scenario")).toBe("all")
+  const table = statsCard(page)
+  await expect(table.getByRole("row", { name: /Participante P02/ })).toContainText(`${(2.5).toFixed(4)} µS`)
+  await page.screenshot({ path: `${FIX_SHOTS}/gsr-overlay-all-1536.png` })
+
+  await chooseGroupMode(page, "Promedio")
+  await expect(chart).toHaveAttribute("data-mode", "average")
+  await expect(chart.locator(".recharts-area-area")).toHaveCount(1)
+  await expect(page.getByRole("button", { name: "Tiempo de grabación" })).toBeVisible()
+  await expect(page.getByTestId("group-kpis")).toContainText(averageText(WITH_DATA.map((code) => 2 + indexOf(code) * 0.5), 4))
+  // The GSR-onset caveat belongs to a concrete scenario only.
+  await page.getByRole("button", { name: "Cómo se calcula" }).first().hover()
+  await expect(page.getByRole("tooltip").first()).not.toContainText("A diferencia de la vista de un participante")
+  await page.mouse.move(0, 0)
+  await page.screenshot({ path: `${FIX_SHOTS}/gsr-average-all-1536.png` })
   await noHorizontalScroll(page)
 
   expect(state.unhandled).toEqual([])

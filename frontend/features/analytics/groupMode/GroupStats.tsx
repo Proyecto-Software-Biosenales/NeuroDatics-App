@@ -62,7 +62,7 @@ export function GroupStatsCard({
   loading,
   description = "Las cifras de cada participante, calculadas igual que en su vista individual.",
   detail,
-  basis = "Cada fila de participante usa sus propias muestras dibujadas, desde el inicio del escenario.",
+  basis = "Cada fila de participante usa sus propias muestras dibujadas de todo el escenario.",
 }: {
   mode: GroupMode
   entries: GroupStatEntry[]

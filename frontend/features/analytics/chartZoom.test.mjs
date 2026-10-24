@@ -133,4 +133,10 @@ test("axis ticks gain decimals as the visible span shrinks", () => {
   assert.equal(axisTickDecimals(["dataMin", "dataMax"]), 0)
   assert.equal(formatAxisTick(10.25, 1), "10.3")
   assert.equal(formatAxisTick("x", 1), "")
+  // Negative zero, or a tiny negative that rounds to zero, is never «-0».
+  assert.equal(formatAxisTick(-0, 0), "0")
+  assert.equal(formatAxisTick(-0.004, 0), "0")
+  assert.equal(formatAxisTick(-0.04, 1), "0.0")
+  assert.equal(formatAxisTick(-0.5, 0), "-1")
+  assert.equal(formatAxisTick(-0.06, 1), "-0.1")
 })

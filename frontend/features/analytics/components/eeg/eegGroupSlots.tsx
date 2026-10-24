@@ -50,8 +50,6 @@ const VIOLET = {
   labelColorClass: "text-violet-700 dark:text-violet-400",
 }
 
-const ALIGNED = "Cada participante se cuenta desde el inicio del escenario en su propia grabación."
-
 /** The view cannot show this mode here: the reason in the chart's place, no cards or table. */
 function unsupported(reason: string, frameClassName: string): EegGroupSlots {
   return { kpis: null, chart: <GroupUnsupported reason={reason} className={frameClassName} />, stats: null }
@@ -110,6 +108,7 @@ export function timeseriesGroupSlots({
         mode={view.mode}
         traces={traces}
         data={view.data}
+        timeAxis={view.timeAxis}
         unit="uV"
         yLabel="EEG (uV)"
         yAxis={eegAxis}
@@ -124,6 +123,7 @@ export function timeseriesGroupSlots({
         entries={figures.entries}
         average={figures.average}
         loading={loading}
+        scope={view.timeAxis.scope}
         detail={`Cifras del canal ${label} sobre la señal ${signal === "smooth" ? "suavizada" : "cruda"} completa, antes de reducir los puntos de la gráfica.`}
       />
     ),
@@ -181,6 +181,7 @@ export function psdGroupSlots({
         average={psd.average}
         loading={loading}
         db={psd.db}
+        scope={view.timeAxis.scope}
         detail="Cada fila describe la línea del participante: la media de sus canales elegidos, en el rango de frecuencias visible."
       />
     ),
@@ -230,7 +231,7 @@ export function spectrogramGroupSlots({
       label: "Cómo se calcula",
       detail: (
         <>
-          <span>{ALIGNED}</span>
+          <span>{view.timeAxis.detail}</span>
           <span>
             Cada espectrograma se lleva a una rejilla común de tiempo y frecuencia, sin rellenar huecos, y se promedia
             celda a celda en potencia lineal; el resultado se pasa a dB.
@@ -239,12 +240,17 @@ export function spectrogramGroupSlots({
         </>
       ),
     },
+    // Without a common onset the same second is not the same moment: say so beside the chart.
+    ...(view.timeAxis.aligned ? [] : [{ id: "group-time", label: view.timeAxis.chip, detail: view.timeAxis.detail }]),
     ...groupLoadNotes(view.data),
   ]
   return {
     kpis: <EegGroupKpis className={CARD_ROW} kpis={kpis} average={figures.average} loading={loading} />,
+    description: `Media de varios participantes en cada ventana y frecuencia, ${
+      view.timeAxis.aligned ? "desde el inicio del escenario" : "con cada grabación contada desde su inicio"
+    }. dB referidos a 1 uV²/Hz.`,
     chart: hasData ? undefined : (
-      <EegGroupState data={view.data} frameClassName="h-[420px]" emptyMessage="Ninguno de los participantes elegidos tiene espectrograma en este escenario." notes={notes} />
+      <EegGroupState data={view.data} frameClassName="h-[420px]" emptyMessage="Ninguno de los participantes elegidos tiene espectrograma." notes={notes} />
     ),
     notes: <EegGroupChips notes={notes} />,
     stats: (
@@ -255,7 +261,8 @@ export function spectrogramGroupSlots({
         average={figures.average}
         loading={loading}
         db
-        detail="Cada fila reúne las celdas de todos los canales visibles del participante, en el tramo visible; el tiempo del pico se cuenta desde el inicio del escenario."
+        scope={view.timeAxis.scope}
+        detail={`Cada fila reúne las celdas de todos los canales visibles del participante, en el tramo visible; el tiempo del pico se cuenta desde ${view.timeAxis.origin}.`}
       />
     ),
   }
@@ -301,7 +308,7 @@ export function topographyGroupSlots({
       label: "Cómo se calcula",
       detail: (
         <>
-          <span>{ALIGNED}</span>
+          <span>{view.timeAxis.detail}</span>
           <span>
             La potencia de cada electrodo se lleva a una rejilla común de ventanas, sin rellenar huecos, y se promedia
             entre los participantes con dato en ese instante.
@@ -340,6 +347,7 @@ export function topographyGroupSlots({
         entries={figures.entries}
         average={figures.average}
         loading={loading}
+        scope={view.timeAxis.scope}
         detail="Cada fila son los electrodos del participante en el instante elegido; un participante sin ventana en ese instante queda sin cifras."
       />
     ),

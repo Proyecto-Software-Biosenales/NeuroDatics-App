@@ -393,6 +393,10 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
   await expect(fitAxis).toHaveAttribute("aria-pressed", "true")
   await fitAxis.click()
   await expect(page.getByTestId("compare-participants-button")).toHaveCount(1)
+  // With «Todos los escenarios» the time views line the recordings up by their own start.
+  await participantFilter.click()
+  await page.getByRole("option", { name: "Promedio", exact: true }).click()
+  await expect(page.getByText("Tiempo desde el inicio de la grabación (s)")).toBeVisible({ timeout: 90_000 })
   // Overlay and average draw every participant of one scenario in a single chart, including the
   // group heatmap the local backend renders.
   const scenarioFilter = page.getByRole("combobox").first()

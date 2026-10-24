@@ -236,9 +236,13 @@ test("EEG por canal: one channel per participant, overlay and average with the s
   await table.scrollIntoViewIfNeeded()
   await page.screenshot({ path: `${SHOTS}/timeseries-average-1536-table.png` })
 
-  // «Todos los escenarios» has no common onset.
+  // «Todos los escenarios» has no common onset: each recording counts from its own start.
   await chooseScenario(page, "Todos los escenarios")
-  await expect(page.getByTestId("group-unsupported")).toContainText("Selecciona un escenario concreto")
+  await expect(chart).toHaveAttribute("data-mode", "average")
+  await expect(chart).toHaveAttribute("data-series", "4")
+  await expect(page.getByText("Tiempo desde el inicio de la grabación (s)")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Tiempo de grabación" })).toBeVisible()
+  expect(Number(await chart.locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value").first().textContent())).toBeGreaterThanOrEqual(30)
   await noHorizontalScroll(page)
   expect(state.unhandled).toEqual([])
   expect(errors).toEqual([])

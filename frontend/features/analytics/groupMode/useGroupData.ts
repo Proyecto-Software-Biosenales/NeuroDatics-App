@@ -14,7 +14,7 @@ import {
 } from "../participantComparison/spec"
 import type { WindowTransfer } from "../participantComparison/timeAlignment"
 import { useGroupMode, type GroupParticipant } from "./GroupModeProvider"
-import { groupUnsupportedReason } from "./groupSupport"
+import { groupTimeAxis, groupUnsupportedReason, type GroupTimeAxis } from "./groupSupport"
 
 export type GroupEntryStatus = "loading" | "empty" | "error" | "success"
 
@@ -50,8 +50,9 @@ const NO_TRANSFER: WindowTransfer = { kind: "none" }
 const EMPTY_WINDOW = { start: null, end: null }
 
 /**
- * The group modes always read the whole scenario, aligned on its onset: a
- * window typed in recording seconds belongs to one recording only.
+ * The group modes always read the whole scenario (aligned on its onset) or,
+ * with «Todos los escenarios», the whole recording: a window typed in
+ * recording seconds belongs to one recording only.
  */
 export function groupRequestSpec(spec: ParticipantComparisonSpec): ParticipantComparisonSpec {
   const params: Record<string, unknown> = { ...spec.params }
@@ -167,6 +168,8 @@ export interface GroupView {
   mode: "overlay" | "average" | null
   /** Why this view cannot show the mode; the view renders `GroupUnsupported`. */
   unsupportedReason: string | null
+  /** How participants are lined up in time: scenario onset, or each recording's start. */
+  timeAxis: GroupTimeAxis
   data: GroupData
 }
 
@@ -180,5 +183,8 @@ export function useGroupView(spec: ParticipantComparisonSpec | null, options?: {
   const active = group.active && spec != null
   const unsupportedReason = active && group.mode ? groupUnsupportedReason(spec.kind, group.mode, spec.scenario) : null
   const data = useGroupData(active && !unsupportedReason ? spec : null, options)
-  return { active, mode: active ? group.mode : null, unsupportedReason, data }
+  const kind = spec?.kind ?? "pupil"
+  const scenario = spec?.scenario ?? ""
+  const timeAxis = useMemo(() => groupTimeAxis(kind, scenario), [kind, scenario])
+  return { active, mode: active ? group.mode : null, unsupportedReason, timeAxis, data }
 }

@@ -4,6 +4,7 @@ import { ComparisonLoader, estimateWeight } from "./comparisonLoader.ts"
 import { commonDomain, describeCommonScale, mergeDomains, withQuantiles } from "./scales.ts"
 import {
   cardCacheKey,
+  distinctParticipantLabels,
   filterParticipants,
   orderParticipants,
   specMinFixationDuration,
@@ -193,6 +194,20 @@ test("cache keys isolate project, generation, participant, scenario and request 
 test("participants keep their real codes in a stable natural order and search ignores accents", () => {
   assert.deepEqual(orderParticipants(["P10", "P2", "P01", "P2", ""]), ["P01", "P2", "P10"])
   assert.deepEqual(filterParticipants(["Pedro", "ÁLVARO", "P03"], "alva"), ["ÁLVARO"])
+})
+
+test("participants with the same visible name are told apart by their code", () => {
+  const labels = { P01: "232", P02: "Ana", P07: "232", P09: " 232 ", P10: "ana" }
+  assert.deepEqual(distinctParticipantLabels(["P01", "P02", "P03", "P07", "P09", "P10"], labels), {
+    P01: "232 (P01)",
+    P02: "Ana (P02)",
+    P03: "Participante P03",
+    P07: "232 (P07)",
+    P09: "232 (P09)",
+    P10: "ana (P10)",
+  })
+  // Unique names are left alone.
+  assert.deepEqual(distinctParticipantLabels(["P01", "P02"], { P01: "232" }), { P01: "232", P02: "Participante P02" })
 })
 
 test("windows move through the stimulus onset, never through absolute times", () => {

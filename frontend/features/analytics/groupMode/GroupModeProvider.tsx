@@ -1,11 +1,12 @@
 "use client"
 
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react"
-import { orderParticipants, participantDisplay, type ParticipantLabels } from "../participantComparison/spec"
+import { distinctParticipantLabels, orderParticipants, type ParticipantLabels } from "../participantComparison/spec"
 import { groupSeriesStyle, type GroupMode } from "./groupSupport"
 
 export interface GroupParticipant {
   code: string
+  /** Visible text, unique in the project: a repeated name carries the code, «232 (P07)». */
   label: string
   /** Position in the project's full, naturally ordered list: it fixes the colour. */
   index: number
@@ -24,6 +25,7 @@ export interface GroupModeValue {
   /** The chosen participants, in natural order. */
   selected: GroupParticipant[]
   selectedCodes: ReadonlySet<string>
+  /** Visible text by code, made unique like `GroupParticipant.label`. */
   labels: ParticipantLabels
   setMode: (mode: GroupMode | null) => void
   setSelected: (codes: ReadonlySet<string>) => void
@@ -82,15 +84,18 @@ export function GroupModeProvider({
   onSelectionChange: (codes: string[] | null) => void
   children: ReactNode
 }) {
+  const ordered = useMemo(() => orderParticipants(participantCodes), [participantCodes])
+  // Unique over the whole project, so a label never changes while others are toggled.
+  const distinctLabels = useMemo(() => distinctParticipantLabels(ordered, labels), [labels, ordered])
   const participants = useMemo<GroupParticipant[]>(
     () =>
-      orderParticipants(participantCodes).map((code, index) => ({
+      ordered.map((code, index) => ({
         code,
-        label: participantDisplay(code, labels),
+        label: distinctLabels[code],
         index,
         ...groupSeriesStyle(index),
       })),
-    [labels, participantCodes]
+    [distinctLabels, ordered]
   )
   const selectedCodes = useMemo<ReadonlySet<string>>(
     () => new Set(selection == null ? participants.map((item) => item.code) : selection),
@@ -118,13 +123,13 @@ export function GroupModeProvider({
       participants,
       selected,
       selectedCodes,
-      labels,
+      labels: distinctLabels,
       setMode: onModeChange,
       setSelected,
       leave,
       styleOf,
     }),
-    [generation, labels, leave, mode, onModeChange, participants, projectId, selected, selectedCodes, setSelected, styleOf]
+    [distinctLabels, generation, leave, mode, onModeChange, participants, projectId, selected, selectedCodes, setSelected, styleOf]
   )
 
   return <GroupModeContext.Provider value={value}>{children}</GroupModeContext.Provider>

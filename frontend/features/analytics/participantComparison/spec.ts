@@ -301,6 +301,23 @@ export function participantDisplay(code: string, labels?: ParticipantLabels): st
   return labels?.[code] ?? `Participante ${code}`
 }
 
+const labelKey = (value: string) => value.normalize("NFC").trim().toLocaleLowerCase("es")
+
+/**
+ * Visible text for every code, made unique: participants whose visible text
+ * is the same (two people entered as «232», say) get their code after it,
+ * «232 (P07)», so a legend or a tooltip can tell them apart. Unique texts
+ * stay as they are. Comparison ignores case and surrounding spaces.
+ */
+export function distinctParticipantLabels(codes: readonly string[], labels?: ParticipantLabels): Record<string, string> {
+  const shown = codes.map((code) => [code, participantDisplay(code, labels)] as const)
+  const counts = new Map<string, number>()
+  for (const [, text] of shown) counts.set(labelKey(text), (counts.get(labelKey(text)) ?? 0) + 1)
+  return Object.fromEntries(
+    shown.map(([code, text]) => [code, (counts.get(labelKey(text)) ?? 0) > 1 ? `${text.trim()} (${code})` : text])
+  )
+}
+
 /** Case- and accent-insensitive participant search over the code and its visible label. */
 export function filterParticipants(codes: readonly string[], query: string, labels?: ParticipantLabels): string[] {
   const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()

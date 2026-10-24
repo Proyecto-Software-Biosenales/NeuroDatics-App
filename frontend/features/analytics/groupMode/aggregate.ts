@@ -4,18 +4,35 @@
  *
  * Every function skips non-finite values instead of treating them as zero, and
  * reports how many participants contributed (`n`) wherever a mean is taken.
+ * A line breaks only where the time between valid samples says the signal was
+ * lost (`holeThreshold`), never at a single missing sample.
  */
 
 /** A grid never has more points than this, whatever the participants' rates. */
 export const MAX_GRID_POINTS = 2000
 
-/** A gap wider than this many typical steps is a hole, never interpolated. */
+/**
+ * A gap wider than this many regular steps is a hole, never interpolated.
+ * See `holeThreshold` for what a regular step is.
+ */
 export const GAP_FACTOR = 3
+
+/**
+ * The step quantile that stands for a trace's regular spacing when deciding
+ * holes. Drawn traces keep each bucket's first, last, minimum and maximum, so
+ * their valid samples sit unevenly inside a bucket: most steps are short, and
+ * the longest ordinary ones reach most of a bucket's width. A real loss of
+ * tracking empties whole buckets and is longer than all of them.
+ */
+const REGULAR_STEP_QUANTILE = 0.9
 
 export interface Trace {
   /** Ascending sample times (or frequencies). */
   x: ArrayLike<number>
-  /** Values; NaN marks a missing sample and breaks the line. */
+  /**
+   * Values; NaN marks a missing sample. A missing sample alone never breaks
+   * the line: only a gap in time between valid samples does.
+   */
   y: ArrayLike<number>
 }
 
@@ -28,29 +45,29 @@ function median(values: number[]): number {
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
-/** Sample times with a finite x, in order, paired with their values. */
+/**
+ * The valid samples of a trace, in order: finite time and finite value.
+ * Missing values are dropped here, so whether the line continues across them
+ * depends only on how far apart the remaining samples are.
+ */
 function cleanTrace(trace: Trace): { x: number[]; y: number[] } {
   const x: number[] = []
   const y: number[] = []
   const length = Math.min(trace.x.length, trace.y.length)
   for (let index = 0; index < length; index += 1) {
     const time = trace.x[index]
-    if (!isFiniteNumber(time)) continue
-    // Out-of-order times are dropped rather than reordered: the API returns sorted axes.
-    if (x.length && time < x[x.length - 1]) continue
+    const value = trace.y[index]
+    if (!isFiniteNumber(time) || !isFiniteNumber(value)) continue
+    // Out-of-order or repeated times are dropped rather than reordered: the API returns sorted axes.
+    if (x.length && time <= x[x.length - 1]) continue
     x.push(time)
-    y.push(isFiniteNumber(trace.y[index]) ? trace.y[index] : Number.NaN)
+    y.push(value)
   }
   return { x, y }
 }
 
-/**
- * The trace's typical spacing: the median step, but never below the average
- * spacing. Drawn traces keep each bucket's extremes at uneven times, and two
- * neighbouring samples there must not make the ordinary bucket width look
- * like a hole.
- */
-export function typicalStep(x: ArrayLike<number>): number {
+/** Positive steps between consecutive finite values, with the first and last value and their count. */
+function stepsOf(x: ArrayLike<number>): { steps: number[]; first: number; last: number; count: number } {
   const steps: number[] = []
   let first = Number.NaN
   let last = Number.NaN
@@ -65,20 +82,47 @@ export function typicalStep(x: ArrayLike<number>): number {
     last = value
     count += 1
   }
+  return { steps, first, last, count }
+}
+
+/**
+ * The trace's typical spacing: the median step, but never below the average
+ * spacing. Drawn traces keep each bucket's extremes at uneven times, and two
+ * neighbouring samples there must not make the ordinary bucket width look
+ * like a hole. The common grid is built at this spacing.
+ */
+export function typicalStep(x: ArrayLike<number>): number {
+  const { steps, first, last, count } = stepsOf(x)
   if (count < 2 || steps.length === 0) return Number.NaN
   return Math.max(median(steps), (last - first) / (count - 1))
 }
 
 /**
- * Values of `trace` on `grid` by linear interpolation. Outside the trace's own
- * range, across a missing value, or across a gap wider than GAP_FACTOR typical
- * steps the result is NaN: nothing is extrapolated or bridged.
+ * The widest gap between valid samples still drawn as one line: GAP_FACTOR
+ * times the regular step, which is the typical step or the 90th percentile of
+ * the steps, whichever is larger. An isolated missing sample, or the uneven
+ * spacing inside a drawn bucket, stays below it; a loss of tracking that
+ * empties whole buckets goes above it. Pass the valid samples' times.
+ */
+export function holeThreshold(x: ArrayLike<number>): number {
+  const { steps, first, last, count } = stepsOf(x)
+  if (count < 2 || steps.length === 0) return Number.NaN
+  const sorted = [...steps].sort((a, b) => a - b)
+  const regular = sorted[Math.floor(REGULAR_STEP_QUANTILE * (sorted.length - 1))]
+  return GAP_FACTOR * Math.max(median(steps), (last - first) / (count - 1), regular)
+}
+
+/**
+ * Values of `trace` on `grid` by linear interpolation between its valid
+ * samples. Outside the valid samples' range, or across a gap wider than
+ * `holeThreshold`, the result is NaN: nothing is extrapolated and a real loss
+ * of signal is never bridged, while isolated missing samples are.
  */
 export function resampleTrace(trace: Trace, grid: ArrayLike<number>): Float64Array {
   const out = new Float64Array(grid.length).fill(Number.NaN)
   const { x, y } = cleanTrace(trace)
   if (x.length === 0) return out
-  const maxGap = x.length > 1 ? typicalStep(x) * GAP_FACTOR : 0
+  const maxGap = x.length > 1 ? holeThreshold(x) : 0
   let cursor = 0
   for (let index = 0; index < grid.length; index += 1) {
     const time = grid[index]
@@ -93,10 +137,7 @@ export function resampleTrace(trace: Trace, grid: ArrayLike<number>): Float64Arr
     if (next >= x.length) continue
     const span = x[next] - x[cursor]
     if (!(span > 0) || span > maxGap) continue
-    const a = y[cursor]
-    const b = y[next]
-    if (!Number.isFinite(a) || !Number.isFinite(b)) continue
-    out[index] = a + ((b - a) * (time - x[cursor])) / span
+    out[index] = y[cursor] + ((y[next] - y[cursor]) * (time - x[cursor])) / span
   }
   return out
 }
@@ -333,7 +374,7 @@ function sameAxisAs(axis: ArrayLike<number>, grid: ArrayLike<number>): boolean {
 /**
  * Cell-wise mean of spectrograms (per key, e.g. per channel) on one common
  * time × frequency grid. Each spectrogram is taken to linear power, resampled
- * along time and then along frequency without extrapolating or bridging gaps,
+ * along time and then along frequency without extrapolating or bridging a loss of signal,
  * averaged, and taken back to dB when `db`.
  */
 export function meanSpectrograms(
@@ -398,7 +439,7 @@ export interface KeyedSeriesMean {
 
 /**
  * Per-key mean of time series on one common grid (every key shares it), with
- * linear interpolation that never extrapolates or bridges a gap. Inputs
+ * linear interpolation that never extrapolates or bridges a loss of signal. Inputs
  * without a key do not count toward its mean.
  */
 export function meanKeyedSeries(

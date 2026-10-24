@@ -489,6 +489,7 @@ export function PupilDilationTab({
         mode={groupView.mode}
         traces={groupResults.traces}
         data={groupView.data}
+        timeAxis={groupView.timeAxis}
         unit="mm"
         yLabel="Amplitud pupilar (mm)"
         yAxis={groupYAxis}
@@ -671,6 +672,7 @@ export function PupilDilationTab({
             entries={groupResults.stats}
             loading={groupResults.stats.length === 0 && groupView.data.loading}
             detail={groupDetail}
+            basis={`Cada fila de participante usa sus propias muestras dibujadas de ${groupView.timeAxis.scope}.`}
           />
         ) : null
       ) : <>

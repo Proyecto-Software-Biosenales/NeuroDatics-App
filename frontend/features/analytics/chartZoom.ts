@@ -131,9 +131,15 @@ export function axisTickDecimals(domain: readonly unknown[]): number {
   return span >= 20 ? 0 : span >= 2 ? 1 : span >= 0.2 ? 2 : 3
 }
 
+/**
+ * A tick label with `decimals` decimals. A value that rounds to zero is "0"
+ * (or "0.0"…), never "-0": a tick at -0.004 s is the onset, not before it.
+ */
 export function formatAxisTick(value: unknown, decimals: number): string {
   const number = Number(value)
-  return Number.isFinite(number) ? number.toFixed(decimals) : ""
+  if (!Number.isFinite(number)) return ""
+  const text = number.toFixed(decimals)
+  return /^-0(\.0*)?$/.test(text) ? text.slice(1) : text
 }
 
 /** Zoom levels: the range on screen plus each level it was entered from. Null is the full view. */

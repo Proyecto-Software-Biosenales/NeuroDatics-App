@@ -24,6 +24,20 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
   «Comparar participantes» y «Comparativas» se dibujan sobre un fotograma del vídeo (el mismo que muestra «Ver
   proyecto»), con un participante o con varios. Antes pedían el vídeo como imagen, el servidor respondía con un
   error y la vista individual se quedaba cargando.
+- **Líneas enteras:** una muestra perdida suelta (un parpadeo) ya no corta la línea de un participante ni la
+  curva media; solo una pérdida larga de señal deja un hueco. Antes, con datos reales, cada línea salía en muchos
+  trozos y la ayuda emergente de un instante listaba solo a parte de los participantes; ahora lista a todos los
+  que tienen dato ahí.
+- **Nombres repetidos:** si dos o más participantes tienen el mismo nombre visible, llevan detrás su código, por
+  ejemplo «232 (P07)», en la leyenda, la ayuda emergente, la tabla y el desplegable «Participantes».
+- **«Todos los escenarios» en las vistas de tiempo:** pupila, punto de mirada, distancia, sensor galvánico, EEG
+  por canal y espectrograma admiten ya las dos opciones sin elegir escenario. Cada participante se cuenta desde el
+  inicio de su propia grabación (el sensor galvánico, desde su primera muestra de GSR), y la ficha «Tiempo de
+  grabación» avisa de que el mismo segundo puede corresponder a estímulos distintos. Topografía, mapa de calor,
+  mapa de recorridos y comparativa AOIs siguen pidiendo un escenario concreto.
+- **Eje de tiempo:** las marcas del eje ya no muestran «-0».
+- Paquete de estudiantes no reconstruido para estos cuatro puntos: se dejó para la siguiente entrega por
+  indicación expresa.
 
 ### Paquete de estudiantes 1.16
 

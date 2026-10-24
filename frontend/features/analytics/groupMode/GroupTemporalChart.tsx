@@ -20,19 +20,20 @@ import { axisTickDecimals, formatAxisTick, normalizeZoomRange, sameZoomRange, zo
 import { fittedAxis, type FittedAxis } from "../fittedAxis"
 import { aggregateTraces } from "./aggregate"
 import type { GroupParticipant } from "./GroupModeProvider"
-import type { GroupMode } from "./groupSupport"
+import type { GroupMode, GroupTimeAxis } from "./groupSupport"
 import { groupLoadNotes } from "./groupNotes"
 import type { GroupData } from "./useGroupData"
 
-/** One participant's drawn signal, already on the stimulus-time axis. */
+/** One participant's drawn signal, already on the group's time axis (`GroupTimeAxis`). */
 export interface GroupTrace {
   participant: GroupParticipant
   time: ArrayLike<number>
-  /** NaN where the signal was lost: the line breaks there. */
+  /**
+   * NaN where a sample is missing. A lone missing sample is bridged; the line
+   * breaks only where the valid samples are far apart in time (see `resampleTrace`).
+   */
   value: ArrayLike<number>
 }
-
-export const GROUP_TIME_AXIS_LABEL = "Tiempo desde el inicio del escenario (s)"
 const AVERAGE_COLOR = "var(--group-average)"
 /** Past this many participants the legend gives way to the table's colours. */
 const MAX_LEGEND_ITEMS = 8
@@ -94,12 +95,14 @@ function GroupTooltip({
  * The temporal chart of «Superposición» (one line per participant, in its
  * colour) and «Promedio» (mean line with a ±1 SD band). Every participant is
  * resampled on one common grid of at most 2,000 points; dragging zooms on the
- * stimulus-time axis.
+ * time axis, which counts from the scenario's onset or, with «Todos los
+ * escenarios», from each recording's start.
  */
 export function GroupTemporalChart({
   mode,
   traces,
   data,
+  timeAxis,
   unit,
   yLabel,
   yAxis = fittedAxis,
@@ -111,6 +114,8 @@ export function GroupTemporalChart({
   traces: GroupTrace[]
   /** Load state of every chosen participant, for the status chips. */
   data: GroupData
+  /** Where each participant's time 0 is: `GroupView.timeAxis`. */
+  timeAxis: GroupTimeAxis
   unit: string
   yLabel: string
   /** The vertical scale from the drawn values; the view's own rule. */
@@ -170,38 +175,51 @@ export function GroupTemporalChart({
       : traces.length <= MAX_LEGEND_ITEMS
         ? traces.map((trace) => ({ label: trace.participant.label, color: trace.participant.color }))
         : []
+  const timeNote: AnalyticsChartNote = { id: "group-time", label: timeAxis.chip, detail: timeAxis.detail }
   const notes: AnalyticsChartNote[] = [
-    mode === "average"
-      ? {
-          id: "group-how",
-          label: "Cómo se calcula",
-          detail: (
-            <>
-              <span>
-                Cada participante se cuenta desde el inicio del escenario en su grabación y se lleva a una rejilla
-                común de tiempo, sin rellenar los huecos.
-              </span>
-              <span>
-                La línea es la media de los participantes con dato en cada instante y la banda, ±1 desviación
-                estándar entre ellos.
-              </span>
-              {averageDetail ? <span>{averageDetail}</span> : null}
-            </>
-          ),
-        }
-      : {
-          id: "group-how",
-          label: traces.length > MAX_LEGEND_ITEMS ? `${traces.length} participantes` : "Tiempo alineado",
-          detail: (
-            <>
-              <span>Cada participante se dibuja desde el inicio del escenario en su propia grabación.</span>
-              {traces.length > MAX_LEGEND_ITEMS ? (
-                <span>Cada color es un participante; la tabla de estadísticas muestra el de cada uno.</span>
-              ) : null}
-              {averageDetail ? <span>{averageDetail}</span> : null}
-            </>
-          ),
-        },
+    ...(mode === "average"
+      ? [
+          {
+            id: "group-how",
+            label: "Cómo se calcula",
+            detail: (
+              <>
+                <span>
+                  Cada participante se cuenta desde {timeAxis.origin} y se lleva a una rejilla común de tiempo. Una
+                  muestra perdida suelta no corta la línea; una pérdida larga de señal queda como hueco, sin rellenar.
+                </span>
+                <span>
+                  La línea es la media de los participantes con dato en cada instante y la banda, ±1 desviación
+                  estándar entre ellos.
+                </span>
+                {averageDetail ? <span>{averageDetail}</span> : null}
+              </>
+            ),
+          },
+          // Without a common onset the same second is not the same moment: say so beside the chart.
+          ...(timeAxis.aligned ? [] : [timeNote]),
+        ]
+      : [
+          {
+            ...timeNote,
+            detail: (
+              <>
+                <span>{timeAxis.detail}</span>
+                <span>Una muestra perdida suelta no corta la línea; una pérdida larga de señal deja un hueco.</span>
+                {averageDetail ? <span>{averageDetail}</span> : null}
+              </>
+            ),
+          },
+          ...(traces.length > MAX_LEGEND_ITEMS
+            ? [
+                {
+                  id: "group-colors",
+                  label: `${traces.length} participantes`,
+                  detail: "Cada color es un participante; la tabla de estadísticas muestra el de cada uno.",
+                },
+              ]
+            : []),
+        ]),
     ...groupLoadNotes(data),
   ]
 
@@ -220,7 +238,7 @@ export function GroupTemporalChart({
       )
     }
     return (
-      <AnalyticsChartShell notes={notes.filter((note) => note.id !== "group-how")} xAxisLabel="">
+      <AnalyticsChartShell notes={groupLoadNotes(data)} xAxisLabel="">
         <AnalyticsMessageSurface className="h-full">{emptyMessage}</AnalyticsMessageSurface>
       </AnalyticsChartShell>
     )
@@ -230,7 +248,7 @@ export function GroupTemporalChart({
   return (
     <div
       role="img"
-      aria-label={`${yLabel}. ${mode === "average" ? "Promedio" : "Superposición"} de ${traces.length} participantes; eje horizontal en segundos desde el inicio del escenario. Arrastra para ampliar.`}
+      aria-label={`${yLabel}. ${mode === "average" ? "Promedio" : "Superposición"} de ${traces.length} participantes; eje horizontal en segundos desde ${timeAxis.origin}. Arrastra para ampliar.`}
       data-testid="group-temporal-chart"
       data-mode={mode}
       data-series={traces.length}
@@ -238,7 +256,7 @@ export function GroupTemporalChart({
       <AnalyticsChartShell
         legend={legend}
         notes={notes}
-        xAxisLabel={GROUP_TIME_AXIS_LABEL}
+        xAxisLabel={timeAxis.label}
         dragZoom={dragZoom}
         onZoomReset={zoom ? zoomHistory.reset : undefined}
         onZoomBack={zoom && zoomHistory.canGoBack ? zoomHistory.back : undefined}
@@ -259,7 +277,7 @@ export function GroupTemporalChart({
               domain={axis?.domain ?? ["auto", "auto"]}
               ticks={axis?.ticks}
               allowDataOverflow={Boolean(axis)}
-              tickFormatter={axis ? (value: number) => Number(value).toFixed(axis.decimals) : undefined}
+              tickFormatter={axis ? (value: number) => formatAxisTick(value, axis.decimals) : undefined}
               label={{ value: yLabel, angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
             />
             <RechartsTooltip content={<GroupTooltip mode={mode} traces={traces} unit={unit} decimals={decimals} />} />

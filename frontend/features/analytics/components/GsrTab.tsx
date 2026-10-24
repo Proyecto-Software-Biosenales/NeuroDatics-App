@@ -91,6 +91,7 @@ const GROUP_KPIS: GroupKpi[] = [
 ]
 
 const GROUP_STATS_DETAIL = "Las cifras usan la señal suavizada, como en la vista de un participante, aunque la gráfica muestre la cruda."
+/** Only with a concrete scenario: with «Todos los escenarios» the group modes keep the view's own time. */
 const GROUP_TIME_DETAIL = "A diferencia de la vista de un participante, no se cuenta desde la primera muestra de GSR."
 
 interface GsrTabProps {
@@ -183,7 +184,8 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
   ]
 
   // Group modes: each participant's GSR (aligned on the scenario onset by the
-  // comparison loader) and its own statistics, as in this view.
+  // comparison loader, or on its own time with «Todos los escenarios») and its
+  // own statistics, as in this view.
   const groupResults = useGroupSignal(groupView, {
     scenario,
     column: groupSignal,
@@ -235,7 +237,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
             yLabel="Respuesta galvánica (µS)"
             yAxis={groupYAxis}
             decimals={4}
-            averageDetail={GROUP_TIME_DETAIL}
+            averageDetail={groupView.timeAxis.aligned ? GROUP_TIME_DETAIL : undefined}
           />
         ),
         statistics: <GroupSignalStats view={groupView} results={groupResults} unit=" µS" detail={GROUP_STATS_DETAIL} />,

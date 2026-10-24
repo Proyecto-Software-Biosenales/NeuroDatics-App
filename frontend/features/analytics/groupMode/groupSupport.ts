@@ -15,11 +15,15 @@ export const GROUP_MODE_LABELS: Record<GroupMode, string> = {
 export interface GroupSupport {
   overlay: boolean
   average: boolean
-  /** The mode needs one concrete scenario (a common onset or a stimulus image). */
+  /**
+   * The mode needs one concrete scenario: a stimulus image, or one common
+   * instant (topography). Time views also take «Todos los escenarios», on
+   * each recording's own time (`groupTimeAxis`).
+   */
   requiresConcreteScenario: boolean
 }
 
-const TEMPORAL: GroupSupport = { overlay: true, average: true, requiresConcreteScenario: true }
+const TEMPORAL: GroupSupport = { overlay: true, average: true, requiresConcreteScenario: false }
 
 export const GROUP_SUPPORT: Record<ComparisonKind, GroupSupport> = {
   pupil: TEMPORAL,
@@ -28,7 +32,7 @@ export const GROUP_SUPPORT: Record<ComparisonKind, GroupSupport> = {
   gsr: TEMPORAL,
   eeg_timeseries: TEMPORAL,
   eeg_psd: { overlay: true, average: true, requiresConcreteScenario: false },
-  eeg_spectrogram: { overlay: false, average: true, requiresConcreteScenario: true },
+  eeg_spectrogram: { overlay: false, average: true, requiresConcreteScenario: false },
   eeg_topography: { overlay: false, average: true, requiresConcreteScenario: true },
   heatmap: { overlay: true, average: true, requiresConcreteScenario: true },
   scanpath: { overlay: true, average: false, requiresConcreteScenario: true },
@@ -68,9 +72,55 @@ export function groupUnsupportedReason(kind: ComparisonKind, mode: GroupMode, sc
   if (support.requiresConcreteScenario && !isConcreteScenario(scenario)) {
     return SPATIAL.has(kind)
       ? "Selecciona un escenario concreto: esta vista se dibuja sobre la imagen de un estímulo."
-      : "Selecciona un escenario concreto: cada participante se alinea desde el inicio de ese escenario."
+      : "Selecciona un escenario concreto: la topografía compara el mismo instante del estímulo en cada participante."
   }
   return null
+}
+
+/** How the group modes line up participants in time, in Spanish for the chart. */
+export interface GroupTimeAxis {
+  /** True with a concrete scenario: every participant counts from that scenario's onset. */
+  aligned: boolean
+  /** The horizontal axis label. */
+  label: string
+  /** Where each participant's time 0 is, after «desde»: for sentences and the chart's description. */
+  origin: string
+  /** The time chip's label. */
+  chip: string
+  /** The time chip's explanation. */
+  detail: string
+  /** What each participant's figures cover: «todo el escenario» or «toda la grabación». */
+  scope: string
+}
+
+/**
+ * The time axis of the group modes. With a concrete scenario every
+ * participant is counted from that scenario's onset in their own recording.
+ * With «Todos los escenarios» there is no common onset: each participant
+ * keeps the axis of their individual view, so time 0 is the start of their
+ * own recording (GSR: their first GSR sample).
+ */
+export function groupTimeAxis(kind: ComparisonKind, scenario: string): GroupTimeAxis {
+  if (isConcreteScenario(scenario)) {
+    return {
+      aligned: true,
+      label: "Tiempo desde el inicio del escenario (s)",
+      origin: "el inicio del escenario",
+      chip: "Tiempo alineado",
+      detail: "Cada participante se cuenta desde el inicio del escenario en su propia grabación.",
+      scope: "todo el escenario",
+    }
+  }
+  const gsr = kind === "gsr"
+  const origin = gsr ? "la primera muestra de GSR de su grabación" : "el inicio de su grabación"
+  return {
+    aligned: false,
+    label: gsr ? "Tiempo desde la primera muestra de GSR (s)" : "Tiempo desde el inicio de la grabación (s)",
+    origin,
+    chip: "Tiempo de grabación",
+    detail: `Con «Todos los escenarios» no hay un inicio común: cada participante se cuenta desde ${origin}, como en su vista individual. El mismo segundo puede corresponder a estímulos distintos en cada participante.`,
+    scope: "toda la grabación",
+  }
 }
 
 /** Views that are not one chart kind, such as the multi-sensor «Comparativas». */

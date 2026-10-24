@@ -177,7 +177,7 @@ const MAX_FREQUENCY_BINS = 256
 
 /**
  * The averaged spectrogram as the view's own data, so the same panels draw
- * it: a cell-wise mean in linear power on a common stimulus-time × frequency
+ * it: a cell-wise mean in linear power on a common time × frequency
  * grid. Figures pool every visible channel of each participant, inside the
  * time zoom.
  */
