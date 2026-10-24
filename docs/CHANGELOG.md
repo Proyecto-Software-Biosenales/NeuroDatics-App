@@ -20,6 +20,11 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
   mapa individual; cada participante pesa lo mismo.
 - **Corrección de paso:** en punto de mirada, distancia y sensor galvánico, la columna «Media» de la tabla y de
   las tarjetas mostraba la mediana; ahora muestra la media.
+- **Escenarios de vídeo:** mapa de calor, mapa de recorridos, comparativa AOIs, punto de mirada, distancia,
+  «Comparar participantes» y «Comparativas» se dibujan sobre un fotograma del vídeo (el mismo que muestra «Ver
+  proyecto»), con un participante o con varios. Antes pedían el vídeo como imagen, el servidor respondía con un
+  error y la vista individual se quedaba cargando. Paquete de estudiantes no reconstruido con este cambio: queda
+  para la próxima reconstrucción del paquete.
 
 ### Manual de uso en Word (primera versión para revisión)
 

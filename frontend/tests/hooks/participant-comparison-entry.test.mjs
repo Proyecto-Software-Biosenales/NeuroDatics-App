@@ -34,7 +34,7 @@ async function fixture(t, key, scoped = false) {
   await page.evaluate(async ({ modules, key, scoped }) => {
     const cache = {
       "@/lib/api/apiFetch": { exports: { apiFetchBlob: () => Promise.reject(new Error("unused")) } },
-      "@/features/projects/api/stimulusUrls": { exports: { getStimulusImageUrl: () => "" } },
+      "../hooks/useStimulusStill": { exports: { useStimulusStillUrl: () => null } },
     }
     const require = (id) => {
       if (cache[id]) return cache[id].exports

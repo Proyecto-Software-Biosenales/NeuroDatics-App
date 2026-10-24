@@ -130,6 +130,19 @@ export function getMissingStimulusDescriptor(
   return { category: "custom", displayLabel: basename }
 }
 
+const VIDEO_EXTENSIONS = ["mp4", "mov", "webm", "avi", "mkv", "m4v"]
+
+/** A scenario whose stimulus is a video: it has frames, not one image. */
+export function isVideoScenario(scenario: { name?: string | null; type?: string | null }): boolean {
+  const type = String(scenario.type || "").trim().toLowerCase()
+  const name = String(scenario.name || "").trim().toLowerCase()
+  return (
+    type.includes("video") ||
+    VIDEO_EXTENSIONS.includes(type) ||
+    VIDEO_EXTENSIONS.some((extension) => name.endsWith(`.${extension}`))
+  )
+}
+
 export function hasGazeCoordinates(gaze: StimulusGazeState | null): boolean {
   return Boolean(gaze && gaze.gx != null && gaze.gy != null)
 }

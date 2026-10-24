@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
-import { getStimulusImageUrl, getStimulusPreviewUrl } from "@/features/projects/api/stimulusUrls"
+import { getStimulusPreviewUrl } from "@/features/projects/api/stimulusUrls"
 import { requestAnalytics } from "../analyticsCache"
 import { useAnalyticsRevision } from "../hooks/useAnalyticsContext"
+import { useStimulusStillUrl } from "../hooks/useStimulusStill"
 import { AnalyticsApi } from "../api/analyticsApi"
 import {
   useAoiMetrics,
@@ -34,6 +35,8 @@ const EMPTY_OBJECT_URL_STATE: ObjectUrlState = {
   loading: false,
   error: null,
 }
+
+const LOADING_OBJECT_URL_STATE: ObjectUrlState = { ...EMPTY_OBJECT_URL_STATE, loading: true }
 
 function scenarioKey(value: string | null | undefined) {
   return (value ?? "")
@@ -329,15 +332,17 @@ export function useComparisonData({
     scanpath.data?.scenario_file_id ??
     aoi.data?.scenario_file_id ??
     null
-  const staticImage = useObjectUrl(
-    staticFileId
-      ? getStimulusImageUrl(projectId, staticFileId)
-      : null,
+  const staticEnabled =
     concreteScenario &&
-      Boolean(staticFileId) &&
-      (heatmapEnabled || scanpathEnabled || selected.has("aoi")),
-    projectId, true
-  )
+    Boolean(staticFileId) &&
+    (heatmapEnabled || scanpathEnabled || selected.has("aoi"))
+  const staticStillUrl = useStimulusStillUrl(projectId, staticFileId)
+  const staticObject = useObjectUrl(staticStillUrl, staticEnabled, projectId, true)
+  // A file whose kind is still being read is loading, not missing.
+  const staticImage =
+    staticEnabled && !staticStillUrl
+      ? LOADING_OBJECT_URL_STATE
+      : staticObject
 
   const pointPreviewParams = useMemo(() => {
     if (!gazeAt.data?.scenario_file_id) return null

@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react"
 import { apiFetchBlob } from "@/lib/api/apiFetch"
-import { getStimulusImageUrl } from "@/features/projects/api/stimulusUrls"
 import { estimateWeight, type EntryState, type Fetcher } from "./comparisonLoader"
 import { analyticsKeyCacheable, comparisonCardLoader, isAnalyticsKeyCurrent, requestAnalytics, waitForAnalyticsContext } from "../analyticsCache"
 import { useAnalyticsRevision } from "../hooks/useAnalyticsContext"
+import { useStimulusStillUrl } from "../hooks/useStimulusStill"
 
 /**
  * One queue for every comparison dialog: four requests at a time, and a result
@@ -171,18 +171,20 @@ export interface StimulusImageState {
 }
 
 /**
- * The scenario image. Every card asks for the same URL; the shared blob cache
- * turns that into one download, and each card keeps only its object URL.
+ * The scenario image (a frame, for a video). Every card asks for the same URL;
+ * the shared blob cache turns that into one download, and each card keeps only
+ * its object URL.
  */
 export function useStimulusImage(projectId: string, fileId: string | null): StimulusImageState {
   const revision = useAnalyticsRevision()
-  const identity = JSON.stringify([projectId, fileId, revision])
+  const sourceUrl = useStimulusStillUrl(projectId, fileId)
+  const identity = JSON.stringify([projectId, fileId, sourceUrl, revision])
   const [state, setState] = useState<{ identity: string; blob: Blob | null; error: string | null } | null>(null)
   useEffect(() => {
-    if (!fileId) return
+    if (!sourceUrl) return
     let cancelled = false
     const controller = new AbortController()
-    const url = getStimulusImageUrl(projectId, fileId)
+    const url = sourceUrl
     requestAnalytics(projectId, "stimulus-image", [url], (signal) => apiFetchBlob(url, { signal, cache: "no-store" }), controller.signal).then(
       (blob) => {
         if (!cancelled) setState({ identity, blob, error: null })
@@ -196,8 +198,8 @@ export function useStimulusImage(projectId: string, fileId: string | null): Stim
       cancelled = true
       controller.abort()
     }
-  }, [fileId, projectId, identity])
-  const current = fileId && state?.identity === identity ? state : null
+  }, [sourceUrl, projectId, identity])
+  const current = sourceUrl && state?.identity === identity ? state : null
   const url = useBlobUrl(current?.blob ?? null)
   if (!fileId) return { url: null, loading: false, error: null }
   if (!current) return { url: null, loading: true, error: null }

@@ -11,7 +11,7 @@ import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
 } from "@/features/analytics/hooks/useAnalyticsData"
-import type { AnalyticsScenario } from "@/features/analytics/types"
+import { isVideoScenario } from "@/features/analytics/components/stimulusState"
 import { ReportsApi } from "@/features/reports/api/reportsApi"
 import { ReportsEmptyContainer } from "@/features/reports/components/ReportsEmptyContainer"
 import { ReportScopeCard } from "@/features/reports/components/ReportScopeCard"
@@ -25,18 +25,6 @@ import type {
   ReportDevice,
   ReportScopeKind,
 } from "@/features/reports/types"
-
-function isVideoScenario(scenario: AnalyticsScenario) {
-  const type = String(scenario.type || "").trim().toLowerCase()
-  const name = String(scenario.name || "").trim().toLowerCase()
-  return (
-    type.includes("video") ||
-    ["mp4", "mov", "webm", "avi", "mkv", "m4v"].includes(type) ||
-    [".mp4", ".mov", ".webm", ".avi", ".mkv", ".m4v"].some((extension) =>
-      name.endsWith(extension)
-    )
-  )
-}
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)

@@ -10,6 +10,9 @@ const CODES = ["P01", "P02", "P03", "P04", "P05"]
 const WITH_DATA = ["P01", "P02", "P03", "P05"]
 const SCENARIO = "Escenario concreto"
 const NO_DATA = "P04"
+/** A video stimulus: the image route refuses it, so it is drawn from a frame. */
+const VIDEO_SCENARIO = "Video del escenario"
+const fileOf = (scenario: string | null) => (scenario === VIDEO_SCENARIO ? "scenario-video" : "scenario-image")
 const SHOTS = process.env.GROUP_SPATIAL_SHOTS ?? "../output/group-mode/spatial"
 
 const project = {
@@ -68,7 +71,7 @@ function fixationStats(code: string) {
   }
 }
 
-function scanpathFor(code: string) {
+function scanpathFor(code: string, scenario: string | null = SCENARIO) {
   const fixations = fixationsFor(code)
   return {
     objectives: fixations.map((fixation, k) => ({
@@ -86,7 +89,7 @@ function scanpathFor(code: string) {
     avg_duration_s: fixationStats(code).avg_duration_s,
     total_duration_s: fixations.reduce((sum, fixation) => sum + fixation.duration_s, 0),
     radius_scale: { version: "absolute-area-v1", encoding: "area", cap_ms: 2000 },
-    scenario_file_id: "scenario-image",
+    scenario_file_id: fileOf(scenario),
   }
 }
 
@@ -102,7 +105,7 @@ const dwellOf = (code: string, aoi: number) => {
   return [40 + 5 * i, 30 - 3 * i, 10 + i][aoi]
 }
 
-function aoisFor(code: string) {
+function aoisFor(code: string, scenario: string | null = SCENARIO) {
   const i = indexOf(code)
   const aois = AOI_SHAPES.map((shape, k) => ({
     id: shape.id,
@@ -128,8 +131,8 @@ function aoisFor(code: string) {
   }))
   const observed = aois.reduce((sum, aoi) => sum + aoi.total_dwell_time_percent, 0)
   return {
-    scenario: SCENARIO,
-    scenario_file_id: "scenario-image",
+    scenario: scenario ?? SCENARIO,
+    scenario_file_id: fileOf(scenario),
     aois,
     transitions: [],
     events: [],
@@ -147,10 +150,12 @@ interface MockState {
   /** Participant of every per-participant heatmap image request. */
   heatmapImages: string[]
   groupHeatmaps: URLSearchParams[]
+  /** Every stimulus file request: «image <file>» or «preview <file> <time_s>». */
+  stimulusRequests: string[]
 }
 
 async function mockApi(page: Page, errors: string[]): Promise<MockState> {
-  const state: MockState = { unhandled: [], heatmapImages: [], groupHeatmaps: [] }
+  const state: MockState = { unhandled: [], heatmapImages: [], groupHeatmaps: [], stimulusRequests: [] }
   page.on("pageerror", (error) => errors.push(error.message))
   await page.addInitScript(() => {
     window.localStorage.setItem(
@@ -177,8 +182,22 @@ async function mockApi(page: Page, errors: string[]): Promise<MockState> {
     if (path === "/api/projects") return fulfill({ json: [project] })
     if (path === `/api/projects/${project.id}`) return fulfill({ json: project })
     if (path.endsWith("/analytics/participants")) return fulfill({ json: participants })
-    if (path.endsWith("/analytics/scenarios")) return fulfill({ json: [{ name: SCENARIO, type: "image", file_id: "scenario-image" }] })
-    if (/\/files\/[^/]+\/(image|preview)$/.test(path)) return fulfill({ body: stimulusSvg, contentType: "image/svg+xml" })
+    if (path.endsWith("/analytics/scenarios")) {
+      return fulfill({
+        json: [
+          { name: SCENARIO, type: "image", file_id: "scenario-image" },
+          { name: VIDEO_SCENARIO, type: "video", file_id: "scenario-video" },
+        ],
+      })
+    }
+    const stimulus = /\/files\/([^/]+)\/(image|preview)$/.exec(path)
+    if (stimulus) {
+      const [, file, kind] = stimulus
+      state.stimulusRequests.push(kind === "image" ? `image ${file}` : `preview ${file} ${params.get("time_s") ?? ""}`)
+      // As the server: the image route only serves images.
+      if (kind === "image" && file === "scenario-video") return fulfill({ status: 400, json: { detail: "Requested file is not an image" } })
+      return fulfill({ body: stimulusSvg, contentType: "image/svg+xml" })
+    }
     if (path.endsWith("/analytics/heatmap/group")) {
       state.groupHeatmaps.push(params)
       const codes = params.getAll("participant_codes")
@@ -213,7 +232,7 @@ async function mockApi(page: Page, errors: string[]): Promise<MockState> {
         json: {
           fixations: fixationsFor(participant),
           stats: fixationStats(participant),
-          scenario_file_id: "scenario-image",
+          scenario_file_id: fileOf(params.get("scenario")),
           cache_generation: 2,
           coordinate_transform: null,
         },
@@ -221,11 +240,11 @@ async function mockApi(page: Page, errors: string[]): Promise<MockState> {
     }
     if (path.endsWith("/analytics/scanpath")) {
       if (participant === NO_DATA) return notFound()
-      return fulfill({ json: scanpathFor(participant) })
+      return fulfill({ json: scanpathFor(participant, params.get("scenario")) })
     }
     if (path.endsWith("/analytics/aois")) {
       if (participant === NO_DATA) return notFound()
-      return fulfill({ json: aoisFor(participant || "P01") })
+      return fulfill({ json: aoisFor(participant || "P01", params.get("scenario")) })
     }
     if (path.endsWith("/analytics/scenario-timing")) {
       return fulfill({ json: { scenario: SCENARIO, time_basis: "scenario_onset", onset_s: 10, end_s: 40, gsr_origin_s: null } })
@@ -508,6 +527,41 @@ test("AOI overlay groups one bar per participant; average shows the mean of each
   await page.screenshot({ path: `${SHOTS}/aoi-average-1536-table.png` })
 
   await noHorizontalScroll(page)
+  expect(state.unhandled).toEqual([])
+  expect(errors).toEqual([])
+})
+
+test("a video scenario draws its spatial views on a frame and never asks the image route for it", async ({ page }) => {
+  const errors: string[] = []
+  await page.setViewportSize({ width: 1536, height: 730 })
+  const state = await mockApi(page, errors)
+  await page.goto("/dashboard")
+  await chooseScenario(page, VIDEO_SCENARIO)
+  const stimulusImage = (container: string) => page.locator(`[data-testid="${container}"] img[alt="Escenario"]`)
+
+  // The individual view, then every group mode of every spatial view, then back.
+  await openView(page, "Mapa de calor")
+  await expect(stimulusImage("heatmap-stimulus")).toBeVisible()
+  await chooseGroupMode(page, "Promedio")
+  await expect(page.getByTestId("group-heatmap-overlay")).toBeVisible()
+  await chooseGroupMode(page, "Superposición")
+  await expect(page.getByTestId("group-fixations").locator("g[data-participant]")).toHaveCount(WITH_DATA.length)
+  await expect(stimulusImage("heatmap-stimulus")).toBeVisible()
+  await openView(page, "Mapa de recorridos")
+  await expect(page.getByTestId("group-scanpath")).toHaveCount(WITH_DATA.length)
+  await expect(stimulusImage("scanpath-stimulus")).toBeVisible()
+  await openView(page, "Comparativa AOIs")
+  await expect(page.getByTestId("aoi-group-chart")).toHaveAttribute("data-mode", "overlay")
+  await openView(page, "Mapa de calor")
+  await participantSelect(page).click()
+  await page.getByRole("option", { name: "Participante P01", exact: true }).click()
+  await expect(participantSelect(page)).toHaveText("P01")
+  await expect(stimulusImage("heatmap-stimulus")).toBeVisible()
+
+  const video = state.stimulusRequests.filter((request) => request.includes("scenario-video"))
+  expect(video.length).toBeGreaterThan(0)
+  expect(video.filter((request) => request.startsWith("image ")), "the image route answers 400 for a video").toEqual([])
+  expect(new Set(video)).toEqual(new Set(["preview scenario-video 0.5"]))
   expect(state.unhandled).toEqual([])
   expect(errors).toEqual([])
 })
