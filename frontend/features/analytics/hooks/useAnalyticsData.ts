@@ -432,6 +432,90 @@ export function useGazeAt(
   return { data, loading, fetchGaze, clear }
 }
 
+/** How the heatmap's fixations were placed on the stimulus, from its response headers. */
+function heatmapTransformFromHeaders(headers: Headers): HeatmapTransformHeaders {
+  const warnings = headers.get("X-Stimulus-Transform-Warnings")
+  const version = headers.get("X-Stimulus-Transform-Version")
+  const fingerprint = headers.get("X-Stimulus-Transform-Fingerprint")
+  return {
+    status: headers.get("X-Stimulus-Transform-Status") as HeatmapTransformHeaders["status"],
+    coordinateSpace: headers.get("X-Stimulus-Coordinate-Space"),
+    contractVersion: version && version !== "none" ? version : null,
+    contractFingerprint: fingerprint && fingerprint !== "none" ? fingerprint : null,
+    warningCodes: warnings ? warnings.split(",").filter(Boolean) : [],
+  }
+}
+
+/**
+ * One heatmap for several participants («Promedio»), each weighing the same.
+ * Laid out like the individual overlay: a PNG covering the stimulus box.
+ * `participants` and `skipped` say whose fixations it holds.
+ */
+export function useGroupHeatmapOverlay(
+  projectId: string | null,
+  participantCodes: readonly string[],
+  scenario: string,
+  minFixationDurationMs: FixationDurationMs,
+  generation: number | null
+) {
+  const revision = useAnalyticsRevision()
+  const codesKey = [...new Set(participantCodes)].sort().join("\n")
+  const load = useCallback(
+    (signal: AbortSignal) => {
+      const codes = codesKey ? codesKey.split("\n") : []
+      return requestAnalytics(projectId!, "heatmap-group-overlay", [codes, scenario, generation, minFixationDurationMs], (sharedSignal) =>
+        AnalyticsApi.getGroupHeatmapOverlay(projectId!, codes, scenario, minFixationDurationMs, generation, sharedSignal), signal, revision)
+    },
+    [codesKey, generation, minFixationDurationMs, projectId, revision, scenario]
+  )
+  const request = projectId && codesKey && scenario && scenario !== "all" ? load : null
+  const [state, setState] = useRequestState<{
+    overlayUrl: string
+    coordinateTransform: HeatmapTransformHeaders
+    participants: string[]
+    skipped: string[]
+  }>(request)
+
+  useEffect(() => {
+    if (!request) return
+    const controller = new AbortController()
+    let currentUrl: string | null = null
+    request(controller.signal)
+      .then(({ blob, headers, participants, skipped }) => {
+        if (controller.signal.aborted) return
+        currentUrl = URL.createObjectURL(blob)
+        setState({
+          request,
+          loading: false,
+          error: null,
+          data: { overlayUrl: currentUrl, coordinateTransform: heatmapTransformFromHeaders(headers), participants, skipped },
+        })
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted)
+          setState({
+            request,
+            data: null,
+            loading: false,
+            error: error instanceof Error && error.message ? error.message : "No se pudo cargar el mapa de calor del grupo.",
+          })
+      })
+    return () => {
+      controller.abort()
+      if (currentUrl) URL.revokeObjectURL(currentUrl)
+    }
+  }, [request, setState])
+
+  return {
+    overlayUrl: state.data?.overlayUrl ?? null,
+    coordinateTransform: state.data?.coordinateTransform ?? null,
+    participants: state.data?.participants ?? null,
+    skipped: state.data?.skipped ?? null,
+    loading: state.loading,
+    error: state.error,
+  }
+}
+
 export function useHeatmapOverlay(
   projectId: string | null,
   participantCode: string | null,
@@ -484,25 +568,13 @@ export function useHeatmapOverlay(
       .then(({ blob, headers }) => {
         if (controller.signal.aborted) return
         currentUrl = URL.createObjectURL(blob)
-        const warnings = headers.get("X-Stimulus-Transform-Warnings")
-        const version = headers.get("X-Stimulus-Transform-Version")
-        const fingerprint = headers.get("X-Stimulus-Transform-Fingerprint")
         setState({
           request,
           loading: false,
           error: null,
           data: {
             overlayUrl: currentUrl,
-            coordinateTransform: {
-              status: headers.get(
-                "X-Stimulus-Transform-Status"
-              ) as HeatmapTransformHeaders["status"],
-              coordinateSpace: headers.get("X-Stimulus-Coordinate-Space"),
-              contractVersion: version && version !== "none" ? version : null,
-              contractFingerprint:
-                fingerprint && fingerprint !== "none" ? fingerprint : null,
-              warningCodes: warnings ? warnings.split(",").filter(Boolean) : [],
-            },
+            coordinateTransform: heatmapTransformFromHeaders(headers),
           },
         })
       })

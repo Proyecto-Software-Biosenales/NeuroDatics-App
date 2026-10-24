@@ -57,6 +57,8 @@ export function groupRequestSpec(spec: ParticipantComparisonSpec): ParticipantCo
   const params: Record<string, unknown> = { ...spec.params }
   if ("window" in params) params.window = EMPTY_WINDOW
   if ("timeZoom" in params) params.timeZoom = null
+  // No heatmap image per participant: the group modes draw their own.
+  if (spec.kind === "heatmap") params.overlay = false
   return { ...spec, sourceParticipant: null, origin: "individual", params } as ParticipantComparisonSpec
 }
 

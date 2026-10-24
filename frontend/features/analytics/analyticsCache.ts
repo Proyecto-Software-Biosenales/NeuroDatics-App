@@ -90,7 +90,7 @@ export function analyticsKeyCacheable(key: string) {
 }
 function dependsOnSpatialConfig(operation?: string, args?: unknown) {
   if (operation?.startsWith("getComparisonCharts:")) return true
-  if (operation && ["getAoiMetrics", "getGazeTimeseries", "getGazeStatistics", "getScanpath", "getFixationData", "getFixationHistogram", "getFixationSensitivity", "getComparisonCharts", "getScenarios", "gaze-at", "heatmap-overlay"].includes(operation)) return true
+  if (operation && ["getAoiMetrics", "getGazeTimeseries", "getGazeStatistics", "getScanpath", "getFixationData", "getFixationHistogram", "getFixationSensitivity", "getComparisonCharts", "getScenarios", "gaze-at", "heatmap-overlay", "heatmap-group-overlay"].includes(operation)) return true
   if (operation !== "participant-card" || !Array.isArray(args)) return false
   try { return ["aoi", "heatmap", "scanpath", "fixation_histogram", "gaze"].includes(JSON.parse(args[0]).kind) } catch { return false }
 }

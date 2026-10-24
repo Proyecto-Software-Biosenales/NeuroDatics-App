@@ -54,10 +54,29 @@ import {
 import { AnalyticsChartShell } from "./AnalyticsChartShell"
 import { ScenarioRequiredMessage } from "./AnalyticsMessageSurface"
 import { AoiFindingsCard } from "./aoi/AoiFindingsCard"
+import { AoiGroupMetricsCard } from "./aoi/AoiGroupMetricsCard"
 import { AoiMetricsCard } from "./aoi/AoiMetricsCard"
 import { AoiSequenceCard } from "./aoi/AoiSequenceCard"
 import { AoiSignalPeaksCard } from "./aoi/AoiSignalPeaksCard"
 import { AoiTransitionsCard } from "./aoi/AoiTransitionsCard"
+import { AnalyticsMessageSurface } from "./AnalyticsMessageSurface"
+import type { AnalyticsChartNote } from "./AnalyticsChartShell"
+import {
+  GroupFigureKpis,
+  GroupFiguresCard,
+  groupFigureEntries,
+  MAX_GROUP_LEGEND_ITEMS,
+  type GroupFigureColumn,
+  type GroupFigureKpi,
+} from "./GroupSpatial"
+import type { ParticipantComparisonSpec } from "../participantComparison/spec"
+import { aoiParticipantFigures, averageAoiMetrics, unionAois, type AveragedAoi } from "../aoiGroup"
+import { formatDecimal, formatPercent as formatShare } from "../aoiInsights"
+import type { GroupParticipant } from "../groupMode/GroupModeProvider"
+import { groupLoadNotes } from "../groupMode/groupNotes"
+import { GroupUnsupported } from "../groupMode/GroupUnsupported"
+import { useGroupView } from "../groupMode/useGroupData"
+import type { AoiMetricsData } from "../types"
 
 interface AoiComparisonTabProps {
   projectId: string
@@ -102,6 +121,95 @@ function AoiTooltip({
   )
 }
 
+const TITLE = "Comparativa AOIs"
+const DESCRIPTION = "Fijaciones y concentración visual sobre las áreas definidas del escenario."
+const CHART_TITLE = "Distribución temporal por áreas de interés (AOI)"
+
+const participantsText = (count: number) => (count === 1 ? "1 participante" : `${count} participantes`)
+
+type GroupAoiRow = { id: string; name: string; color: string } & Record<string, number | string | null>
+type AverageAoiRow = { id: string; name: string; color: string; dwell: number | null; dwellMs: number | null; fixations: number | null; n: number }
+
+/** «Superposición»: every participant's share of time in the hovered AOI. */
+function GroupAoiTooltip({
+  active,
+  payload,
+  label,
+  participants,
+}: {
+  active?: boolean
+  payload?: Array<{ dataKey?: unknown; value?: unknown }>
+  label?: string
+  participants: GroupParticipant[]
+}) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="max-w-[280px] rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg">
+      <p className="mb-1 font-semibold">{label}</p>
+      {payload.map((item) => {
+        const participant = participants[Number(String(item.dataKey).slice(1))]
+        if (!participant || typeof item.value !== "number") return null
+        return (
+          <p key={participant.code} className="flex items-center gap-2">
+            <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: participant.color }} />
+            <span className="truncate">{participant.label}: {formatShare(item.value)}</span>
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
+/** «Promedio»: the AOI's mean figures and how many participants they cover. */
+function AverageAoiTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ payload?: AverageAoiRow }>; label?: string }) {
+  const row = payload?.[0]?.payload
+  if (!active || !row) return null
+  return (
+    <div className="rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg">
+      <p className="mb-2 font-semibold">{label}</p>
+      <p>Tiempo observado (media): {row.dwell == null ? "-" : formatShare(row.dwell)}</p>
+      <p>Fijaciones (media): {row.fixations == null ? "-" : formatDecimal(row.fixations, 1)}</p>
+      <p>Tiempo de permanencia (media): {formatMs(row.dwellMs)}</p>
+      <p className="mt-1 text-gray-300">{participantsText(row.n)}</p>
+    </div>
+  )
+}
+
+const GROUP_KPIS: GroupFigureKpi[] = [
+  {
+    key: "aois",
+    label: "AOIs",
+    unit: "",
+    Icon: Target,
+    iconBgClass: "bg-blue-100 dark:bg-blue-900/30",
+    iconColorClass: "text-blue-500",
+    labelColorClass: "text-blue-600 dark:text-blue-400",
+    decimals: 0,
+  },
+  {
+    key: "fixations",
+    label: "Fijaciones",
+    unit: "",
+    Icon: Hash,
+    iconBgClass: "bg-emerald-100 dark:bg-emerald-900/30",
+    iconColorClass: "text-emerald-500",
+    labelColorClass: "text-emerald-600 dark:text-emerald-400",
+    decimals: 1,
+  },
+  {
+    key: "observed",
+    label: "Tiempo en AOIs",
+    unit: "%",
+    Icon: Clock,
+    iconBgClass: "bg-amber-100 dark:bg-amber-900/30",
+    iconColorClass: "text-amber-500",
+    labelColorClass: "text-amber-600 dark:text-amber-400",
+    decimals: 1,
+  },
+]
+
+const formatCount = (value: number) => (Number.isInteger(value) ? String(value) : formatDecimal(value, 1))
+
 export function AoiComparisonTab({
   projectId,
   participantCode,
@@ -112,9 +220,23 @@ export function AoiComparisonTab({
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
+  // The chart «Comparar participantes» and the group modes both start from.
+  const comparisonSpec = useMemo<ParticipantComparisonSpec>(() => ({
+    kind: "aoi",
+    title: CHART_TITLE,
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { minFixationDurationMs },
+  }), [minFixationDurationMs, participantCode, scenario])
+  const groupView = useGroupView(comparisonSpec)
+  const groupMode = groupView.unsupportedReason ? null : groupView.mode
+  // In a group mode the single recording is not loaded at all.
+  const individualParticipant = groupView.active ? null : participantCode
+
   const { data, loading, error } = useAoiMetrics(
     projectId,
-    participantCode,
+    individualParticipant,
     scenario,
     minFixationDurationMs
   )
@@ -124,18 +246,35 @@ export function AoiComparisonTab({
     data: fixationData,
     loading: fixationsLoading,
     error: fixationsError,
-  } = useFixationData(projectId, participantCode, scenario, minFixationDurationMs)
-  const { data: pupilSeries } = usePupilTimeseries(projectId, participantCode, scenario)
-  const { data: gazeSeries } = useGazeTimeseries(projectId, participantCode, scenario)
-  const { data: distanceSeries } = useDistanceTimeseries(projectId, participantCode, scenario)
+  } = useFixationData(projectId, individualParticipant, scenario, minFixationDurationMs)
+  const { data: pupilSeries } = usePupilTimeseries(projectId, individualParticipant, scenario)
+  const { data: gazeSeries } = useGazeTimeseries(projectId, individualParticipant, scenario)
+  const { data: distanceSeries } = useDistanceTimeseries(projectId, individualParticipant, scenario)
+
+  // Group modes: each participant's AOI metrics, read like the individual view's.
+  const groupSets = useMemo(
+    () =>
+      groupView.data.successes.flatMap(({ participant, result }) =>
+        result.type === "aoi" ? [{ participant, data: result.data }] : []
+      ),
+    [groupView.data.successes]
+  )
+  const groupDatasets = useMemo<AoiMetricsData[]>(() => groupSets.map((set) => set.data), [groupSets])
+  const groupAois = useMemo(() => unionAois(groupDatasets), [groupDatasets])
+  const groupAverage = useMemo<AveragedAoi[]>(() => averageAoiMetrics(groupDatasets), [groupDatasets])
+  const groupFigures = useMemo(
+    () => groupFigureEntries(groupView.data.entries, (result) => (result.type === "aoi" ? aoiParticipantFigures(result.data) : null)),
+    [groupView.data.entries]
+  )
 
   const computeLetterbox = useCallback(() => {
     setLetterbox(getContainedImageBox(imageRef.current, imageContainerRef.current))
   }, [])
 
-
-
-  const scenarioImageUrl = useStimulusImage(projectId, data?.scenario_file_id ?? null).url
+  const scenarioFileId = groupView.active
+    ? (groupSets.find((set) => set.data.scenario_file_id)?.data.scenario_file_id ?? null)
+    : (data?.scenario_file_id ?? null)
+  const scenarioImageUrl = useStimulusImage(projectId, scenarioFileId).url
   useEffect(() => {
     const frame = requestAnimationFrame(() => computeLetterbox())
     const container = imageContainerRef.current
@@ -148,7 +287,7 @@ export function AoiComparisonTab({
       cancelAnimationFrame(frame)
       observer.disconnect()
     }
-  }, [computeLetterbox, scenarioImageUrl])
+  }, [computeLetterbox, scenarioImageUrl, groupMode])
 
   const aois = useMemo(() => data?.aois ?? [], [data])
 
@@ -210,29 +349,242 @@ export function AoiComparisonTab({
   const fixatedAoiCount = aois.filter((aoi) => aoi.fixation_count > 0).length
 
   // Nothing to compare until the view can draw its own chart.
-  useCompareParticipantsSpec(scenario === "all" ? null : () => ({
-    kind: "aoi",
-    title: "Distribución temporal por áreas de interés (AOI)",
-    scenario,
-    sourceParticipant: participantCode,
-    origin: "individual",
-    params: { minFixationDurationMs },
-  }))
+  useCompareParticipantsSpec(scenario === "all" ? null : () => comparisonSpec)
 
-  if (scenario === "all") {
+  if (scenario === "all" && !groupView.active) {
     return (
       <div className="analytics-stack">
         <Card>
           <CardHeader>
-            <CardTitle>Comparativa AOIs</CardTitle>
-            <CardDescription>
-              Fijaciones y concentración visual sobre las áreas definidas del escenario.
-            </CardDescription>
+            <CardTitle>{TITLE}</CardTitle>
+            <CardDescription>{DESCRIPTION}</CardDescription>
           </CardHeader>
           <CardContent>
             <ScenarioRequiredMessage label="la comparativa de AOIs" />
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  // The stimulus with its AOIs: the scenario's, the same for every participant.
+  const stimulusCard = (shownAois: AoiMetricItem[], alt: string) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>{TITLE}</CardTitle>
+        <CardDescription>{DESCRIPTION}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px] 2xl:gap-6">
+          <div className="relative overflow-hidden rounded-lg bg-muted" ref={imageContainerRef}>
+            {!scenarioImageUrl ? (
+              <Skeleton className="analytics-state-frame w-full animate-pulse bg-muted" />
+            ) : (
+              <img
+                ref={imageRef}
+                src={scenarioImageUrl}
+                alt={alt}
+                className="analytics-visual-image"
+                onLoad={computeLetterbox}
+              />
+            )}
+
+            <AoiOverlay aois={shownAois} box={letterbox} />
+          </div>
+
+          <div className="self-start pt-2">
+            <AoiLegend aois={shownAois} className="flex-col items-start" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  if (groupView.active) {
+    if (!groupMode) {
+      return (
+        <div className="analytics-stack">
+          <Card>
+            <CardHeader>
+              <CardTitle>{TITLE}</CardTitle>
+              <CardDescription>{DESCRIPTION}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GroupUnsupported reason={groupView.unsupportedReason ?? ""} className="analytics-state-frame" />
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+    const groupData = groupView.data
+    if (groupSets.length === 0 || groupAois.length === 0) {
+      return (
+        <div className="analytics-stack">
+          {groupData.total > 0 && groupData.loading ? (
+            <div className="analytics-state-frame relative" role="status">
+              <Skeleton className="absolute inset-0 animate-pulse rounded-lg bg-muted" />
+              <span className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+                Cargando {groupData.settled} de {groupData.total} participantes…
+              </span>
+            </div>
+          ) : (
+            <AnalyticsMessageSurface className="analytics-state-frame">
+              {groupData.total === 0
+                ? "Elige al menos un participante en «Participantes»."
+                : groupSets.length === 0
+                  ? "Ninguno de los participantes elegidos tiene datos de AOIs en este escenario."
+                  : "No hay AOIs definidas para este escenario."}
+            </AnalyticsMessageSurface>
+          )}
+        </div>
+      )
+    }
+
+    const participants = groupSets.map((set) => set.participant)
+    const many = participants.length > MAX_GROUP_LEGEND_ITEMS
+    const overlayRows: GroupAoiRow[] = groupAois.map((aoi) => {
+      const row: GroupAoiRow = { id: aoi.id, name: aoi.name, color: aoi.color }
+      groupSets.forEach((set, index) => {
+        row[`p${index}`] = set.data.aois.find((item) => item.id === aoi.id)?.total_dwell_time_percent ?? null
+      })
+      return row
+    })
+    const averageRows: AverageAoiRow[] = groupAverage.map(({ aoi, n, means }) => ({
+      id: aoi.id,
+      name: aoi.name,
+      color: aoi.color,
+      dwell: means.total_dwell_time_percent.mean,
+      dwellMs: means.total_dwell_time_ms.mean,
+      fixations: means.fixation_count.mean,
+      n,
+    }))
+    const topAverage = averageRows.reduce<AverageAoiRow | null>(
+      (best, row) => (row.dwell != null && (best?.dwell == null || row.dwell > best.dwell) ? row : best),
+      null
+    )
+    const notes: AnalyticsChartNote[] = [
+      groupMode === "average"
+        ? {
+            id: "group-how",
+            label: "Cómo se calcula",
+            detail: (
+              <>
+                <span>Cada barra es la media, entre los participantes que tienen esa AOI, de su porcentaje de tiempo en ella.</span>
+                <span>Pasa el cursor por una barra para ver cuántos participantes cuentan.</span>
+              </>
+            ),
+          }
+        : {
+            id: "group-how",
+            label: many ? `${participants.length} participantes` : "Cómo se lee",
+            detail: (
+              <>
+                <span>Una barra por participante en cada AOI, en su color: el porcentaje de su tiempo de fijación en esa área.</span>
+                {many ? <span>Cada color es un participante; la tabla de estadísticas muestra el de cada uno.</span> : null}
+              </>
+            ),
+          },
+      ...groupLoadNotes(groupData),
+    ]
+    const overlayColumns: GroupFigureColumn[] = [
+      { key: "fixations", label: "Fijaciones", format: formatCount },
+      { key: "observed", label: "Tiempo en AOIs", format: (value) => formatShare(value) },
+      ...groupAois.map((aoi) => ({ key: `aoi:${aoi.id}`, label: aoi.name, format: (value: number) => formatShare(value) })),
+    ]
+
+    return (
+      <div className="analytics-stack">
+        {groupMode === "average" ? (
+          <GroupFigureKpis
+            kpis={GROUP_KPIS}
+            entries={groupFigures}
+            four
+            extra={
+              <KpiCard
+                label="Más observada"
+                value={topAverage?.dwell ?? null}
+                unit="%"
+                description={topAverage?.name ?? "Sin datos"}
+                tooltip="El área con más tiempo medio entre los participantes"
+                Icon={Eye}
+                bgClass="bg-card"
+                iconBgClass="bg-rose-100 dark:bg-rose-900/30"
+                iconColorClass="text-rose-500"
+                labelColorClass="text-rose-600 dark:text-rose-400"
+                decimals={1}
+              />
+            }
+          />
+        ) : null}
+
+        {stimulusCard(groupAois, scenario)}
+
+        <Card>
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1 basis-72">
+              <CardTitle>{CHART_TITLE}</CardTitle>
+              <CardDescription>
+                {groupMode === "average"
+                  ? "Porcentaje medio del tiempo de observación dedicado a cada zona del estímulo."
+                  : "Porcentaje del tiempo de observación de cada participante en cada zona del estímulo."}
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div data-testid="aoi-group-chart" data-mode={groupMode} data-series={groupMode === "average" ? 1 : participants.length}>
+              <AnalyticsChartShell
+                xAxisLabel="AOI"
+                variant="compact"
+                legend={groupMode === "overlay" && !many ? participants.map((participant) => ({ label: participant.label, color: participant.color, thick: true })) : []}
+                notes={notes}
+              >
+                <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
+                  {groupMode === "average" ? (
+                    <BarChart data={averageRows} margin={{ top: 16, right: 24, left: 0, bottom: 12 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                      <XAxis dataKey="name" height={36} tick={{ fontSize: 12 }} tickMargin={8} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} label={{ value: "Tiempo en AOI (%)", angle: -90, position: "insideLeft", style: { textAnchor: "middle" } }} />
+                      <RechartsTooltip content={<AverageAoiTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.04)" }} />
+                      <Bar dataKey="dwell" name="Promedio" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+                        {averageRows.map((row) => (
+                          <Cell key={row.id} fill={row.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  ) : (
+                    <BarChart data={overlayRows} margin={{ top: 16, right: 24, left: 0, bottom: 12 }} barCategoryGap="18%">
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                      <XAxis dataKey="name" height={36} tick={{ fontSize: 12 }} tickMargin={8} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} label={{ value: "Tiempo en AOI (%)", angle: -90, position: "insideLeft", style: { textAnchor: "middle" } }} />
+                      <RechartsTooltip content={<GroupAoiTooltip participants={participants} />} cursor={{ fill: "rgba(0, 0, 0, 0.04)" }} />
+                      {participants.map((participant, index) => (
+                        <Bar
+                          key={participant.code}
+                          dataKey={`p${index}`}
+                          name={participant.label}
+                          fill={participant.color}
+                          radius={[3, 3, 0, 0]}
+                          isAnimationActive={false}
+                        />
+                      ))}
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </AnalyticsChartShell>
+            </div>
+          </CardContent>
+        </Card>
+
+        {groupMode === "average" ? (
+          <AoiGroupMetricsCard rows={groupAverage} />
+        ) : (
+          <GroupFiguresCard
+            mode={groupMode}
+            entries={groupFigures}
+            columns={overlayColumns}
+            detail="Fijaciones y tiempo en AOIs son las cifras de las tarjetas de un participante; cada AOI, su porcentaje de tiempo en ella."
+          />
+        )}
       </div>
     )
   }
@@ -326,42 +678,12 @@ export function AoiComparisonTab({
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Comparativa AOIs</CardTitle>
-          <CardDescription>
-            Fijaciones y concentración visual sobre las áreas definidas del escenario.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px] 2xl:gap-6">
-            <div className="relative overflow-hidden rounded-lg bg-muted" ref={imageContainerRef}>
-              {!scenarioImageUrl ? (
-                <Skeleton className="analytics-state-frame w-full animate-pulse bg-muted" />
-              ) : (
-                <img
-                  ref={imageRef}
-                  src={scenarioImageUrl}
-                  alt={data.scenario}
-                  className="analytics-visual-image"
-                  onLoad={computeLetterbox}
-                />
-              )}
-
-              <AoiOverlay aois={data.aois} box={letterbox} />
-            </div>
-
-            <div className="self-start pt-2">
-              <AoiLegend aois={data.aois} className="flex-col items-start" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {stimulusCard(data.aois, data.scenario)}
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1 basis-72">
-            <CardTitle>Distribución temporal por áreas de interés (AOI)</CardTitle>
+            <CardTitle>{CHART_TITLE}</CardTitle>
             <CardDescription>
               Porcentaje del tiempo total de observación dedicado a cada zona del estímulo.
             </CardDescription>

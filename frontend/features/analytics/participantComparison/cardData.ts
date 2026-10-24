@@ -230,6 +230,8 @@ async function loadCardDataUnsafe(context: CardContext, signal: AbortSignal): Pr
       const minimum = spec.params.minFixationDurationMs
       const fixation = await AnalyticsApi.getFixationData(projectId, participant, scenario, minimum, signal)
       if (!fixation.fixations.length) return { type: "empty", message: "Sin fijaciones para este participante en el escenario." }
+      // The group modes draw the fixations or one group map: no image per participant.
+      if (spec.params.overlay === false) return { type: "heatmap", fixation, overlay: null }
       const token =
         fixation.coordinate_transform?.contract_fingerprint ?? fixation.coordinate_transform?.status ?? "screen-stimulus-v1"
       let overlay: Blob | null = null

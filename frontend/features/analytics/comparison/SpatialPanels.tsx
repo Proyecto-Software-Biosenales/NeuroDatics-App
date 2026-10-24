@@ -2,7 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import {
   Bar,
   BarChart,
@@ -44,30 +44,15 @@ import { MissingStimulusImage } from "../components/MissingStimulusImage"
 import { AnalyticsMessageSurface as MessageSurface } from "../components/AnalyticsMessageSurface"
 import { AnalyticsChartShell } from "../components/AnalyticsChartShell"
 import { ScanpathDurationLegend } from "../components/ScanpathDurationLegend"
+// Same layer and preset as the "Mapa de recorridos" tab, so every scanpath looks alike.
+import { ScanpathLayer, scanpathStyle } from "../components/ScanpathLayer"
 import {
-  formatScanpathObjectiveDetails,
   resolveScanpathRadiusCapMs,
   resolveScanpathTotalDurationS,
-  scanpathRadiusForDuration,
 } from "../scanpathScale"
-import {
-  ACTIVE_SCANPATH_STYLE,
-  SCANPATH_STYLES,
-  scanpathGeometry,
-  scanpathLabelFontSize,
-} from "../scanpathStyle"
 
 /** Cards in a participant grid: the stimulus fills the space left, not a fixed height. */
 const CompactSurfaceContext = createContext(false)
-
-// Same preset as the "Mapa de recorridos" tab, so every scanpath looks alike.
-const scanpathStyle = SCANPATH_STYLES[ACTIVE_SCANPATH_STYLE]
-const scanpathLabelStyle: CSSProperties = {
-  paintOrder: "stroke",
-  stroke: scanpathStyle.labelHalo,
-  strokeWidth: scanpathStyle.labelHaloWidth,
-  strokeLinejoin: scanpathStyle.labelHaloLineJoin,
-}
 
 interface ImageState {
   url: string | null
@@ -407,12 +392,6 @@ export function HeatmapPanel({
   )
 }
 
-function scanpathPoint(box: ContainedImageBox, x: number, y: number) {
-  return {
-    x: box.offsetX + x * box.renderedW,
-    y: box.offsetY + y * box.renderedH,
-  }
-}
 
 export function ScanpathPanel({
   data,
@@ -474,10 +453,6 @@ export function ScanpathPanel({
         alt="Mapa de recorridos del escenario"
         renderOverlay={(box) => {
           if (!box) return null
-          const geometry = scanpathGeometry(scanpathStyle, box.renderedW, box.renderedH)
-          const points = data.objectives.map((objective) =>
-            scanpathPoint(box, objective.cx, objective.cy)
-          )
           return (
             <>
               <AoiOverlay aois={aoi?.aois ?? []} box={box} fill={false} />
@@ -485,65 +460,7 @@ export function ScanpathPanel({
                 className="pointer-events-none absolute inset-0 z-30 h-full w-full"
                 viewBox={`0 0 ${box.cW} ${box.cH}`}
               >
-                {points.slice(1).map((point, index) => (
-                  <line
-                    key={`${index}-${point.x}`}
-                    x1={points[index].x}
-                    y1={points[index].y}
-                    x2={point.x}
-                    y2={point.y}
-                    stroke={scanpathStyle.lineStroke}
-                    strokeWidth={geometry.lineWidth}
-                    strokeLinecap="round"
-                  />
-                ))}
-                {data.objectives.map((objective, index) => {
-                  const point = points[index]
-                  const radius = scanpathRadiusForDuration(
-                    objective.duration_s,
-                    geometry.minRadius,
-                    geometry.maxRadius,
-                    radiusCapMs
-                  )
-                  const details = formatScanpathObjectiveDetails(objective)
-                  return (
-                    <g
-                      key={objective.id}
-                      data-testid={`scanpath-fixation-${objective.id}`}
-                      data-duration-ms={Math.round(
-                        objective.duration_s * 1_000
-                      )}
-                      data-radius={radius}
-                      role="img"
-                      tabIndex={0}
-                      aria-label={details}
-                      className="group pointer-events-auto cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
-                      <title>{details}</title>
-                      <circle
-                        cx={point.x}
-                        cy={point.y}
-                        r={radius}
-                        fill={scanpathStyle.nodeFill}
-                        stroke={scanpathStyle.nodeStroke}
-                        strokeWidth={geometry.nodeStrokeWidth}
-                        className={scanpathStyle.nodeClassName}
-                      />
-                      <text
-                        x={point.x}
-                        y={point.y}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fill={scanpathStyle.labelFill}
-                        fontSize={scanpathLabelFontSize(scanpathStyle, radius)}
-                        fontWeight="700"
-                        style={scanpathLabelStyle}
-                      >
-                        {objective.id}
-                      </text>
-                    </g>
-                  )
-                })}
+                <ScanpathLayer objectives={data.objectives} box={box} radiusCapMs={radiusCapMs} />
               </svg>
             </>
           )

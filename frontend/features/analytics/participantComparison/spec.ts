@@ -93,6 +93,11 @@ export interface EegTopographyParams {
 export interface SpatialParams {
   minFixationDurationMs: FixationDurationMs
   showAois: boolean
+  /**
+   * Heatmap only. false asks for the fixations without each participant's
+   * heatmap image: the group modes draw their own and never need it.
+   */
+  overlay?: boolean
 }
 
 interface SpecBase<Kind extends ComparisonKind, Params> {
@@ -218,6 +223,10 @@ export function requestParams(spec: ParticipantComparisonSpec): Record<string, u
     case "aoi":
       return { minFixationDurationMs: spec.params.minFixationDurationMs }
     case "heatmap":
+      // Without the image the result differs, so it is its own cache entry.
+      return spec.params.overlay === false
+        ? { minFixationDurationMs: spec.params.minFixationDurationMs, overlay: false }
+        : { minFixationDurationMs: spec.params.minFixationDurationMs }
     case "scanpath":
       return { minFixationDurationMs: spec.params.minFixationDurationMs }
     case "eeg_psd": {

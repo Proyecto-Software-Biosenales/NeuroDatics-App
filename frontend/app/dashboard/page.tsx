@@ -102,7 +102,7 @@ const EEG_TAB_KINDS: Record<EegTabKey, ComparisonKind> = {
  * Views that draw «Superposición» and «Promedio» themselves (useGroupView).
  * Every other view shows why it cannot, in place of its chart.
  */
-const GROUP_READY_TABS = new Set<AnalyticsTabKey>(["pupil_dilation"])
+const GROUP_READY_TABS = new Set<AnalyticsTabKey>(["pupil_dilation", "heatmap", "scanpath", "aoi_comparison"])
 const GROUP_READY_EEG_TABS = new Set<EegTabKey>([])
 const GROUP_READY_GSR = false
 

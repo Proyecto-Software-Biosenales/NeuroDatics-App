@@ -4,10 +4,10 @@ import { Slider } from "@/components/ui/slider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useCompareParticipantsSpec } from "../participantComparison/ParticipantComparisonProvider"
 import { Clock, Route, Ruler, Timer } from "lucide-react"
-import { ScenarioRequiredMessage } from "./AnalyticsMessageSurface"
+import { AnalyticsMessageSurface, ScenarioRequiredMessage } from "./AnalyticsMessageSurface"
 import {
   Card,
   CardContent,
@@ -17,20 +17,19 @@ import {
 } from "@/components/ui/card"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
 import { useStimulusImage } from "../participantComparison/cardHooks"
+import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { useAoiMetrics, useScanpathData } from "../hooks/useAnalyticsData"
+import { formatDecimal, formatMilliseconds, formatSeconds } from "../aoiInsights"
+import { groupLoadNotes } from "../groupMode/groupNotes"
+import { GroupUnsupported } from "../groupMode/GroupUnsupported"
+import { useGroupView } from "../groupMode/useGroupData"
 import {
   formatScanpathObjectiveDetails,
   resolveScanpathRadiusCapMs,
   resolveScanpathTotalDurationS,
-  scanpathRadiusForDuration,
 } from "../scanpathScale"
-import {
-  ACTIVE_SCANPATH_STYLE,
-  SCANPATH_STYLES,
-  scanpathGeometry,
-  scanpathLabelFontSize,
-} from "../scanpathStyle"
-import type { FixationDurationMs } from "../types"
+import type { FixationDurationMs, ScanpathData } from "../types"
+import type { AnalyticsChartNote } from "./AnalyticsChartShell"
 import {
   AoiLegend,
   AoiOverlay,
@@ -38,9 +37,14 @@ import {
   getContainedImageBox,
   type ContainedImageBox,
 } from "./AoiOverlay"
-
-// Switch presets in scanpathStyle.ts ("legacy" restores the previous look).
-const scanpathStyle = SCANPATH_STYLES[ACTIVE_SCANPATH_STYLE]
+import {
+  GroupFiguresCard,
+  GroupSpatialFooter,
+  groupFigureEntries,
+  MAX_GROUP_LEGEND_ITEMS,
+  type GroupFigureColumn,
+} from "./GroupSpatial"
+import { ScanpathLayer } from "./ScanpathLayer"
 
 interface ScanpathTabProps {
   projectId: string
@@ -49,6 +53,28 @@ interface ScanpathTabProps {
   minFixationDurationMs: FixationDurationMs
 }
 
+const TITLE = "Mapa de recorridos"
+const DESCRIPTION =
+  "Recorrido visual con nodos numerados por orden de fijación. El mismo tamaño representa la misma duración entre participantes."
+
+/** The tab's figures, from one participant's scanpath; the group modes use the same rule. */
+function scanpathFigures(data: ScanpathData): Record<string, number | null> {
+  return {
+    objectives: data.n_objectives,
+    distance: data.total_distance_px,
+    mean: data.avg_duration_s * 1000,
+    total: resolveScanpathTotalDurationS(data.total_duration_s, data.objectives),
+  }
+}
+
+const formatCount = (value: number) => (Number.isInteger(value) ? String(value) : formatDecimal(value, 1))
+const COLUMNS: GroupFigureColumn[] = [
+  { key: "objectives", label: "Recorridos", format: formatCount },
+  { key: "distance", label: "Distancia", format: (value) => `${Math.round(value)} px` },
+  { key: "mean", label: "Duración media", format: formatMilliseconds },
+  { key: "total", label: "Tiempo fijado", format: formatSeconds },
+]
+
 export function ScanpathTab({
   projectId,
   participantCode,
@@ -56,40 +82,68 @@ export function ScanpathTab({
   minFixationDurationMs,
 }: ScanpathTabProps) {
   const [showAois, setShowAois] = useState(true)
-  
+
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
   const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
   const [visibleCount, setVisibleCount] = useState<number | null>(null)
 
+  // The chart «Comparar participantes» and the group modes both start from.
+  const comparisonSpec = useMemo<ParticipantComparisonSpec>(() => ({
+    kind: "scanpath",
+    title: TITLE,
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { minFixationDurationMs, showAois },
+  }), [minFixationDurationMs, participantCode, scenario, showAois])
+  const groupView = useGroupView(comparisonSpec)
+  const groupMode = groupView.unsupportedReason ? null : groupView.mode
+  // In a group mode the single recording is not loaded at all.
+  const individualParticipant = groupView.active ? null : participantCode
+
   const { data, loading, error } = useScanpathData(
     projectId,
-    participantCode,
+    individualParticipant,
     scenario,
     minFixationDurationMs
   )
+
+  // «Superposición»: each participant's scanpath, in its colour.
+  const groupPaths = useMemo(
+    () =>
+      groupView.data.successes.flatMap(({ participant, result }) =>
+        result.type === "scanpath" && result.data.objectives.length > 0 ? [{ participant, data: result.data }] : []
+      ),
+    [groupView.data.successes]
+  )
+  const groupFigures = useMemo(
+    () => groupFigureEntries(groupView.data.entries, (result) => (result.type === "scanpath" ? scanpathFigures(result.data) : null)),
+    [groupView.data.entries]
+  )
+
+  // AOI shapes belong to the scenario; in a group mode any participant with data has them.
+  const groupAoiSource = groupView.data.loading ? null : (groupPaths[0]?.participant.code ?? null)
   const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
     projectId,
-    participantCode,
+    groupView.active ? groupAoiSource : participantCode,
     scenario,
     minFixationDurationMs
   )
   const aois = aoiData?.aois ?? []
   const radiusCapMs = resolveScanpathRadiusCapMs(data?.radius_scale)
-  const totalDurationS = data
-    ? resolveScanpathTotalDurationS(data.total_duration_s, data.objectives)
-    : null
+  const figures = data ? scanpathFigures(data) : null
 
   const computeLetterbox = useCallback(() => {
     setLetterbox(getContainedImageBox(imageRef.current, imageContainerRef.current))
   }, [])
 
-  // Image load / revocation
-
-
   // Recalculate on window resize
-  const scenarioImageUrl = useStimulusImage(projectId, data?.scenario_file_id ?? null).url
+  const scenarioFileId = groupView.active
+    ? (groupPaths.find((path) => path.data.scenario_file_id)?.data.scenario_file_id ?? null)
+    : (data?.scenario_file_id ?? null)
+  const scenarioImageUrl = useStimulusImage(projectId, scenarioFileId).url
   useEffect(() => {
     window.addEventListener("resize", computeLetterbox)
     return () => window.removeEventListener("resize", computeLetterbox)
@@ -103,25 +157,15 @@ export function ScanpathTab({
   }, [data?.n_objectives])
 
   // Nothing to compare until the view can draw its own chart.
-  useCompareParticipantsSpec(scenario === "all" ? null : () => ({
-    kind: "scanpath",
-    title: "Mapa de recorridos",
-    scenario,
-    sourceParticipant: participantCode,
-    origin: "individual",
-    params: { minFixationDurationMs, showAois },
-  }))
+  useCompareParticipantsSpec(scenario === "all" ? null : () => comparisonSpec)
 
-  if (scenario === "all") {
+  if (scenario === "all" && !groupView.active) {
     return (
       <div className="analytics-stack">
         <Card>
           <CardHeader>
-            <CardTitle>Mapa de recorridos</CardTitle>
-            <CardDescription>
-              Recorrido visual con nodos numerados por orden de fijación. El
-              mismo tamaño representa la misma duración entre participantes.
-            </CardDescription>
+            <CardTitle>{TITLE}</CardTitle>
+            <CardDescription>{DESCRIPTION}</CardDescription>
           </CardHeader>
           <CardContent>
             <ScenarioRequiredMessage label="el mapa de recorridos" />
@@ -131,20 +175,134 @@ export function ScanpathTab({
     )
   }
 
+  // The stimulus with the scanpaths drawn on it, pinned to the measured box.
+  const stimulus = (renderPaths: (box: ContainedImageBox) => ReactNode) => (
+    <div className="relative" ref={imageContainerRef} data-testid="scanpath-stimulus">
+      {!scenarioImageUrl ? (
+        <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
+      ) : (
+        <img
+          ref={imageRef}
+          src={scenarioImageUrl}
+          alt="Escenario"
+          className="analytics-visual-image"
+          onLoad={computeLetterbox}
+        />
+      )}
+      {showAois && (
+        <AoiOverlay aois={aois} box={letterbox} className="z-10" />
+      )}
+      {letterbox && scenarioImageUrl && (
+        <svg
+          className="pointer-events-none absolute inset-0 z-20"
+          width="100%"
+          height="100%"
+          viewBox={`0 0 ${letterbox.cW} ${letterbox.cH}`}
+        >
+          {renderPaths(letterbox)}
+        </svg>
+      )}
+    </div>
+  )
+
+  const controls = (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
+      <AoiLegend aois={showAois ? aois : []} />
+      <div className="ml-auto flex items-center">
+        <AoiToggleButton
+          enabled={showAois}
+          onToggle={() => setShowAois((value) => !value)}
+          disabled={aois.length === 0 || aoiLoading}
+          count={aois.length}
+        />
+      </div>
+    </div>
+  )
+
+  const groupContent = () => {
+    const groupData = groupView.data
+    const many = groupPaths.length > MAX_GROUP_LEGEND_ITEMS
+    const notes: AnalyticsChartNote[] = [
+      {
+        id: "group-how",
+        label: many ? `${groupPaths.length} participantes` : "Cómo se lee",
+        detail: (
+          <>
+            <span>Cada recorrido es un participante, en su color; los números siguen el orden de sus fijaciones.</span>
+            <span>El mismo tamaño representa la misma duración en todos.</span>
+            {many ? <span>Cada color es un participante; la tabla de estadísticas muestra el de cada uno.</span> : null}
+          </>
+        ),
+      },
+      ...groupLoadNotes(groupData),
+    ]
+    let body: ReactNode
+    if (groupData.total === 0) {
+      body = <AnalyticsMessageSurface className="analytics-state-frame">Elige al menos un participante en «Participantes».</AnalyticsMessageSurface>
+    } else if (groupPaths.length === 0) {
+      body = groupData.loading ? (
+        <div className="analytics-state-frame relative" role="status">
+          <Skeleton className="absolute inset-0 animate-pulse rounded-lg bg-muted" />
+          <span className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+            Cargando {groupData.settled} de {groupData.total} participantes…
+          </span>
+        </div>
+      ) : (
+        <AnalyticsMessageSurface className="analytics-state-frame">
+          Ninguno de los participantes elegidos tiene recorridos en este escenario.
+        </AnalyticsMessageSurface>
+      )
+    } else if (!scenarioFileId) {
+      body = (
+        <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+          No se encontró imagen del escenario seleccionado.
+        </div>
+      )
+    } else {
+      body = stimulus((box) =>
+        groupPaths.map(({ participant, data: path }) => (
+          <g key={participant.code} data-participant={participant.code} data-testid="group-scanpath">
+            <ScanpathLayer
+              objectives={path.objectives}
+              box={box}
+              radiusCapMs={resolveScanpathRadiusCapMs(path.radius_scale)}
+              color={participant.color}
+              dash={participant.dash}
+              describe={(objective) => `${participant.label}. ${formatScanpathObjectiveDetails(objective)}`}
+              testId={(objective) => `group-scanpath-${participant.code}-${objective.id}`}
+            />
+          </g>
+        ))
+      )
+    }
+    return (
+      <>
+        {body}
+        <GroupSpatialFooter participants={groupPaths.map((path) => path.participant)} notes={notes} />
+        {controls}
+      </>
+    )
+  }
+
   return (
     <div className="analytics-stack">
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1 basis-72">
-            <CardTitle>Mapa de recorridos</CardTitle>
+            <CardTitle>{TITLE}</CardTitle>
             <CardDescription>
-              Recorrido visual con nodos numerados por orden de fijación. El mismo
-              tamaño representa la misma duración entre participantes.
+              {groupMode
+                ? "Recorrido visual de varios participantes, cada uno con su color. El mismo tamaño representa la misma duración en todos."
+                : DESCRIPTION}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          {!participantCode ? (
+          {groupView.unsupportedReason ? (
+            <GroupUnsupported reason={groupView.unsupportedReason} className="analytics-state-frame" />
+          ) : groupMode ? (
+            groupContent()
+          ) : !participantCode ? (
             <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
               Selecciona un participante para ver el mapa de recorridos.
             </div>
@@ -153,7 +311,7 @@ export function ScanpathTab({
               <div className="analytics-kpi-grid analytics-kpi-grid-four">
                 <KpiCard
                   label="Recorridos"
-                  value={data?.n_objectives}
+                  value={figures?.objectives}
                   unit=""
                   description="Puntos de fijación agrupados"
                   tooltip="Número de objetivos visuales detectados agrupando fijaciones cercanas"
@@ -167,7 +325,7 @@ export function ScanpathTab({
                 />
                 <KpiCard
                   label="Distancia"
-                  value={data?.total_distance_px}
+                  value={figures?.distance}
                   unit="px"
                                     tooltip="Distancia total en píxeles entre fijaciones consecutivas asumiendo resolución 1920×1080"
                   Icon={Ruler}
@@ -180,7 +338,7 @@ export function ScanpathTab({
                 />
                 <KpiCard
                   label="Promedio"
-                  value={data ? data.avg_duration_s * 1000 : null}
+                  value={figures?.mean}
                   unit="ms"
                   description="Duración media por fijación"
                   Icon={Clock}
@@ -193,7 +351,7 @@ export function ScanpathTab({
                 />
                 <KpiCard
                   label="Tiempo fijado"
-                  value={totalDurationS}
+                  value={figures?.total}
                   unit="s"
                   description="Suma de fijaciones válidas"
                   tooltip="Tiempo total de permanencia en fijaciones válidas; excluye sacadas, mirada inválida y tiempo fuera del estímulo"
@@ -226,123 +384,13 @@ export function ScanpathTab({
                   const total = data.objectives.length
                   const shown = visibleCount ?? total
                   const visibleObjectives = data.objectives.slice(0, shown)
-                  const geometry = scanpathGeometry(
-                    scanpathStyle,
-                    letterbox?.renderedW ?? 0,
-                    letterbox?.renderedH ?? 0
-                  )
-                  const radiusFor = (durationS: number) => {
-                    return scanpathRadiusForDuration(
-                      durationS,
-                      geometry.minRadius,
-                      geometry.maxRadius,
-                      radiusCapMs
-                    )
-                  }
 
                   return (
                     <>
-                      <div className="relative" ref={imageContainerRef}>
-                        {!scenarioImageUrl ? (
-                          <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
-                        ) : (
-                          <img
-                            ref={imageRef}
-                            src={scenarioImageUrl}
-                            alt="Escenario"
-                            className="analytics-visual-image"
-                            onLoad={computeLetterbox}
-                          />
-                        )}
-                        {showAois && (
-                          <AoiOverlay aois={aois} box={letterbox} className="z-10" />
-                        )}
-                        {letterbox && (
-                          <svg
-                            className="pointer-events-none absolute inset-0 z-20"
-                            width="100%"
-                            height="100%"
-                            viewBox={`0 0 ${letterbox.cW} ${letterbox.cH}`}
-                          >
-                            {/* Lines between objectives */}
-                            {visibleObjectives.map((obj, i) => {
-                              if (i === 0) return null
-                              const prev = visibleObjectives[i - 1]
-                              return (
-                                <line
-                                  key={`line-${obj.id}`}
-                                  x1={letterbox.offsetX + prev.cx * letterbox.renderedW}
-                                  y1={letterbox.offsetY + prev.cy * letterbox.renderedH}
-                                  x2={letterbox.offsetX + obj.cx * letterbox.renderedW}
-                                  y2={letterbox.offsetY + obj.cy * letterbox.renderedH}
-                                  stroke={scanpathStyle.lineStroke}
-                                  strokeWidth={geometry.lineWidth}
-                                  strokeLinecap="round"
-                                />
-                              )
-                            })}
-                            {/* Nodes */}
-                            {visibleObjectives.map((obj) => {
-                              const cx = letterbox.offsetX + obj.cx * letterbox.renderedW
-                              const cy = letterbox.offsetY + obj.cy * letterbox.renderedH
-                              const r = radiusFor(obj.duration_s)
-                              const fontSize = scanpathLabelFontSize(scanpathStyle, r)
-                              const details = formatScanpathObjectiveDetails(obj)
-                              return (
-                                <g
-                                  key={`node-${obj.id}`}
-                                  data-testid={`scanpath-fixation-${obj.id}`}
-                                  data-duration-ms={Math.round(obj.duration_s * 1_000)}
-                                  data-radius={r}
-                                  role="img"
-                                  tabIndex={0}
-                                  aria-label={details}
-                                  className="group pointer-events-auto cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                                >
-                                  <title>{details}</title>
-                                  <circle
-                                    cx={cx}
-                                    cy={cy}
-                                    r={r}
-                                    fill={scanpathStyle.nodeFill}
-                                    stroke={scanpathStyle.nodeStroke}
-                                    strokeWidth={geometry.nodeStrokeWidth}
-                                    className={scanpathStyle.nodeClassName}
-                                  />
-                                  <text
-                                    x={cx}
-                                    y={cy}
-                                    textAnchor="middle"
-                                    dominantBaseline="central"
-                                    fill={scanpathStyle.labelFill}
-                                    fontSize={fontSize}
-                                    fontWeight="bold"
-                                    style={{
-                                      paintOrder: "stroke",
-                                      stroke: scanpathStyle.labelHalo,
-                                      strokeWidth: scanpathStyle.labelHaloWidth,
-                                      strokeLinejoin: scanpathStyle.labelHaloLineJoin,
-                                    }}
-                                  >
-                                    {obj.id}
-                                  </text>
-                                </g>
-                              )
-                            })}
-                          </svg>
-                        )}
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
-                        <AoiLegend aois={showAois ? aois : []} />
-                        <div className="ml-auto flex items-center">
-                          <AoiToggleButton
-                            enabled={showAois}
-                            onToggle={() => setShowAois((value) => !value)}
-                            disabled={aois.length === 0 || aoiLoading}
-                            count={aois.length}
-                          />
-                        </div>
-                      </div>
+                      {stimulus((box) => (
+                        <ScanpathLayer objectives={visibleObjectives} box={box} radiusCapMs={radiusCapMs} />
+                      ))}
+                      {controls}
                       {/* Playback slider */}
                       {data.objectives.length > 1 && (
                         <div className="mt-4 flex items-center gap-4 rounded-xl border border-border bg-muted/30 px-5 py-3">
@@ -377,6 +425,14 @@ export function ScanpathTab({
         </CardContent>
       </Card>
 
+      {groupMode ? (
+        <GroupFiguresCard
+          mode={groupMode}
+          entries={groupFigures}
+          columns={COLUMNS}
+          detail="Las mismas cifras que las tarjetas del mapa de recorridos de un participante."
+        />
+      ) : null}
     </div>
   )
 }
