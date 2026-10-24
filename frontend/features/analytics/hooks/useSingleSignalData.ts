@@ -4,15 +4,7 @@ import { useMemo, useState } from "react"
 import type { StatRow } from "../components/StatisticsTable"
 import { useChartDragZoom } from "../components/ChartDragZoom"
 import { useTimeWindow } from "./useZoomHistory"
-
-interface SignalStatistics {
-  mean: number
-  baseline: number
-  std: number
-  median: number
-  min: number
-  max: number
-}
+import { signalStatRow, type SignalStatistics } from "../signalStats"
 
 type SignalHook<T> = (
   projectId: string,
@@ -89,18 +81,10 @@ export function useSingleSignalData<T, Point extends { time: number }, Stats ext
     }
     return nearest
   }, [selectedTime, chartData])
-  const tableRows = useMemo<StatRow[]>(() => [{
-    serie,
-    count: chartData.length || null,
-    baseline: stats?.baseline ?? null,
-    std: stats?.std ?? null,
-    median: stats?.median ?? null,
-    min: stats?.min ?? null,
-    max: stats?.max ?? null,
-    peak: stats?.max != null && stats?.baseline != null && stats.baseline !== 0
-      ? ((stats.max - stats.baseline) / Math.abs(stats.baseline)) * 100
-      : null,
-  }], [serie, chartData.length, stats])
+  const tableRows = useMemo<StatRow[]>(
+    () => [signalStatRow(serie, stats, chartData.length)],
+    [serie, chartData.length, stats]
+  )
 
   // A dragged range behaves exactly like typing it into the window controls.
   const dragZoom = useChartDragZoom(windowState.zoomTo)

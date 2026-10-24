@@ -102,9 +102,9 @@ const EEG_TAB_KINDS: Record<EegTabKey, ComparisonKind> = {
  * Views that draw «Superposición» and «Promedio» themselves (useGroupView).
  * Every other view shows why it cannot, in place of its chart.
  */
-const GROUP_READY_TABS = new Set<AnalyticsTabKey>(["pupil_dilation", "heatmap", "scanpath", "aoi_comparison"])
+const GROUP_READY_TABS = new Set<AnalyticsTabKey>(["pupil_dilation", "gaze_point", "device_distance", "heatmap", "scanpath", "aoi_comparison"])
 const GROUP_READY_EEG_TABS = new Set<EegTabKey>([])
-const GROUP_READY_GSR = false
+const GROUP_READY_GSR = true
 
 function groupBlockedReason(mode: GroupMode, kind: ComparisonKind | "comparativas", scenario: string): string {
   if (kind === "comparativas") return COMPARATIVAS_UNSUPPORTED

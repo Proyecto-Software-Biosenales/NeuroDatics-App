@@ -62,6 +62,7 @@ export function GroupStatsCard({
   loading,
   description = "Las cifras de cada participante, calculadas igual que en su vista individual.",
   detail,
+  basis = "Cada fila de participante usa sus propias muestras dibujadas, desde el inicio del escenario.",
 }: {
   mode: GroupMode
   entries: GroupStatEntry[]
@@ -70,6 +71,8 @@ export function GroupStatsCard({
   description?: string
   /** A view-specific line for the «Cómo se calcula» chip. */
   detail?: ReactNode
+  /** What each participant row is computed from, when it is not the drawn samples. */
+  basis?: ReactNode
 }) {
   const averaged = useAveragedStats(entries)
   const participantRows = useMemo<StatRow[]>(
@@ -102,7 +105,7 @@ export function GroupStatsCard({
           label="Cómo se calcula"
           detail={
             <>
-              <span>Cada fila de participante usa sus propias muestras dibujadas, desde el inicio del escenario.</span>
+              <span>{basis}</span>
               {mode === "average" ? (
                 <span>
                   La fila «Promedio» es la media, entre participantes, de la cifra de cada uno; solo cuentan los
