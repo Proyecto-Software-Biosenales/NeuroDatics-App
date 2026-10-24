@@ -1,7 +1,7 @@
 "use client"
 import { AnalyticsModeSelector, FitAxisToggle } from "@/features/analytics/components/AnalyticsModeSelector"
 
-import { useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import {
   Area,
   AreaChart,
@@ -42,8 +42,56 @@ import { SingleSignalTab } from "./SingleSignalTab"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
 import { readClickedTime } from "../comparison/chartInteraction"
 import { useFittedAxis } from "../hooks/useFittedAxis"
+import { AnalyticsApi } from "../api/analyticsApi"
+import { fittedAxis } from "../fittedAxis"
+import { signalStatRow } from "../signalStats"
+import type { ParticipantComparisonSpec } from "../participantComparison/spec"
+import { useGroupView } from "../groupMode/useGroupData"
+import type { GroupKpi } from "../groupMode/GroupStats"
+import { GroupSignalChart, GroupSignalStats, useGroupSignal } from "../groupMode/groupSignal"
 
 type SignalMode = "smooth" | "raw" | "both"
+/** One series per participant in a group mode: «Ambas» shows the smoothed one. */
+type GroupSignalMode = Exclude<SignalMode, "both">
+
+const GROUP_KPIS: GroupKpi[] = [
+  {
+    label: "Media",
+    field: "mean",
+    unit: "µS",
+    decimals: 4,
+    tooltip: "Promedio, entre participantes, de la media suavizada de cada uno",
+    Icon: Activity,
+    iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
+    iconColorClass: "text-emerald-600 dark:text-emerald-400",
+    labelColorClass: "text-emerald-700 dark:text-emerald-400",
+  },
+  {
+    label: "Mínimo",
+    field: "min",
+    unit: "µS",
+    decimals: 4,
+    tooltip: "Promedio, entre participantes, del mínimo de cada uno en la señal suavizada",
+    Icon: TrendingDown,
+    iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
+    iconColorClass: "text-emerald-600 dark:text-emerald-400",
+    labelColorClass: "text-emerald-700 dark:text-emerald-400",
+  },
+  {
+    label: "Máximo",
+    field: "max",
+    unit: "µS",
+    decimals: 4,
+    tooltip: "Promedio, entre participantes, del máximo de cada uno en la señal suavizada",
+    Icon: TrendingUp,
+    iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
+    iconColorClass: "text-rose-600 dark:text-rose-400",
+    labelColorClass: "text-rose-700 dark:text-rose-400",
+  },
+]
+
+const GROUP_STATS_DETAIL = "Las cifras usan la señal suavizada, como en la vista de un participante, aunque la gráfica muestre la cruda."
+const GROUP_TIME_DETAIL = "A diferencia de la vista de un participante, no se cuenta desde la primera muestra de GSR."
 
 interface GsrTabProps {
   projectId: string
@@ -105,8 +153,22 @@ const gsrValues = (data: GsrLinePoint[]) => data.flatMap((point) => [point.gsr, 
 export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
   const [signalMode, setSignalMode] = useState<SignalMode>("smooth")
 
+  // Group modes read the whole scenario, so the time window is left out here.
+  const groupSpec = useMemo<ParticipantComparisonSpec>(() => ({
+    kind: "gsr",
+    title: "Respuesta galvánica",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { signalMode, window: { start: null, end: null } },
+  }), [participantCode, scenario, signalMode])
+  const groupView = useGroupView(groupSpec)
+  // In a group mode the single recording is not loaded at all.
+  const individualParticipant = groupView.active ? null : participantCode
+  const groupSignal: GroupSignalMode = signalMode === "raw" ? "raw" : "smooth"
+
   const signal = useSingleSignalData(
-    { projectId, participantCode, scenario }, GSR_SIGNAL
+    { projectId, participantCode: individualParticipant, scenario }, GSR_SIGNAL
   )
   const { chartData, chartDomain, minTime, maxTime, selectedPoint, selectedTime, setSelectedTime, stats, statsLoading } = signal
   // Smoothed and raw set the scale together, so switching between them never moves the axis.
@@ -119,6 +181,17 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
       ? [{ label: "GSR cruda", color: "#6366F1" }]
       : []),
   ]
+
+  // Group modes: each participant's GSR (aligned on the scenario onset by the
+  // comparison loader) and its own statistics, as in this view.
+  const groupResults = useGroupSignal(groupView, {
+    scenario,
+    column: groupSignal,
+    operation: "getGsrStatistics",
+    request: AnalyticsApi.getGsrStatistics,
+    statRow: signalStatRow,
+  })
+  const groupYAxis = useCallback((values: number[]) => (fitAxis ? fittedAxis(values) : null), [fitAxis])
 
   const handleKpiClick = (time: number | null) => {
     if (time == null) return
@@ -148,13 +221,40 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
         origin: "individual",
         params: { signalMode, window: signal.timeWindowControls.appliedWindow },
       })}
+      group={{
+        active: groupView.active,
+        description: groupSignal === "raw"
+          ? "Conductancia de la piel de varios participantes, sin suavizar."
+          : "Conductancia de la piel de varios participantes, suavizada con ventana de un segundo.",
+        chart: (
+          <GroupSignalChart
+            view={groupView}
+            results={groupResults}
+            kpis={GROUP_KPIS}
+            unit="µS"
+            yLabel="Respuesta galvánica (µS)"
+            yAxis={groupYAxis}
+            decimals={4}
+            averageDetail={GROUP_TIME_DETAIL}
+          />
+        ),
+        statistics: <GroupSignalStats view={groupView} results={groupResults} unit=" µS" detail={GROUP_STATS_DETAIL} />,
+      }}
       headerActions={<>
         <FitAxisToggle pressed={fitAxis} onPressedChange={setFitAxis} />
-        <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
-          { key: "smooth", label: "Suavizada", hint: "Señal promediada en ventanas de un segundo: quita el ruido y deja ver la tendencia." },
-          { key: "raw", label: "Cruda", hint: "Valores originales del sensor, sin suavizar." },
-          { key: "both", label: "Ambas", hint: "La señal suavizada y la cruda juntas, para compararlas." },
-        ]} />
+        {groupView.active ? (
+          // One line per participant: smoothed and raw together would share its colour.
+          <AnalyticsModeSelector<GroupSignalMode> value={groupSignal} onValueChange={setSignalMode} options={[
+            { key: "smooth", label: "Suavizada", hint: "Señal promediada en ventanas de un segundo: quita el ruido y deja ver la tendencia." },
+            { key: "raw", label: "Cruda", hint: "Valores originales del sensor, sin suavizar." },
+          ]} />
+        ) : (
+          <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
+            { key: "smooth", label: "Suavizada", hint: "Señal promediada en ventanas de un segundo: quita el ruido y deja ver la tendencia." },
+            { key: "raw", label: "Cruda", hint: "Valores originales del sensor, sin suavizar." },
+            { key: "both", label: "Ambas", hint: "La señal suavizada y la cruda juntas, para compararlas." },
+          ]} />
+        )}
       </>}
       kpis={[
         {

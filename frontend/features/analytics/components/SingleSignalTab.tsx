@@ -34,27 +34,40 @@ interface SingleSignalTabProps {
   legend: AnalyticsChartLegendItem[]
   chart: ReactNode
   children: ReactNode
+  /**
+   * «Superposición» / «Promedio»: replaces the chart area and the statistics
+   * card, and hides what belongs to one recording (time window, children).
+   */
+  group?: {
+    active: boolean
+    description: string
+    chart: ReactNode
+    statistics: ReactNode
+  }
 }
 
 export function SingleSignalTab({
   label, description, unit, emptyText, statisticsDescription, signal,
-  headerActions, compareSpec, kpis, legend, chart, children,
+  headerActions, compareSpec, kpis, legend, chart, children, group,
 }: SingleSignalTabProps) {
   useCompareParticipantsSpec(compareSpec ?? null)
+  const grouped = group?.active ? group : null
   return (
     <div className="analytics-stack">
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1 basis-72">
             <CardTitle className="text-xl">{label}</CardTitle>
-            <CardDescription>{description}</CardDescription>
+            <CardDescription>{grouped ? grouped.description : description}</CardDescription>
           </div>
           <div className="flex max-w-full flex-wrap items-center gap-2">
             {headerActions}
-            <TimeWindowControls {...signal.timeWindowControls} />
+            {/* Recording seconds belong to one recording: no window in a group mode. */}
+            {grouped ? null : <TimeWindowControls {...signal.timeWindowControls} />}
           </div>
         </CardHeader>
         <CardContent>
+          {grouped ? grouped.chart : <>
           <div className="analytics-kpi-grid">{kpis}</div>
           {signal.timeseriesLoading ? (
             <Skeleton className="analytics-state-frame w-full animate-pulse rounded-lg bg-muted" />
@@ -72,8 +85,10 @@ export function SingleSignalTab({
               {chart}
             </AnalyticsChartShell>
           )}
+          </>}
         </CardContent>
       </Card>
+      {grouped ? grouped.statistics : <>
       {children}
       <Card>
         <CardHeader>
@@ -89,6 +104,7 @@ export function SingleSignalTab({
           />
         </CardContent>
       </Card>
+      </>}
     </div>
   )
 }

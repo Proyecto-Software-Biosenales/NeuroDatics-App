@@ -68,8 +68,60 @@ import { useChartDragZoom } from "./ChartDragZoom"
 import { axisTickDecimals, formatAxisTick } from "../chartZoom"
 import { readClickedTime } from "../comparison/chartInteraction"
 import { useFittedAxis } from "../hooks/useFittedAxis"
+import { AnalyticsApi } from "../api/analyticsApi"
+import { fittedAxis } from "../fittedAxis"
+import { gazeAxisStatistics, signalStatRow, type GazeAxis } from "../signalStats"
+import type { GazeStatistics } from "../types"
+import type { ParticipantComparisonSpec } from "../participantComparison/spec"
+import { useGroupView } from "../groupMode/useGroupData"
+import type { GroupKpi } from "../groupMode/GroupStats"
+import { GroupSignalChart, GroupSignalStats, useGroupSignal } from "../groupMode/groupSignal"
 
-type ViewMode = "both" | "x" | "y"
+type ViewMode = "both" | GazeAxis
+
+const AXIS_NAMES: Record<GazeAxis, string> = { x: "mirada X", y: "mirada Y" }
+
+/**
+ * «Promedio» cards for one axis. In a group mode each participant is one line
+ * of one colour, so the view shows one axis at a time: «Ambos ejes» would
+ * double the lines with nothing but the line style to tell X from Y, and an
+ * average of X and Y has no meaning.
+ */
+function groupKpis(axis: GazeAxis): GroupKpi[] {
+  const name = AXIS_NAMES[axis]
+  return [
+    {
+      label: "Media",
+      field: "mean",
+      unit: "%",
+      tooltip: `Promedio, entre participantes, de la media de cada uno en la ${name}`,
+      Icon: Activity,
+      iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
+      iconColorClass: "text-indigo-500",
+      labelColorClass: "text-indigo-600 dark:text-indigo-400",
+    },
+    {
+      label: "Mínimo",
+      field: "min",
+      unit: "%",
+      tooltip: `Promedio, entre participantes, del mínimo de cada uno en la señal suavizada de ${name}`,
+      Icon: TrendingDown,
+      iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
+      iconColorClass: "text-emerald-500",
+      labelColorClass: "text-emerald-600 dark:text-emerald-400",
+    },
+    {
+      label: "Máximo",
+      field: "max",
+      unit: "%",
+      tooltip: `Promedio, entre participantes, del máximo de cada uno en la señal suavizada de ${name}`,
+      Icon: TrendingUp,
+      iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
+      iconColorClass: "text-rose-500",
+      labelColorClass: "text-rose-600 dark:text-rose-400",
+    },
+  ]
+}
 
 interface GazePointTabProps {
   projectId: string
@@ -129,12 +181,27 @@ export function GazePointTab({
   const [viewMode, setViewMode] = useState<ViewMode>("both")
   const [selectedTime, setSelectedTime] = useState<number | null>(null)
   const [showAois, setShowAois] = useState(true)
+
+  // Group modes read the whole scenario, so the time window is left out here.
+  const groupSpec = useMemo<ParticipantComparisonSpec>(() => ({
+    kind: "gaze",
+    title: "Punto de mirada",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { axes: viewMode, window: { start: null, end: null } },
+  }), [participantCode, scenario, viewMode])
+  const groupView = useGroupView(groupSpec)
+  // In a group mode the single recording is not loaded at all.
+  const individualParticipant = groupView.active ? null : participantCode
+  const groupAxis: GazeAxis = viewMode === "y" ? "y" : "x"
+
   const {
     data: gazeData,
     loading: gazeLoading,
     fetchGaze,
     clear: clearGaze,
-  } = useGazeAt(projectId, participantCode)
+  } = useGazeAt(projectId, individualParticipant)
   const windowState = useTimeWindow(() => {
     setSelectedTime(null)
     clearGaze()
@@ -149,14 +216,14 @@ export function GazePointTab({
 
   const { data: timeseriesData, loading: timeseriesLoading } = useGazeTimeseries(
     projectId,
-    participantCode,
+    individualParticipant,
     scenario,
     timeWindow.start,
     timeWindow.end
   )
   const { data: stats, loading: statsLoading } = useGazeStatistics(
     projectId,
-    participantCode,
+    individualParticipant,
     scenario,
     timeWindow.start,
     timeWindow.end
@@ -164,7 +231,7 @@ export function GazePointTab({
   const aoiScenario = scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
   const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
     projectId,
-    participantCode,
+    individualParticipant,
     aoiScenario
   )
   const aois = aoiData?.aois ?? []
@@ -242,38 +309,27 @@ export function GazePointTab({
   const tableRows = useMemo<StatRow[]>(() => {
     const countX = chartData.filter((pt) => pt.gx_clean != null).length
     const countY = chartData.filter((pt) => pt.gy_clean != null).length
-    const gazeXRow: StatRow = {
-      serie: "Mirada X",
-      count: countX > 0 ? countX : null,
-      baseline: stats?.gx_baseline ?? null,
-      std: stats?.gx_std ?? null,
-      median: stats?.gx_median ?? null,
-      min: stats?.gx_min ?? null,
-      max: stats?.gx_max ?? null,
-      peak:
-        stats?.gx_max != null &&
-        stats?.gx_baseline != null &&
-        stats.gx_baseline !== 0
-          ? ((stats.gx_max - stats.gx_baseline) / Math.abs(stats.gx_baseline)) * 100
-          : null,
-    }
-    const gazeYRow: StatRow = {
-      serie: "Mirada Y",
-      count: countY > 0 ? countY : null,
-      baseline: stats?.gy_baseline ?? null,
-      std: stats?.gy_std ?? null,
-      median: stats?.gy_median ?? null,
-      min: stats?.gy_min ?? null,
-      max: stats?.gy_max ?? null,
-      peak:
-        stats?.gy_max != null &&
-        stats?.gy_baseline != null &&
-        stats.gy_baseline !== 0
-          ? ((stats.gy_max - stats.gy_baseline) / Math.abs(stats.gy_baseline)) * 100
-          : null,
-    }
-    return [gazeXRow, gazeYRow]
+    return [
+      signalStatRow("Mirada X", gazeAxisStatistics(stats, "x"), countX),
+      signalStatRow("Mirada Y", gazeAxisStatistics(stats, "y"), countY),
+    ]
   }, [stats, chartData])
+
+  // Group modes: each participant's chosen axis and its own statistics, as in this view.
+  const groupStatRow = useCallback(
+    (serie: string, groupStats: GazeStatistics | null, count: number | null) =>
+      signalStatRow(serie, gazeAxisStatistics(groupStats, groupAxis), count),
+    [groupAxis]
+  )
+  const groupResults = useGroupSignal(groupView, {
+    scenario,
+    column: groupAxis,
+    operation: "getGazeStatistics",
+    request: AnalyticsApi.getGazeStatistics,
+    statRow: groupStatRow,
+  })
+  const groupYAxis = useCallback((values: number[]) => (fitAxis ? fittedAxis(values) : null), [fitAxis])
+  const groupKpiCards = useMemo(() => groupKpis(groupAxis), [groupAxis])
 
   /**
    * Remaps gaze coordinates from "% of image" to "% of container".
@@ -349,18 +405,28 @@ export function GazePointTab({
           <div className="min-w-0 flex-1 basis-72">
             <CardTitle className="text-xl">Punto de mirada</CardTitle>
             <CardDescription>
-              Posición de la mirada en pantalla (%) a lo largo del tiempo.
+              {groupView.active
+                ? `Posición ${groupAxis === "x" ? "horizontal" : "vertical"} de la mirada en pantalla (%) de varios participantes.`
+                : "Posición de la mirada en pantalla (%) a lo largo del tiempo."}
             </CardDescription>
           </div>
 
           <div className="flex max-w-full flex-wrap items-center gap-2">
             <FitAxisToggle pressed={fitAxis} onPressedChange={setFitAxis} />
-            <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
+            {groupView.active ? (
+              <AnalyticsModeSelector<GazeAxis> value={groupAxis} onValueChange={setViewMode} options={[
+                { key: "x", label: "Eje X", hint: "La posición horizontal de la mirada de cada participante." },
+                { key: "y", label: "Eje Y", hint: "La posición vertical de la mirada de cada participante." },
+              ]} />
+            ) : (
+              <AnalyticsModeSelector value={viewMode} onValueChange={setViewMode} options={[
                 { key: "both", label: "Ambos ejes", hint: "Posición horizontal y vertical de la mirada juntas." },
                 { key: "x", label: "Eje X", hint: "Solo la posición horizontal de la mirada (izquierda y derecha)." },
                 { key: "y", label: "Eje Y", hint: "Solo la posición vertical de la mirada (arriba y abajo)." },
               ]} />
-            <TimeWindowControls
+            )}
+            {/* Recording seconds belong to one recording: no window in a group mode. */}
+            {groupView.active ? null : <TimeWindowControls
               draftStart={windowState.draft.start}
               draftEnd={windowState.draft.end}
               appliedWindow={timeWindow}
@@ -374,11 +440,21 @@ export function GazePointTab({
               }
               onApply={windowState.apply}
               onReset={windowState.reset}
-            />
+            />}
           </div>
         </CardHeader>
 
         <CardContent>
+          {groupView.active ? (
+            <GroupSignalChart
+              view={groupView}
+              results={groupResults}
+              kpis={groupKpiCards}
+              unit="%"
+              yLabel="Posición (%)"
+              yAxis={groupYAxis}
+            />
+          ) : <>
           <div className="analytics-kpi-grid">
             {[
               {
@@ -513,9 +589,13 @@ export function GazePointTab({
             </ResponsiveContainer>
             </AnalyticsChartShell>
           )}
+          </>}
         </CardContent>
       </Card>
 
+      {groupView.active ? (
+        <GroupSignalStats view={groupView} results={groupResults} unit="%" />
+      ) : <>
       {/* Gaze Snapshot Section */}
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
@@ -735,6 +815,7 @@ export function GazePointTab({
           />
         </CardContent>
       </Card>
+      </>}
 
     </div>
   )

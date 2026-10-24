@@ -3,7 +3,7 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   CartesianGrid,
   Line,
@@ -60,6 +60,13 @@ import { readClickedTime } from "../comparison/chartInteraction"
 import { useFittedAxis } from "../hooks/useFittedAxis"
 import { FitAxisToggle } from "./AnalyticsModeSelector"
 import { MissingStimulusImage } from "./MissingStimulusImage"
+import { AnalyticsApi } from "../api/analyticsApi"
+import { fittedAxis } from "../fittedAxis"
+import { signalStatRow } from "../signalStats"
+import type { ParticipantComparisonSpec } from "../participantComparison/spec"
+import { useGroupView } from "../groupMode/useGroupData"
+import type { GroupKpi } from "../groupMode/GroupStats"
+import { GroupSignalChart, GroupSignalStats, useGroupSignal } from "../groupMode/groupSignal"
 
 interface DeviceDistanceTabProps {
   projectId: string
@@ -73,6 +80,39 @@ interface LinePoint {
 }
 
 const distanceValues = (data: LinePoint[]) => data.map((point) => point.distance_cm)
+
+const GROUP_KPIS: GroupKpi[] = [
+  {
+    label: "Media",
+    field: "mean",
+    unit: "cm",
+    tooltip: "Promedio, entre participantes, de la distancia media de cada uno",
+    Icon: Activity,
+    iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
+    iconColorClass: "text-indigo-500",
+    labelColorClass: "text-indigo-600 dark:text-indigo-400",
+  },
+  {
+    label: "Mínimo",
+    field: "min",
+    unit: "cm",
+    tooltip: "Promedio, entre participantes, de la distancia mínima de cada uno",
+    Icon: TrendingDown,
+    iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
+    iconColorClass: "text-emerald-500",
+    labelColorClass: "text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    label: "Máximo",
+    field: "max",
+    unit: "cm",
+    tooltip: "Promedio, entre participantes, de la distancia máxima de cada uno",
+    Icon: TrendingUp,
+    iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
+    iconColorClass: "text-rose-500",
+    labelColorClass: "text-rose-600 dark:text-rose-400",
+  },
+]
 
 const DISTANCE_SIGNAL = {
   useTimeseries: useDistanceTimeseries,
@@ -130,16 +170,29 @@ export function DeviceDistanceTab({
   const [gazeOffset, setGazeOffset] = useState<{ x: number; y: number } | null>(null)
   const [letterbox, setLetterbox] = useState<ContainedImageBox | null>(null)
 
+  // Group modes read the whole scenario, so the time window is left out here.
+  const groupSpec = useMemo<ParticipantComparisonSpec>(() => ({
+    kind: "distance",
+    title: "Distancia al dispositivo",
+    scenario,
+    sourceParticipant: participantCode,
+    origin: "individual",
+    params: { window: { start: null, end: null } },
+  }), [participantCode, scenario])
+  const groupView = useGroupView(groupSpec)
+  // In a group mode the single recording is not loaded at all.
+  const individualParticipant = groupView.active ? null : participantCode
+
   const {
     data: gazeData,
     loading: gazeLoading,
     fetchGaze,
     clear: clearGaze,
-  } = useGazeAt(projectId, participantCode)
+  } = useGazeAt(projectId, individualParticipant)
   const aoiScenario = scenario !== "all" ? scenario : gazeData?.scenario ?? "all"
   const { data: aoiData, loading: aoiLoading } = useAoiMetrics(
     projectId,
-    participantCode,
+    individualParticipant,
     aoiScenario
   )
   const aois = aoiData?.aois ?? []
@@ -148,12 +201,22 @@ export function DeviceDistanceTab({
   const currentAoi = findAoiAtPoint(aois, gazeX, gazeY)
 
   const signal = useSingleSignalData(
-    { projectId, participantCode, scenario }, DISTANCE_SIGNAL, clearGaze
+    { projectId, participantCode: individualParticipant, scenario }, DISTANCE_SIGNAL, clearGaze
   )
   const { chartData, chartDomain, minTime, maxTime, selectedPoint, selectedTime, setSelectedTime, stats, statsLoading } = signal
   const selectedValue = selectedPoint?.distance_cm ?? null
   const { fit: fitAxis, setFit: setFitAxis, yAxisProps } = useFittedAxis(chartData, distanceValues)
   const chartLegend = [{ label: "Distancia ojo-pantalla", color: "#3B82F6" }]
+
+  // Group modes: each participant's distance and its own statistics, as in this view.
+  const groupResults = useGroupSignal(groupView, {
+    scenario,
+    column: "distance",
+    operation: "getDistanceStatistics",
+    request: AnalyticsApi.getDistanceStatistics,
+    statRow: signalStatRow,
+  })
+  const groupYAxis = useCallback((values: number[]) => (fitAxis ? fittedAxis(values) : null), [fitAxis])
 
   /**
    * Remaps gaze coordinates from "% of image" to "% of container".
@@ -219,6 +282,21 @@ export function DeviceDistanceTab({
       statisticsDescription="Resumen numérico de la señal de distancia ojo-pantalla: tendencia, variabilidad y extremos."
       signal={signal}
       legend={chartLegend}
+      group={{
+        active: groupView.active,
+        description: "Distancia ojo-pantalla (cm) de varios participantes.",
+        chart: (
+          <GroupSignalChart
+            view={groupView}
+            results={groupResults}
+            kpis={GROUP_KPIS}
+            unit="cm"
+            yLabel="Distancia (cm)"
+            yAxis={groupYAxis}
+          />
+        ),
+        statistics: <GroupSignalStats view={groupView} results={groupResults} unit=" cm" />,
+      }}
       compareSpec={() => ({
         kind: "distance",
         title: "Distancia al dispositivo",
