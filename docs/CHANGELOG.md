@@ -5,6 +5,22 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### «Superposición» y «Promedio»: varios participantes en una sola gráfica
+
+- **Dos opciones nuevas en el selector de participante**, bajo «Varios participantes». «Superposición» dibuja a
+  los participantes elegidos uno encima de otro, cada uno con su color; «Promedio» dibuja su media y muestra
+  como cifras el promedio de las cifras de cada uno. El desplegable «Participantes (n de N)» elige a quién
+  incluir. Cómo funciona y cómo se calcula: [usuario/superposicion-y-promedio.md](usuario/superposicion-y-promedio.md).
+- **Vistas:** pupila, punto de mirada, distancia, sensor galvánico y EEG por canal (las dos opciones, curva media
+  con banda de ±1 desviación estándar); densidad espectral (las dos, media en potencia lineal); espectrograma y
+  topografía (promedio); mapa de calor (fijaciones de cada participante, o el mapa del grupo); mapa de
+  recorridos (superposición); comparativa AOIs (las dos). El histograma de fijaciones y «Comparativas» no las
+  admiten y lo dicen.
+- **Mapa de calor del grupo:** nueva ruta `GET /analytics/heatmap/group`, con el mismo suavizado y color que el
+  mapa individual; cada participante pesa lo mismo.
+- **Corrección de paso:** en punto de mirada, distancia y sensor galvánico, la columna «Media» de la tabla y de
+  las tarjetas mostraba la mediana; ahora muestra la media.
+
 ### Manual de uso en Word (primera versión para revisión)
 
 Nuevo manual de uso de las dos ediciones (13 capítulos, 43 figuras con datos de demostración), escrito en

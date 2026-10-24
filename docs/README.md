@@ -10,6 +10,7 @@ después por [arquitectura.md](tecnica/arquitectura.md).
 | [../manual/manual_usuario_neurodatics.md](../manual/manual_usuario_neurodatics.md) | El manual de usuario: de crear un proyecto a descargar los informes. |
 | [usuario/pre-experimento.md](usuario/pre-experimento.md) | Registrar un proyecto antes de tener datos: participantes, pantalla, cuestionarios y notas. |
 | [usuario/comparar-participantes.md](usuario/comparar-participantes.md) | La vista de comparación entre participantes y qué significan sus estadísticas. |
+| [usuario/superposicion-y-promedio.md](usuario/superposicion-y-promedio.md) | Ver a varios participantes en una sola gráfica, superpuestos o promediados, y cómo se calculan sus cifras. |
 | [CHANGELOG.md](CHANGELOG.md) | Qué cambió en cada versión. |
 
 ## Cómo funciona por dentro
