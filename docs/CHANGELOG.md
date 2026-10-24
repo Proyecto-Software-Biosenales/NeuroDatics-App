@@ -23,8 +23,20 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 - **Escenarios de vídeo:** mapa de calor, mapa de recorridos, comparativa AOIs, punto de mirada, distancia,
   «Comparar participantes» y «Comparativas» se dibujan sobre un fotograma del vídeo (el mismo que muestra «Ver
   proyecto»), con un participante o con varios. Antes pedían el vídeo como imagen, el servidor respondía con un
-  error y la vista individual se quedaba cargando. Paquete de estudiantes no reconstruido con este cambio: queda
-  para la próxima reconstrucción del paquete.
+  error y la vista individual se quedaba cargando.
+
+### Paquete de estudiantes 1.16
+
+`delivery/NeuroDatics-Estudiantes-1.16-win64.zip` (252 MiB, 4066 archivos), SHA-256
+`EAC307051A5C57DC6FDF283DB7EBC29CE852D5430F4F263D64543E33DE9A5B55`, compilado el 24 de octubre tras `c528d79`
+con «Superposición» y «Promedio» y los escenarios de vídeo. Reemplaza a la 1.15. `run-frozen.ps1`: selftest, las
+ocho etapas del PostgreSQL embebido, pg-adopt, http-check y carrera de arranques correctos; navegador 7/7
+`passed` (el flujo completo ahora pasa también por «Promedio», el mapa de calor del grupo y «Superposición»);
+0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído en una ruta con tildes arranca en
+7,6 s. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg, prueba en un portátil real, datos de
+participantes). Antes de compilar, `verify.ps1` en verde: backend (1267 pruebas, 25 snapshots), unidad del
+frontend (148), navegador (76), Ruff, Vulture, deptry, contratos de importación y ESLint (0 errores, 6 avisos de
+6); además, las 36 pruebas E2E de los modos de grupo, «Comparar participantes» y «Comparativas».
 
 ### Manual de uso en Word (primera versión para revisión)
 
