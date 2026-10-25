@@ -36,8 +36,19 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
   grabación» avisa de que el mismo segundo puede corresponder a estímulos distintos. Topografía, mapa de calor,
   mapa de recorridos y comparativa AOIs siguen pidiendo un escenario concreto.
 - **Eje de tiempo:** las marcas del eje ya no muestran «-0».
-- Paquete de estudiantes no reconstruido para estos cuatro puntos: se dejó para la siguiente entrega por
-  indicación expresa.
+
+### Paquete de estudiantes 1.17
+
+`delivery/NeuroDatics-Estudiantes-1.17-win64.zip` (252 MiB, 4066 archivos), SHA-256
+`7538BB8984A76B81B76E0159406F50E5B312D968973872FE51B9F52D28125E9F`, compilado el 24 de octubre tras `3fef9cf`
+con las líneas enteras, los nombres repetidos distinguidos y «Todos los escenarios» en los modos de grupo.
+Reemplaza a la 1.16. `run-frozen.ps1`: selftest, las ocho etapas del PostgreSQL embebido, pg-adopt, http-check y
+carrera de arranques correctos; navegador 7/7 `passed` (el flujo completo pasa ahora también por «Promedio» con
+«Todos los escenarios»); 0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído en una
+ruta con tildes arranca en 9,8 s. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg, prueba en un
+portátil real, datos de participantes). Antes de compilar, `verify.ps1` en verde: backend (1267 pruebas, 25
+snapshots), unidad del frontend (155), navegador (76), Ruff, Vulture, deptry, contratos de importación y ESLint
+(0 errores, 6 avisos de 6); además, 31 pruebas E2E de los modos de grupo y «Comparar participantes».
 
 ### Paquete de estudiantes 1.16
 
