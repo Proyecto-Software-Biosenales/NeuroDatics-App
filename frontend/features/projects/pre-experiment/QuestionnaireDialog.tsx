@@ -22,19 +22,22 @@ import { PlanningSelect } from "./PlanningControls"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
+/** Takes one participant's answers. Opened from a questionnaire, `fixedPhase` skips choosing which one. */
 export function QuestionnaireDialog({
   projectId,
   saved,
+  fixedPhase,
   onClose,
   onSubmitted,
 }: {
   projectId: string
   saved: PreExperimentEnvelope
+  fixedPhase?: Phase
   onClose: () => void
   onSubmitted: (response: QuestionnaireResponse) => void
 }) {
   const [participantId, setParticipantId] = useState("")
-  const [phase, setPhase] = useState<Phase | "">("")
+  const [phase, setPhase] = useState<Phase | "">(fixedPhase ?? "")
   const [answers, setAnswers] = useState<Answers>({})
   const [started, setStarted] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -117,6 +120,7 @@ export function QuestionnaireDialog({
         <DialogHeader>
           <DialogTitle>Responder cuestionario</DialogTitle>
           <DialogDescription>
+            {fixedPhase && `${phaseLabel[fixedPhase]}. `}
             Elige al participante y entrégale el equipo para que responda.
           </DialogDescription>
         </DialogHeader>
@@ -142,23 +146,25 @@ export function QuestionnaireDialog({
                     }))}
                   />
                 </Label>
-                <Label className="block space-y-1 text-sm">
-                  Cuestionario
-                  <PlanningSelect
-                    label="Cuestionario"
-                    placeholder="Seleccionar cuestionario"
-                    value={phase}
-                    onChange={(value) => setPhase(value as Phase)}
-                    options={(["before", "after"] as const)
-                      .filter(
-                        (item) => saved.config.questionnaires[item].enabled
-                      )
-                      .map((item) => ({
-                        value: item,
-                        label: phaseLabel[item],
-                      }))}
-                  />
-                </Label>
+                {!fixedPhase && (
+                  <Label className="block space-y-1 text-sm">
+                    Cuestionario
+                    <PlanningSelect
+                      label="Cuestionario"
+                      placeholder="Seleccionar cuestionario"
+                      value={phase}
+                      onChange={(value) => setPhase(value as Phase)}
+                      options={(["before", "after"] as const)
+                        .filter(
+                          (item) => saved.config.questionnaires[item].enabled
+                        )
+                        .map((item) => ({
+                          value: item,
+                          label: phaseLabel[item],
+                        }))}
+                    />
+                  </Label>
+                )}
                 <Button
                   disabled={!participantId || !phase}
                   onClick={() => setStarted(true)}

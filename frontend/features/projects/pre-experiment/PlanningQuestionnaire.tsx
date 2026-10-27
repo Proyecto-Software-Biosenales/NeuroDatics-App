@@ -4,6 +4,7 @@ import {
   ArrowUp,
   CheckSquare,
   ClipboardList,
+  MessageSquareText,
   Plus,
   ToggleLeft,
   Trash2,
@@ -39,17 +40,20 @@ const phaseHint: Record<Phase, string> = {
   after: "Se responde al terminar: percepción, recuerdo, satisfacción.",
 }
 
-/** Editor for one questionnaire (before or after the experiment). */
+/** Editor for one questionnaire (before or after the experiment).
+ *  `answer` adds the button that has a participant answer this questionnaire; `blocked` says why it waits. */
 export function PlanningQuestionnaire({
   phase,
   value,
   onChange,
   disabled = false,
+  answer,
 }: {
   phase: Phase
   value: PreExperimentConfig
   onChange: (value: PreExperimentConfig) => void
   disabled?: boolean
+  answer?: { blocked: string | null; onAnswer: () => void }
 }) {
   const questionnaire = value.questionnaires[phase]
   const update = (change: Partial<Questionnaire>) =>
@@ -262,6 +266,23 @@ export function PlanningQuestionnaire({
         <Plus aria-hidden />
         Agregar pregunta
       </Button>
+      {answer && (
+        <div className="space-y-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={disabled || !!answer.blocked}
+            onClick={answer.onAnswer}
+          >
+            <MessageSquareText aria-hidden />
+            Responder cuestionario
+          </Button>
+          {answer.blocked && (
+            <p className="text-center text-sm text-muted-foreground">{answer.blocked}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

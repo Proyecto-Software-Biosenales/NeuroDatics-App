@@ -10,8 +10,8 @@ El responsable de la entrega prepara el proyecto de Google y quien administra la
    - `http://localhost:3000/authorize`
    - `http://localhost:3000/api/integrations/google-drive/callback`
 4. Completa `GOOGLE_OAUTH_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_SECRET` en `.env` (en la carpeta principal, junto a `INSTALAR.bat`), o entrégalos al usuario para que el asistente los solicite una vez durante la instalación.
-5. Deja la pantalla de consentimiento en modo **Prueba** (Testing) y añade como usuarios de prueba las cuentas del laboratorio: así Google solo deja entrar a esas cuentas. Consulta la [guía OAuth de Google](https://developers.google.com/identity/protocols/oauth2/web-server).
-6. Escribe esas mismas cuentas en `AUTH_ALLOWED_EMAILS` en `.env`, separadas por comas (por ejemplo `ana@gmail.com,luis@gmail.com`; da igual mayúsculas o minúsculas). NeuroDatics rechaza cualquier otra cuenta y no la registra. Si lo dejas vacío, puede entrar cualquier cuenta de Google que pase la pantalla de consentimiento. Tras cambiarlo, repite `INSTALAR.bat`.
+5. Publica la pantalla de consentimiento: en **Google Auth Platform → Público** pulsa **Publicar app** para pasar de **Prueba** (Testing) a **En producción**. En modo Prueba Google invalida la autorización de Drive a los siete días y habría que reconectarla cada semana. No hace falta verificar la app: quien conecta Drive verá una vez el aviso «Google no ha verificado esta app» (**Configuración avanzada → Ir a…**); quienes solo inician sesión no lo ven. Consulta la [guía OAuth de Google](https://developers.google.com/identity/protocols/oauth2/web-server).
+6. Escribe las cuentas del laboratorio en `AUTH_ALLOWED_EMAILS` en `.env`, separadas por comas (por ejemplo `ana@gmail.com,luis@gmail.com`; da igual mayúsculas o minúsculas). Con la app publicada es el único filtro: NeuroDatics rechaza cualquier otra cuenta y no la registra. Si lo dejas vacío, puede entrar cualquier cuenta de Google. Tras cambiarlo, repite `INSTALAR.bat`.
 
 No incluyas `.env` en Git ni lo publiques. El generador no copia las credenciales del repositorio automáticamente. Una entrega privada ya configurada puede incluir su propio `.env`.
 
@@ -26,7 +26,7 @@ La cuenta de Drive se comparte entre todos los usuarios de esa base de datos y s
 
 Para consultar la cuenta sin cambiarla, añade `-Estado`. Fuera del instalador, el comando equivalente es `docker compose exec backend python -m neurodatics.modules.integrations.google_drive.admin estado` (o `conectar`).
 
-Si ya hay una cuenta conectada, consérvala salvo que quieras sustituirla: la nueva cuenta debe tener acceso a los archivos existentes o los proyectos ya guardados dejarán de abrirse. La autorización se guarda en la base de datos, no en el antiguo `GDRIVE_REFRESH_TOKEN` del `.env`. Si Google la revoca, los usuarios verán un aviso para contactar con quien administra NeuroDatics; repite estos pasos con la misma cuenta. Comprobar la URL de login durante la instalación no sustituye un inicio de sesión real.
+Si ya hay una cuenta conectada, consérvala salvo que quieras sustituirla: la nueva cuenta debe tener acceso a los archivos existentes o los proyectos ya guardados dejarán de abrirse. La autorización se guarda en la base de datos, no en el antiguo `GDRIVE_REFRESH_TOKEN` del `.env`. Con la app publicada la autorización no caduca; Google solo la anula si se revoca el acceso desde la cuenta, si pasan seis meses sin usarla, si se borra el cliente OAuth o se cambia su secreto, o si se reconecta muchas veces (conserva unas cien autorizaciones por cuenta). Si la app estaba en Prueba cuando se conectó, reconéctala una vez tras publicarla. Si Google la revoca, los usuarios verán un aviso para contactar con quien administra NeuroDatics; repite estos pasos con la misma cuenta. Comprobar la URL de login durante la instalación no sustituye un inicio de sesión real.
 
 ## Puerto y base de datos
 

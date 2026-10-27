@@ -9,7 +9,8 @@ export type QuestionnaireView = Phase | "responses"
 const phases = ["before", "after"] as const
 
 /** Before and after questionnaires of the project, as the two sub-tabs creating and editing share.
- *  `responses` adds a third sub-tab with the answers already taken. */
+ *  `responses` adds a third sub-tab with the answers already taken; `answer`, a button under each
+ *  questionnaire to answer it. */
 export function PlanningQuestionnaires({
   value,
   onChange,
@@ -18,6 +19,7 @@ export function PlanningQuestionnaires({
   invalidPhases = [],
   disabled = false,
   responses,
+  answer,
 }: {
   value: PreExperimentConfig
   onChange: (value: PreExperimentConfig) => void
@@ -26,6 +28,7 @@ export function PlanningQuestionnaires({
   invalidPhases?: Phase[]
   disabled?: boolean
   responses?: { count: number; content: ReactNode }
+  answer?: { blocked: (phase: Phase) => string | null; onAnswer: (phase: Phase) => void }
 }) {
   return (
     <Tabs value={view} onValueChange={(next) => onViewChange(next as QuestionnaireView)} className="gap-4">
@@ -47,7 +50,13 @@ export function PlanningQuestionnaires({
       />
       {phases.map((phase) => (
         <TabsContent key={phase} value={phase}>
-          <PlanningQuestionnaire phase={phase} value={value} onChange={onChange} disabled={disabled} />
+          <PlanningQuestionnaire
+            phase={phase}
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            answer={answer && { blocked: answer.blocked(phase), onAnswer: () => answer.onAnswer(phase) }}
+          />
         </TabsContent>
       ))}
       {responses && <TabsContent value="responses">{responses.content}</TabsContent>}

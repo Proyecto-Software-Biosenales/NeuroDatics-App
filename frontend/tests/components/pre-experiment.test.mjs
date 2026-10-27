@@ -269,6 +269,32 @@ test('required false, multiple selection and open text submit with the chosen pa
   assert.equal((await state(page, 'posts')).length, 1)
 })
 
+test('each questionnaire answers itself, asking only for the participant, and waits for unsaved changes', async t => {
+  const page = await fixture(t)
+  await section(page, 'Cuestionarios')
+  const answer = page.getByRole('button', { name: 'Responder cuestionario', exact: true })
+  await screenshot(page, 'questionnaire-answer-desktop.png')
+  await page.getByRole('textbox', { name: 'Pregunta 1', exact: true }).fill('¿Cómo estás?')
+  await expect(answer).toBeDisabled()
+  await expect(page.getByText('Guarda los cambios para responder.', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Descartar cambios', exact: true }).click()
+  await section(page, 'Cuestionarios')
+  await answer.click()
+  await expect(page.getByRole('dialog')).toContainText('Antes del experimento.')
+  await expect(page.getByRole('combobox', { name: 'Cuestionario', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Comenzar', exact: true })).toBeDisabled()
+  await select(page, 'Participante', 'SINTETICO-1 — Ana de prueba')
+  await page.getByRole('button', { name: 'Comenzar', exact: true }).click()
+  await page.getByRole('textbox', { name: '¿Cómo te sientes?', exact: true }).fill('Bien')
+  await page.getByRole('checkbox', { name: 'Leer', exact: true }).check()
+  await page.getByRole('radio', { name: 'Verdadero', exact: true }).check()
+  await page.getByRole('button', { name: 'Guardar respuestas', exact: true }).click()
+  await expect(page.getByText('Respuestas guardadas.', { exact: true })).toBeVisible()
+  const [post] = await state(page, 'posts')
+  assert.equal(post.phase, 'before')
+  assert.equal(post.participant_id, '00000000-0000-4000-8000-000000000001')
+})
+
 test('history keeps participant and question snapshots after removing them', async t => {
   const page = await fixture(t)
   await page.evaluate(() => {

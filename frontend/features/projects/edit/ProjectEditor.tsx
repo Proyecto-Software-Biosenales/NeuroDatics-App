@@ -36,7 +36,8 @@ export function ProjectEditor({ projectId }: { projectId: string }) {
   const [section, setSection] = useState<EditorSection>("project")
   const [phase, setPhase] = useState<QuestionnaireView>("before")
   const [attempted, setAttempted] = useState(false)
-  const [answering, setAnswering] = useState(false)
+  // Which questionnaire is being answered: one of them, or "any" to choose it in the dialog.
+  const [answering, setAnswering] = useState<Phase | "any" | null>(null)
   const { data, planning, envelope, hasData } = editor
   const locked = editor.busy
 
@@ -77,6 +78,13 @@ export function ProjectEditor({ projectId }: { projectId: string }) {
   const canAnswer =
     !!envelope.config.participants.length &&
     (["before", "after"] as const).some((item) => envelope.config.questionnaires[item].enabled)
+  // Answering works on the saved project, as in the responses tab.
+  const answerBlocked = (item: Phase) =>
+    editor.dirty || !envelope.config.questionnaires[item].enabled
+      ? "Guarda los cambios para responder."
+      : !envelope.config.participants.length
+        ? "Para responder, agrega un participante y guarda."
+        : null
 
   const tabs: SectionTab[] = [
     { id: "project", label: "Proyecto", icon: FileText, invalid: attempted && !!editor.problems.project },
@@ -161,6 +169,7 @@ export function ProjectEditor({ projectId }: { projectId: string }) {
                     (item) => attempted && !!validateQuestionnaire(planning, item)
                   )}
                   disabled={locked}
+                  answer={{ blocked: answerBlocked, onAnswer: setAnswering }}
                   responses={{
                     count: envelope.responses.length,
                     content: (
@@ -169,7 +178,7 @@ export function ProjectEditor({ projectId }: { projectId: string }) {
                         canAnswer={canAnswer}
                         dirty={editor.dirty}
                         busy={locked}
-                        onAnswer={() => setAnswering(true)}
+                        onAnswer={() => setAnswering("any")}
                         onDownload={() => void editor.download()}
                       />
                     ),
@@ -225,7 +234,8 @@ export function ProjectEditor({ projectId }: { projectId: string }) {
         <QuestionnaireDialog
           projectId={projectId}
           saved={envelope}
-          onClose={() => setAnswering(false)}
+          fixedPhase={answering === "any" ? undefined : answering}
+          onClose={() => setAnswering(null)}
           onSubmitted={editor.answered}
         />
       )}

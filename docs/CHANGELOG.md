@@ -5,6 +5,15 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### «Responder cuestionario» desde cada cuestionario
+
+- **Nuevo botón bajo «Agregar pregunta»**, del mismo tamaño, en «Antes del experimento» y «Después del
+  experimento». Abre la toma de respuestas ya en ese cuestionario, así que solo pide el participante. El botón de
+  la pestaña «Respuestas» sigue preguntando por los dos. Como allí, espera a que se guarden los cambios y lo dice.
+- **Pruebas:** `pre-experiment.test.mjs` (fase fija, sin elegir cuestionario, bloqueo con cambios sin guardar),
+  `tests/e2e/questionnaire-answer.spec.ts` (mismo ancho y alto que «Agregar pregunta» a 1536 y 390 px, sin
+  desplazamiento horizontal) y `student-offline.spec.ts` (respuesta guardada en la base local).
+
 ### Guía de procesamiento y correcciones de cálculo
 
 - **Nueva guía en PDF** para investigadores, estudiantes y profesores:
@@ -86,6 +95,16 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 - **Tabla de estadísticas sin cifras repetidas:** en pupila, punto de mirada, distancia y sensor galvánico, la
   tarjeta «Estadísticas» ya no repite encima de la tabla los cuatro recuadros de media, mínimo, máximo y pico,
   que ya estaban en la tabla y en las tarjetas de arriba.
+
+### Paquete de estudiantes 1.20
+
+`delivery/NeuroDatics-Estudiantes-1.20-win64.zip` (252 MiB, 4066 archivos), SHA-256
+`C405738215B86388A867F0E9F81CD0867CE5F2D2530EF28F331A1B153231ED03`, compilado el 27 de octubre sobre `131e075`
+más «Responder cuestionario» desde cada cuestionario (sin confirmar aún). Reemplaza a la 1.19. `run-frozen.ps1`:
+selftest, las etapas del PostgreSQL embebido, pg-adopt y http-check correctos; navegador 7/7 `passed` (incluida la
+respuesta tomada desde el cuestionario y guardada en la base local); 0 conexiones fuera de loopback; 0 procesos
+postgres al salir. El zip extraído en una ruta con tildes arranca en 10,4 s. Siguen abiertos los 3 bloqueos de
+publicación. Antes de compilar, `verify.ps1` en verde (ESLint: 0 errores, 6 avisos).
 
 ### Paquete de estudiantes 1.19
 
