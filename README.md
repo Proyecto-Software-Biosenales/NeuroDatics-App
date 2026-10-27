@@ -16,8 +16,8 @@ fijaciones, mapas de calor, áreas de interés, espectros de EEG e informes en P
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![Licencia](https://img.shields.io/badge/licencia-todos%20los%20derechos%20reservados-lightgrey)
 
-[Funciones](#qué-puede-hacer) · [Ediciones](#dos-ediciones) · [Inicio rápido](#inicio-rápido) ·
-[Documentación](#documentación) · [Desarrollo](#desarrollo)
+[Funciones](#qué-puede-hacer) · [Ediciones](#dos-ediciones) · [Manuales](#manuales) ·
+[Inicio rápido](#inicio-rápido) · [Documentación](#documentación) · [Desarrollo](#desarrollo)
 
 <img src="docs/assets/proyectos.png" alt="Lista de proyectos de NeuroDatics" width="860">
 
@@ -74,6 +74,16 @@ El mismo código se entrega de dos formas:
 | **Archivos** | Google Drive | Una carpeta en el equipo |
 | **Red** | Red local o institucional | Ninguna: todo ocurre en `127.0.0.1` |
 
+## Manuales
+
+Los manuales para quien instala y usa NeuroDatics están en PDF en [manuales/](manuales):
+
+| Manual | Para qué |
+| --- | --- |
+| [Manual de uso](manuales/NeuroDatics-Manual-de-uso.pdf) | Usar la aplicación paso a paso, en las dos ediciones: proyectos, datos, tablero, pre-experimentos e informes. |
+| [Guía de instalación: edición servidor](manuales/NeuroDatics-Guia-de-instalacion-servidor.pdf) | Instalar, iniciar y detener la edición servidor (Docker) en Windows. |
+| [Guía de instalación: NeuroDatics Estudiantes](manuales/NeuroDatics-Guia-de-instalacion-estudiantes.pdf) | Descomprimir y abrir la edición de estudiantes en Windows. |
+
 ## Inicio rápido
 
 ### Edición servidor
@@ -93,7 +103,8 @@ opciones, y [deployment/CONFIGURACION-GOOGLE.md](deployment/CONFIGURACION-GOOGLE
 credenciales de Google y conectar Drive.
 
 Para instalarla en un equipo sin entorno de desarrollo existe un instalador en español con dos botones,
-**INSTALAR** e **INICIAR**: ver [deployment/README.md](deployment/README.md).
+**INSTALAR** e **INICIAR**: ver la [guía de instalación](manuales/NeuroDatics-Guia-de-instalacion-servidor.pdf) y
+[deployment/README.md](deployment/README.md).
 
 <details>
 <summary>Comandos de operación</summary>
@@ -116,7 +127,8 @@ backend expone `/health` y `/health/ready`. Para una red universitaria o corpora
 El estudiante recibe un zip; al extraerlo ve solo `neurodatics-estudiantes.exe` y `LEEME.txt`. Al abrir el
 programa, arranca su propia base de datos y abre el navegador. Los proyectos se guardan en
 `%LOCALAPPDATA%\NeuroDatics Estudiantes`, así que borrar la carpeta del programa no los borra. La guía del
-estudiante es [student/LEEME.txt](student/LEEME.txt), y cómo se construye el paquete está en
+estudiante es la [guía de instalación](manuales/NeuroDatics-Guia-de-instalacion-estudiantes.pdf) (y, dentro del
+paquete, [student/LEEME.txt](student/LEEME.txt)), y cómo se construye el paquete está en
 [student/README.md](student/README.md).
 
 ## Cómo funciona
@@ -142,7 +154,7 @@ completo está en [docs/tecnica/arquitectura.md](docs/tecnica/arquitectura.md).
 | --- | --- |
 | Entender la aplicación de un vistazo | [Arquitectura](docs/tecnica/arquitectura.md) |
 | Saber qué cambió | [CHANGELOG](docs/CHANGELOG.md) |
-| Usar la aplicación paso a paso | [Manual de usuario](manual/manual_usuario_neurodatics.md) |
+| Usar la aplicación paso a paso | [Manual de uso (PDF)](manuales/NeuroDatics-Manual-de-uso.pdf) |
 | Preparar un estudio sin datos todavía | [Pre-experimento](docs/usuario/pre-experimento.md) |
 | Interpretar la comparación entre participantes | [Comparar participantes](docs/usuario/comparar-participantes.md) |
 | Conocer los algoritmos | [Fijaciones](docs/tecnica/deteccion-de-fijaciones.md) · [Coordenadas](docs/tecnica/coordenadas-pantalla-estimulo.md) · [EEG](docs/tecnica/eeg/metodos.md) · [Informes](docs/tecnica/informes.md) |
@@ -156,6 +168,7 @@ frontend/     interfaz Next.js, común a las dos ediciones
 student/      construcción y comprobaciones de NeuroDatics Estudiantes, y su guía
 deployment/   instalador de la edición servidor para Windows
 docs/         documentación por público: usuario, técnica y desarrollo
+manuales/     manual de uso y guías de instalación, en PDF
 verify.ps1    la puerta de verificación del repositorio
 ```
 

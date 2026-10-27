@@ -164,7 +164,6 @@ npm run typecheck               # tsc --noEmit
 npm run lint                    # eslint
 npm run test:e2e                # Playwright sobre tests/e2e (levanta el servidor de desarrollo)
 npm run test:e2e:comparison     # solo el panel de comparación
-npm run capture:manual          # no es una prueba: regenera las capturas del manual (ver manual/README.md)
 ```
 
 ### Dónde vive cada prueba del frontend
@@ -193,9 +192,9 @@ npx playwright test -c playwright.local.config.ts
   `tecnica/` (cómo funciona) y `desarrollo/` (cómo se trabaja en el código). Su índice es
   [docs/README.md](docs/README.md).
 - `docs/CHANGELOG.md` describe cambios observables por quien usa la aplicación, agrupados por versión.
-- El manual de usuario es [manual/manual_usuario_neurodatics.md](manual/manual_usuario_neurodatics.md): si cambia
-  algo que el usuario ve o hace, se actualiza ahí. Las capturas y el PDF se generan como explica
-  [manual/README.md](manual/README.md); el PDF no se guarda en git.
+- Los manuales para quien instala y usa la aplicación están en PDF en `manuales/`: el manual de uso y las guías
+  de instalación de las dos ediciones. Se editan en Word fuera del repositorio y se sustituye el PDF con el mismo
+  nombre; si cambia algo que el usuario ve o hace, se actualiza el manual que lo cuenta.
 - Los números que envejecen (recuentos de pruebas, cabezas de migración) no se fijan en la documentación: se
   explica cómo consultarlos.
 - Las guías que viajan dentro de un paquete viven junto a él: `deployment/` para la edición servidor y

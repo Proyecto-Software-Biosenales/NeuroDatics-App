@@ -7,7 +7,7 @@ después por [arquitectura.md](tecnica/arquitectura.md).
 
 | Documento | Qué responde |
 | --- | --- |
-| [../manual/manual_usuario_neurodatics.md](../manual/manual_usuario_neurodatics.md) | El manual de usuario: de crear un proyecto a descargar los informes. |
+| [Manual de uso (PDF)](../manuales/NeuroDatics-Manual-de-uso.pdf) | El manual de uso: de crear un proyecto a descargar los informes. |
 | [usuario/pre-experimento.md](usuario/pre-experimento.md) | Registrar un proyecto antes de tener datos: participantes, pantalla, cuestionarios y notas. |
 | [usuario/comparar-participantes.md](usuario/comparar-participantes.md) | La vista de comparación entre participantes y qué significan sus estadísticas. |
 | [usuario/superposicion-y-promedio.md](usuario/superposicion-y-promedio.md) | Ver a varios participantes en una sola gráfica, superpuestos o promediados, y cómo se calculan sus cifras. |
@@ -43,7 +43,9 @@ anonimizados (`csv-01`…`csv-08`) e identificados solo por su SHA-256.
 
 ## Entregas
 
-- Edición servidor: [deployment/README.md](../deployment/README.md) (instalación en Windows) y
+- Edición servidor: la [guía de instalación](../manuales/NeuroDatics-Guia-de-instalacion-servidor.pdf),
+  [deployment/README.md](../deployment/README.md) (instalación en Windows) y
   [deployment/MANTENIMIENTO.md](../deployment/MANTENIMIENTO.md) (cómo se genera la entrega).
-- NeuroDatics Estudiantes: [student/README.md](../student/README.md) (construcción y comprobaciones) y
+- NeuroDatics Estudiantes: la [guía de instalación](../manuales/NeuroDatics-Guia-de-instalacion-estudiantes.pdf),
+  [student/README.md](../student/README.md) (construcción y comprobaciones) y
   [student/LEEME.txt](../student/LEEME.txt) (la guía del estudiante).

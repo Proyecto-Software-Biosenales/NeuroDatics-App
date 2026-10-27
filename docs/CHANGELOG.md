@@ -5,6 +5,14 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Manuales en PDF, a la vista
+
+- **Nueva carpeta `manuales/`** en la raíz del repositorio, con el manual de uso y las guías de instalación de la
+  edición servidor y de NeuroDatics Estudiantes, en PDF. El README y `docs/README.md` los enlazan.
+- **Retirado el manual anterior:** la carpeta `manual/` (fuentes en Markdown, figuras, capturas y scripts de
+  construcción) y las pruebas que generaban sus figuras (`frontend/tests/manual/`, `playwright.manual.config.ts` y
+  `npm run capture:manual`). Paquete de estudiantes no reconstruido: nada de esto viaja en él.
+
 ### «Superposición» y «Promedio»: varios participantes en una sola gráfica
 
 - **Dos opciones nuevas en el selector de participante**, bajo «Varios participantes». «Superposición» dibuja a
