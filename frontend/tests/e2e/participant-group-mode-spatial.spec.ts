@@ -350,7 +350,8 @@ test("heatmap overlay draws every participant's fixations on the stimulus, witho
   const radii = await layer.locator('g[data-participant="P01"] circle').evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute("r"))))
   expect(radii[0]).toBeLessThan(radii[2])
   await expect(page.getByRole("button", { name: "1 sin datos" })).toBeVisible()
-  await expect(page.getByTestId("group-kpis")).toHaveCount(0)
+  // The averaged cards sit above the stimulus in «Superposición» too.
+  await expect(page.getByTestId("group-kpis")).toContainText("Promedio de")
 
   // Each point sits on the painted stimulus, where the fixation was.
   const box = await paintedBox(page, '[data-testid="heatmap-stimulus"]')
@@ -362,7 +363,9 @@ test("heatmap overlay draws every participant's fixations on the stimulus, witho
 
   // One row per participant, with the same figures as the individual cards.
   const table = figuresTable(page)
-  await expect(table.getByRole("row")).toHaveCount(1 + CODES.length)
+  await expect(table.getByRole("row")).toHaveCount(1 + 1 + CODES.length)
+  // «Superposición» also leads with the «Promedio» row of the chosen participants.
+  await expect(table.getByRole("row").nth(1)).toContainText("Promedio (")
   await expect(table.getByRole("row", { name: /Participante P02/ })).toContainText(String(fixationStats("P02").n_fixations))
   await expect(table.getByRole("row", { name: /Participante P04/ })).toContainText("—")
 
@@ -465,7 +468,9 @@ test("scanpath overlay draws one path per participant; average is not offered", 
   })
 
   const table = figuresTable(page)
-  await expect(table.getByRole("row")).toHaveCount(1 + CODES.length)
+  await expect(table.getByRole("row")).toHaveCount(1 + 1 + CODES.length)
+  // «Superposición» also leads with the «Promedio» row of the chosen participants.
+  await expect(table.getByRole("row").nth(1)).toContainText("Promedio (")
   await expect(table.getByRole("row", { name: /Participante P03/ })).toContainText(`${scanpathFor("P03").total_distance_px}`)
   await page.screenshot({ path: `${SHOTS}/scanpath-overlay-1536.png` })
   await page.getByTestId("group-scanpath-P05-2").hover()

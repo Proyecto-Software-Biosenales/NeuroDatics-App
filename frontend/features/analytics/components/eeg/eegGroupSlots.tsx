@@ -5,6 +5,7 @@ import { KpiCard } from "../KpiCard"
 import type { AnalyticsChartNote } from "../AnalyticsChartShell"
 import { fittedAxis } from "../../fittedAxis"
 import { formatChannel, robustDomain } from "../../eegPresentation"
+import { GroupStimulusCard } from "../../groupMode/GroupStimulusCard"
 import { GroupTemporalChart, type GroupTrace } from "../../groupMode/GroupTemporalChart"
 import { GroupUnsupported } from "../../groupMode/GroupUnsupported"
 import { groupLoadNotes } from "../../groupMode/groupNotes"
@@ -81,12 +82,14 @@ export function timeseriesGroupSlots({
   figures,
   channel,
   signal,
+  scenario,
 }: {
   view: GroupView
   traces: GroupTrace[]
   figures: EegGroupFigures<TimeseriesField>
   channel: string | null
   signal: "smooth" | "raw"
+  scenario: string
 }): EegGroupSlots | null {
   if (!view.active) return null
   if (view.unsupportedReason) return unsupported(view.unsupportedReason, "analytics-state-frame-eeg")
@@ -102,7 +105,7 @@ export function timeseriesGroupSlots({
     signal === "smooth" ? " La señal está suavizada con una media móvil de 0.2 s." : ""
   } El eje recorta las excursiones extremas; la ayuda emergente da el valor real.`
   return {
-    kpis: view.mode === "average" ? <EegGroupKpis kpis={kpis} average={figures.average} loading={loading} /> : null,
+    kpis: <EegGroupKpis kpis={kpis} average={figures.average} loading={loading} />,
     chart: (
       <GroupTemporalChart
         mode={view.mode}
@@ -114,11 +117,13 @@ export function timeseriesGroupSlots({
         yAxis={eegAxis}
         averageDetail={detail}
         emptyMessage={`Ninguno de los participantes elegidos tiene el canal ${label}.`}
+        selectedTime={view.selectedTime}
+        onSelectTime={view.selectTime}
       />
     ),
+    stimulus: <GroupStimulusCard view={view} scenario={scenario} />,
     stats: (
       <EegGroupStatsCard
-        mode={view.mode}
         columns={TIMESERIES_COLUMNS}
         entries={figures.entries}
         average={figures.average}
@@ -169,13 +174,12 @@ export function psdGroupSlots({
     { field: "max", label: "Max", decimals: 4, unit, className: MAX_CLASS },
   ]
   return {
-    kpis: mode === "average" ? <EegGroupKpis kpis={kpis} average={psd.average} loading={loading} /> : null,
+    kpis: <EegGroupKpis kpis={kpis} average={psd.average} loading={loading} />,
     chart: ({ fit }) => (
       <EegGroupPsdChart mode={mode} psd={psd} data={view.data} fit={fit} onZoom={onZoom} onZoomReset={onZoomReset} onZoomBack={onZoomBack} />
     ),
     stats: (
       <EegGroupStatsCard
-        mode={mode}
         columns={columns}
         entries={psd.entries}
         average={psd.average}
@@ -255,7 +259,6 @@ export function spectrogramGroupSlots({
     notes: <EegGroupChips notes={notes} />,
     stats: (
       <EegGroupStatsCard
-        mode={mode}
         columns={columns}
         entries={figures.entries}
         average={figures.average}
@@ -342,7 +345,6 @@ export function topographyGroupSlots({
     notes: <EegGroupChips notes={notes} />,
     stats: (
       <EegGroupStatsCard
-        mode={mode}
         columns={columns}
         entries={figures.entries}
         average={figures.average}

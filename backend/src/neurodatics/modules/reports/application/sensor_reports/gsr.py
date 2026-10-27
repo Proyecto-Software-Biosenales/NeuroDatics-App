@@ -67,7 +67,9 @@ def collect(participant: common.ReportParticipant, scenario: common.ReportScenar
         logger,
         "GSR report signal",
         lambda: (
-            GsrAnalyticsService.compute_timeseries(frame, scenario.name),
+            # Absolute time, re-based below on the scenario start: the axis says
+            # «desde el inicio del escenario», not from the first GSR sample.
+            GsrAnalyticsService.compute_timeseries(frame, scenario.name, absolute_time=True),
             GsrAnalyticsService.compute_statistics(frame, scenario.name),
         ),
         None,
@@ -75,7 +77,7 @@ def collect(participant: common.ReportParticipant, scenario: common.ReportScenar
     if computed is None:
         return None
     series, payload = computed
-    time = np.asarray(series.get("time") or [], dtype=float)
+    time = np.asarray(series.get("time") or [], dtype=float) - start
     raw = np.asarray(series.get("gsr") or [], dtype=float)
     smooth = np.asarray(series.get("gsr_smooth") or [], dtype=float)
     if not time.size or not (time.size == raw.size == smooth.size):
@@ -185,7 +187,7 @@ def _group_blocks(
                 doc.figure(
                     report.add_asset(f"{scenario.position}-gsr-group", chart, "svg"),
                     "Variación de la conductancia por participante",
-                    "Señal suavizada de cada participante menos su propia base; valores positivos indican activación sobre su nivel de reposo en el escenario.",
+                    "Señal suavizada de cada participante menos su propia base; valores positivos indican conductancia por encima de su base en el escenario.",
                 ),
                 common.stat_table(
                     [(recording.participant.alias, recording.stats, recording.participant.color) for recording in usable],

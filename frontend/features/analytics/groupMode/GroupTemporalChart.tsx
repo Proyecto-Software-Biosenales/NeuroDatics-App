@@ -6,6 +6,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
   XAxis,
@@ -15,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { AnalyticsChartShell, LINE_CHART_MARGIN, type AnalyticsChartNote } from "../components/AnalyticsChartShell"
 import { AnalyticsMessageSurface } from "../components/AnalyticsMessageSurface"
 import { useChartDragZoom } from "../components/ChartDragZoom"
+import { readClickedTime, resolveClickedPoint } from "../comparison/chartInteraction"
 import { useZoomHistory } from "../hooks/useZoomHistory"
 import { axisTickDecimals, formatAxisTick, normalizeZoomRange, sameZoomRange, zoomSpan, type ZoomRange } from "../chartZoom"
 import { fittedAxis, type FittedAxis } from "../fittedAxis"
@@ -96,7 +98,8 @@ function GroupTooltip({
  * colour) and «Promedio» (mean line with a ±1 SD band). Every participant is
  * resampled on one common grid of at most 2,000 points; dragging zooms on the
  * time axis, which counts from the scenario's onset or, with «Todos los
- * escenarios», from each recording's start.
+ * escenarios», from each recording's start. A click picks an instant
+ * (`onSelectTime`), marked with a vertical line.
  */
 export function GroupTemporalChart({
   mode,
@@ -109,6 +112,8 @@ export function GroupTemporalChart({
   decimals = 2,
   averageDetail,
   emptyMessage = "Ninguno de los participantes elegidos tiene datos para esta vista.",
+  selectedTime = null,
+  onSelectTime,
 }: {
   mode: GroupMode
   traces: GroupTrace[]
@@ -124,6 +129,9 @@ export function GroupTemporalChart({
   /** A view-specific line added to the «Cómo se calcula» chip. */
   averageDetail?: ReactNode
   emptyMessage?: string
+  /** The chosen instant, on `timeAxis`. */
+  selectedTime?: number | null
+  onSelectTime?: (time: number) => void
 }) {
   const aggregate = useMemo(() => aggregateTraces(traces.map((trace) => ({ x: trace.time, y: trace.value }))), [traces])
   const rows = useMemo<Row[]>(() => {
@@ -248,10 +256,11 @@ export function GroupTemporalChart({
   return (
     <div
       role="img"
-      aria-label={`${yLabel}. ${mode === "average" ? "Promedio" : "Superposición"} de ${traces.length} participantes; eje horizontal en segundos desde ${timeAxis.origin}. Arrastra para ampliar.`}
+      aria-label={`${yLabel}. ${mode === "average" ? "Promedio" : "Superposición"} de ${traces.length} participantes; eje horizontal en segundos desde ${timeAxis.origin}. Arrastra para ampliar${onSelectTime ? "; haz clic para ver el estímulo en ese instante" : ""}.`}
       data-testid="group-temporal-chart"
       data-mode={mode}
       data-series={traces.length}
+      data-selected-time={selectedTime ?? undefined}
     >
       <AnalyticsChartShell
         legend={legend}
@@ -262,7 +271,14 @@ export function GroupTemporalChart({
         onZoomBack={zoom && zoomHistory.canGoBack ? zoomHistory.back : undefined}
       >
         <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
-          <ComposedChart data={visibleRows} margin={LINE_CHART_MARGIN} {...dragZoom.chartProps()}>
+          <ComposedChart
+            data={visibleRows}
+            margin={LINE_CHART_MARGIN}
+            {...dragZoom.chartProps((state) => {
+              const time = resolveClickedPoint(visibleRows, state)?.time ?? readClickedTime(state)
+              if (time != null) onSelectTime?.(time)
+            })}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
             <XAxis
               dataKey="time"
@@ -281,6 +297,16 @@ export function GroupTemporalChart({
               label={{ value: yLabel, angle: -90, position: "insideLeft", offset: 10, style: { textAnchor: "middle" } }}
             />
             <RechartsTooltip content={<GroupTooltip mode={mode} traces={traces} unit={unit} decimals={decimals} />} />
+            {selectedTime != null ? (
+              <ReferenceLine
+                x={selectedTime}
+                className="analytics-selected-time"
+                stroke="#374151"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                label={{ value: `${Math.round(selectedTime)}s`, position: "top", fontSize: 11, fill: "#374151" }}
+              />
+            ) : null}
             {mode === "average" ? (
               <>
                 <Area

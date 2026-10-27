@@ -79,6 +79,7 @@ import type { CardResult } from "../participantComparison/cardData"
 import { useGroupView } from "../groupMode/useGroupData"
 import { GroupTemporalChart, type GroupTrace } from "../groupMode/GroupTemporalChart"
 import { GroupKpiGrid, GroupStatsCard, type GroupKpi, type GroupStatEntry } from "../groupMode/GroupStats"
+import { GroupStimulusCard } from "../groupMode/GroupStimulusCard"
 import { GroupUnsupported } from "../groupMode/GroupUnsupported"
 
 type ViewMode = PupilEyes
@@ -358,10 +359,6 @@ export function PupilDilationTab({
     pupilStatRow("Derecha", pupilModeData.right.stats),
   ], [pupilModeData])
 
-  const summaryRow = useMemo(
-    () => tableRows.find((row) => row.serie === activeSerie) ?? tableRows[0],
-    [activeSerie, tableRows]
-  )
 
   /**
    * Remaps gaze coordinates from "% of image" to "% of container".
@@ -482,9 +479,7 @@ export function PupilDilationTab({
     <GroupUnsupported reason={groupView.unsupportedReason} className="analytics-state-frame" />
   ) : groupView.mode ? (
     <>
-      {groupView.mode === "average" ? (
-        <GroupKpiGrid kpis={GROUP_KPIS} entries={groupResults.stats} loading={groupResults.traces.length === 0 && groupView.data.loading} />
-      ) : null}
+      <GroupKpiGrid kpis={GROUP_KPIS} entries={groupResults.stats} loading={groupResults.traces.length === 0 && groupView.data.loading} />
       <GroupTemporalChart
         mode={groupView.mode}
         traces={groupResults.traces}
@@ -494,6 +489,8 @@ export function PupilDilationTab({
         yLabel="Amplitud pupilar (mm)"
         yAxis={groupYAxis}
         averageDetail={groupDetail}
+        selectedTime={groupView.selectedTime}
+        onSelectTime={groupView.selectTime}
       />
     </>
   ) : null
@@ -667,13 +664,15 @@ export function PupilDilationTab({
         </Card>
       {groupView.active ? (
         groupView.mode && !groupView.unsupportedReason ? (
-          <GroupStatsCard
-            mode={groupView.mode}
-            entries={groupResults.stats}
-            loading={groupResults.stats.length === 0 && groupView.data.loading}
-            detail={groupDetail}
-            basis={`Cada fila de participante usa sus propias muestras dibujadas de ${groupView.timeAxis.scope}.`}
-          />
+          <>
+            <GroupStimulusCard view={groupView} scenario={scenario} />
+            <GroupStatsCard
+              entries={groupResults.stats}
+              loading={groupResults.stats.length === 0 && groupView.data.loading}
+              detail={groupDetail}
+              basis={`Cada fila de participante usa sus propias muestras dibujadas de ${groupView.timeAxis.scope}.`}
+            />
+          </>
         ) : null
       ) : <>
         {/* Gaze Snapshot Section */}
@@ -887,7 +886,6 @@ export function PupilDilationTab({
         <CardContent className="pt-0">
           <StatisticsTable
             rows={tableRows}
-            summaryRow={summaryRow}
             activeSerie={activeSerie}
             loading={timeseriesLoading}
           />

@@ -8,6 +8,7 @@ import pandas as pd
 from neurodatics.shared.gaze_contract import GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN
 
 from .eeg_signal import prepare_eeg
+from .numeric_helpers import distance_cm as _distance_cm
 
 from .analytics_service import (
     EEG_TOPOGRAPHY_CHANNELS,
@@ -188,10 +189,7 @@ class CorrelationAnalyticsService:
                 "No se encontró la columna distance.",
             )
 
-        distance_cm = (
-            pd.to_numeric(frame["distance"], errors="coerce").to_numpy(dtype=float)
-            / 10.0
-        )
+        distance_cm = _distance_cm(frame["distance"]).to_numpy(dtype=float)
         return (
             cls._aggregate_median(frame["_bin"], distance_cm, total_bins),
             ["distance"],

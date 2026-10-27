@@ -17,7 +17,7 @@ COMMON_STATISTICS: Sequence[Tuple[str, str]] = (
     ("N", "Número de muestras válidas usadas en el cálculo."),
     ("Base", "Nivel de referencia robusto: media de los valores situados entre los percentiles 5 y 20 de la señal del escenario."),
     ("Media / DE / Mediana", "Estadísticos de la señal mostrada; la desviación estándar (DE) usa n − 1."),
-    ("Pico %", "Cambio del valor máximo respecto a la base: (máximo − base) / base × 100."),
+    ("Pico %", "Cambio del valor máximo respecto a la base: (máximo − base) / |base| × 100."),
     ("Media del grupo / DE entre participantes", "Media y desviación estándar de los valores de cada participante; describen la variación entre personas, no entre muestras."),
 )
 
@@ -98,7 +98,7 @@ def eeg() -> List[doc.Block]:
                 doc.row(["Señal", "Amplitud por canal tal como se exportó (referencia original), sin filtrado ni corrección de artefactos. Los huecos y discontinuidades temporales no se interpolan."]),
                 doc.row(["Densidad espectral (PSD)", "Método de Welch con ventana de Hann, segmentos de hasta 1024 muestras y 50 % de solapamiento, calculado solo sobre tramos continuos válidos. Nivel en dB respecto a 1 µV²/Hz."]),
                 doc.row(["Potencia por banda", "Integral de la densidad espectral en cada banda (µV²): Delta 0,5–4 Hz, Theta 4–8 Hz, Alfa 8–13 Hz, Beta 13–30 Hz y Gamma 30–45 Hz."]),
-                doc.row(["Potencia relativa", "Potencia de cada banda dividida entre la suma de las cinco bandas (%)."]),
+                doc.row(["Potencia relativa", "Potencia de cada banda dividida entre la suma de las bandas que pudieron calcularse (%). Una banda sin valor no entra en la suma."]),
                 doc.row(["Espectrograma", "Densidad espectral en ventanas de 1,5 s con 75 % de solapamiento, en dB respecto a 1 µV²/Hz, con una escala de color común a todos los canales del escenario."]),
                 doc.row(["Topografía", "Mapa esquemático de seis electrodos (F3, F4, C3, C4, P3, P4) con la potencia relativa de cada banda. Cada mapa usa su propia escala; no representa localización de fuentes."]),
             ],

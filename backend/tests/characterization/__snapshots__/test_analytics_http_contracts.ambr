@@ -523,6 +523,12 @@
           'data': list([
             dict({
               'left': 'number',
+              'right': 'NoneType',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+            dict({
+              'left': 'number',
               'right': 'number',
               'sourceTime': 'number',
               'time': 'number',
@@ -773,6 +779,12 @@
           'annotations': list([
           ]),
           'data': list([
+            dict({
+              'left': 'number',
+              'right': 'NoneType',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
             dict({
               'left': 'number',
               'right': 'number',
@@ -1027,6 +1039,12 @@
           'data': list([
             dict({
               'left': 'number',
+              'right': 'NoneType',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
+            dict({
+              'left': 'number',
               'right': 'number',
               'sourceTime': 'number',
               'time': 'number',
@@ -1277,6 +1295,12 @@
           'annotations': list([
           ]),
           'data': list([
+            dict({
+              'left': 'number',
+              'right': 'NoneType',
+              'sourceTime': 'number',
+              'time': 'number',
+            }),
             dict({
               'left': 'number',
               'right': 'number',

@@ -50,7 +50,8 @@ export function ScanpathLayer({
   return (
     <>
       {points.slice(1).map((point, index) => (
-        <line
+        // No line across a gap between detector segments, as in the travelled distance.
+        (objectives[index].segment_id ?? null) !== (objectives[index + 1].segment_id ?? null) ? null : <line
           key={`line-${objectives[index + 1].id}`}
           x1={points[index].x}
           y1={points[index].y}

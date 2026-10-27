@@ -38,11 +38,13 @@ import {
   type ContainedImageBox,
 } from "./AoiOverlay"
 import {
+  GroupFigureKpis,
   GroupFiguresCard,
   GroupSpatialFooter,
   groupFigureEntries,
   MAX_GROUP_LEGEND_ITEMS,
   type GroupFigureColumn,
+  type GroupFigureKpi,
 } from "./GroupSpatial"
 import { ScanpathLayer } from "./ScanpathLayer"
 
@@ -73,6 +75,55 @@ const COLUMNS: GroupFigureColumn[] = [
   { key: "distance", label: "Distancia", format: (value) => `${Math.round(value)} px` },
   { key: "mean", label: "Duración media", format: formatMilliseconds },
   { key: "total", label: "Tiempo fijado", format: formatSeconds },
+]
+
+/** «Superposición» cards: the view's own cards, each the mean of every participant's figure. */
+const GROUP_KPIS: GroupFigureKpi[] = [
+  {
+    key: "objectives",
+    label: "Recorridos",
+    unit: "",
+    tooltip: "Número de objetivos visuales detectados agrupando fijaciones cercanas",
+    Icon: Route,
+    iconBgClass: "bg-indigo-100 dark:bg-indigo-900/30",
+    iconColorClass: "text-indigo-500",
+    labelColorClass: "text-indigo-600 dark:text-indigo-400",
+    // An average count keeps a decimal: 12,5 is the figure, not 13.
+    decimals: 1,
+  },
+  {
+    key: "distance",
+    label: "Distancia",
+    unit: "px",
+    tooltip: "Distancia total en píxeles entre fijaciones consecutivas asumiendo resolución 1920×1080",
+    Icon: Ruler,
+    iconBgClass: "bg-emerald-100 dark:bg-emerald-900/30",
+    iconColorClass: "text-emerald-500",
+    labelColorClass: "text-emerald-600 dark:text-emerald-400",
+    decimals: 0,
+  },
+  {
+    key: "mean",
+    label: "Promedio",
+    unit: "ms",
+    tooltip: "Duración media por fijación",
+    Icon: Clock,
+    iconBgClass: "bg-rose-100 dark:bg-rose-900/30",
+    iconColorClass: "text-rose-500",
+    labelColorClass: "text-rose-600 dark:text-rose-400",
+    decimals: 0,
+  },
+  {
+    key: "total",
+    label: "Tiempo fijado",
+    unit: "s",
+    tooltip: "Tiempo total de permanencia en fijaciones válidas; excluye sacadas, mirada inválida y tiempo fuera del estímulo",
+    Icon: Timer,
+    iconBgClass: "bg-sky-100 dark:bg-sky-900/30",
+    iconColorClass: "text-sky-500",
+    labelColorClass: "text-sky-600 dark:text-sky-400",
+    decimals: 2,
+  },
 ]
 
 export function ScanpathTab({
@@ -277,6 +328,7 @@ export function ScanpathTab({
     }
     return (
       <>
+        <GroupFigureKpis kpis={GROUP_KPIS} entries={groupFigures} four />
         {body}
         <GroupSpatialFooter participants={groupPaths.map((path) => path.participant)} notes={notes} />
         {controls}
@@ -427,7 +479,6 @@ export function ScanpathTab({
 
       {groupMode ? (
         <GroupFiguresCard
-          mode={groupMode}
           entries={groupFigures}
           columns={COLUMNS}
           detail="Las mismas cifras que las tarjetas del mapa de recorridos de un participante."

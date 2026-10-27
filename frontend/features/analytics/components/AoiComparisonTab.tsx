@@ -494,28 +494,26 @@ export function AoiComparisonTab({
 
     return (
       <div className="analytics-stack">
-        {groupMode === "average" ? (
-          <GroupFigureKpis
-            kpis={GROUP_KPIS}
-            entries={groupFigures}
-            four
-            extra={
-              <KpiCard
-                label="Más observada"
-                value={topAverage?.dwell ?? null}
-                unit="%"
-                description={topAverage?.name ?? "Sin datos"}
-                tooltip="El área con más tiempo medio entre los participantes"
-                Icon={Eye}
-                bgClass="bg-card"
-                iconBgClass="bg-rose-100 dark:bg-rose-900/30"
-                iconColorClass="text-rose-500"
-                labelColorClass="text-rose-600 dark:text-rose-400"
-                decimals={1}
-              />
-            }
-          />
-        ) : null}
+        <GroupFigureKpis
+          kpis={GROUP_KPIS}
+          entries={groupFigures}
+          four
+          extra={
+            <KpiCard
+              label="Más observada"
+              value={topAverage?.dwell ?? null}
+              unit="%"
+              description={topAverage?.name ?? "Sin datos"}
+              tooltip="El área con más tiempo medio entre los participantes"
+              Icon={Eye}
+              bgClass="bg-card"
+              iconBgClass="bg-rose-100 dark:bg-rose-900/30"
+              iconColorClass="text-rose-500"
+              labelColorClass="text-rose-600 dark:text-rose-400"
+              decimals={1}
+            />
+          }
+        />
 
         {stimulusCard(groupAois, scenario)}
 
@@ -579,7 +577,6 @@ export function AoiComparisonTab({
           <AoiGroupMetricsCard rows={groupAverage} />
         ) : (
           <GroupFiguresCard
-            mode={groupMode}
             entries={groupFigures}
             columns={overlayColumns}
             detail="Fijaciones y tiempo en AOIs son las cifras de las tarjetas de un participante; cada AOI, su porcentaje de tiempo en ella."

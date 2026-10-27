@@ -15,6 +15,7 @@ import { axisTickDecimals, formatAxisTick } from "../../chartZoom"
 import { fittedAxis } from "../../fittedAxis"
 import { formatNumber, type AveragedFigures } from "../../eegPresentation"
 import { groupLoadNotes } from "../../groupMode/groupNotes"
+import { GROUP_AVERAGE_ROW_DETAIL } from "../../groupMode/GroupStats"
 import type { GroupMode } from "../../groupMode/groupSupport"
 import type { GroupData } from "../../groupMode/useGroupData"
 import type { EegGroupEntry, GroupPsd } from "./useEegGroupData"
@@ -27,13 +28,15 @@ const participantsText = (count: number) => (count === 1 ? "1 participante" : `$
 
 /** What a group view puts in place of its own cards, chart and statistics. */
 export interface EegGroupSlots {
-  /** Replaces the KPI cards; null shows none («Superposición»). */
+  /** Replaces the KPI cards: the mean over participants of each one's figure. */
   kpis: ReactNode
   /**
    * Replaces the chart; when absent the view draws the group's data itself.
    * A function receives the view's own display toggles.
    */
   chart?: ReactNode | ((view: { fit: boolean }) => ReactNode)
+  /** Replaces the stimulus card of a temporal view: `GroupStimulusCard`. */
+  stimulus?: ReactNode
   /** Replaces the statistics card. */
   stats: ReactNode
   /** Chips for the view's own colour bar (load state, how it is computed). */
@@ -57,7 +60,7 @@ export type EegGroupKpi<K extends string> = Omit<KpiCardProps, "value" | "loadin
   field: K
 }
 
-/** «Promedio» cards: the view's own cards, each the mean over participants of that participant's figure. */
+/** The group modes' cards: the view's own cards, each the mean over participants of that participant's figure. */
 export function EegGroupKpis<K extends string>({
   kpis,
   average,
@@ -98,12 +101,11 @@ export interface EegGroupColumn<K extends string> {
 }
 
 /**
- * The statistics card of an EEG view in a group mode. «Superposición»: one
- * row per participant with its colour. «Promedio»: the «Promedio (n
- * participantes)» row first, then each participant.
+ * The statistics card of an EEG view in a group mode («Superposición» and
+ * «Promedio»): the «Promedio (n participantes)» row first, then one row per
+ * participant with its colour.
  */
 export function EegGroupStatsCard<K extends string>({
-  mode,
   columns,
   entries,
   average,
@@ -112,7 +114,6 @@ export function EegGroupStatsCard<K extends string>({
   detail,
   scope,
 }: {
-  mode: GroupMode
   columns: EegGroupColumn<K>[]
   entries: EegGroupEntry<K>[]
   average: AveragedFigures<K>
@@ -125,12 +126,10 @@ export function EegGroupStatsCard<K extends string>({
 }) {
   const rows = useMemo(
     () => [
-      ...(mode === "average"
-        ? [{ key: "group-average", label: `Promedio (${participantsText(average.participants)})`, color: AVERAGE_COLOR, values: average.values, average: true }]
-        : []),
+      { key: "group-average", label: `Promedio (${participantsText(average.participants)})`, color: AVERAGE_COLOR, values: average.values, average: true },
       ...entries.map(({ participant, values }) => ({ key: participant.code, label: participant.label, color: participant.color, values, average: false })),
     ],
-    [average, entries, mode]
+    [average, entries]
   )
   return (
     <Card>
@@ -144,13 +143,8 @@ export function EegGroupStatsCard<K extends string>({
           detail={
             <>
               <span>Cada fila de participante usa sus propios datos de {scope}.</span>
-              {mode === "average" ? (
-                <span>
-                  La fila «Promedio» es la media, entre participantes, de la cifra de cada uno; solo cuentan los
-                  participantes que tienen esa cifra.
-                </span>
-              ) : null}
-              {mode === "average" && db ? <span>Los niveles en dB se promedian en potencia lineal y se pasan a dB después.</span> : null}
+              <span>{GROUP_AVERAGE_ROW_DETAIL}</span>
+              {db ? <span>Los niveles en dB se promedian en potencia lineal y se pasan a dB después.</span> : null}
               {detail ? <span>{detail}</span> : null}
             </>
           }

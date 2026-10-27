@@ -49,6 +49,7 @@ import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { useGroupView } from "../groupMode/useGroupData"
 import type { GroupKpi } from "../groupMode/GroupStats"
 import { GroupSignalChart, GroupSignalStats, useGroupSignal } from "../groupMode/groupSignal"
+import { GroupStimulusCard } from "../groupMode/GroupStimulusCard"
 
 type SignalMode = "smooth" | "raw" | "both"
 /** One series per participant in a group mode: «Ambas» shows the smoothed one. */
@@ -240,6 +241,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
             averageDetail={groupView.timeAxis.aligned ? GROUP_TIME_DETAIL : undefined}
           />
         ),
+        stimulus: <GroupStimulusCard view={groupView} scenario={scenario} />,
         statistics: <GroupSignalStats view={groupView} results={groupResults} unit=" µS" detail={GROUP_STATS_DETAIL} />,
       }}
       headerActions={<>

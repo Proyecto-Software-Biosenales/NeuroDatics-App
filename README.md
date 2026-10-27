@@ -83,6 +83,7 @@ Los manuales para quien instala y usa NeuroDatics están en PDF en [manuales/](m
 | [Manual de uso](manuales/NeuroDatics-Manual-de-uso.pdf) | Usar la aplicación paso a paso, en las dos ediciones: proyectos, datos, tablero, pre-experimentos e informes. |
 | [Guía de instalación: edición servidor](manuales/NeuroDatics-Guia-de-instalacion-servidor.pdf) | Instalar, iniciar y detener la edición servidor (Docker) en Windows. |
 | [Guía de instalación: NeuroDatics Estudiantes](manuales/NeuroDatics-Guia-de-instalacion-estudiantes.pdf) | Descomprimir y abrir la edición de estudiantes en Windows. |
+| [Guía de procesamiento](manuales/NeuroDatics-Guia-de-procesamiento.pdf) | Para investigadores: cómo se limpian, calculan y resumen las señales, y qué recalcular si tu objetivo es otro. |
 
 ## Inicio rápido
 
@@ -155,6 +156,7 @@ completo está en [docs/tecnica/arquitectura.md](docs/tecnica/arquitectura.md).
 | Entender la aplicación de un vistazo | [Arquitectura](docs/tecnica/arquitectura.md) |
 | Saber qué cambió | [CHANGELOG](docs/CHANGELOG.md) |
 | Usar la aplicación paso a paso | [Manual de uso (PDF)](manuales/NeuroDatics-Manual-de-uso.pdf) |
+| Justificar los resultados en un estudio | [Guía de procesamiento (PDF)](manuales/NeuroDatics-Guia-de-procesamiento.pdf) |
 | Preparar un estudio sin datos todavía | [Pre-experimento](docs/usuario/pre-experimento.md) |
 | Interpretar la comparación entre participantes | [Comparar participantes](docs/usuario/comparar-participantes.md) |
 | Conocer los algoritmos | [Fijaciones](docs/tecnica/deteccion-de-fijaciones.md) · [Coordenadas](docs/tecnica/coordenadas-pantalla-estimulo.md) · [EEG](docs/tecnica/eeg/metodos.md) · [Informes](docs/tecnica/informes.md) |
@@ -168,7 +170,7 @@ frontend/     interfaz Next.js, común a las dos ediciones
 student/      construcción y comprobaciones de NeuroDatics Estudiantes, y su guía
 deployment/   instalador de la edición servidor para Windows
 docs/         documentación por público: usuario, técnica y desarrollo
-manuales/     manual de uso y guías de instalación, en PDF
+manuales/     manual de uso y guías de instalación y de procesamiento, en PDF
 verify.ps1    la puerta de verificación del repositorio
 ```
 

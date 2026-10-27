@@ -150,8 +150,9 @@ export const signalStatsBasis = (scope: string) =>
   `Cada fila se calcula sobre la señal completa de ese participante en ${scope}, igual que en su vista individual; «Número» cuenta las muestras dibujadas.`
 
 /**
- * The chart area in a group mode: the unsupported message, or the «Promedio»
- * KPI cards and the group chart.
+ * The chart area in a group mode: the unsupported message, or the averaged
+ * KPI cards and the group chart, where a click picks the instant
+ * `GroupStimulusCard` shows.
  */
 export function GroupSignalChart({
   view,
@@ -176,13 +177,11 @@ export function GroupSignalChart({
   if (!view.mode) return null
   return (
     <>
-      {view.mode === "average" ? (
-        <GroupKpiGrid
-          kpis={kpis}
-          entries={results.stats}
-          loading={results.stats.length === 0 && (view.data.loading || results.statsLoading)}
-        />
-      ) : null}
+      <GroupKpiGrid
+        kpis={kpis}
+        entries={results.stats}
+        loading={results.stats.length === 0 && (view.data.loading || results.statsLoading)}
+      />
       <GroupTemporalChart
         mode={view.mode}
         traces={results.traces}
@@ -193,6 +192,8 @@ export function GroupSignalChart({
         yAxis={yAxis}
         decimals={decimals}
         averageDetail={averageDetail}
+        selectedTime={view.selectedTime}
+        onSelectTime={view.selectTime}
       />
     </>
   )
@@ -213,7 +214,6 @@ export function GroupSignalStats({
   if (!view.mode || view.unsupportedReason) return null
   return (
     <GroupStatsCard
-      mode={view.mode}
       entries={results.stats}
       loading={results.stats.length === 0 && (view.data.loading || results.statsLoading)}
       unit={unit}

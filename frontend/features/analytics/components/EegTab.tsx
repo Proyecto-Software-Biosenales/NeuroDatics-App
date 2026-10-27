@@ -549,6 +549,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     figures: groupTimeseries,
     channel: groupChannel,
     signal: groupSignal,
+    scenario,
   })
   const psdGroup = psdGroupSlots({
     view: groupView,

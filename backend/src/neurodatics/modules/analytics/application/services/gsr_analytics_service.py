@@ -117,14 +117,17 @@ class GsrAnalyticsService:
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
     ) -> dict:
-        """Compute statistics on the smoothed GSR signal shown in the chart."""
+        """Compute statistics on the smoothed GSR signal shown in the chart.
+
+        Without a valid sample every figure is ``None`` (shown as «—»), never 0.
+        """
         _empty = {
-            "mean": 0.0,
-            "min": 0.0,
-            "max": 0.0,
-            "std": 0.0,
-            "median": 0.0,
-            "baseline": 0.0,
+            "mean": None,
+            "min": None,
+            "max": None,
+            "std": None,
+            "median": None,
+            "baseline": None,
             "raw_mean": None,
             "raw_min": None,
             "raw_max": None,

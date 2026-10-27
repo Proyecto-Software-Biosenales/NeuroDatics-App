@@ -410,7 +410,9 @@ class CsvProcessingService:
             normalized = unicodedata.normalize("NFKC", line).replace("\u00a0", " ")
             match = cls._PARTICIPANT_RE.search(normalized)
             if match:
-                code = match.group(1).strip()
+                # A comma- or tab-delimited export pads the line with empty
+                # cells («Grabación: P01,,,»); they are not part of the code.
+                code = match.group(1).strip().rstrip(",\t ")
                 if code:
                     return code
         return None
@@ -423,6 +425,7 @@ class CsvProcessingService:
                     unicodedata.normalize("NFKC", line.split(":", 1)[1])
                     .replace("\u00a0", " ")
                     .strip()
+                    .rstrip(",;\t ")
                 )
         return None
 

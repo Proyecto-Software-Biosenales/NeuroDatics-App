@@ -340,7 +340,10 @@ def _draw_scanpath(base_image: Image.Image, scanpath: Dict[str, Any], aois: Sequ
         )
         for item in objectives
     ]
-    for start, end in zip(points, points[1:]):
+    for (start, end), (first, second) in zip(zip(points, points[1:]), zip(objectives, objectives[1:])):
+        # Same rule as the dashboard: no line across a gap between detector segments.
+        if first.get("segment_id") != second.get("segment_id"):
+            continue
         draw.line((*start, *end), fill=SCANPATH_FILL, width=line_width)
     for index, (point, item) in enumerate(zip(points, objectives), start=1):
         radius = _scanpath_radius(item.get("duration_s"), scale, radius_cap_ms)

@@ -90,11 +90,20 @@ interface MockState {
   unhandled: string[]
   groupTraces: URLSearchParams[]
   statistics: URLSearchParams[]
+  gazeAt: URLSearchParams[]
 }
+
+/** A 4×3 PNG: the stimulus frame behind the group's gaze points. */
+const STIMULUS_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAADklEQVR4nGNoQAIMODkAXzYSAY5zHKsAAAAASUVORK5CYII=",
+  "base64"
+)
+/** Where each participant looks at any instant: a distinct point per participant. */
+const gazePointOf = (code: string) => ({ gx: 20 + indexOf(code) * 20, gy: 30 + indexOf(code) * 10 })
 
 async function mockApi(page: Page, errors: string[], sensor: Sensor): Promise<MockState> {
   const project = projectFor(sensor)
-  const state: MockState = { unhandled: [], groupTraces: [], statistics: [] }
+  const state: MockState = { unhandled: [], groupTraces: [], statistics: [], gazeAt: [] }
   page.on("pageerror", (error) => errors.push(error.message))
   await page.addInitScript(() => {
     window.localStorage.setItem(
@@ -145,6 +154,14 @@ async function mockApi(page: Page, errors: string[], sensor: Sensor): Promise<Mo
       state.statistics.push(params)
       return fulfill({ json: statsFor(statistics, participant) })
     }
+    if (path.endsWith("/analytics/gaze-at")) {
+      state.gazeAt.push(params)
+      const time = Number(params.get("t_s"))
+      return fulfill({
+        json: { requested_time_s: time, nearest_time_s: time, scenario: SCENARIO, scenario_type: "image", scenario_file_id: "scenario-image", ...gazePointOf(participant) },
+      })
+    }
+    if (path.endsWith("/files/scenario-image/preview")) return fulfill({ contentType: "image/png", body: STIMULUS_PNG })
     if (path.endsWith("/analytics/aois")) {
       return fulfill({
         json: { scenario: SCENARIO, scenario_file_id: "scenario-image", aois: [], transitions: [], total_fixations: 0, total_dwell_time_ms: 0, observed_aoi_dwell_time_ms: 0, observed_aoi_dwell_time_percent: 0 },
@@ -234,14 +251,17 @@ test("gaze shows one axis per participant in overlay and average", async ({ page
   await expect(page.getByRole("button", { name: "1 sin datos" })).toBeVisible()
   // Recording-bound controls and the gaze panel are gone; one axis at a time.
   await expect(timeWindowButton(page)).toHaveCount(0)
-  await expect(page.getByText("Punto de fijación sobre estímulo visual")).toHaveCount(0)
+  // The group stimulus card replaces the individual one: a click on the chart fills it.
+  await expect(page.getByTestId("group-stimulus")).toContainText("Haz clic en la gráfica")
   await expect(page.getByRole("button", { name: "Ambos ejes" })).toHaveCount(0)
   await expect(page.getByRole("button", { name: "Eje X", exact: true })).toHaveAttribute("aria-pressed", "true")
   await expect(chart.locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value").first()).toHaveText("0")
 
   // One row per participant, the server's X figures for each one.
   const table = statsCard(page)
-  await expect(table.getByRole("row")).toHaveCount(1 + CODES.length)
+  await expect(table.getByRole("row")).toHaveCount(1 + 1 + CODES.length)
+  // «Superposición» also leads with the «Promedio» row of the chosen participants.
+  await expect(table.getByRole("row").nth(1)).toContainText("Promedio (")
   await expect(table.getByRole("row", { name: /Participante P02/ })).toContainText(`${(45).toFixed(4)}%`)
   await page.screenshot({ path: `${SHOTS}/gaze-overlay-1536.png` })
 
@@ -284,10 +304,13 @@ test("distance overlays and averages every participant with its own figures", as
   await expect(chart).toHaveAttribute("data-mode", "overlay")
   await expect(chart).toHaveAttribute("data-series", String(WITH_DATA.length))
   await expect(timeWindowButton(page)).toHaveCount(0)
-  await expect(page.getByText("Punto de fijación sobre estímulo visual")).toHaveCount(0)
+  // The group stimulus card replaces the individual one: a click on the chart fills it.
+  await expect(page.getByTestId("group-stimulus")).toContainText("Haz clic en la gráfica")
   await expect(page.getByRole("button", { name: "Ajustar" })).toBeVisible()
   const table = statsCard(page)
-  await expect(table.getByRole("row")).toHaveCount(1 + CODES.length)
+  await expect(table.getByRole("row")).toHaveCount(1 + 1 + CODES.length)
+  // «Superposición» also leads with the «Promedio» row of the chosen participants.
+  await expect(table.getByRole("row").nth(1)).toContainText("Promedio (")
   await expect(table.getByRole("row", { name: /Participante P03/ })).toContainText(`${(68).toFixed(4)} cm`)
   // Each participant keeps its colour from the project's list.
   const strokes = await chart.locator(".recharts-line-curve").evaluateAll((paths) => paths.map((path) => path.getAttribute("stroke")))
@@ -331,7 +354,9 @@ test("GSR aligns each participant on the scenario onset in overlay and average",
   await page.getByRole("button", { name: "Tiempo alineado" }).hover()
   await expect(page.getByRole("tooltip").first()).toContainText("primera muestra de GSR")
   const table = statsCard(page)
-  await expect(table.getByRole("row")).toHaveCount(1 + CODES.length)
+  await expect(table.getByRole("row")).toHaveCount(1 + 1 + CODES.length)
+  // «Superposición» also leads with the «Promedio» row of the chosen participants.
+  await expect(table.getByRole("row").nth(1)).toContainText("Promedio (")
   await expect(table.getByRole("row", { name: /Participante P02/ })).toContainText(`${(2.5).toFixed(4)} µS`)
   await page.screenshot({ path: `${SHOTS}/gsr-overlay-1536.png` })
 
@@ -350,6 +375,55 @@ test("GSR aligns each participant on the scenario onset in overlay and average",
   expectWholeScenario(state)
   await noHorizontalScroll(page)
 
+  expect(state.unhandled).toEqual([])
+  expect(errors).toEqual([])
+})
+
+test("a click on the group chart shows every participant's gaze over the stimulus", async ({ page }) => {
+  const errors: string[] = []
+  await page.setViewportSize({ width: 1536, height: 730 })
+  const state = await mockApi(page, errors, "GSR")
+  await page.goto("/dashboard")
+  await expect(page.getByRole("heading", { name: "Respuesta galvánica", exact: true })).toBeVisible()
+  await chooseScenario(page, SCENARIO)
+
+  for (const mode of ["Superposición", "Promedio"] as const) {
+    await chooseGroupMode(page, mode)
+    const chart = groupChart(page)
+    await expect(chart).toHaveAttribute("data-series", String(WITH_DATA.length))
+    const card = page.getByTestId("group-stimulus")
+    await expect(card).toContainText("Haz clic en la gráfica")
+    // The averaged cards sit above the chart in both modes.
+    await expect(page.getByTestId("group-kpis")).toContainText(`Promedio de ${WITH_DATA.length} participantes`)
+
+    const asked = state.gazeAt.length
+    const plot = chart.locator(".recharts-wrapper")
+    const box = (await plot.boundingBox())!
+    await plot.hover({ position: { x: box.width * 0.5, y: box.height * 0.4 } })
+    await plot.click({ position: { x: box.width * 0.5, y: box.height * 0.4 } })
+    await expect(chart).toHaveAttribute("data-selected-time", /\d/)
+    const selected = Number(await chart.getAttribute("data-selected-time"))
+
+    // Each participant is asked at the same instant of the scenario, in its own recording's seconds.
+    await expect.poll(() => state.gazeAt.length - asked).toBe(WITH_DATA.length)
+    for (const params of state.gazeAt.slice(asked)) {
+      const code = params.get("participant_code")!
+      expect(WITH_DATA).toContain(code)
+      expect(params.get("scenario")).toBe(SCENARIO)
+      expect(Number(params.get("t_s"))).toBeCloseTo(onsetOf(code) + selected, 6)
+    }
+    const points = card.getByTestId("group-gaze-points").locator("[data-participant]")
+    await expect(points).toHaveCount(WITH_DATA.length)
+    await expect(points.first()).toHaveAttribute("aria-label", /: \(20, 30\)$/)
+    await card.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: `${FIX_SHOTS}/gsr-${mode === "Promedio" ? "average" : "overlay"}-stimulus-1536.png` })
+
+    await card.getByRole("button", { name: "Limpiar selección", exact: true }).click()
+    await expect(card).toContainText("Haz clic en la gráfica")
+    await expect(chart).not.toHaveAttribute("data-selected-time", /./)
+  }
+
+  await noHorizontalScroll(page)
   expect(state.unhandled).toEqual([])
   expect(errors).toEqual([])
 })

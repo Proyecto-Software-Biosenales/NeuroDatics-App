@@ -36,6 +36,16 @@ def _moving_average(x: np.ndarray, win: int) -> np.ndarray:
     return v
 
 
+def distance_cm(values) -> pd.Series:
+    """Eye-to-screen distance in cm; zero or negative is a lost eye, not a value.
+
+    Ingestion stores distance in mm. Fixation detection already ignores
+    non-positive distances, so every view uses the same rule.
+    """
+    distance_mm = pd.to_numeric(pd.Series(values), errors="coerce")
+    return distance_mm.where(distance_mm > 0) / 10.0
+
+
 def _robust_baseline(x: np.ndarray) -> float:
     """Baseline as mean of values between 5th and 20th percentiles."""
     x = np.asarray(x, float)

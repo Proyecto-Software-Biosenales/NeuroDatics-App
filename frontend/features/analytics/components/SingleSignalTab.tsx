@@ -35,13 +35,15 @@ interface SingleSignalTabProps {
   chart: ReactNode
   children: ReactNode
   /**
-   * «Superposición» / «Promedio»: replaces the chart area and the statistics
-   * card, and hides what belongs to one recording (time window, children).
+   * «Superposición» / «Promedio»: replaces the chart area, the stimulus card
+   * (children) and the statistics card, and hides the time window, which
+   * belongs to one recording.
    */
   group?: {
     active: boolean
     description: string
     chart: ReactNode
+    stimulus: ReactNode
     statistics: ReactNode
   }
 }
@@ -88,7 +90,10 @@ export function SingleSignalTab({
           </>}
         </CardContent>
       </Card>
-      {grouped ? grouped.statistics : <>
+      {grouped ? <>
+      {grouped.stimulus}
+      {grouped.statistics}
+      </> : <>
       {children}
       <Card>
         <CardHeader>
@@ -98,7 +103,6 @@ export function SingleSignalTab({
         <CardContent className="pt-0">
           <StatisticsTable
             rows={signal.tableRows}
-            summaryRow={signal.tableRows[0]}
             loading={signal.statsLoading || !signal.stats}
             unit={` ${unit}`}
           />

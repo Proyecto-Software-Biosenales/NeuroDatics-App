@@ -5,6 +5,38 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Guía de procesamiento y correcciones de cálculo
+
+- **Nueva guía en PDF** para investigadores, estudiantes y profesores:
+  [manuales/NeuroDatics-Guia-de-procesamiento.pdf](../manuales/NeuroDatics-Guia-de-procesamiento.pdf) (versión
+  1.1). Explica cómo se limpian, calculan y resumen las señales, con todos los parámetros, y qué recalcular si el
+  objetivo del estudio es otro.
+- **Pupila en «Comparativas»:** los instantes en que se pierde un ojo quedan en blanco y no cuentan en las cifras,
+  como en la pestaña de pupila. Antes se dibujaban y se promediaban como 0 mm.
+- **Tarjetas de punto de mirada:** con «Eje Y», las tarjetas, la línea de la media, el mínimo y el máximo
+  marcados y el valor del instante elegido son los del eje Y. Antes eran siempre los del X.
+- **Distancia:** un valor de 0 o negativo es una pérdida del ojo y ya no entra en la gráfica ni en las cifras de
+  la distancia, de la distancia por área de interés ni de las correlaciones. El detector de fijaciones ya lo
+  hacía.
+- **Cifras sin datos:** si el tramo elegido no tiene ninguna muestra válida, la pupila, el punto de mirada, la
+  distancia y el sensor galvánico muestran «—» en lugar de 0, y ese participante ya no cuenta como 0 en el
+  «Promedio» de un grupo.
+- **Mapa de recorridos:** dos fijaciones separadas por un corte de tramo del detector (más de 75 ms sin datos o
+  una muestra fuera del estímulo) ya no se unen con una línea, en el tablero ni en el informe. La tarjeta
+  «Distancia» ya no sumaba ese salto. La respuesta de `/scanpath` lleva `segment_id` en cada recorrido.
+- **Informe del sensor galvánico:** el eje cuenta desde el inicio del escenario, como dice su rótulo y como los
+  demás informes; antes contaba desde la primera muestra del sensor.
+- **Metodología de los informes:** el Pico % se escribe con |base|, como se calcula; la potencia relativa del EEG
+  se divide entre la suma de las bandas que pudieron calcularse, no «de las cinco», y la figura del sensor
+  galvánico ya no llama «reposo» a la base.
+- **Código del participante:** en archivos separados por comas o tabuladores, las celdas vacías del final de la
+  línea «Grabación» ya no se pegan al código (`P01,,,` pasa a ser `P01`). Solo afecta a carpetas procesadas de
+  nuevo.
+- **Pruebas:** `test_lost_samples_and_empty_figures.py` cubre lo anterior. Dos líneas base protegidas cambian a
+  propósito, revisadas línea a línea: la instantánea de forma de `/comparison/charts` (las filas de pupila pueden
+  traer `null`) y el resumen numérico del informe ejecutivo (pupila derecha de los datos sintéticos: 1600 → 1580
+  puntos, media +0,00005 mm; mínimo y máximo iguales).
+
 ### Manuales en PDF, a la vista
 
 - **Nueva carpeta `manuales/`** en la raíz del repositorio, con el manual de uso y las guías de instalación de la
@@ -44,6 +76,42 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
   grabación» avisa de que el mismo segundo puede corresponder a estímulos distintos. Topografía, mapa de calor,
   mapa de recorridos y comparativa AOIs siguen pidiendo un escenario concreto.
 - **Eje de tiempo:** las marcas del eje ya no muestran «-0».
+- **Cifras promedio también en «Superposición»:** las tarjetas sobre la gráfica muestran el promedio de los
+  participantes elegidos en las dos opciones (antes solo en «Promedio»; el mapa de recorridos y la comparativa
+  AOIs también las tienen ahora), y la tabla de estadísticas empieza siempre por la fila «Promedio (n
+  participantes)».
+- **Estímulo en un instante del grupo:** en pupila, punto de mirada, distancia, sensor galvánico y EEG por canal,
+  un clic en la gráfica de «Superposición» o «Promedio» muestra el estímulo con el punto de mirada de cada
+  participante en su color. Antes la tarjeta del estímulo desaparecía en estas opciones.
+- **Tabla de estadísticas sin cifras repetidas:** en pupila, punto de mirada, distancia y sensor galvánico, la
+  tarjeta «Estadísticas» ya no repite encima de la tabla los cuatro recuadros de media, mínimo, máximo y pico,
+  que ya estaban en la tabla y en las tarjetas de arriba.
+
+### Paquete de estudiantes 1.19
+
+`delivery/NeuroDatics-Estudiantes-1.19-win64.zip` (252 MiB, 4066 archivos), SHA-256
+`872D9AC2B3AA2943C7CBD23C37EB1462C0C9C3DE8787C99180EB5A9A84AF4CF8`, compilado el 27 de octubre sobre `7c694e8`
+más las correcciones de cálculo de «Guía de procesamiento y correcciones de cálculo» (sin confirmar aún).
+Reemplaza a la 1.18. `run-frozen.ps1`: selftest, las etapas del PostgreSQL embebido y http-check correctos;
+navegador 7/7 `passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído en una ruta
+con tildes arranca en 8,5 s. Siguen abiertos los 3 bloqueos de publicación (licencia de ffmpeg, prueba en un
+portátil real, datos de participantes). Antes de compilar, `verify.ps1` en verde: backend (1273 pruebas, 25
+snapshots), unidad del frontend, navegador, Ruff, Vulture, deptry, contratos de importación y ESLint (0 errores, 6
+avisos); además, la suite E2E completa (73 pruebas).
+
+### Paquete de estudiantes 1.18
+
+`delivery/NeuroDatics-Estudiantes-1.18-win64.zip` (252 MiB, 4066 archivos), SHA-256
+`AF94ED22FAC3C151C71CCEB2B8EFDB4E72D34757F968E480B1E1FD6DBF723D97`, compilado el 25 de octubre tras `f885fb1`
+con las cifras promedio también en «Superposición», el estímulo en un instante del grupo y la tabla de
+estadísticas sin los cuatro recuadros repetidos. Reemplaza a la 1.17. `run-frozen.ps1`: selftest, las ocho etapas
+del PostgreSQL embebido, pg-adopt, http-check y carrera de arranques correctos; navegador 7/7 `passed` (el flujo
+completo hace ahora clic en la gráfica de «Promedio» y comprueba la tarjeta del estímulo); 0 conexiones fuera de
+loopback; 0 procesos postgres al salir. El zip extraído en una ruta con tildes arranca en 10,1 s. Siguen abiertos
+los 3 bloqueos de publicación (licencia de ffmpeg, prueba en un portátil real, datos de participantes). Antes de
+compilar, `verify.ps1` en verde: backend (1267 pruebas, 25 snapshots), unidad del frontend, navegador, Ruff,
+Vulture, deptry, contratos de importación y ESLint (0 errores, 6 avisos de 6); además, la suite E2E completa
+(73 pruebas, entre ellas una nueva del clic sobre la gráfica de grupo).
 
 ### Paquete de estudiantes 1.17
 

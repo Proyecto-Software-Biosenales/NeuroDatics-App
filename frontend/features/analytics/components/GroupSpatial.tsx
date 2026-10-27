@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils"
 import { meanByKey, type KeyedMean } from "../groupMode/aggregate"
 import type { GroupParticipant } from "../groupMode/GroupModeProvider"
-import type { GroupMode } from "../groupMode/groupSupport"
+import { GROUP_AVERAGE_ROW_DETAIL } from "../groupMode/GroupStats"
 import type { GroupEntry } from "../groupMode/useGroupData"
 import type { CardResult } from "../participantComparison/cardData"
 import { scanpathRadiusForDuration } from "../scanpathScale"
@@ -61,7 +61,7 @@ export type GroupFigureKpi = Omit<KpiCardProps, "value" | "loading" | "onClick" 
   description?: string
 }
 
-/** «Promedio» KPI cards: the view's own cards, each the mean of every participant's figure. */
+/** The group modes' KPI cards: the view's own cards, each the mean of every participant's figure. */
 export function GroupFigureKpis({
   kpis,
   entries,
@@ -101,18 +101,17 @@ export interface GroupFigureColumn {
 }
 
 /**
- * The figures card in a group mode: one row per participant with its colour;
- * «Promedio» adds the «Promedio (n participantes)» row first.
+ * The figures card in a group mode («Superposición» and «Promedio»): the
+ * «Promedio (n participantes)» row first, then one row per participant with
+ * its colour.
  */
 export function GroupFiguresCard({
-  mode,
   entries,
   columns,
   title = "Estadísticas",
   description = "Las cifras de cada participante, calculadas igual que en su vista individual.",
   detail,
 }: {
-  mode: GroupMode
   entries: readonly GroupFigureEntry[]
   columns: GroupFigureColumn[]
   title?: string
@@ -136,12 +135,7 @@ export function GroupFiguresCard({
           detail={
             <>
               <span>Cada fila de participante usa sus propias fijaciones en este escenario, con la duración mínima elegida.</span>
-              {mode === "average" ? (
-                <span>
-                  La fila «Promedio» es la media, entre participantes, de la cifra de cada uno; solo cuentan los
-                  participantes que tienen esa cifra.
-                </span>
-              ) : null}
+              <span>{GROUP_AVERAGE_ROW_DETAIL}</span>
               {detail ? <span>{detail}</span> : null}
             </>
           }
@@ -163,16 +157,14 @@ export function GroupFiguresCard({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mode === "average" ? (
-                <TableRow className="border-b border-border/50 bg-muted/20">
-                  <TableCell className="px-4 py-3 font-semibold text-foreground">Promedio ({participantsText(participants)})</TableCell>
-                  {columns.map((column) => (
-                    <TableCell key={column.key} className="px-4 py-3 text-right font-semibold tabular-nums text-foreground">
-                      {cell(means[column.key]?.mean, column)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ) : null}
+              <TableRow className="border-b border-border/50 bg-muted/20">
+                <TableCell className="px-4 py-3 font-semibold text-foreground">Promedio ({participantsText(participants)})</TableCell>
+                {columns.map((column) => (
+                  <TableCell key={column.key} className="px-4 py-3 text-right font-semibold tabular-nums text-foreground">
+                    {cell(means[column.key]?.mean, column)}
+                  </TableCell>
+                ))}
+              </TableRow>
               {entries.map(({ participant, values, loading }) => (
                 <TableRow key={participant.code} className="border-b border-border/50 last:border-b-0 hover:bg-muted/30">
                   <TableCell className="px-4 py-3">

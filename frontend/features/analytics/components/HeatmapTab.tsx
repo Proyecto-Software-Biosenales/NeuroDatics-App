@@ -436,7 +436,7 @@ export function HeatmapTab({
             <GroupUnsupported reason={groupView.unsupportedReason} className="analytics-state-frame" />
           ) : groupMode ? (
             <>
-              {groupMode === "average" ? <GroupFigureKpis kpis={GROUP_KPIS} entries={groupFigures} /> : null}
+              <GroupFigureKpis kpis={GROUP_KPIS} entries={groupFigures} />
               {groupStimulus()}
               <GroupSpatialFooter participants={groupMode === "overlay" ? groupLayers.map((layer) => layer.participant) : []} notes={groupNotes()} />
               {controls}
@@ -483,7 +483,6 @@ export function HeatmapTab({
 
       {groupMode ? (
         <GroupFiguresCard
-          mode={groupMode}
           entries={groupFigures}
           columns={COLUMNS}
           detail="Las mismas cifras que las tarjetas del mapa de calor de un participante."

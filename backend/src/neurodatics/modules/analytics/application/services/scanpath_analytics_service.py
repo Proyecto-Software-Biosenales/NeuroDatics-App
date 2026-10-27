@@ -8,6 +8,13 @@ from .numeric_helpers import scope_to_scenario as scope_to_scenario
 from .fixation_analytics_service import FixationEventResult, FixationEventService
 
 
+def _segment_label(value) -> Optional[str]:
+    """A detector segment id as text; ``None`` when the event has none."""
+    if value is None or (isinstance(value, float) and not np.isfinite(value)) or value is pd.NA:
+        return None
+    return str(value)
+
+
 class ScanpathAnalyticsService:
     """Computes scanpath objectives and statistics from fixation data."""
 
@@ -154,6 +161,9 @@ class ScanpathAnalyticsService:
                 "t_start": round(float(event["time_s"]), 4),
                 "t_end": round(float(event["t_end_s"]), 4),
                 "n_points": int(event["detector_sample_count"]),
+                # Lines join consecutive objectives of the same segment only,
+                # the same rule as the travelled distance below.
+                "segment_id": _segment_label(event.get("segment_id")),
             })
 
         display_size = result.display_size

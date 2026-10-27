@@ -8,12 +8,12 @@ import type { StatRow } from "./components/StatisticsTable"
 import type { GazeStatistics } from "./types"
 
 export interface SignalStatistics {
-  mean: number
-  baseline: number
-  std: number
-  median: number
-  min: number
-  max: number
+  mean: number | null
+  baseline: number | null
+  std: number | null
+  median: number | null
+  min: number | null
+  max: number | null
 }
 
 /** Rise of the maximum over the baseline, in percent; null without a usable baseline. */

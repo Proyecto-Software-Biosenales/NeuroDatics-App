@@ -82,6 +82,21 @@ def _finite_number(value: Any) -> Optional[float]:
     return numeric
 
 
+def _valid_pupil(data: Dict[str, Any], side: str) -> List[float]:
+    """The smoothed diameter where the eye was seen, NaN where it was lost.
+
+    The pupil timeseries fills a lost eye with 0.0; the dashboard drops those
+    samples (``isValidPupilValue``), so Comparativas does the same instead of
+    drawing and averaging zeros.
+    """
+    raw = np.asarray(data.get(side, []), dtype=float)
+    smooth = np.asarray(data.get(f"smooth_{side}", []), dtype=float)
+    if raw.size != smooth.size:
+        return smooth.tolist()
+    valid = np.isfinite(raw) & (raw > 0) & np.isfinite(smooth) & (smooth > 0)
+    return np.where(valid, smooth, np.nan).tolist()
+
+
 def _downsample_indexes(size: int, max_points: int) -> np.ndarray:
     if size <= 0:
         return np.asarray([], dtype=int)
@@ -555,6 +570,7 @@ class ChartConfigBuilder:
     @classmethod
     def _build_pupil_payload(cls, df, scenario, max_points):
         data = PupilAnalyticsService.compute_timeseries(df, scenario)
+        left, right = _valid_pupil(data, "left"), _valid_pupil(data, "right")
         definitions = [
             {
                 "key": "left",
@@ -562,8 +578,8 @@ class ChartConfigBuilder:
                 "statistics_label": "Izquierda suavizada",
                 "color": REPORT_PALETTE["chartSeries"][0],
                 "unit": "mm",
-                "values": data.get("smooth_left", []),
-                "statistics_values": data.get("smooth_left", []),
+                "values": left,
+                "statistics_values": left,
             },
             {
                 "key": "right",
@@ -571,8 +587,8 @@ class ChartConfigBuilder:
                 "statistics_label": "Derecha suavizada",
                 "color": REPORT_PALETTE["chartSeries"][1],
                 "unit": "mm",
-                "values": data.get("smooth_right", []),
-                "statistics_values": data.get("smooth_right", []),
+                "values": right,
+                "statistics_values": right,
             },
         ]
         return cls._chart_and_summary(
@@ -700,14 +716,14 @@ class ChartConfigBuilder:
                     "label": "Pupila izquierda",
                     "color": REPORT_PALETTE["chartSeries"][0],
                     "unit": "mm",
-                    "values": data.get("smooth_left", []),
+                    "values": _valid_pupil(data, "left"),
                 },
                 {
                     "key": "right",
                     "label": "Pupila derecha",
                     "color": REPORT_PALETTE["chartSeries"][1],
                     "unit": "mm",
-                    "values": data.get("smooth_right", []),
+                    "values": _valid_pupil(data, "right"),
                 },
             ],
             max_points,

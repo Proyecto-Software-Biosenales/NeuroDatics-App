@@ -76,13 +76,14 @@ import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { useGroupView } from "../groupMode/useGroupData"
 import type { GroupKpi } from "../groupMode/GroupStats"
 import { GroupSignalChart, GroupSignalStats, useGroupSignal } from "../groupMode/groupSignal"
+import { GroupStimulusCard } from "../groupMode/GroupStimulusCard"
 
 type ViewMode = "both" | GazeAxis
 
 const AXIS_NAMES: Record<GazeAxis, string> = { x: "mirada X", y: "mirada Y" }
 
 /**
- * «Promedio» cards for one axis. In a group mode each participant is one line
+ * Group-mode cards for one axis. In a group mode each participant is one line
  * of one colour, so the view shows one axis at a time: «Ambos ejes» would
  * double the lines with nothing but the line style to tell X from Y, and an
  * average of X and Y has no meaning.
@@ -194,7 +195,9 @@ export function GazePointTab({
   const groupView = useGroupView(groupSpec)
   // In a group mode the single recording is not loaded at all.
   const individualParticipant = groupView.active ? null : participantCode
+  // The chosen axis; with «Ambos ejes» the cards and the mean line follow X.
   const groupAxis: GazeAxis = viewMode === "y" ? "y" : "x"
+  const axisKey = groupAxis === "x" ? "gx_clean" : "gy_clean"
 
   const {
     data: gazeData,
@@ -238,6 +241,7 @@ export function GazePointTab({
   const gazeX = gazeData?.gx
   const gazeY = gazeData?.gy
   const currentAoi = findAoiAtPoint(aois, gazeX, gazeY)
+  const axisStats = gazeAxisStatistics(stats, groupAxis)
 
   const chartData = useMemo<LinePoint[]>(() => {
     if (!timeseriesData) return []
@@ -269,28 +273,28 @@ export function GazePointTab({
     let minVal = Infinity
     let minT = chartData[0].time
     for (const pt of chartData) {
-      const v = pt.gx_clean
+      const v = pt[axisKey]
       if (v != null && v < minVal) {
         minVal = v
         minT = pt.time
       }
     }
     return minT
-  }, [chartData])
+  }, [chartData, axisKey])
 
   const maxTime = useMemo(() => {
     if (chartData.length === 0) return null
     let maxVal = -Infinity
     let maxT = chartData[0].time
     for (const pt of chartData) {
-      const v = pt.gx_clean
+      const v = pt[axisKey]
       if (v != null && v > maxVal) {
         maxVal = v
         maxT = pt.time
       }
     }
     return maxT
-  }, [chartData])
+  }, [chartData, axisKey])
 
   const selectedValue = useMemo<number | null>(() => {
     if (selectedTime == null || chartData.length === 0) return null
@@ -303,8 +307,8 @@ export function GazePointTab({
         nearest = pt
       }
     }
-    return nearest.gx_clean
-  }, [selectedTime, chartData])
+    return nearest[axisKey]
+  }, [selectedTime, chartData, axisKey])
 
   const tableRows = useMemo<StatRow[]>(() => {
     const countX = chartData.filter((pt) => pt.gx_clean != null).length
@@ -459,8 +463,8 @@ export function GazePointTab({
             {[
               {
                 label: "Media",
-                value: stats?.gx_mean,
-                description: "Mirada X",
+                value: axisStats?.mean,
+                description: groupAxis === "x" ? "Mirada X" : "Mirada Y",
                 Icon: Activity,
                 unit: "%",
                 iconBgClass: "bg-indigo-100 dark:bg-indigo-900/40",
@@ -473,8 +477,8 @@ export function GazePointTab({
               },
               {
                 label: "Mínimo",
-                value: stats?.gx_min,
-                tooltip: "En la señal suavizada de mirada X",
+                value: axisStats?.min,
+                tooltip: `En la señal suavizada de ${AXIS_NAMES[groupAxis]}`,
                 Icon: TrendingDown,
                 unit: "%",
                 iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
@@ -487,8 +491,8 @@ export function GazePointTab({
               },
               {
                 label: "Máximo",
-                value: stats?.gx_max,
-                tooltip: "En la señal suavizada de mirada X",
+                value: axisStats?.max,
+                tooltip: `En la señal suavizada de ${AXIS_NAMES[groupAxis]}`,
                 Icon: TrendingUp,
                 unit: "%",
                 iconBgClass: "bg-rose-100 dark:bg-rose-900/40",
@@ -544,8 +548,8 @@ export function GazePointTab({
                 />
                 <RechartsTooltip content={<GazeTooltip />} />
 
-                {typeof stats?.gx_mean === "number" ? (
-                  <ReferenceLine y={stats.gx_mean} stroke="#9CA3AF" strokeDasharray="4 4" />
+                {typeof axisStats?.mean === "number" ? (
+                  <ReferenceLine y={axisStats.mean} stroke="#9CA3AF" strokeDasharray="4 4" />
                 ) : null}
 
                 {selectedTime != null ? (
@@ -594,7 +598,10 @@ export function GazePointTab({
       </Card>
 
       {groupView.active ? (
-        <GroupSignalStats view={groupView} results={groupResults} unit="%" />
+        <>
+          <GroupStimulusCard view={groupView} scenario={scenario} />
+          <GroupSignalStats view={groupView} results={groupResults} unit="%" />
+        </>
       ) : <>
       {/* Gaze Snapshot Section */}
       <Card className="overflow-hidden">
@@ -652,7 +659,7 @@ export function GazePointTab({
                 {
                   label: "VALOR",
                   value: selectedValue != null ? `${selectedValue.toFixed(2)}` : "—",
-                  sub: "% posición X",
+                  sub: `% posición ${groupAxis.toUpperCase()}`,
                   Icon: Ruler,
                   bg: "bg-emerald-50 dark:bg-emerald-950/40",
                   iconColor: "text-emerald-500",
@@ -809,7 +816,6 @@ export function GazePointTab({
         <CardContent className="pt-0">
           <StatisticsTable
             rows={tableRows}
-            summaryRow={tableRows[0]}
             loading={statsLoading || !stats}
             unit="%"
           />

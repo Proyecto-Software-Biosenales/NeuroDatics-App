@@ -83,18 +83,18 @@ export interface GazeTimeseriesData extends StimulusCoordinateResponse {
 }
 
 export interface GazeStatistics extends StimulusCoordinateResponse {
-  gx_mean: number
-  gx_min: number
-  gx_max: number
-  gx_std: number
-  gx_median: number
-  gx_baseline: number
-  gy_mean: number
-  gy_min: number
-  gy_max: number
-  gy_std: number
-  gy_median: number
-  gy_baseline: number
+  gx_mean: number | null
+  gx_min: number | null
+  gx_max: number | null
+  gx_std: number | null
+  gx_median: number | null
+  gx_baseline: number | null
+  gy_mean: number | null
+  gy_min: number | null
+  gy_max: number | null
+  gy_std: number | null
+  gy_median: number | null
+  gy_baseline: number | null
 }
 
 export interface DistanceTimeseriesData {
@@ -103,12 +103,12 @@ export interface DistanceTimeseriesData {
 }
 
 export interface DistanceStatistics {
-  mean: number
-  min: number
-  max: number
-  std: number
-  median: number
-  baseline: number
+  mean: number | null
+  min: number | null
+  max: number | null
+  std: number | null
+  median: number | null
+  baseline: number | null
 }
 
 export interface GsrTimeseriesData {
@@ -118,12 +118,12 @@ export interface GsrTimeseriesData {
 }
 
 export interface GsrStatistics {
-  mean: number
-  min: number
-  max: number
-  std: number
-  median: number
-  baseline: number
+  mean: number | null
+  min: number | null
+  max: number | null
+  std: number | null
+  median: number | null
+  baseline: number | null
   raw_mean: number | null
   raw_min: number | null
   raw_max: number | null
@@ -348,6 +348,8 @@ export interface ScanpathObjective {
   t_start: number
   t_end: number
   n_points: number
+  /** Detector segment; consecutive objectives of different segments are not joined. */
+  segment_id?: string | null
 }
 
 export interface ScanpathRadiusScale {

@@ -39,12 +39,13 @@ class PupilTimeseriesResponse(BaseModel):
 
 
 class PupilStatisticsResponse(BaseModel):
-    mean: float
-    min: float
-    max: float
-    std: float
-    median: float
-    baseline: float
+    # None when the selection has no valid sample.
+    mean: Optional[float] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
+    std: Optional[float] = None
+    median: Optional[float] = None
+    baseline: Optional[float] = None
     # Raw (unsmoothed) counterparts - shown as tooltips on the frontend
     raw_mean: Optional[float] = None
     raw_min: Optional[float] = None
@@ -98,18 +99,19 @@ class GazeTimeseriesResponse(BaseModel):
 
 
 class GazeStatisticsResponse(BaseModel):
-    gx_mean: float
-    gx_min: float
-    gx_max: float
-    gx_std: float
-    gx_median: float
-    gx_baseline: float
-    gy_mean: float
-    gy_min: float
-    gy_max: float
-    gy_std: float
-    gy_median: float
-    gy_baseline: float
+    # None when the axis has no valid sample.
+    gx_mean: Optional[float] = None
+    gx_min: Optional[float] = None
+    gx_max: Optional[float] = None
+    gx_std: Optional[float] = None
+    gx_median: Optional[float] = None
+    gx_baseline: Optional[float] = None
+    gy_mean: Optional[float] = None
+    gy_min: Optional[float] = None
+    gy_max: Optional[float] = None
+    gy_std: Optional[float] = None
+    gy_median: Optional[float] = None
+    gy_baseline: Optional[float] = None
     warnings: List[str] = []
     coordinate_transform: Optional[CoordinateTransformProvenance] = None
 
@@ -120,12 +122,13 @@ class DistanceTimeseriesResponse(BaseModel):
 
 
 class DistanceStatisticsResponse(BaseModel):
-    mean: float
-    min: float
-    max: float
-    std: float
-    median: float
-    baseline: float
+    # None when the selection has no valid sample.
+    mean: Optional[float] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
+    std: Optional[float] = None
+    median: Optional[float] = None
+    baseline: Optional[float] = None
 
 
 class GsrTimeseriesResponse(BaseModel):
@@ -135,12 +138,13 @@ class GsrTimeseriesResponse(BaseModel):
 
 
 class GsrStatisticsResponse(BaseModel):
-    mean: float
-    min: float
-    max: float
-    std: float
-    median: float
-    baseline: float
+    # None when the selection has no valid sample.
+    mean: Optional[float] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
+    std: Optional[float] = None
+    median: Optional[float] = None
+    baseline: Optional[float] = None
     raw_mean: Optional[float] = None
     raw_min: Optional[float] = None
     raw_max: Optional[float] = None
@@ -299,6 +303,8 @@ class ScanpathObjective(BaseModel):
     t_start: float
     t_end: float
     n_points: int
+    # Detector segment; no line joins objectives of different segments.
+    segment_id: Optional[str] = None
 
 
 class ScanpathRadiusScale(BaseModel):

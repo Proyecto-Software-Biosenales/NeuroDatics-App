@@ -8,6 +8,7 @@ después por [arquitectura.md](tecnica/arquitectura.md).
 | Documento | Qué responde |
 | --- | --- |
 | [Manual de uso (PDF)](../manuales/NeuroDatics-Manual-de-uso.pdf) | El manual de uso: de crear un proyecto a descargar los informes. |
+| [Guía de procesamiento (PDF)](../manuales/NeuroDatics-Guia-de-procesamiento.pdf) | Cómo limpia, calcula y resume NeuroDatics cada señal, para justificar los resultados o recalcularlos. |
 | [usuario/pre-experimento.md](usuario/pre-experimento.md) | Registrar un proyecto antes de tener datos: participantes, pantalla, cuestionarios y notas. |
 | [usuario/comparar-participantes.md](usuario/comparar-participantes.md) | La vista de comparación entre participantes y qué significan sus estadísticas. |
 | [usuario/superposicion-y-promedio.md](usuario/superposicion-y-promedio.md) | Ver a varios participantes en una sola gráfica, superpuestos o promediados, y cómo se calculan sus cifras. |

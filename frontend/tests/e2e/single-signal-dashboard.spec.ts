@@ -284,6 +284,12 @@ for (const [width, height] of [[1536, 730], [390, 844]]) {
     // Let the line animation finish before the picture.
     await page.waitForTimeout(1500)
     await page.screenshot({ path: `../output/mirada-invalida/punto-de-mirada-${width}.png`, fullPage: true })
+    // The cards follow the chosen axis: «Eje Y» shows the Y figures, not X's.
+    await expect(page.getByRole("button", { name: /^Mínimo: 40/ })).toBeVisible()
+    await page.getByRole("button", { name: "Eje Y", exact: true }).click()
+    await expect(page.getByRole("button", { name: /^Mínimo: 50/ })).toBeVisible()
+    await expect(page.getByRole("button", { name: /^Máximo: 60/ })).toBeVisible()
+    await expect(page.getByText("Mirada Y", { exact: true }).first()).toBeVisible()
     expect(errors).toEqual([])
   })
 }

@@ -93,10 +93,27 @@ def test_successful_analytics_contract(http_client, endpoint, snapshot):
                     item["source"]["resolution"] == "legacy_timeseries_display_samples"
                     for item in body["statistics"]
                 )
+                # A lost eye is a gap (None), never a 0 mm diameter.
+                pupil = next(chart for chart in body["charts"] if chart["id"] == "pupil")
+                assert all(
+                    row[key] is None or row[key] > 0
+                    for row in pupil["data"] for key in ("left", "right")
+                )
                 for added in (
                     "contract_version", "statistics_schema_version", "statistics",
                 ):
                     legacy_body.pop(added, None)
+            if endpoint == "/scanpath":
+                # segment_id was added after the v1 baseline: no line joins
+                # objectives of different detector segments.
+                assert all(
+                    item["segment_id"] is None or isinstance(item["segment_id"], str)
+                    for item in body["objectives"]
+                )
+                legacy_body["objectives"] = [
+                    {key: value for key, value in item.items() if key != "segment_id"}
+                    for item in body["objectives"]
+                ]
             if endpoint.endswith("/eeg"):
                 assert body["metadata"]["version"] == "eeg-v2"
                 assert isinstance(body["metadata"]["warnings"], list)

@@ -67,6 +67,7 @@ import type { ParticipantComparisonSpec } from "../participantComparison/spec"
 import { useGroupView } from "../groupMode/useGroupData"
 import type { GroupKpi } from "../groupMode/GroupStats"
 import { GroupSignalChart, GroupSignalStats, useGroupSignal } from "../groupMode/groupSignal"
+import { GroupStimulusCard } from "../groupMode/GroupStimulusCard"
 
 interface DeviceDistanceTabProps {
   projectId: string
@@ -295,6 +296,7 @@ export function DeviceDistanceTab({
             yAxis={groupYAxis}
           />
         ),
+        stimulus: <GroupStimulusCard view={groupView} scenario={scenario} />,
         statistics: <GroupSignalStats view={groupView} results={groupResults} unit=" cm" />,
       }}
       compareSpec={() => ({

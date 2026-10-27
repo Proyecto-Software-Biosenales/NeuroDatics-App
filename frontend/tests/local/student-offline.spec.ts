@@ -406,6 +406,12 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
   await page.getByRole("option", { name: "Promedio", exact: true }).click()
   await expect(page.getByText(/^Promedio de \d+ participantes?$/).first()).toBeVisible({ timeout: 90_000 })
   await expect(page.getByTestId("compare-participants-button")).toHaveCount(0)
+  // A click on the group chart shows where each participant was looking at that instant.
+  const groupChart = page.getByTestId("group-temporal-chart")
+  await groupChart.locator(".recharts-wrapper").click({ position: { x: 240, y: 120 } })
+  await expect(groupChart).toHaveAttribute("data-selected-time", /\d/)
+  await expect(page.getByTestId("group-stimulus")).toContainText("Dónde miraba cada participante a los", { timeout: 90_000 })
+  await expect(page.getByTestId("group-stimulus").getByText("Haz clic en la gráfica")).toHaveCount(0)
   const groupHeatmap = page.waitForResponse((response) => new URL(response.url()).pathname.endsWith("/heatmap/group"), { timeout: 90_000 })
   await page.getByRole("tab", { name: "Mapa de calor", exact: true }).click()
   expect((await groupHeatmap).status()).toBe(200)

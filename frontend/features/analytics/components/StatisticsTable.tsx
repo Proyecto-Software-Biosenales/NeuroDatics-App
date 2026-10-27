@@ -1,7 +1,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Activity, ArrowLeft, ArrowRight, BarChart2, TrendingDown, TrendingUp } from "lucide-react"
+import { Activity, ArrowLeft, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface StatRow {
@@ -22,12 +22,10 @@ export interface StatRow {
 
 interface StatisticsTableProps {
   rows: StatRow[]
-  /** When provided, renders 4 summary KPI cards above the table using this row's data */
-  summaryRow?: StatRow
   loading?: boolean
   /** Unit suffix for numeric values. Defaults to " mm". */
   unit?: string
-  /** Highlights the active row when the summary is not the first row. */
+  /** Highlights this row; without it, the first row stands out. */
   activeSerie?: string
 }
 
@@ -52,102 +50,6 @@ const SERIE_META: Record<string, { Icon: typeof Activity; bg: string; iconColor:
   },
 }
 
-function SummaryCards({ row, loading, unit = " mm" }: { row?: StatRow; loading?: boolean; unit?: string }) {
-  if (loading) {
-    return (
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-4 rounded-xl border border-border bg-card px-4 py-4"
-          >
-            <Skeleton className="h-10 w-10 animate-pulse rounded-xl bg-muted" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-2.5 w-20 animate-pulse rounded bg-muted" />
-              <Skeleton className="h-5 w-24 animate-pulse rounded bg-muted" />
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (!row) return null
-
-  const suffix = row.serie.toUpperCase()
-  const meanValue = row.mean ?? row.median
-  const items = [
-    {
-      label: `MEDIA (${suffix})`,
-      value: fmt(meanValue ?? null, 4, unit),
-      Icon: Activity,
-      bg: "bg-indigo-50 dark:bg-indigo-950/40",
-      iconColor: "text-indigo-500",
-      valueColor: "text-foreground",
-    },
-    {
-      label: `MIN (${suffix})`,
-      value: fmt(row.min, 4, unit),
-      Icon: TrendingDown,
-      bg: "bg-emerald-50 dark:bg-emerald-950/40",
-      iconColor: "text-emerald-500",
-      valueColor: "text-emerald-600 dark:text-emerald-400",
-    },
-    {
-      label: `MAX (${suffix})`,
-      value: fmt(row.max, 4, unit),
-      Icon: TrendingUp,
-      bg: "bg-rose-50 dark:bg-rose-950/40",
-      iconColor: "text-rose-500",
-      valueColor: "text-rose-600 dark:text-rose-400",
-    },
-    {
-      label: `PICO % (${suffix})`,
-      value:
-        row.peak != null
-          ? `${row.peak >= 0 ? "+" : ""}${row.peak.toFixed(1)}%`
-          : "—",
-      Icon: BarChart2,
-      bg: "bg-emerald-50 dark:bg-emerald-950/40",
-      iconColor: "text-emerald-500",
-      valueColor:
-        row.peak != null
-          ? row.peak >= 0
-            ? "text-emerald-600 dark:text-emerald-400"
-            : "text-rose-500"
-          : "text-muted-foreground",
-    },
-  ]
-
-  return (
-    <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {items.map(({ label, value, Icon, bg, iconColor, valueColor }) => (
-        <div
-          key={label}
-          className="flex items-center gap-4 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm"
-        >
-          <div
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-              bg
-            )}
-          >
-            <Icon className={cn("h-5 w-5", iconColor)} />
-          </div>
-          <div className="min-w-0 space-y-2">
-            <p className="text-xs font-normal uppercase tracking-wider text-muted-foreground">
-              {label}
-            </p>
-            <p className={cn("truncate text-xl font-bold leading-tight", valueColor)}>
-              {value}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 const TABLE_HEADERS = [
   "SERIE",
   "NÚMERO",
@@ -159,11 +61,9 @@ const TABLE_HEADERS = [
   "PICO %",
 ]
 
-export function StatisticsTable({ rows, summaryRow, loading, unit = " mm", activeSerie }: StatisticsTableProps) {
+export function StatisticsTable({ rows, loading, unit = " mm", activeSerie }: StatisticsTableProps) {
   return (
     <div>
-      <SummaryCards row={summaryRow} loading={loading} unit={unit} />
-
       {loading ? (
         <div className="overflow-hidden rounded-xl border border-border">
           <Table className="w-full text-sm">

@@ -11,6 +11,7 @@ from .numeric_helpers import _filter_time_window
 from .numeric_helpers import _infer_fs
 from .numeric_helpers import _moving_average
 from .numeric_helpers import _robust_baseline
+from .numeric_helpers import distance_cm
 from .numeric_helpers import scope_to_scenario
 
 
@@ -121,14 +122,17 @@ class PupilAnalyticsService:
         start_time_s: Optional[float] = None,
         end_time_s: Optional[float] = None,
     ) -> dict:
-        """Compute pupil statistics on the smoothed signal (matches what the chart displays)."""
+        """Compute pupil statistics on the smoothed signal (matches what the chart displays).
+
+        Without a valid sample every figure is ``None`` (shown as «—»), never 0.
+        """
         _empty = {
-            "mean": 0.0,
-            "min": 0.0,
-            "max": 0.0,
-            "std": 0.0,
-            "median": 0.0,
-            "baseline": 0.0,
+            "mean": None,
+            "min": None,
+            "max": None,
+            "std": None,
+            "median": None,
+            "baseline": None,
             "raw_mean": None,
             "raw_min": None,
             "raw_max": None,
@@ -388,10 +392,10 @@ class PupilAnalyticsService:
         df = scope_to_scenario(df, scenario)
         df = _filter_time_window(df, start_time_s, end_time_s)
         _empty: dict = attach_transform_provenance({
-            "gx_mean": 0.0, "gx_min": 0.0, "gx_max": 0.0,
-            "gx_std": 0.0, "gx_median": 0.0, "gx_baseline": 0.0,
-            "gy_mean": 0.0, "gy_min": 0.0, "gy_max": 0.0,
-            "gy_std": 0.0, "gy_median": 0.0, "gy_baseline": 0.0,
+            "gx_mean": None, "gx_min": None, "gx_max": None,
+            "gx_std": None, "gx_median": None, "gx_baseline": None,
+            "gy_mean": None, "gy_min": None, "gy_max": None,
+            "gy_std": None, "gy_median": None, "gy_baseline": None,
         }, df)
 
         if "time" not in df.columns or not {GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_COLUMN}.issubset(df.columns):
@@ -407,7 +411,7 @@ class PupilAnalyticsService:
         def _axis_stats(arr: np.ndarray) -> dict:
             finite = arr[np.isfinite(arr)]
             if finite.size == 0:
-                return {"mean": 0.0, "min": 0.0, "max": 0.0, "std": 0.0, "median": 0.0, "baseline": 0.0}
+                return {"mean": None, "min": None, "max": None, "std": None, "median": None, "baseline": None}
             ddof = 1 if finite.size > 1 else 0
             return {
                 "mean": round(float(np.mean(finite)), 4),
@@ -448,8 +452,7 @@ class PupilAnalyticsService:
         df = _filter_time_window(df, start_time_s, end_time_s)
 
         df = df.copy()
-        df["distance"] = pd.to_numeric(df["distance"], errors="coerce")
-        df["distance_cm"] = df["distance"] / 10.0
+        df["distance_cm"] = distance_cm(df["distance"]).to_numpy()
         df = df.dropna(subset=["time", "distance_cm"]).sort_values("time").reset_index(drop=True)
 
         if df.empty:
@@ -474,7 +477,7 @@ class PupilAnalyticsService:
     ) -> dict:
         """Compute statistics for eye-to-screen distance signal (cm)."""
         _empty: dict = {
-            "mean": 0.0, "min": 0.0, "max": 0.0, "std": 0.0, "median": 0.0, "baseline": 0.0,
+            "mean": None, "min": None, "max": None, "std": None, "median": None, "baseline": None,
         }
 
         df = scope_to_scenario(df, scenario)
@@ -485,8 +488,7 @@ class PupilAnalyticsService:
         df = _filter_time_window(df, start_time_s, end_time_s)
 
         df = df.copy()
-        df["distance"] = pd.to_numeric(df["distance"], errors="coerce")
-        df["distance_cm"] = df["distance"] / 10.0
+        df["distance_cm"] = distance_cm(df["distance"]).to_numpy()
         df = df.dropna(subset=["time", "distance_cm"]).sort_values("time").reset_index(drop=True)
 
         if df.empty:

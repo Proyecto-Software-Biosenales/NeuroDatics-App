@@ -13,6 +13,7 @@ from neurodatics.modules.analytics.application.services.analytics_service import
 )
 from neurodatics.modules.analytics.application.services.comparison_chart_config import (
     ChartConfigBuilder,
+    _valid_pupil,
     legacy_javascript_summary,
 )
 
@@ -120,9 +121,13 @@ def test_payload_summaries_match_the_five_previous_endpoint_series(corpus):
         assert block["status"] == "ok"
         assert block["source"]["selected_samples"] <= max_points
         for series in block["series"]:
-            expected = legacy_javascript_summary(
-                old[visualization_id][mapping[series["key"]]]
+            values = (
+                # A lost eye (0.0 in the timeseries) is dropped, as in the dashboard.
+                _valid_pupil(old["pupil"], series["key"])
+                if visualization_id == "pupil"
+                else old[visualization_id][mapping[series["key"]]]
             )
+            expected = legacy_javascript_summary(values)
             _assert_summary_close(series["summary"], expected)
 
     eeg_block = blocks["eeg_timeseries"]

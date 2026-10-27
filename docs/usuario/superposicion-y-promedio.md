@@ -91,11 +91,13 @@ grabación. Para acercar un tramo se arrastra sobre la gráfica, con volver atr�
 
 ## Las cifras
 
-- **Superposición:** la tabla de estadísticas tiene una fila por participante, con su color, calculada igual que
-  en su vista individual.
-- **Promedio:** cada tarjeta muestra el promedio, entre participantes, de la cifra de cada uno («Promedio de n
-  participantes»). No son las cifras de la curva media: el máximo promedio es la media de los máximos de cada
-  persona. La tabla empieza por la fila «Promedio (n participantes)» y sigue con una fila por participante.
+Las dos opciones muestran las mismas cifras:
+
+- **Tarjetas sobre la gráfica:** cada una muestra el promedio, entre los participantes elegidos, de la cifra de
+  cada uno («Promedio de n participantes»). No son las cifras de la curva media: el máximo promedio es la media
+  de los máximos de cada persona.
+- **Tabla de estadísticas:** empieza por la fila «Promedio (n participantes)», con esas mismas cifras, y sigue con
+  una fila por participante, con su color, calculada igual que en su vista individual.
 
 En pupila, densidad espectral, espectrograma y topografía las cifras salen de lo dibujado. En punto de mirada,
 distancia, sensor galvánico y EEG por canal salen de las mismas estadísticas del servidor que la vista
@@ -105,6 +107,16 @@ como su vista individual.
 
 Los participantes sin datos aparecen como filas vacías; los que fallaron al cargar se pueden reintentar desde el
 aviso «sin cargar» bajo la gráfica.
+
+## Ver el estímulo en un instante
+
+En las señales en el tiempo (pupila, punto de mirada, distancia, sensor galvánico y EEG por canal), un clic en la
+gráfica marca ese instante con una línea vertical y la tarjeta **Punto de fijación sobre estímulo visual** muestra
+el estímulo con un punto por participante, en su color, donde miraba en ese momento. Con un escenario concreto
+cada participante se consulta en el mismo segundo desde el inicio del escenario, cada uno en su propia grabación;
+con «Todos los escenarios», en ese segundo de su grabación, y quien estuviera viendo otro escenario se indica
+aparte. Debajo del estímulo se avisa también de quién no tiene mirada registrada en ese instante. «Limpiar
+selección» quita la marca.
 
 ## Límites
 

@@ -181,7 +181,8 @@ test("overlay draws every chosen participant and keeps the view's own controls",
   await expect(page.getByRole("button", { name: "Comparar participantes" })).toHaveCount(0)
   // Recording-bound controls and the gaze panel are gone; eye selection stays.
   await expect(page.getByRole("button", { name: "Aplicar" })).toHaveCount(0)
-  await expect(page.getByText("Punto de fijación sobre estímulo visual")).toHaveCount(0)
+  // The group stimulus card replaces the individual one: a click on the chart fills it.
+  await expect(page.getByTestId("group-stimulus")).toContainText("Haz clic en la gráfica")
   await expect(page.getByRole("button", { name: "Ambas pupilas" })).toBeVisible()
 
   const chart = groupChart(page)
@@ -206,7 +207,9 @@ test("overlay draws every chosen participant and keeps the view's own controls",
 
   // One table row per participant, with an empty row for the one without data.
   const table = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Estadísticas" }) })
-  await expect(table.getByRole("row")).toHaveCount(1 + 5)
+  await expect(table.getByRole("row")).toHaveCount(1 + 1 + 5)
+  // «Superposición» also leads with the «Promedio» row of the chosen participants.
+  await expect(table.getByRole("row").nth(1)).toContainText("Promedio (")
   await expect(table.getByRole("row", { name: /Participante P01/ })).toContainText(participantMean("P01").toFixed(4))
 
   // Deselecting a participant removes its line; its colour stays with the others.

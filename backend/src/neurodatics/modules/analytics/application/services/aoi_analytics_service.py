@@ -11,6 +11,7 @@ from neurodatics.shared.gaze_contract import GAZE_X_CLEAN_COLUMN, GAZE_Y_CLEAN_C
 from .numeric_helpers import _infer_fs as _infer_fs
 from .numeric_helpers import _moving_average as _moving_average
 from .numeric_helpers import _robust_baseline as _robust_baseline
+from .numeric_helpers import distance_cm as _distance_cm
 from .numeric_helpers import scope_to_scenario as scope_to_scenario
 from .pupil_analytics_service import PupilAnalyticsService as PupilAnalyticsService
 from .fixation_summaries import FixationDataService
@@ -237,9 +238,9 @@ class AoiAnalyticsService:
 
         distance_baseline = None
         if "distance" in sample_df.columns:
-            distance_cm = pd.to_numeric(sample_df["distance"], errors="coerce") / 10.0
+            distance_cm = _distance_cm(sample_df["distance"]).to_numpy()
             sample_df["distance_cm"] = distance_cm
-            finite_distance = distance_cm.to_numpy(dtype=float)
+            finite_distance = np.asarray(distance_cm, dtype=float)
             finite_distance = finite_distance[np.isfinite(finite_distance)]
             distance_baseline = (
                 float(_robust_baseline(finite_distance))

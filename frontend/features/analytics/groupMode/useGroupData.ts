@@ -171,6 +171,9 @@ export interface GroupView {
   /** How participants are lined up in time: scenario onset, or each recording's start. */
   timeAxis: GroupTimeAxis
   data: GroupData
+  /** The instant clicked on the group chart, on `timeAxis`; null without one. */
+  selectedTime: number | null
+  selectTime: (time: number | null) => void
 }
 
 /**
@@ -186,5 +189,13 @@ export function useGroupView(spec: ParticipantComparisonSpec | null, options?: {
   const kind = spec?.kind ?? "pupil"
   const scenario = spec?.scenario ?? ""
   const timeAxis = useMemo(() => groupTimeAxis(kind, scenario), [kind, scenario])
-  return { active, mode: active ? group.mode : null, unsupportedReason, timeAxis, data }
+  // An instant belongs to one time axis and mode: another scenario or mode starts without one.
+  const selectionKey = JSON.stringify([kind, scenario, active ? group.mode : null])
+  const [selection, setSelection] = useState<{ key: string; time: number } | null>(null)
+  const selectedTime = selection?.key === selectionKey ? selection.time : null
+  const selectTime = useCallback(
+    (time: number | null) => setSelection(time == null ? null : { key: selectionKey, time }),
+    [selectionKey]
+  )
+  return { active, mode: active ? group.mode : null, unsupportedReason, timeAxis, data, selectedTime, selectTime }
 }

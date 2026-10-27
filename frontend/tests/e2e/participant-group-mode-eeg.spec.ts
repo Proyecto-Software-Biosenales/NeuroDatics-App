@@ -211,7 +211,9 @@ test("EEG por canal: one channel per participant, overlay and average with the s
 
   // The table shows each participant's own full-resolution figure for the chosen channel.
   const table = statsCard(page)
-  await expect(table.getByRole("row")).toHaveCount(1 + 5)
+  await expect(table.getByRole("row")).toHaveCount(1 + 1 + 5)
+  // «Superposición» also leads with the «Promedio» row of the chosen participants.
+  await expect(table.getByRole("row").nth(1)).toContainText("Promedio (")
   await expect(table.getByRole("row", { name: /Participante P02/ })).toContainText(serverMean("P02", "le").toFixed(4))
   // «Canal» comes after the channel chips (which choose what is requested).
   await expect(page.getByLabel("Canales EEG").getByRole("button", { name: "C4", exact: true })).toBeVisible()

@@ -7,7 +7,6 @@ import { KpiCard, type KpiCardProps } from "../components/KpiCard"
 import { StatisticsTable, type StatRow } from "../components/StatisticsTable"
 import { averageStatRows, type StatField } from "./aggregate"
 import type { GroupParticipant } from "./GroupModeProvider"
-import type { GroupMode } from "./groupSupport"
 
 /** One participant's figures, computed with the view's own method; null without data. */
 export interface GroupStatEntry {
@@ -30,8 +29,8 @@ export type GroupKpi = Omit<KpiCardProps, "value" | "loading" | "onClick" | "act
 }
 
 /**
- * «Promedio» KPI cards: the view's own cards, each showing the mean over
- * participants of that participant's figure.
+ * The group modes' KPI cards («Superposición» and «Promedio»): the view's own
+ * cards, each showing the mean over participants of that participant's figure.
  */
 export function GroupKpiGrid({ kpis, entries, loading }: { kpis: GroupKpi[]; entries: GroupStatEntry[]; loading?: boolean }) {
   const averaged = useAveragedStats(entries)
@@ -50,13 +49,16 @@ export function GroupKpiGrid({ kpis, entries, loading }: { kpis: GroupKpi[]; ent
   )
 }
 
+/** The «Cómo se calcula» line about the «Promedio» row, shared by every group table. */
+export const GROUP_AVERAGE_ROW_DETAIL =
+  "La fila «Promedio» es la media, entre participantes, de la cifra de cada uno; solo cuentan los participantes que tienen esa cifra."
+
 /**
- * The statistics card in a group mode. «Superposición»: one row per
- * participant with its colour. «Promedio»: the «Promedio (n participantes)»
- * row first, then each participant.
+ * The statistics card in a group mode («Superposición» and «Promedio»): the
+ * «Promedio (n participantes)» row first, then one row per participant with
+ * its colour.
  */
 export function GroupStatsCard({
-  mode,
   entries,
   unit,
   loading,
@@ -64,7 +66,6 @@ export function GroupStatsCard({
   detail,
   basis = "Cada fila de participante usa sus propias muestras dibujadas de todo el escenario.",
 }: {
-  mode: GroupMode
   entries: GroupStatEntry[]
   unit?: string
   loading?: boolean
@@ -93,7 +94,7 @@ export function GroupStatsCard({
       })),
     [entries]
   )
-  const rows = mode === "average" ? [{ ...averaged.row, key: "group-average" }, ...participantRows] : participantRows
+  const rows = [{ ...averaged.row, key: "group-average" }, ...participantRows]
   return (
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
@@ -106,12 +107,7 @@ export function GroupStatsCard({
           detail={
             <>
               <span>{basis}</span>
-              {mode === "average" ? (
-                <span>
-                  La fila «Promedio» es la media, entre participantes, de la cifra de cada uno; solo cuentan los
-                  participantes que tienen esa cifra.
-                </span>
-              ) : null}
+              <span>{GROUP_AVERAGE_ROW_DETAIL}</span>
               {detail ? <span>{detail}</span> : null}
             </>
           }
@@ -119,7 +115,7 @@ export function GroupStatsCard({
       </CardHeader>
       <CardContent className="overflow-x-auto pt-0">
         {/* Only the «Promedio» row is highlighted; no participant row stands out. */}
-        <StatisticsTable rows={rows} loading={loading} unit={unit} activeSerie={mode === "average" ? averaged.row.serie : "\u0000"} />
+        <StatisticsTable rows={rows} loading={loading} unit={unit} activeSerie={averaged.row.serie} />
       </CardContent>
     </Card>
   )

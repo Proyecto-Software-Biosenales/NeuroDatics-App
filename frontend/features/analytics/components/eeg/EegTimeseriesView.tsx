@@ -462,7 +462,7 @@ export function EegTimeseriesView({
         />
       ) : null}
 
-{view === "timeseries" && group ? group.stats : null}
+{view === "timeseries" && group ? <>{group.stimulus}{group.stats}</> : null}
 
 {view === "timeseries" && !group ? (
         <Card>
