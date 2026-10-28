@@ -5,6 +5,6 @@ distribuirse ni usarse con otro fin sin su autorización previa y por escrito, s
 evaluación académica del proyecto para la que se entrega.
 
 El software de terceros que acompaña a NeuroDatics conserva sus propias licencias: la fuente Poppins
-(SIL Open Font License, frontend/public/fonts/OFL.txt) y, en el paquete de estudiantes, PostgreSQL, ffmpeg
+(SIL Open Font License, frontend/public/fonts/OFL.txt) y, en el paquete de Windows, PostgreSQL, ffmpeg
 y las dependencias de Python y JavaScript, cuyos avisos se reúnen en THIRD-PARTY-NOTICES.txt dentro del
 paquete.

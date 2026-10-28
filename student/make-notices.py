@@ -98,7 +98,7 @@ def ffmpeg_section(tools: pathlib.Path) -> list[str]:
 
 
 FIXED = """\
-NeuroDatics Estudiantes bundles the following software. Each keeps its own license.
+NeuroDatics bundles the following software. Each keeps its own license.
 Folder names below are relative to _internal\\, the hidden folder beside the program that holds this file.
 
 PostgreSQL 16 (pgsql\\, pg-template\\)
@@ -106,7 +106,7 @@ PostgreSQL 16 (pgsql\\, pg-template\\)
   Licensed under the PostgreSQL License (a permissive license similar to BSD/MIT).
   https://www.postgresql.org/about/licence/
 
-Python runtime (neurodatics-estudiantes.exe and the rest of _internal\\)
+Python runtime (neurodatics.exe and the rest of _internal\\)
   The interpreter and standard library are licensed under the Python Software Foundation License.
   https://docs.python.org/3/license.html
 

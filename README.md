@@ -9,14 +9,14 @@
 Convierte la sesión cruda de un laboratorio —eye tracker, EEG y sensor galvánico— en analítica consultable:
 fijaciones, mapas de calor, áreas de interés, espectros de EEG e informes en PDF.
 
-![Versión](https://img.shields.io/badge/versión-1.0.0-0f766e)
+![Versión](https://img.shields.io/badge/versión-2.0.0-0f766e)
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![Licencia](https://img.shields.io/badge/licencia-todos%20los%20derechos%20reservados-lightgrey)
 
-[Funciones](#qué-puede-hacer) · [Ediciones](#dos-ediciones) · [Manuales](#manuales) ·
+[Funciones](#qué-puede-hacer) · [Cómo se entrega](#cómo-se-entrega) · [Manuales](#manuales) ·
 [Inicio rápido](#inicio-rápido) · [Documentación](#documentación) · [Desarrollo](#desarrollo)
 
 <img src="docs/assets/proyectos.png" alt="Lista de proyectos de NeuroDatics" width="860">
@@ -62,17 +62,21 @@ los mismos servicios.
 
 <sub>Las capturas usan datos sintéticos.</sub>
 
-## Dos ediciones
+## Cómo se entrega
 
-El mismo código se entrega de dos formas:
+NeuroDatics es un programa de Windows para el investigador, en su propio equipo:
 
-| | Edición servidor | NeuroDatics Estudiantes |
-| --- | --- | --- |
-| **Para quién** | Un laboratorio o grupo que comparte proyectos | Un estudiante en su propio portátil |
-| **Cómo se usa** | Navegador contra un servidor con Docker | Un programa de Windows, sin instalación |
-| **Cuenta** | Inicio de sesión con Google | Ninguna |
-| **Archivos** | Google Drive | Una carpeta en el equipo |
-| **Red** | Red local o institucional | Ninguna: todo ocurre en `127.0.0.1` |
+| | |
+| --- | --- |
+| **Cómo se usa** | Se extrae un zip y se abre `neurodatics.exe`, sin instalación |
+| **Cuenta** | Ninguna |
+| **Archivos** | Una carpeta en el equipo (`%LOCALAPPDATA%\NeuroDatics`) |
+| **Red** | Ninguna: todo ocurre en `127.0.0.1`, sin internet |
+
+El repositorio conserva también una **edición en red**, con Docker, inicio de sesión con Google y archivos en
+Google Drive, pensada para que un laboratorio comparta proyectos. **Hoy no se usa ni se mantiene**: necesita una
+base de datos, un servicio de identificación y un almacenamiento en la nube que debe proveer quien la aloje.
+[docs/tecnica/alojamiento-en-red.md](docs/tecnica/alojamiento-en-red.md) explica qué hace falta y dónde se conecta.
 
 ## Manuales
 
@@ -80,57 +84,39 @@ Los manuales para quien instala y usa NeuroDatics están en PDF en [manuales/](m
 
 | Manual | Para qué |
 | --- | --- |
-| [Manual de uso](manuales/NeuroDatics-Manual-de-uso.pdf) | Usar la aplicación paso a paso, en las dos ediciones: proyectos, datos, tablero, pre-experimentos e informes. |
-| [Guía de instalación: edición servidor](manuales/NeuroDatics-Guia-de-instalacion-servidor.pdf) | Instalar, iniciar y detener la edición servidor (Docker) en Windows. |
-| [Guía de instalación: NeuroDatics Estudiantes](manuales/NeuroDatics-Guia-de-instalacion-estudiantes.pdf) | Descomprimir y abrir la edición de estudiantes en Windows. |
+| [Manual de uso](manuales/NeuroDatics-Manual-de-uso.pdf) | Usar la aplicación paso a paso: proyectos, datos, tablero, pre-experimentos e informes. |
+| [Guía de instalación](manuales/NeuroDatics-Guia-de-instalacion.pdf) | Descomprimir y abrir NeuroDatics en Windows. |
 | [Guía de procesamiento](manuales/NeuroDatics-Guia-de-procesamiento.pdf) | Para investigadores: cómo se limpian, calculan y resumen las señales, y qué recalcular si tu objetivo es otro. |
 
 ## Inicio rápido
 
-### Edición servidor
+El investigador recibe un zip; al extraerlo ve solo `neurodatics.exe` y `LEEME.txt`. Al abrir el programa,
+arranca su propia base de datos y abre el navegador. Los proyectos se guardan en `%LOCALAPPDATA%\NeuroDatics`,
+así que borrar la carpeta del programa no los borra. La guía para el investigador es la
+[guía de instalación](manuales/NeuroDatics-Guia-de-instalacion.pdf) (y, dentro del paquete,
+[student/LEEME.txt](student/LEEME.txt)), y cómo se construye el paquete está en
+[student/README.md](student/README.md).
 
-Requisitos: Docker Desktop y Git.
+<details>
+<summary>Alojar la edición en red (sin uso actual)</summary>
+
+Requisitos: Docker Desktop, Git y los servicios que describe
+[docs/tecnica/alojamiento-en-red.md](docs/tecnica/alojamiento-en-red.md).
 
 ```powershell
 git clone https://github.com/Proyecto-Software-Biosenales/NeuroDatics-App.git
 cd NeuroDatics-App
-Copy-Item .env.example .env      # completa POSTGRES_PASSWORD, AUTH_JWT_SECRET y las credenciales de Google
+Copy-Item .env.example .env      # rellena lo marcado «DEBES PROVEER»
 docker compose up -d --build
 ```
 
 La aplicación queda en **http://localhost:3000** (la API en `/api` y su documentación en `/docs`). El contenedor
-del backend aplica las migraciones antes de arrancar. [`.env.example`](.env.example) documenta todas las
-opciones, y [deployment/CONFIGURACION-GOOGLE.md](deployment/CONFIGURACION-GOOGLE.md) explica cómo obtener las
-credenciales de Google y conectar Drive.
-
-Para instalarla en un equipo sin entorno de desarrollo existe un instalador en español con dos botones,
-**INSTALAR** e **INICIAR**: ver la [guía de instalación](manuales/NeuroDatics-Guia-de-instalacion-servidor.pdf) y
-[deployment/README.md](deployment/README.md).
-
-<details>
-<summary>Comandos de operación</summary>
-
-```powershell
-docker compose logs -f                 # registros de todos los servicios
-docker compose up -d --build           # reconstruir tras actualizar el código
-docker compose down                    # detener sin borrar datos
-docker compose down -v                 # borrar base de datos y cachés (destructivo)
-```
-
-Si un servicio aparece como `unhealthy`, revisa `docker compose logs --tail=200 backend` antes de borrar nada. El
-backend expone `/health` y `/health/ready`. Para una red universitaria o corporativa, ver
+del backend aplica las migraciones antes de arrancar. Si un servicio aparece como `unhealthy`, revisa
+`docker compose logs --tail=200 backend` antes de borrar nada; `docker compose down -v` borra la base de datos y
+las cachés. Para una red universitaria o corporativa, ver
 [docs/tecnica/despliegue-en-red.md](docs/tecnica/despliegue-en-red.md).
 
 </details>
-
-### NeuroDatics Estudiantes
-
-El estudiante recibe un zip; al extraerlo ve solo `neurodatics-estudiantes.exe` y `LEEME.txt`. Al abrir el
-programa, arranca su propia base de datos y abre el navegador. Los proyectos se guardan en
-`%LOCALAPPDATA%\NeuroDatics Estudiantes`, así que borrar la carpeta del programa no los borra. La guía del
-estudiante es la [guía de instalación](manuales/NeuroDatics-Guia-de-instalacion-estudiantes.pdf) (y, dentro del
-paquete, [student/LEEME.txt](student/LEEME.txt)), y cómo se construye el paquete está en
-[student/README.md](student/README.md).
 
 ## Cómo funciona
 
@@ -146,7 +132,7 @@ flowchart LR
 
 El backend es **FastAPI** con SQLAlchemy asíncrono, pandas, NumPy, SciPy y PyArrow; los informes se componen con
 **Typst**. El frontend es **Next.js** con React, TypeScript, Tailwind, shadcn/Radix y Recharts. Los datos
-relacionales viven en **PostgreSQL 16** y los bytes (estímulos y Parquet) en Google Drive o en disco. El recorrido
+relacionales viven en **PostgreSQL 16** y los bytes (estímulos y Parquet) en disco. El recorrido
 completo está en [docs/tecnica/arquitectura.md](docs/tecnica/arquitectura.md).
 
 ## Documentación
@@ -165,10 +151,10 @@ completo está en [docs/tecnica/arquitectura.md](docs/tecnica/arquitectura.md).
 ## Estructura del repositorio
 
 ```text
-backend/      API FastAPI: ingesta, analítica, informes, migraciones y la edición local
-frontend/     interfaz Next.js, común a las dos ediciones
-student/      construcción y comprobaciones de NeuroDatics Estudiantes, y su guía
-deployment/   instalador de la edición servidor para Windows
+backend/      API FastAPI: ingesta, analítica, informes, migraciones y el lanzador local
+frontend/     interfaz Next.js
+student/      construcción y comprobaciones del paquete de Windows, y su guía
+deployment/   edición en red con Docker (sin uso actual)
 docs/         documentación por público: usuario, técnica y desarrollo
 manuales/     manual de uso y guías de instalación y de procesamiento, en PDF
 verify.ps1    la puerta de verificación del repositorio
@@ -183,7 +169,7 @@ cd frontend; npm ci; npx playwright install chromium; cd ..
 
 `verify.ps1` es la única puerta de verificación: pruebas del backend con resultados de referencia protegidos,
 Ruff, Vulture, deptry, contratos de importación, arranque de la aplicación, TypeScript, pruebas del frontend en
-Node y en Chromium real, y ESLint. Cómo preparar el entorno, las reglas de las dos ediciones y el detalle de cada
+Node y en Chromium real, y ESLint. Cómo preparar el entorno, las reglas para cambiar el código y el detalle de cada
 prueba están en [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Autores

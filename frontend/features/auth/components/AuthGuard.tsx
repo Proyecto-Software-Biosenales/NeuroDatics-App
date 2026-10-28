@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { SIGN_IN_PATH } from '@/lib/appMode'
 import { useAuth } from '@/lib/providers/AuthProvider'
 
 interface AuthGuardProps {
@@ -14,7 +15,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   useEffect(() => {
     if (!loading && !currentUser) {
-      router.replace('/login')
+      router.replace(SIGN_IN_PATH)
     }
   }, [currentUser, loading, router])
 

@@ -1,3 +1,5 @@
+# Edición en red de NeuroDatics, sin uso actual: la aplicación se entrega solo como programa local
+# para Windows. Se conserva para quien quiera alojarla: docs/tecnica/alojamiento-en-red.md.
 name: neurodatics
 
 x-backend-environment: &backend-environment

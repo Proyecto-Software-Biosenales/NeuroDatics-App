@@ -23,15 +23,15 @@ function Quote($p) { '"' + $p + '"' }
 function Try-Get($block) { try { & $block } catch { "unavailable: $($_.Exception.Message)" } }
 
 if (-not $Package) {
-    foreach ($candidate in @((Join-Path $here 'NeuroDatics Estudiantes'), (Split-Path -Parent $here), (Get-Location).Path)) {
-        if (Test-Path (Join-Path $candidate 'neurodatics-estudiantes.exe')) { $Package = $candidate; break }
+    foreach ($candidate in @((Join-Path $here 'NeuroDatics'), (Split-Path -Parent $here), (Get-Location).Path)) {
+        if (Test-Path (Join-Path $candidate 'neurodatics.exe')) { $Package = $candidate; break }
     }
 }
-if (-not $Package -or -not (Test-Path (Join-Path $Package 'neurodatics-estudiantes.exe'))) {
-    throw 'Could not find neurodatics-estudiantes.exe. Pass -Package <the extracted folder>.'
+if (-not $Package -or -not (Test-Path (Join-Path $Package 'neurodatics.exe'))) {
+    throw 'Could not find neurodatics.exe. Pass -Package <the extracted folder>.'
 }
 $Package = (Resolve-Path $Package).Path
-$exe = Join-Path $Package 'neurodatics-estudiantes.exe'
+$exe = Join-Path $Package 'neurodatics.exe'
 
 # --- who is this machine ----------------------------------------------------------------------------------
 $os = Get-CimInstance Win32_OperatingSystem

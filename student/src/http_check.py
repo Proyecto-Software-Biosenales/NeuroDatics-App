@@ -1,10 +1,11 @@
 """Drive a running local-mode app through its real HTTP routes with a real experiment ZIP.
 
 This is what the M1 harness could not do: it went around the routes because they were hardwired
-to Google Drive. Here the whole path runs - session, project, ZIP upload and ingestion into the
-local store, analytics, media, a report, deletion - and the check fails on anything empty.
+to Google Drive. Here the whole path runs - profile, project, ZIP upload and ingestion into the
+local store, analytics, media, a report, deletion - and the check fails on anything empty. It leaves the
+computer without profiles, as the browser checks that follow expect.
 
-    neurodatics-estudiantes.exe http-check --url http://127.0.0.1:8765 --zip experiment.zip
+    neurodatics.exe http-check --url http://127.0.0.1:8765 --zip experiment.zip
 """
 from __future__ import annotations
 
@@ -58,10 +59,13 @@ def run(args) -> int:
         assert client.get("/no-such-page/").status_code == 404
         assert client.get("/api/no-such-route").status_code == 404
 
-    with stage("session_and_readiness") as rec:
-        session = client.post("/api/auth/local-session")
-        assert session.status_code == 200, session.text
+    with stage("profile_and_readiness") as rec:
+        assert client.get("/api/projects/").status_code == 401, "a request without a profile must be refused"
+        session = client.post("/api/auth/profiles", json={"name": "Comprobación HTTP"})
+        assert session.status_code == 201, session.text
         rec["user"] = session.json()["user"]
+        state["profile"] = rec["user"]["id"]
+        client.headers["Authorization"] = f"Bearer {session.json()['access_token']}"
         ready = client.get("/health/ready")
         rec["ready"] = ready.json()
         assert ready.status_code == 200 and ready.json()["status"] == "ready", ready.text
@@ -176,6 +180,16 @@ def run(args) -> int:
             rec["stored_files_before_upload"] = stored_before
             rec["stored_files_after_delete"] = count_files(storage)
             assert rec["stored_files_after_delete"] == stored_before, rec
+
+    with stage("delete_profile_removes_its_projects") as rec:
+        assert client.post("/api/projects/", json={"name": "http-check profile"}).status_code in (200, 201)
+        deleted = client.delete(f"/api/auth/profiles/{state['profile']}")
+        assert deleted.status_code == 200, deleted.text
+        rec["response"] = deleted.json()
+        assert rec["response"] == {"deleted_projects": 1}, rec
+        assert client.get("/api/projects/").status_code == 401, "a deleted profile must be refused"
+        rec["profiles_left"] = client.get("/api/auth/profiles").json()
+        assert rec["profiles_left"] == [], rec
 
     RESULTS["all_ok"] = all(s["ok"] for s in RESULTS["stages"].values())
     pathlib.Path(args.out).write_text(json.dumps(RESULTS, indent=2, default=str), encoding="utf-8")

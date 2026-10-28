@@ -18,7 +18,7 @@ después por [arquitectura.md](tecnica/arquitectura.md).
 
 | Documento | Qué responde |
 | --- | --- |
-| [tecnica/arquitectura.md](tecnica/arquitectura.md) | Cómo encajan backend, frontend y las dos ediciones; por dónde pasan los datos. |
+| [tecnica/arquitectura.md](tecnica/arquitectura.md) | Cómo encajan backend, frontend y las ediciones local y en red; por dónde pasan los datos. |
 | [tecnica/subida-de-experimentos.md](tecnica/subida-de-experimentos.md) | Qué hace una subida de experimento, en qué orden, qué garantiza y qué no. |
 | [tecnica/pre-experimento.md](tecnica/pre-experimento.md) | Cómo se guarda la preparación de un proyecto y qué expone la API de pre-experimentos. |
 | [tecnica/deteccion-de-fijaciones.md](tecnica/deteccion-de-fijaciones.md) | Cómo se detectan las fijaciones desde la mirada cruda y cómo se mide su duración. |
@@ -27,7 +27,8 @@ después por [arquitectura.md](tecnica/arquitectura.md).
 | [tecnica/eeg/metodos.md](tecnica/eeg/metodos.md) | Cómo se calcula cada resultado de EEG y con qué límites. |
 | [tecnica/eeg/validacion.md](tecnica/eeg/validacion.md) | La validación contra grabaciones reales: qué se encontró y qué se corrigió. |
 | [tecnica/eeg/escalas-por-grabacion.md](tecnica/eeg/escalas-por-grabacion.md) | Las escalas declaradas por grabación y canal, y cómo se tratan. |
-| [tecnica/despliegue-en-red.md](tecnica/despliegue-en-red.md) | Poner la edición servidor en una red universitaria o corporativa. |
+| [tecnica/alojamiento-en-red.md](tecnica/alojamiento-en-red.md) | Alojar la edición en red (sin uso actual): qué base de datos, identificación y almacenamiento proveer. |
+| [tecnica/despliegue-en-red.md](tecnica/despliegue-en-red.md) | Salidas de red y proxy que necesita la edición en red en una universidad o empresa. |
 
 La carpeta `tecnica/eeg/evidencia/` guarda la evidencia de la validación de EEG; los archivos de origen aparecen
 anonimizados (`csv-01`…`csv-08`) e identificados solo por su SHA-256.
@@ -44,9 +45,9 @@ anonimizados (`csv-01`…`csv-08`) e identificados solo por su SHA-256.
 
 ## Entregas
 
-- Edición servidor: la [guía de instalación](../manuales/NeuroDatics-Guia-de-instalacion-servidor.pdf),
-  [deployment/README.md](../deployment/README.md) (instalación en Windows) y
-  [deployment/MANTENIMIENTO.md](../deployment/MANTENIMIENTO.md) (cómo se genera la entrega).
-- NeuroDatics Estudiantes: la [guía de instalación](../manuales/NeuroDatics-Guia-de-instalacion-estudiantes.pdf),
+- NeuroDatics (Windows): la [guía de instalación](../manuales/NeuroDatics-Guia-de-instalacion.pdf),
   [student/README.md](../student/README.md) (construcción y comprobaciones) y
-  [student/LEEME.txt](../student/LEEME.txt) (la guía del estudiante).
+  [student/LEEME.txt](../student/LEEME.txt) (la guía rápida que viaja en el paquete).
+- Edición en red, sin uso actual: [tecnica/alojamiento-en-red.md](tecnica/alojamiento-en-red.md) (qué debe
+  proveer quien la aloje), [deployment/README.md](../deployment/README.md) (el instalador de Windows con Docker,
+  que ya no se genera) y [deployment/MANTENIMIENTO.md](../deployment/MANTENIMIENTO.md).

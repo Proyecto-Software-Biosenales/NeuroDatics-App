@@ -1,3 +1,6 @@
+# Network edition only (Google sign-in, Google Drive). NeuroDatics ships only the local edition,
+# which never imports this module; it is kept for self-hosting: docs/tecnica/alojamiento-en-red.md.
+
 """Administración de la cuenta de Google Drive compartida, solo desde el servidor.
 
 Quien usa NeuroDatics no elige ni ve la cuenta que guarda los archivos: la definen los
@@ -55,7 +58,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     if settings.is_local:
-        raise SystemExit("La edición de estudiantes guarda los archivos en el equipo; no usa Google Drive.")
+        raise SystemExit("La edición local guarda los archivos en el equipo; no usa Google Drive.")
 
     print(_describe(asyncio.run(_read_integration())))
     if args.accion == "conectar":

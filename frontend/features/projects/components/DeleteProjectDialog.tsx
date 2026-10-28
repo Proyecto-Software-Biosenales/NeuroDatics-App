@@ -1,20 +1,9 @@
 "use client"
 import { useState } from "react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { ConfirmDeletionDialog } from "@/components/ConfirmDeletionDialog"
 import type { DeleteProjectResult } from "@/features/projects/api/projectsApi"
 import { storageCopy } from "@/features/projects/storageCopy"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 
 interface DeleteProjectDialogProps {
   projectId: string
@@ -40,41 +29,15 @@ export const DeleteProjectDialog = ({
       setInternalOpen(value)
     }
   }
-  const [step, setStep] = useState<1 | 2>(1)
-  const [confirmationText, setConfirmationText] = useState("")
 
-  const resetDialogState = () => {
-    setStep(1)
-    setConfirmationText("")
-  }
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    setIsOpen(nextOpen)
-    if (!nextOpen) {
-      resetDialogState()
-    }
-  }
-
-  const handleContinue = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation()
-    setStep(2)
-  }
-
-  const handleDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation()
-
-    if (confirmationText.trim().toLowerCase() !== "eliminar") {
-      toast.error('Debes escribir "eliminar" para confirmar.')
-      return
-    }
-
+  const handleDelete = async () => {
     const loadingToastId = toast.loading(`Eliminando «${projectName}»…`)
 
     try {
       const result = await onDelete(projectId)
-      
+
       toast.dismiss(loadingToastId)
-      
+
       if (result?.drive_folder_found) {
         if (result.drive_folder_deleted) {
           toast.success(storageCopy.deletedWithFolder(projectName))
@@ -85,7 +48,6 @@ export const DeleteProjectDialog = ({
         toast.success(`Proyecto «${projectName}» eliminado.`)
       }
       setIsOpen(false)
-      resetDialogState()
     } catch (error) {
       console.error(error)
       toast.dismiss(loadingToastId)
@@ -94,55 +56,21 @@ export const DeleteProjectDialog = ({
   }
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
-      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {step === 1 ? "¿Eliminar proyecto?" : "Confirma la eliminación"}
-          </AlertDialogTitle>
-          {step === 1 ? (
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Se eliminará el proyecto{" "}
-              <span className="font-semibold text-foreground">
-                «{projectName}»
-              </span>
-              {storageCopy.deleteWarningTail}
-            </AlertDialogDescription>
-          ) : (
-            <div className="space-y-2">
-              <AlertDialogDescription>
-                Para confirmar, escribe <span className="font-semibold text-foreground">eliminar</span> en el campo.
-              </AlertDialogDescription>
-              <Input
-                value={confirmationText}
-                onChange={(e) => setConfirmationText(e.target.value)}
-                placeholder='Escribe "eliminar"'
-                onClick={(e) => e.stopPropagation()}
-                autoFocus
-              />
-            </div>
-          )}
-        </AlertDialogHeader>
-
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
-            Cancelar
-          </AlertDialogCancel>
-          {step === 1 ? (
-            <Button type="button" onClick={handleContinue} className="hover:bg-destructive/90">
-              Continuar
-            </Button>
-          ) : (
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={confirmationText.trim().toLowerCase() !== "eliminar"}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar proyecto
-            </AlertDialogAction>
-          )}
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDeletionDialog
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      title="¿Eliminar proyecto?"
+      description={
+        <>
+          Esta acción no se puede deshacer. Se eliminará el proyecto{" "}
+          <span className="font-semibold text-foreground">
+            «{projectName}»
+          </span>
+          {storageCopy.deleteWarningTail}
+        </>
+      }
+      confirmLabel="Eliminar proyecto"
+      onConfirm={() => void handleDelete()}
+    />
   )
 }

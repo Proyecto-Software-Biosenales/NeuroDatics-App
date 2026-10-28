@@ -4,17 +4,17 @@
 #
 # Run student\build.ps1 and student\run-frozen.ps1 -Assemble first. This script then:
 #   1. adds LEEME.txt (the student guide) and THIRD-PARTY-NOTICES.txt to the package folder
-#   2. zips it to <Work>\release\NeuroDatics-Estudiantes-<Version>-win64.zip, with a SHA-256 file
+#   2. zips it to <Work>\release\NeuroDatics-<Version>-win64.zip, with a SHA-256 file
 #   3. extracts that zip into a fresh folder with an accented path and starts the real app from it
 #      in an empty profile, offline-guarded, then stops it (skip with -SkipVerify)
 #   4. writes package-report.json: sizes, hash, what was checked and the release blockers still open
 #   5. copies laptop-test.ps1 beside the zip in <Work>\release: the maintainer's script for the test laptop
-#   6. makes delivery\NeuroDatics-Estudiantes (git-ignored, like the server edition's delivery\NeuroDatics-App)
+#   6. makes delivery\NeuroDatics (git-ignored)
 #      the ready-to-run program folder, which shows only the exe and LEEME.txt, and puts the zip beside it
-#      as delivery\NeuroDatics-Estudiantes-<Version>-win64.zip (skip with -NoDelivery)
+#      as delivery\NeuroDatics-<Version>-win64.zip (skip with -NoDelivery)
 #
 # Layout of the program folder (and of the single folder inside the zip):
-#   neurodatics-estudiantes.exe  LEEME.txt
+#   neurodatics.exe  LEEME.txt
 #   _internal\  hidden: the Python runtime, pgsql\, pg-template\, tools\, frontend\, THIRD-PARTY-NOTICES.txt
 #
 # The extracted-zip check is a smoke test. The full gates (run-frozen.ps1 -Pkg <extracted> -Only serve)
@@ -25,19 +25,19 @@ param(
     [string]$Version = 'prueba',
     [switch]$SkipVerify,
     [switch]$NoDelivery,
-    [string]$DeliveryDir = (Join-Path $PSScriptRoot '..\delivery\NeuroDatics-Estudiantes')
+    [string]$DeliveryDir = (Join-Path $PSScriptRoot '..\delivery\NeuroDatics')
 )
 $ErrorActionPreference = 'Stop'
 $Work = (Resolve-Path $Work).Path
 $student = $PSScriptRoot
-if (-not $Pkg) { $Pkg = Join-Path $Work 'Estudiantes ñandú\NeuroDatics Estudiantes' }
-$exe = Join-Path $Pkg 'neurodatics-estudiantes.exe'
+if (-not $Pkg) { $Pkg = Join-Path $Work 'Investigación ñandú\NeuroDatics' }
+$exe = Join-Path $Pkg 'neurodatics.exe'
 if (-not (Test-Path $exe)) { throw "no assembled package at $Pkg (run student\build.ps1, then student\run-frozen.ps1 -Assemble)" }
 $py = "$Work\build-venv\Scripts\python.exe"
 if (-not (Test-Path $py)) { throw "no build venv at $Work\build-venv" }
 $release = Join-Path $Work 'release'
 New-Item -ItemType Directory -Force $release | Out-Null
-$zipPath = Join-Path $release "NeuroDatics-Estudiantes-$Version-win64.zip"
+$zipPath = Join-Path $release "NeuroDatics-$Version-win64.zip"
 
 function MB($p) { [math]::Round(((Get-ChildItem -LiteralPath $p -Recurse -File -Force | Measure-Object Length -Sum).Sum) / 1048576, 1) }
 
@@ -45,7 +45,7 @@ function MB($p) { [math]::Round(((Get-ChildItem -LiteralPath $p -Recurse -File -
 # runtime's folder, marked hidden here and in the zip (the launcher re-hides it if an extractor
 # dropped the attribute).
 $internal = Join-Path $Pkg '_internal'
-$visible = 'neurodatics-estudiantes.exe', 'LEEME.txt'
+$visible = 'neurodatics.exe', 'LEEME.txt'
 if (-not (Test-Path "$internal\pgsql\bin\postgres.exe")) {
     throw "the package at $Pkg has the old layout (pgsql beside the exe); assemble it again with student\run-frozen.ps1 -Assemble"
 }
@@ -120,7 +120,7 @@ if (-not $SkipVerify) {
     $check = Join-Path $Work 'release-check'
     if (Test-Path $check) { Remove-Item $check -Recurse -Force }
     # An accented, spaced path like the ones Spanish user profiles produce.
-    $extractRoot = Join-Path $check 'Descargas ñ Estudiante'
+    $extractRoot = Join-Path $check 'Descargas ñ Investigador'
     $clock.Restart()
     [IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $extractRoot)
     $extracted = Join-Path $extractRoot (Split-Path $Pkg -Leaf)
@@ -129,7 +129,7 @@ if (-not $SkipVerify) {
     $verify.files_match = ($extractedFiles.Count -eq $pkgFiles.Count) -and
         (($extractedFiles | Measure-Object Length -Sum).Sum -eq ($pkgFiles | Measure-Object Length -Sum).Sum)
     if (-not $verify.files_match) { throw "the extracted zip differs from the package ($($extractedFiles.Count) vs $($pkgFiles.Count) files)" }
-    foreach ($needed in 'neurodatics-estudiantes.exe', 'LEEME.txt', '_internal\THIRD-PARTY-NOTICES.txt', '_internal\pgsql\bin\postgres.exe', '_internal\pgsql\bin\vcruntime140.dll', '_internal\pgsql\bin\msvcp140.dll','_internal\pg-template\PG_VERSION', '_internal\tools\ffprobe.exe', '_internal\frontend\index.html') {
+    foreach ($needed in 'neurodatics.exe', 'LEEME.txt', '_internal\THIRD-PARTY-NOTICES.txt', '_internal\pgsql\bin\postgres.exe', '_internal\pgsql\bin\vcruntime140.dll', '_internal\pgsql\bin\msvcp140.dll','_internal\pg-template\PG_VERSION', '_internal\tools\ffprobe.exe', '_internal\frontend\index.html') {
         if (-not (Test-Path (Join-Path $extracted $needed))) { throw "the extracted package lacks $needed" }
     }
     # What the student sees: the top of the zip, and the hidden flag Explorer will restore.
@@ -152,8 +152,8 @@ if (-not $SkipVerify) {
     $names = 'PATH', 'USERPROFILE', 'HOME', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'PYTHONPATH', 'PYTHONHOME', 'VIRTUAL_ENV'
     $saved = @{}; foreach ($n in $names) { $saved[$n] = [Environment]::GetEnvironmentVariable($n) }
     $stop = "$profile1\stop.txt"
-    $dataDir = "$profile1\AppData\Local\NeuroDatics Estudiantes"
-    $extractedExe = Join-Path $extracted 'neurodatics-estudiantes.exe'
+    $dataDir = "$profile1\AppData\Local\NeuroDatics"
+    $extractedExe = Join-Path $extracted 'neurodatics.exe'
     try {
         $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
         $env:USERPROFILE = $profile1; $env:HOME = $profile1; $env:APPDATA = "$profile1\AppData\Roaming"
@@ -177,8 +177,10 @@ if (-not $SkipVerify) {
         $verify.home_status = [int]$page.StatusCode
         $verify.home_is_the_app = $page.Content -match 'NeuroDatics'
         $verify.health_status = [int](Invoke-WebRequest "$url/health" -UseBasicParsing).StatusCode
-        $session = Invoke-RestMethod "$url/api/auth/local-session" -Method Post -ContentType 'application/json' -Body '{}'
-        $verify.session_token_issued = [bool]$session.access_token
+        # A new copy has no profile and asks for one; creating it is what issues the session.
+        $verify.asks_for_a_profile = $null -eq (Invoke-RestMethod "$url/api/auth/local-session" -Method Post -ContentType 'application/json' -Body '{}').user
+        $session = Invoke-RestMethod "$url/api/auth/profiles" -Method Post -ContentType 'application/json; charset=utf-8' -Body '{"name": "Comprobacion"}'
+        $verify.session_token_issued = [bool]$session.access_token -and $verify.asks_for_a_profile
         if (-not ($verify.home_status -eq 200 -and $verify.home_is_the_app -and $verify.health_status -eq 200 -and $verify.session_token_issued)) {
             throw "the extracted app answered wrongly: $($verify | ConvertTo-Json -Compress)"
         }
@@ -221,8 +223,8 @@ if (-not $NoDelivery) {
     if (Test-Path $DeliveryDir) {
         # /MIR below deletes whatever else is there: refuse a folder that is not a previous delivery.
         $previous = Get-ChildItem -LiteralPath $DeliveryDir -Force
-        $isDelivery = (-not $previous) -or (Test-Path (Join-Path $DeliveryDir 'neurodatics-estudiantes.exe')) -or
-            (Test-Path (Join-Path $DeliveryDir 'NeuroDatics Estudiantes\neurodatics-estudiantes.exe'))
+        $isDelivery = (-not $previous) -or (Test-Path (Join-Path $DeliveryDir 'neurodatics.exe')) -or
+            (Test-Path (Join-Path $DeliveryDir 'NeuroDatics\neurodatics.exe'))
         if (-not $isDelivery) { throw "$DeliveryDir is not empty and holds no previous delivery; refusing to mirror over it" }
     }
     New-Item -ItemType Directory -Force $DeliveryDir | Out-Null
@@ -231,7 +233,7 @@ if (-not $NoDelivery) {
     $support = Get-Item -LiteralPath (Join-Path $DeliveryDir '_internal') -Force
     $support.Attributes = $support.Attributes -bor [IO.FileAttributes]::Hidden
     $deliveredZip = Join-Path (Split-Path $DeliveryDir -Parent) $zipName
-    Get-ChildItem (Split-Path $DeliveryDir -Parent) -File -Filter 'NeuroDatics-Estudiantes*.zip' |
+    Get-ChildItem (Split-Path $DeliveryDir -Parent) -File -Filter 'NeuroDatics-*-win64.zip' |
         Where-Object FullName -ne $deliveredZip | Remove-Item -Force   # superseded downloads
     Copy-Item $zipPath $deliveredZip -Force
     $copied = @(Get-ChildItem -LiteralPath $DeliveryDir -Recurse -File -Force)

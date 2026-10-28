@@ -8,8 +8,8 @@ from ..config.settings import settings
 
 security = HTTPBearer(auto_error=False)
 
-# Local mode has no accounts: every request belongs to this one user, so projects
-# keep the same owner across launches without a token ever being checked.
+# Local mode has no accounts but profiles; the first one takes this id, which owned every project
+# before profiles existed. The screen settings belong to the computer and stay under it too.
 LOCAL_USER_ID = "00000000-0000-4000-8000-000000000001"
 
 def _encode_token(subject: str, token_type: str, expires_minutes: int, extra_claims: Optional[Dict[str, Any]] = None) -> str:
@@ -79,7 +79,16 @@ async def verify_jwt_token(token: str, expected_type: str = "access") -> Dict[st
 async def get_current_user_id(credentials: Optional[HTTPAuthorizationCredentials]) -> str:
     """Extract user_id from JWT token"""
     if settings.is_local:
-        return LOCAL_USER_ID
+        # The bearer value is the id of the profile the browser opened; nothing secret is at stake.
+        from ..modules.auth.application.profile_registry import is_profile
+
+        profile_id = credentials.credentials if credentials else None
+        if profile_id and await is_profile(profile_id):
+            return profile_id
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Elige un perfil para continuar.",
+        )
 
     import logging
     logger = logging.getLogger(__name__)

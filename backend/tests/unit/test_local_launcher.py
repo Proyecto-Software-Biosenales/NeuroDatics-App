@@ -194,13 +194,13 @@ def test_data_lives_in_the_profile_not_beside_the_program(monkeypatch, tmp_path)
 
 def _frozen_layout(tmp_path, monkeypatch, *, support_holds_package: bool):
     """A fake onedir package: the exe beside _internal (sys._MEIPASS)."""
-    root = tmp_path / "NeuroDatics Estudiantes"
+    root = tmp_path / "NeuroDatics"
     support = root / "_internal"
     (support / "pgsql" if support_holds_package else support).mkdir(parents=True)
     if not support_holds_package:
         (root / "pgsql").mkdir()
     monkeypatch.setattr(sys, "_MEIPASS", str(support), raising=False)
-    monkeypatch.setattr(sys, "executable", str(root / "neurodatics-estudiantes.exe"))
+    monkeypatch.setattr(sys, "executable", str(root / "neurodatics.exe"))
     return root, support
 
 
@@ -292,7 +292,7 @@ def test_a_double_clicked_failure_waits_for_the_student_but_a_build_gate_never_d
     assert len(prompts) == 2, "a clean exit must not wait"
 
     monkeypatch.setattr(launcher, "main", lambda argv: 2)
-    monkeypatch.setattr(sys, "argv", ["neurodatics-estudiantes.exe", "serve", "--no-browser"])
+    monkeypatch.setattr(sys, "argv", ["neurodatics.exe", "serve", "--no-browser"])
     assert student_entry.main() == 2
     assert len(prompts) == 2, "any argument means a script is driving; never wait"
 

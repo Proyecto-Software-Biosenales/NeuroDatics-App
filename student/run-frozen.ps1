@@ -6,7 +6,7 @@
 #                                          real browser with name resolution off (frontend\tests\local)
 #
 # Inputs, all under <Work> (default output\student, git-ignored) unless overridden:
-#   dist\neurodatics-estudiantes   from build.ps1
+#   dist\neurodatics   from build.ps1
 #   frontend\                      the static web app, also from build.ps1
 #   tools\                         ffmpeg.exe and ffprobe.exe
 #   pgsql\                         bin, lib and share of the EDB PostgreSQL 16 Windows zip
@@ -37,10 +37,10 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $realLocalAppData = $env:LOCALAPPDATA
 $node = (Get-Command node.exe -ErrorAction SilentlyContinue).Source
 $npx = (Get-Command npx.cmd -ErrorAction SilentlyContinue).Source
-if (-not $Pkg) { $Pkg = Join-Path $Work 'Estudiantes ñandú\NeuroDatics Estudiantes' }
+if (-not $Pkg) { $Pkg = Join-Path $Work 'Investigación ñandú\NeuroDatics' }
 if (-not $PgSource) { $PgSource = Join-Path $Work 'pgsql' }
 if (-not $Zip) { $Zip = Join-Path $Work 'data\saio-raw.zip' }
-$exe = Join-Path $Pkg 'neurodatics-estudiantes.exe'
+$exe = Join-Path $Pkg 'neurodatics.exe'
 $results = Join-Path $Work 'frozen-results'
 New-Item -ItemType Directory -Force $results | Out-Null
 
@@ -49,7 +49,7 @@ function PackageProcesses($name) { @(Get-Process $name -ErrorAction SilentlyCont
 function Quote($p) { "`"$p`"" }   # Start-Process does not quote array elements
 
 if ($Assemble) {
-    $dist = "$Work\dist\neurodatics-estudiantes"
+    $dist = "$Work\dist\neurodatics"
     foreach ($src in @(
         @{ Path = $dist;               Hint = 'run student\build.ps1 first' },
         @{ Path = "$Work\frontend\index.html"; Hint = 'run student\build.ps1 first (it builds the web app too)' },
@@ -71,7 +71,7 @@ if ($Assemble) {
     robocopy "$Work\frontend" "$internal\frontend" /E /NFL /NDL /NJH /NJS /NP | Out-Null
     robocopy $PgSource "$internal\pgsql" /E /NFL /NDL /NJH /NJS /NP | Out-Null
     robocopy $TemplateSource "$internal\pg-template" /E /NFL /NDL /NJH /NJS /NP | Out-Null
-    $loose = @(Get-ChildItem -LiteralPath $Pkg -Force | Where-Object Name -notin 'neurodatics-estudiantes.exe', '_internal')
+    $loose = @(Get-ChildItem -LiteralPath $Pkg -Force | Where-Object Name -notin 'neurodatics.exe', '_internal')
     if ($loose) { throw "unexpected entries beside the exe: $(($loose | ForEach-Object Name) -join ', ')" }
     # Nothing a student runs: library test suites, C headers, Cython sources and link libraries
     # that PyInstaller collects with pyarrow; PostgreSQL's StackBuilder GUI (wx*, libcurl), its
@@ -169,7 +169,7 @@ if ($Only -in @('', 'serve')) {
     # No --data-dir: the data must land in the (fresh) profile, where students' data lives.
     $server = Start-Process -FilePath $exe -ArgumentList @('serve', '--port', '0', '--no-browser', '--offline-guard', '--stop-file', (Quote $stop)) `
         -RedirectStandardOutput "$fresh\serve.out.txt" -RedirectStandardError "$fresh\serve.err.txt" -PassThru -WindowStyle Hidden
-    $dataDir = "$fresh\AppData\Local\NeuroDatics Estudiantes"
+    $dataDir = "$fresh\AppData\Local\NeuroDatics"
     $clock = [Diagnostics.Stopwatch]::StartNew()
     while ($clock.Elapsed.TotalSeconds -lt 120 -and -not (Test-Path "$dataDir\instance.json") -and -not $server.HasExited) { Start-Sleep -Milliseconds 300 }
     if (-not (Test-Path "$dataDir\instance.json")) { Get-Content "$fresh\serve.out.txt", "$fresh\serve.err.txt"; throw 'the app did not come up' }

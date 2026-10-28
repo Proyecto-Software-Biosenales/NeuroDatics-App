@@ -6,11 +6,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { ChevronDown, LoaderCircle, Menu, Moon, Settings, Sun, User } from 'lucide-react'
+import { ArrowLeftRight, ChevronDown, LoaderCircle, Menu, Moon, Settings, Sun, User } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
-import { IS_LOCAL_MODE } from '@/lib/appMode'
+import { IS_LOCAL_MODE, SIGN_IN_PATH } from '@/lib/appMode'
 import { useAuth } from '@/lib/providers/AuthProvider'
 import { cn } from '@/lib/utils'
 
@@ -31,13 +31,13 @@ export const NavBar = () => {
   const pathname = usePathname()
   const router = useRouter()
   const { currentUser, loading, signOut } = useAuth()
-  const isLoginPage = pathname === '/login'
+  const isLoginPage = pathname.replace(/\/$/, '') === SIGN_IN_PATH
 
   const handleProtectedNavigation = (event: React.MouseEvent<HTMLAnchorElement>, item: NavItem) => {
     if (item.protected && !currentUser) {
       event.preventDefault()
-      toast.error('Inicia sesión para acceder a esta sección.')
-      router.push('/login')
+      toast.error(IS_LOCAL_MODE ? 'Elige un perfil para continuar.' : 'Inicia sesión para acceder a esta sección.')
+      router.push(SIGN_IN_PATH)
     }
   }
 
@@ -131,6 +131,14 @@ export const NavBar = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {IS_LOCAL_MODE ? (
+                    <DropdownMenuItem asChild>
+                      <Link href="/perfiles" aria-current={pathname === '/perfiles' ? 'page' : undefined}>
+                        <ArrowLeftRight aria-hidden="true" />
+                        Cambiar de perfil
+                      </Link>
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuItem asChild>
                     <Link href="/configuracion" aria-current={pathname === '/configuracion' ? 'page' : undefined}>
                       <Settings aria-hidden="true" />
@@ -146,7 +154,7 @@ export const NavBar = () => {
                 <LoaderCircle className="h-5 w-5 animate-spin" />
               </div>
             ) : currentUser ? (
-              // The student edition has one fixed user and nothing to sign out of.
+              // The local edition changes profile from the menu; there is nothing to sign out of.
               IS_LOCAL_MODE ? null : (
                 <Button variant="outline"
                   type="button"
@@ -158,7 +166,8 @@ export const NavBar = () => {
               )
             ) : (
               <Link
-                href="/login"
+                href={SIGN_IN_PATH}
+                aria-label={IS_LOCAL_MODE ? 'Perfiles' : undefined}
                 className={cn(
                   'p-2 rounded-lg transition-all duration-200',
                   isLoginPage

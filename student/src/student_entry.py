@@ -1,8 +1,8 @@
 """The one program students run, and the checks that prove a build is sound.
 
-    neurodatics-estudiantes.exe                  start the app (what a double-click does)
-    neurodatics-estudiantes.exe serve [options]  the same, with options (see --help)
-    neurodatics-estudiantes.exe selftest | pg-check | pg-adopt | http-check ...   build gates
+    neurodatics.exe                  start the app (what a double-click does)
+    neurodatics.exe serve [options]  the same, with options (see --help)
+    neurodatics.exe selftest | pg-check | pg-adopt | http-check ...   build gates
 """
 from __future__ import annotations
 

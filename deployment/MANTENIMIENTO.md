@@ -1,5 +1,9 @@
 # Generar y verificar la entrega
 
+> **Edición en red, sin uso actual.** NeuroDatics se entrega solo como programa local para Windows; esta entrega con
+> Docker ya no se genera ni se prueba. Se conserva para quien quiera alojar la aplicación y aporte sus servicios: ver
+> [docs/tecnica/alojamiento-en-red.md](../docs/tecnica/alojamiento-en-red.md).
+
 El código fuente del instalador vive en `deployment/` y está versionado. El resultado en `delivery/NeuroDatics-App/` está excluido de Git porque puede contener configuración privada e imágenes grandes.
 
 El mantenedor necesita PowerShell 7, Git y Docker Desktop con contenedores Linux. El usuario final solo necesita Windows PowerShell 5.1, que viene con Windows; el asistente prepara WSL y Docker.

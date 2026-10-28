@@ -11,6 +11,8 @@ import { expect, test, type Page } from "@playwright/test"
 const rawFolder = process.env.STUDENT_RAW_FOLDER
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "neurodatics.localhost"])
 const SESSION_KEY = "neurodatics-auth-session"
+// The profile the first test creates; every later test opens it again as the last one used.
+const PROFILE = "Investigadora de prueba"
 
 type Watch = { external: string[]; failed: string[]; errors: string[]; fonts: string[] }
 
@@ -38,10 +40,17 @@ function expectClean(seen: Watch) {
 const storedExpiry = (page: Page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key) as string).session.expiresAt as string, SESSION_KEY)
 
-// First in the file: the profile is fresh, so the screen has never been reviewed.
-test("the first visit asks to review the screen, and Configuración holds only global settings", async ({ page }) => {
+// First in the file: the data folder is fresh, so there is no profile and the screen was never reviewed.
+test("the first visit asks for a profile, then to review the screen, and Configuración holds only global settings", async ({ page }) => {
   const seen = watch(page)
   await page.goto("/proyectos/")
+  await expect(page).toHaveURL(/\/perfiles\/?$/)
+  await expect(page.getByText("Crea tu perfil", { exact: true })).toBeVisible()
+  await page.getByRole("textbox", { name: "Nombre", exact: true }).fill(PROFILE)
+  await page.getByRole("button", { name: "Crear perfil", exact: true }).click()
+  await expect(page).toHaveURL(/\/proyectos\/?$/)
+  await expect(page.locator("header").getByText(PROFILE)).toBeVisible()
+
   const notice = page.getByText("Revisa la configuración de pantalla", { exact: true })
   await expect(notice).toBeVisible()
   await page.getByRole("button", { name: "Ir a Configuración", exact: true }).click()
@@ -89,10 +98,11 @@ test("there is no account, Google or Drive anywhere in the app", async ({ page }
   await page.goto("/")
 
   const header = page.locator("header")
-  await expect(header.getByText("Estudiante")).toBeVisible()
+  await expect(header.getByText(PROFILE)).toBeVisible()
   await expect(header.getByRole("link", { name: "Configuración" })).toHaveCount(0)
   await expect(header.getByRole("button", { name: "Salir" })).toHaveCount(0)
   await header.getByRole("button", { name: "Menú de usuario" }).click()
+  await expect(page.getByRole("menuitem", { name: "Cambiar de perfil" })).toBeVisible()
   await expect(page.getByRole("menuitem", { name: "Configuración" })).toBeVisible()
   await page.keyboard.press("Escape")
   await expect(page.getByText("Google", { exact: false })).toHaveCount(0)
@@ -116,12 +126,12 @@ test("there is no account, Google or Drive anywhere in the app", async ({ page }
   expectClean(seen)
 })
 
-test("the one local session is minted again when it ran out or the browser forgot it", async ({ page }) => {
+test("the profile's session is minted again when it ran out or the browser forgot it", async ({ page }) => {
   const seen = watch(page)
   await page.goto("/proyectos/")
-  await expect(page.locator("header").getByText("Estudiante")).toBeVisible()
+  await expect(page.locator("header").getByText(PROFILE)).toBeVisible()
 
-  // Nobody can sign in by hand, so the app has to do it for the student.
+  // Nobody signs in by hand, so the app has to do it for the researcher.
   await page.evaluate((key) => {
     const stored = JSON.parse(localStorage.getItem(key) as string)
     stored.session.expiresAt = new Date(Date.now() - 60_000).toISOString()
@@ -131,9 +141,64 @@ test("the one local session is minted again when it ran out or the browser forgo
   await expect(page.getByRole("heading", { name: "Proyectos", exact: true })).toBeVisible()
   await expect.poll(async () => new Date(await storedExpiry(page)).getTime()).toBeGreaterThan(Date.now())
 
+  // Forgotten entirely, the browser gets the last profile used.
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await expect(page.locator("header").getByText("Estudiante")).toBeVisible()
+  await expect(page.locator("header").getByText(PROFILE)).toBeVisible()
+  expectClean(seen)
+})
+
+test("each profile has its own projects, and deleting a profile deletes them", async ({ page }) => {
+  const seen = watch(page)
+  const other = `Perfil temporal ${Date.now()}`
+  const project = `Proyecto de ${other}`
+  const header = page.locator("header")
+  const changeProfile = async () => {
+    await header.getByRole("button", { name: "Menú de usuario" }).click()
+    await page.getByRole("menuitem", { name: "Cambiar de perfil" }).click()
+    await expect(page).toHaveURL(/\/perfiles\/?$/)
+  }
+
+  await page.goto("/proyectos/")
+  await changeProfile()
+  await expect(page.getByRole("listitem").filter({ hasText: PROFILE })).toContainText("En uso")
+  await page.getByRole("textbox", { name: "Nombre", exact: true }).fill(other)
+  await page.getByRole("button", { name: "Crear y abrir", exact: true }).click()
+  await expect(page).toHaveURL(/\/proyectos\/?$/)
+  await expect(header.getByText(other)).toBeVisible()
+  await expect(page.getByText("No hay proyectos creados", { exact: true })).toBeVisible()
+
+  // A pre-experiment is the quickest project to make: it needs no folder.
+  await page.getByRole("button", { name: "Crear proyecto", exact: true }).first().click()
+  const dialog = page.getByRole("dialog")
+  await dialog.getByRole("button", { name: "Pre-experimento", exact: true }).click()
+  await dialog.getByRole("textbox", { name: "Nombre del proyecto *", exact: true }).fill(project)
+  await dialog.getByRole("button", { name: "Crear pre-experimento", exact: true }).click()
+  await expect(dialog).toBeHidden({ timeout: 30_000 })
+  await expect(page.getByRole("heading", { name: project, exact: true })).toBeVisible()
+
+  // The first profile does not see it.
+  await changeProfile()
+  await page.getByRole("listitem").filter({ hasText: PROFILE }).getByRole("button", { name: "Abrir", exact: true }).click()
+  await expect(page).toHaveURL(/\/proyectos\/?$/)
+  await expect(header.getByText(PROFILE)).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Proyectos", exact: true })).toBeVisible()
+  await expect(page.getByText(project, { exact: true })).toHaveCount(0)
+
+  // Deleting the other profile takes its project off the computer.
+  await changeProfile()
+  const row = page.getByRole("listitem").filter({ hasText: other })
+  await expect(row).toContainText("1 proyecto")
+  await row.getByRole("button", { name: `Eliminar el perfil «${other}»`, exact: true }).click()
+  const confirm = page.getByRole("alertdialog")
+  await expect(confirm).toContainText("se borrará de este computador su proyecto")
+  await confirm.getByRole("button", { name: "Continuar" }).click()
+  await confirm.getByPlaceholder('Escribe "eliminar"').fill("eliminar")
+  await confirm.getByRole("button", { name: "Eliminar perfil" }).click()
+  await expect(page.getByText(`Perfil «${other}» eliminado.`, { exact: true })).toBeVisible({ timeout: 60_000 })
+  await expect(row).toHaveCount(0)
+  await expect(page.getByRole("listitem").filter({ hasText: PROFILE })).toContainText("En uso")
+
   expectClean(seen)
 })
 

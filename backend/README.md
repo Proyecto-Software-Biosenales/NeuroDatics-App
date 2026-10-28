@@ -5,7 +5,8 @@ separa es `settings.is_local` (`APP_MODE`).
 
 ## Dónde se ejecuta
 
-**Edición servidor.** El backend es el servicio `backend` del stack de la [raíz del repositorio](../README.md):
+**Edición en red (sin uso actual; ver [alojamiento-en-red.md](../docs/tecnica/alojamiento-en-red.md)).** El backend es el
+servicio `backend` del stack de la [raíz del repositorio](../README.md):
 
 ```powershell
 docker compose up -d --build
@@ -15,8 +16,8 @@ No ejecutes Docker ni mantengas una configuración independiente desde esta carp
 variables del `.env` raíz, no publica puerto en el host y queda accesible solo dentro de la red de Docker,
 donde el servicio `frontend` le reenvía `/api`, `/docs`, `/openapi.json` y `/redoc`.
 
-**Edición estudiantes (`APP_MODE=local`).** El mismo backend, congelado con PyInstaller, es el programa que
-abre el estudiante: escucha en `127.0.0.1` (puerto preferido 8765), arranca su PostgreSQL 16 embebido, aplica
+**Edición local (`APP_MODE=local`), la que se entrega.** El mismo backend, congelado con PyInstaller, es el programa que
+abre el investigador: escucha en `127.0.0.1` (puerto preferido 8765), arranca su PostgreSQL 16 embebido, aplica
 las migraciones y **sirve el frontend** como exportación estática montada en `/`
 (`src/neurodatics/local/static_frontend.py`). Al compartir origen no hay CORS, ni segundo puerto, ni proxy.
 En esta edición no se importan las rutas de Google ni de Drive (`src/neurodatics/api/router.py`), la caché de
@@ -28,8 +29,10 @@ puertas y arranque desde el código sin congelar: [student/README.md](../student
 - API HTTP y documentación OpenAPI (`/docs`, `/openapi.json` y `/redoc` siguen activos en las dos ediciones).
 - Migraciones de PostgreSQL con Alembic: el contenedor ejecuta `alembic upgrade head` antes de Uvicorn y, en
   local, el launcher las aplica al iniciar sobre el PostgreSQL embebido.
-- Sesión: Google OAuth en la edición servidor; en local, la única ruta de sesión
-  (`POST /api/auth/local-session`) devuelve la misma forma de respuesta sin cuentas.
+- Sesión: Google OAuth en la edición servidor; en local, perfiles sin contraseña (`/api/auth/profiles`).
+  `POST /api/auth/local-session` abre un perfil con la misma forma de respuesta que el inicio de sesión, y el
+  token es el id del perfil, que es el `owner_id` de sus proyectos. El primer perfil hereda los proyectos
+  creados antes de que existieran los perfiles; la pantalla de Configuración es del computador y la comparten.
 - Ingesta del ZIP del experimento dentro de la solicitud HTTP, con sus guardas de descompresión y su control
   de admisión.
 - Analítica por escenario y participante con caché (Redis en servidor, en proceso en local), informes y
@@ -77,7 +80,7 @@ aplicación en marcha.
 ### La barra final importa
 
 Las rutas de colección se montan **con** barra final: `POST /api/projects/` y `GET /api/projects/`. En la
-edición estudiantes el sitio estático atiende todo lo que no sea una ruta exacta, así que una llamada sin la
+edición local el sitio estático atiende todo lo que no sea una ruta exacta, así que una llamada sin la
 barra respondería 404 antes de que FastAPI pudiera redirigir. Las excepciones se declaran en
 `API_PATH_ALIASES` (`src/neurodatics/local/static_frontend.py`), que es donde se reescribe `"/api/projects"`
 a `"/api/projects/"`; en la edición servidor hace lo mismo un rewrite de `frontend/next.config.mjs`.
@@ -94,7 +97,7 @@ src/neurodatics/
     shared/          contratos neutros: identidad de escenario, contrato de fijaciones, generación de
                      caché, recursos de la máquina
     config/          settings.py, logging.py y security.py
-    local/           edición estudiantes: launcher, PostgreSQL embebido, guard offline, bloqueo de
+    local/           edición local: launcher, PostgreSQL embebido, guard offline, bloqueo de
                      instancia y el sitio estático
     diagnostics/     comprobación previa de red
 migrations/          revisiones de Alembic (versions/) y env.py

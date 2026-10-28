@@ -8,7 +8,6 @@ import { setAnalyticsSession } from '@/features/analytics/analyticsCache'
 import {
   clearStoredAuthSession,
   getAuthSessionChangedEventName,
-  isAccessTokenExpired,
   readStoredAuthSession,
 } from '@/lib/auth/sessionStore'
 
@@ -31,9 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const eventName = getAuthSessionChangedEventName()
     window.addEventListener(eventName, bootstrap)
 
-    if (IS_LOCAL_MODE && (!readStoredAuthSession() || isAccessTokenExpired())) {
-      // No sign-in in the student edition: the local backend issues the one user's session.
-      // A failure leaves the user signed out and the login page explains what to do.
+    if (IS_LOCAL_MODE) {
+      // No sign-in in the local edition: the local backend reopens this browser's profile, every
+      // time, since another tab may have deleted it. Without one the app asks for a profile.
       ensureLocalSession().catch(() => undefined).finally(bootstrap)
     } else {
       bootstrap()

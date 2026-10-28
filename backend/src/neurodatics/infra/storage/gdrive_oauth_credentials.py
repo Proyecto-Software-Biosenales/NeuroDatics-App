@@ -1,3 +1,6 @@
+# Network edition only (Google sign-in, Google Drive). NeuroDatics ships only the local edition,
+# which never imports this module; it is kept for self-hosting: docs/tecnica/alojamiento-en-red.md.
+
 from typing import Optional
 
 from ...config.settings import settings

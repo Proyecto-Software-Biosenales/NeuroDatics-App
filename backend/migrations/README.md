@@ -6,6 +6,6 @@ Revisiones de Alembic en `versions/`, numeradas en orden (`NNN_descripcion.py`, 
 - **Crear:** desde `backend`, `..\.venv\Scripts\python.exe -m alembic revision -m "descripcion"`; después renombra el
   archivo y su `revision` al número siguiente.
 - **Aplicar:** `alembic upgrade head` con `DATABASE_URL` apuntando a la base. El contenedor del backend y el lanzador
-  de NeuroDatics Estudiantes lo hacen solos al iniciar.
-- **Compatibilidad:** también corren sobre el PostgreSQL 16 embebido de la edición de estudiantes, así que no uses
+  de la edición local lo hacen solos al iniciar.
+- **Compatibilidad:** también corren sobre el PostgreSQL 16 embebido de la edición local, así que no uses
   extensiones que no vengan en su paquete (ver [CONTRIBUTING.md](../../CONTRIBUTING.md)).

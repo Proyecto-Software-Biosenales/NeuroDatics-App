@@ -372,7 +372,7 @@ function Remove-EntregaAnterior([string]$Raiz) {
 }
 
 function Set-CarpetaOculta([string]$Ruta) {
-    # Como en Estudiantes: el Explorador solo muestra los lanzadores y la guía.
+    # Como en la edición local: el Explorador solo muestra los lanzadores y la guía.
     $carpeta = Get-Item -LiteralPath $Ruta -Force
     $carpeta.Attributes = $carpeta.Attributes -bor [IO.FileAttributes]::Hidden
 }

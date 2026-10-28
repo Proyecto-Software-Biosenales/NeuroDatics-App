@@ -1,5 +1,9 @@
 # NeuroDatics: instalar y usar
 
+> **Edición en red, sin uso actual.** NeuroDatics se entrega solo como programa local para Windows; esta entrega con
+> Docker ya no se genera ni se prueba. Se conserva para quien quiera alojar la aplicación y aporte sus servicios: ver
+> [docs/tecnica/alojamiento-en-red.md](../docs/tecnica/alojamiento-en-red.md).
+
 La entrega es para Windows x64. Su carpeta muestra solo cuatro archivos:
 
 | Archivo | Para qué |

@@ -18,6 +18,7 @@ from neurodatics.modules.projects.domain.entities import Project, ProjectFile, P
 from neurodatics.modules.participants.domain.entities import Participant
 from neurodatics.modules.scenaries.domain.entities import Scenaries, AOI
 from neurodatics.modules.settings.domain.entities import UserSettings
+from neurodatics.modules.auth.domain.entities import LocalProfile
 
 # Fix psycopg async on Windows (ProactorEventLoop is not supported)
 if sys.platform == "win32":

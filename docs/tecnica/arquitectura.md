@@ -23,12 +23,13 @@ los identificadores no se pueden sondear.
 
 ## Dos ediciones, un solo código
 
-El mismo `backend/` y el mismo `frontend/` se entregan de dos formas:
+El mismo `backend/` y el mismo `frontend/` sirven a dos ediciones. Solo se entrega la local; la edición en red
+se conserva sin uso actual para quien quiera alojarla ([alojamiento-en-red.md](alojamiento-en-red.md)).
 
-| | Servidor | NeuroDatics Estudiantes |
+| | En red (sin uso actual) | Local (la que se entrega) |
 | --- | --- | --- |
 | Despliegue | Docker Compose: `db`, `redis`, `backend`, `frontend` | Un ejecutable para Windows, sin instalación |
-| Sesión | Inicio de sesión con Google (OAuth 2.0) y un JWT propio | Un usuario fijo, sin cuenta ni contraseña |
+| Sesión | Inicio de sesión con Google (OAuth 2.0) y un JWT propio | Perfiles con solo un nombre, sin contraseña; cada uno con sus proyectos |
 | Base de datos | PostgreSQL (16 en Compose; también sirve una gestionada) | PostgreSQL 16 embebido, arrancado por el lanzador |
 | Archivos | Google Drive | Una carpeta en disco bajo el perfil del usuario |
 | Caché | Redis | Una caché en proceso, acotada y con vencimiento |
@@ -50,7 +51,7 @@ La bifurcación está en dos sitios y nada más:
 - **Frontend:** `IS_LOCAL_MODE` (`frontend/lib/appMode.ts`), que lee `NEXT_PUBLIC_APP_MODE` y se
   resuelve en tiempo de compilación. Nunca se decide por la URL.
 
-El código propio de la edición de estudiantes está en `backend/src/neurodatics/local/`: el lanzador
+El código propio de la edición local está en `backend/src/neurodatics/local/`: el lanzador
 que prepara el entorno, arranca PostgreSQL y ejecuta las migraciones antes de importar la aplicación
 (`launcher.py`), el control del clúster (`postgres.py`), la instancia única (`instance.py`), el
 servicio del sitio estático (`static_frontend.py`) y el guard que detecta cualquier intento de salir
@@ -123,7 +124,7 @@ composición de los informes. Vive en `backend/src/neurodatics/`:
 | `modules/` | Los módulos funcionales: `projects`, `participants`, `scenaries`, `analytics`, `reports`, `settings`, `auth`, `integrations`. |
 | `infra/` | Lo que habla con el mundo: `db` (sesión, modelos, repositorios), `cache`, `storage`, `queue` (la conexión a Redis), `health`. |
 | `shared/` | Contratos neutros: identidad de escenario, contrato de fijaciones, generación de caché, recursos de la máquina, excepciones. |
-| `local/` | La edición de estudiantes. |
+| `local/` | La edición local. |
 | `diagnostics/` | Comprobación operativa de la conectividad externa, ejecutable desde el contenedor. |
 
 Cada módulo funcional repite la misma estructura interna: `api/` (rutas y esquemas Pydantic),
@@ -200,7 +201,7 @@ Los datos se reparten en tres lugares, y conviene no confundirlos:
   sensores, escenarios, AOI, ubicaciones de estímulo, intentos de subida y tareas de limpieza. Las
   columnas JSONB llevan los metadatos variables (`file_metadata`, los tokens de transformación). Las
   migraciones son de Alembic y se ejecutan al arrancar: en Docker por el script de inicio, en la
-  edición de estudiantes por el lanzador, contra el PostgreSQL 16 embebido. Por eso una migración no
+  edición local por el lanzador, contra el PostgreSQL 16 embebido. Por eso una migración no
   puede usar extensiones que no vengan en ese paquete.
 - **El almacén de objetos** guarda los bytes: las imágenes y vídeos de estímulo seleccionados y los
   Parquet derivados. Es Google Drive en servidor y una carpeta en disco en local. La elección la hace
@@ -292,7 +293,7 @@ frontend/
 ```
 
 En la edición de servidor el contenedor del frontend hace además de proxy: `next.config.mjs` reescribe
-`/api/:path*` hacia el backend, que por eso nunca publica su puerto. En la edición de estudiantes no
+`/api/:path*` hacia el backend, que por eso nunca publica su puerto. En la edición local no
 hay servidor de Next: el frontend se compila como **exportación estática** y el backend la sirve desde
 su propio origen.
 
@@ -305,7 +306,7 @@ una ruta de colección sin su barra final da 404: o se llama con barra, o se añ
 
 Hay una regla más que vale en las dos ediciones: **nada remoto**. Ni fuentes, ni scripts, ni CDN, ni
 telemetría. Poppins se sirve desde `frontend/public/fonts`, y la compilación del paquete de
-estudiantes falla si la exportación contiene una fuente o un script remotos.
+Windows falla si la exportación contiene una fuente o un script remotos.
 
 Las convenciones de interfaz están en [interfaz.md](../desarrollo/interfaz.md), y la comparación de
 participantes, que es la pieza de interfaz más particular, en
@@ -344,6 +345,6 @@ participantes, que es la pieza de interfaz más particular, en
 | Convenciones de interfaz | [interfaz.md](../desarrollo/interfaz.md) |
 | Pre-experimentos y cuestionarios | [pre-experimento.md](pre-experimento.md) · [uso](../usuario/pre-experimento.md) |
 | Métodos de EEG y reproducibilidad | [eeg/metodos.md](eeg/metodos.md) |
-| Edición de estudiantes | [student/README.md](../../student/README.md) |
-| Despliegue en red | [despliegue-en-red.md](despliegue-en-red.md) |
+| Edición local | [student/README.md](../../student/README.md) |
+| Alojar la edición en red | [alojamiento-en-red.md](alojamiento-en-red.md) · [despliegue-en-red.md](despliegue-en-red.md) |
 | Cambios de producto | [CHANGELOG.md](../CHANGELOG.md) |

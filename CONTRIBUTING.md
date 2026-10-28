@@ -9,7 +9,7 @@ Cómo se prepara el entorno, cómo se verifica un cambio y qué reglas no se neg
 | Python 3.12 o posterior, con un entorno virtual en la raíz (`.venv`) | Backend y sus pruebas. `backend\.venv`, si existe, no es el bueno. |
 | Node.js 20 o posterior y `npm ci` en `frontend` | Frontend, sus pruebas y la exportación estática. |
 | Chromium de Playwright (`cd frontend; npx playwright install chromium`) | Pruebas de hooks y componentes en navegador real. |
-| Docker Desktop | Solo para levantar la edición servidor completa. |
+| Docker Desktop | Solo para levantar la edición en red (sin uso actual). |
 | PowerShell 7 | `verify.ps1` y los scripts de `student/` y `deployment/`. |
 
 ```powershell
@@ -20,22 +20,27 @@ cd backend; ..\.venv\Scripts\python.exe -m poetry install; cd ..
 cd frontend; npm ci; npx playwright install chromium; cd ..
 ```
 
-## Dos ediciones, un solo código
+## Qué se entrega: la edición local
 
-NeuroDatics se construye una vez y se entrega dos veces desde el mismo `backend/` y el mismo `frontend/`: la
-**edición servidor** (Docker Compose, inicio de sesión con Google, archivos en Google Drive, Redis, proxy) y
-**NeuroDatics Estudiantes** (`APP_MODE=local`, Windows, sin internet, backend congelado con PyInstaller que sirve
-el frontend como exportación estática, PostgreSQL 16 embebido y ffmpeg incluidos).
+NeuroDatics se entrega como un programa de Windows para el investigador (`APP_MODE=local`, sin internet): el
+backend congelado con PyInstaller sirve el frontend como exportación estática, con PostgreSQL 16 embebido y ffmpeg
+incluidos. Su código propio está en `backend/src/neurodatics/local/` y su empaquetado, en `student/` (el nombre
+de la carpeta es histórico).
 
-**Todo cambio tiene que funcionar también en la edición de estudiantes.** Solo quedan exentos el inicio de sesión
-con Google, Google Drive y su OAuth, Docker, Redis, el proxy y el despliegue en red. Análisis, ingesta, informes,
-pre-experimentos, cuestionarios, migraciones e interfaz aplican siempre; si dudas, asume que aplica.
+El mismo `backend/` y el mismo `frontend/` conservan la **edición en red** (Docker Compose, inicio de sesión con
+Google, archivos en Google Drive, Redis, proxy). **Hoy no se usa ni se mantiene**: queda para quien quiera
+alojarla y aporte sus servicios ([docs/tecnica/alojamiento-en-red.md](docs/tecnica/alojamiento-en-red.md)). No
+borres sus rutas ni sus módulos: cada archivo exclusivo de esa edición lo dice en su primera línea. Un cambio no
+tiene que probarse en ella, pero tampoco debe romper las pruebas del backend ni su arranque en `verify.ps1`.
+
+**Todo cambio tiene que funcionar en la edición local.** Análisis, ingesta, informes, pre-experimentos,
+cuestionarios, migraciones e interfaz aplican siempre.
 
 Al escribir el cambio:
 
 1. **Separa por edición solo lo que lo necesita:** `IS_LOCAL_MODE` (`frontend/lib/appMode.ts`) en el frontend y
-   `settings.is_local` en el backend, nunca la URL. Oculta en local únicamente la parte de Google, Drive o Docker,
-   no lo que la rodea.
+   `settings.is_local` en el backend, nunca la URL. Lo exclusivo de la edición en red (Google, Drive, Docker) se
+   oculta en local, no lo que lo rodea.
 2. **Archivos:** se leen y se escriben a través de `modules/integrations/storage_provider.py`; en local lo
    sustituye el almacenamiento en disco. Ninguna función importa el cliente de Drive.
 3. **Sin red:** nada de fuentes, scripts, CDNs ni telemetría remotos. En local, cualquier conexión fuera de
@@ -58,13 +63,13 @@ Al escribir el cambio:
      `reports/infrastructure/templates` necesita su `--add-data`;
    - un módulo importado dinámicamente necesita su `--hidden-import`;
    - lo que viaja en el paquete va dentro de `_internal`: junto al exe solo pueden estar
-     `neurodatics-estudiantes.exe` y `LEEME.txt`.
+     `neurodatics.exe` y `LEEME.txt`.
 9. **Pruebas de la edición local:** una función visible para el usuario que aplique a local se cubre también en
    `frontend/tests/local/student-offline.spec.ts`.
-10. **Guía del estudiante:** si cambia algo que el estudiante ve o hace, actualiza `student/LEEME.txt`, nunca la
+10. **Guía del investigador:** si cambia algo que el investigador ve o hace, actualiza `student/LEEME.txt`, nunca la
     copia que viaja en el paquete.
 
-Si el cambio toca `backend/src`, `backend/migrations`, `frontend/` o `student/`, el paquete de estudiantes queda
+Si el cambio toca `backend/src`, `backend/migrations`, `frontend/` o `student/`, el paquete de Windows queda
 desactualizado: el procedimiento para reconstruirlo y entregarlo está en [student/README.md](student/README.md).
 
 ## Interfaz: consistencia antes que novedad
@@ -96,10 +101,10 @@ detiene en la primera puerta que falla. En orden:
 El trinquete de ESLint no se sube para que pase un cambio. `verify.ps1` acepta `-MaxLintErrors` y
 `-MaxLintWarnings` para poder bajarlo, no para relajarlo.
 
-Las pruebas de Playwright (`frontend/tests/e2e/`) y la prueba de la edición de estudiantes **no forman parte de
+Las pruebas de Playwright (`frontend/tests/e2e/`) y la prueba de la edición local **no forman parte de
 `verify.ps1`**: tardan demasiado para una puerta que se pasa en cada cambio.
 Ejecuta `npm run test:e2e` (desde `frontend`) cuando el cambio toque pantallas, formularios,
-navegación o lo que se ve en el dashboard, y siempre antes de entregar; la prueba de estudiantes la lanza
+navegación o lo que se ve en el dashboard, y siempre antes de entregar; la prueba de la edición local la lanza
 `student/run-frozen.ps1` al reconstruir el paquete (ver más abajo).
 
 ## Los contratos de `backend/.importlinter`
@@ -175,7 +180,7 @@ npm run test:e2e:comparison     # solo el panel de comparación
   verdad: efectos, cancelación de peticiones, foco, teclado y comportamiento de los controles de Radix.
 - **En `tests/e2e/`**: Playwright sobre la aplicación en marcha con la API simulada; no entra en `verify.ps1`.
 
-La prueba de la edición de estudiantes, `frontend/tests/local/student-offline.spec.ts`, la lanza
+La prueba de la edición local, `frontend/tests/local/student-offline.spec.ts`, la lanza
 `student/run-frozen.ps1` (comprobación `serve`) contra el paquete real. A mano, contra cualquier aplicación local
 ya iniciada:
 
@@ -192,10 +197,10 @@ npx playwright test -c playwright.local.config.ts
   `tecnica/` (cómo funciona) y `desarrollo/` (cómo se trabaja en el código). Su índice es
   [docs/README.md](docs/README.md).
 - `docs/CHANGELOG.md` describe cambios observables por quien usa la aplicación, agrupados por versión.
-- Los manuales para quien instala y usa la aplicación están en PDF en `manuales/`: el manual de uso y las guías
-  de instalación de las dos ediciones. Se editan en Word fuera del repositorio y se sustituye el PDF con el mismo
+- Los manuales para quien instala y usa la aplicación están en PDF en `manuales/`: el manual de uso, la guía
+  de instalación y la de procesamiento. Se editan en Word fuera del repositorio y se sustituye el PDF con el mismo
   nombre; si cambia algo que el usuario ve o hace, se actualiza el manual que lo cuenta.
 - Los números que envejecen (recuentos de pruebas, cabezas de migración) no se fijan en la documentación: se
   explica cómo consultarlos.
-- Las guías que viajan dentro de un paquete viven junto a él: `deployment/` para la edición servidor y
-  `student/LEEME.txt` para la de estudiantes.
+- Las guías que viajan dentro de un paquete viven junto a él: `student/LEEME.txt` para la edición local y
+  `deployment/` para la edición en red.

@@ -20,8 +20,8 @@ procesamiento, y la tabla `processing_jobs` queda en la base de datos sin que la
 sirve a la caché de analítica; no hace durable la subida.
 
 El almacenamiento de objetos lo elige
-`modules/integrations/storage_provider.py`: Google Drive en la edición de servidor, una carpeta en
-disco bajo el directorio de datos en NeuroDatics Estudiantes (`APP_MODE=local`). Las dos
+`modules/integrations/storage_provider.py`: Google Drive en la edición en red, una carpeta en
+disco bajo el directorio de datos en la edición local (`APP_MODE=local`). Las dos
 implementaciones tienen los mismos métodos y las mismas formas de retorno, así que todo lo que sigue
 describe las dos ediciones; donde el texto diga «Drive», en local es la carpeta local.
 
@@ -127,7 +127,7 @@ El proxy de Next.js reenvía `/api` por el mismo origen con `proxyClientMaxBodyS
 servicio publicado es el frontend. Eso no es un tiempo límite del trabajo de ingesta, ni una cuota de
 disco, ni una garantía de que un proxy corporativo aguante media hora.
 
-En la edición de estudiantes no hay proxy: el backend sirve la exportación estática del frontend
+En la edición local no hay proxy: el backend sirve la exportación estática del frontend
 desde su propio origen (`local/static_frontend.py`).
 
 Fuente: `frontend/lib/api/apiFetch.ts`, `frontend/features/projects/api/projectsApi.ts`,
@@ -278,8 +278,8 @@ Los pasos 2 a 6 corren una vez por bloque de participante y los bloques no compa
 `spawn` y reúne sus resultados en el orden del archivo, así que los Parquet, los metadatos y el primer
 error coinciden con una ejecución de uno en uno. `INGESTION_BLOCK_WORKERS=0`, el valor por defecto,
 dimensiona el grupo a la máquina (`shared/machine_resources.py`): la mitad de las CPU utilizables,
-hasta donde alcance la memoria. Cada ingesta que pueda correr a la vez (una en la edición de
-estudiantes, `UPLOAD_MAX_CONCURRENT_GLOBAL` en el servidor) recibe una parte igual del límite de
+hasta donde alcance la memoria. Cada ingesta que pueda correr a la vez (una en la edición
+local, `UPLOAD_MAX_CONCURRENT_GLOBAL` en la edición en red) recibe una parte igual del límite de
 memoria, que es el límite del contenedor o la mitad de la RAM si no hay. Cada ingesta reserva 1 GiB de
 su parte más 256 MiB por worker. Cualquier valor positivo fuerza ese número, y 1 mantiene todos los
 bloques en el proceso de la API; el valor por defecto del servidor (2 GiB para cuatro ingestas) se
@@ -476,7 +476,7 @@ python -m neurodatics.modules.projects.application.use_cases.recover_uploads
 
 **Despliegue.** La migración **022** crea `upload_attempts` y `drive_cleanup_tasks`; no reescribe datos
 de proyecto. El arranque en Docker ya ejecuta `alembic upgrade head`, igual que el lanzador de la
-edición de estudiantes. Backend y frontend se despliegan juntos para tener la cancelación con UUID: un
+edición local. Backend y frontend se despliegan juntos para tener la cancelación con UUID: un
 cliente viejo puede omitirlo, pero solo uno actualizado distingue su propio intento de otros intentos
 históricos.
 
@@ -546,7 +546,7 @@ se escale horizontalmente.
 - Las credenciales de Drive son una integración de todo el sistema, con un token de refresco guardado
   en el servidor y un alcance amplio. El router de autorización está autenticado y el callback usa un
   estado firmado y con vencimiento, pero no hay distinción de rol entre un usuario autenticado
-  cualquiera y quien administra la integración. En la edición de estudiantes esto no aplica: no hay
+  cualquiera y quien administra la integración. En la edición local esto no aplica: no hay
   credenciales ni red.
 
 ## 8. Pruebas

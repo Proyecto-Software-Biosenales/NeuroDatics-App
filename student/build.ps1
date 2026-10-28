@@ -4,7 +4,7 @@
 #
 # <Work> (default: output\student, git-ignored) holds everything the build needs or produces:
 #   build-venv\  a venv made from student\requirements-frozen.txt (Google's libraries are not in it)
-#   dist\        the frozen runtime, neurodatics-estudiantes\
+#   dist\        the frozen runtime, neurodatics\
 #   frontend\    the static web app (a copy of frontend\.next-local, built here)
 # No source under backend\ or frontend\ is modified; the web build writes only frontend\.next-local.
 param([string]$Work = (Join-Path $PSScriptRoot '..\output\student'))
@@ -60,7 +60,7 @@ $remote = $site | Where-Object { $_.Extension -in '.html', '.css', '.js' } |
 if ($remote) { throw "web build still references a remote font or script: $($remote[0].Path)" }
 "web app: $($site.Count) files, " + [math]::Round((($site | Measure-Object Length -Sum).Sum) / 1MB, 1) + " MiB at $Work\frontend"
 
-& $py -m PyInstaller --noconfirm --clean --onedir --name neurodatics-estudiantes `
+& $py -m PyInstaller --noconfirm --clean --onedir --name neurodatics `
     --distpath "$Work\dist" --workpath "$Work\build-work" --specpath "$Work\spec" `
     --paths "$backend\src" --paths "$student\src" `
     --add-data "$backend\migrations;migrations" `
@@ -83,4 +83,4 @@ if ($remote) { throw "web build still references a remote font or script: $($rem
     --exclude-module alembic.testing --exclude-module sqlalchemy.testing `
     "$student\src\student_entry.py"
 if ($LASTEXITCODE) { throw "PyInstaller failed (exit $LASTEXITCODE)" }
-"built $Work\dist\neurodatics-estudiantes"
+"built $Work\dist\neurodatics"

@@ -70,7 +70,7 @@ try {
         $texto = [IO.File]::ReadAllText((Join-Path $PSScriptRoot $archivo)) -replace '\r?\n', "`r`n"
         [IO.File]::WriteAllText((Join-Path $Destino $archivo), $texto, (New-Object Text.UTF8Encoding($false)))
     }
-    # El Bloc de notas reconoce las tildes con BOM y CRLF, como la guía de Estudiantes.
+    # El Bloc de notas reconoce las tildes con BOM y CRLF, como la guía de la edición local.
     $guia = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'LEEME-PRIMERO.txt')) -replace '\r?\n', "`r`n"
     [IO.File]::WriteAllText((Join-Path $Destino 'LEEME-PRIMERO.txt'), $guia, (New-Object Text.UTF8Encoding($true)))
     foreach ($archivo in @('.env.example', 'README.md', 'CONFIGURACION-GOOGLE.md', 'SOLUCION-DE-PROBLEMAS.md')) {

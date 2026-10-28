@@ -24,9 +24,28 @@ class GoogleAuthorizeResponse(BaseModel):
     user: AuthUserResponse
 
 
+class LocalSessionRequest(BaseModel):
+    profile_id: Optional[str] = None
+
+
 class LocalSessionResponse(BaseModel):
+    """No token and no user when this computer has no profile yet."""
     mode: str = "local"
-    access_token: str
+    access_token: Optional[str] = None
     token_type: str = "Bearer"
-    expires_in: int
-    user: AuthUserResponse
+    expires_in: int = 0
+    user: Optional[AuthUserResponse] = None
+
+
+class LocalProfileResponse(BaseModel):
+    id: str
+    name: str
+    project_count: int
+
+
+class CreateLocalProfileRequest(BaseModel):
+    name: str = Field(max_length=200)
+
+
+class DeleteLocalProfileResponse(BaseModel):
+    deleted_projects: int

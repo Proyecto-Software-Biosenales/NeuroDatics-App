@@ -1,5 +1,8 @@
 'use client'
 
+// Network edition only (Google sign-in). NeuroDatics ships only the local edition, which never
+// shows this; it is kept for self-hosting: docs/tecnica/alojamiento-en-red.md.
+
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { LoaderCircle } from 'lucide-react'

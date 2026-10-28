@@ -4,7 +4,7 @@ Interfaz de NeuroDatics: Next.js (App Router), React, TypeScript, Tailwind CSS, 
 El mismo código sirve a las dos ediciones; lo que cambia entre ellas se decide con `IS_LOCAL_MODE`
 (`lib/appMode.ts`), que se fija al compilar a partir de `NEXT_PUBLIC_APP_MODE`.
 
-| | Edición servidor | NeuroDatics Estudiantes |
+| | En red (sin uso actual) | Local (la que se entrega) |
 | --- | --- | --- |
 | Cómo se sirve | Servidor de Next en su propio contenedor del [stack Docker](../README.md) | Exportación estática (`frontend/.next-local`) que sirve el backend |
 | Llamadas a la API | `/api` en el mismo origen; Next las reenvía al backend interno (`NEXT_INTERNAL_API_BASE_URL`) | `/api` en el mismo origen, atendido directamente por el backend |
@@ -31,7 +31,7 @@ npm run dev                     # servidor de desarrollo (necesita un backend en
 npm test                        # typecheck + pruebas unitarias + pruebas en navegador
 npm run lint                    # ESLint
 npm run test:e2e                # Playwright con la API simulada
-$env:NEXT_PUBLIC_APP_MODE = 'local'; npx next build   # exportación estática de la edición de estudiantes
+$env:NEXT_PUBLIC_APP_MODE = 'local'; npx next build   # exportación estática de la edición local
 ```
 
 La verificación completa del repositorio es `./verify.ps1` desde la raíz; el detalle de cada prueba está en

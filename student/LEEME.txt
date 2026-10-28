@@ -1,8 +1,8 @@
-NEURODATICS ESTUDIANTES - GUÍA RÁPIDA
-=====================================
+NEURODATICS - GUÍA RÁPIDA
+=========================
 
 NeuroDatics para tu computador: procesa y analiza los datos de un experimento (eye tracker, GSR, EEG).
-No necesita cuenta, ni Google Drive, ni internet (solo para descargar este paquete).
+No necesita cuenta ni contraseña, ni Google Drive, ni internet (solo para descargar este paquete).
 
 Necesitas: Windows 10 u 11 de 64 bits, 8 GB de memoria y unos 5 GB libres en el disco C:.
 
@@ -19,8 +19,8 @@ Consejo: antes de extraer, clic derecho sobre el ZIP > Propiedades. Si al final 
 
 2. ABRIR
 --------
-Dentro de la carpeta extraída solo verás dos archivos: esta guía y  neurodatics-estudiantes.exe
-Doble clic en  neurodatics-estudiantes.exe
+Dentro de la carpeta extraída solo verás dos archivos: esta guía y  neurodatics.exe
+Doble clic en  neurodatics.exe
 
 Los archivos del programa están en una carpeta oculta llamada "_internal". No la borres, no la muevas
 y no saques el .exe de esta carpeta: el programa la necesita a su lado. Si quieres un acceso directo
@@ -32,7 +32,7 @@ No es un virus: solo significa que Microsoft no conoce este archivo.
    - Pulsa "Más información" y luego "Ejecutar de todas formas".
 
 Si Windows lo bloquea y NO ofrece "Ejecutar de todas formas" (mensaje de "Smart App Control"),
-no cambies configuraciones de seguridad: avisa a tu docente.
+no cambies configuraciones de seguridad: avisa a quien te entregó NeuroDatics.
 
 
 3. USAR
@@ -40,8 +40,13 @@ no cambies configuraciones de seguridad: avisa a tu docente.
 Se abre una ventana negra (no la cierres) y, unos segundos después, tu navegador con NeuroDatics.
 La primera vez tarda más (hasta un minuto) porque prepara la base de datos.
 
+   - La primera vez te pide crear tu perfil: escribe tu nombre y pulsa "Crear perfil". Tu nombre
+     aparece arriba a la derecha. Cada perfil tiene sus propios proyectos; si varias personas usan
+     este computador, crea uno para cada una. Para cambiar de perfil, crear otro o eliminar uno,
+     pulsa tu nombre > "Cambiar de perfil". Eliminar un perfil borra de este computador todos sus
+     proyectos, sin vuelta atrás.
    - La primera vez aparece abajo a la derecha el aviso "Revisa la configuración de pantalla".
-     Pulsa "Ir a Configuración" (también está en el menú "Estudiante", arriba a la derecha), comprueba
+     Pulsa "Ir a Configuración" (también está en el menú con tu nombre, arriba a la derecha), comprueba
      el ancho y el alto de la pantalla donde se mostraron los estímulos (por defecto la del laboratorio,
      1280 x 1024) y pulsa "Guardar configuración de pantalla". Si cierras el aviso o sales de Configuración sin guardar,
      no vuelve a salir hasta la próxima vez que abras NeuroDatics.
@@ -74,7 +79,7 @@ Cierra la ventana negra. La app guarda todo y se detiene sola. Tus proyectos sig
 
 5. DÓNDE QUEDAN TUS DATOS
 -------------------------
-   %LOCALAPPDATA%\NeuroDatics Estudiantes      (pega esa ruta en la barra del Explorador de archivos)
+   %LOCALAPPDATA%\NeuroDatics      (pega esa ruta en la barra del Explorador de archivos)
 
 Ahí están tus proyectos y los archivos de los experimentos que subiste. Borrar la carpeta del programa
 NO borra esos datos. Si trabajas con datos de participantes y ya terminaste, cierra la app y borra esa
@@ -87,7 +92,7 @@ carpeta. Guarda copias de lo que necesites antes.
    - "No puede ejecutarse como administrador": ábrelo con doble clic normal, no con "Ejecutar como administrador".
    - Un antivirus puede retrasar el primer arranque uno o dos minutos. Espera.
    - La ventana negra muestra un error y dice "Pulsa Enter para cerrar": copia el mensaje, abre la carpeta de
-     datos (paso 5), luego la carpeta "logs", y envía a tu docente los archivos que allí aparezcan
+     datos (paso 5), luego la carpeta "logs", y envía a quien te entregó NeuroDatics los archivos que allí aparezcan
      (launcher-errors.log y los .log de PostgreSQL).
    - No muevas ni borres carpetas del programa mientras la app está abierta.
 

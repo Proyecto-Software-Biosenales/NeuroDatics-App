@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { NavBar } from "@/components/layout/NavBar"
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from '@/lib/providers/AuthProvider'
+import { LocalProfileGate } from "@/features/auth/components/LocalProfileGate"
 import { ScreenSettingsNotice } from "@/features/settings/components/ScreenSettingsNotice"
 
 // The icon is app/favicon.ico, the NeuroDatics logo.
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider defaultTheme="light">
           <AuthProvider>
+            <LocalProfileGate />
             <NavBar />
             <ScreenSettingsNotice />
             <main>{children}</main>

@@ -8,14 +8,21 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....api.deps import get_current_user, get_db
+from ....config.security import LOCAL_USER_ID
+from ....config.settings import settings
 from ..domain.entities import UserSettings
 from .schemas import RETIRED_SCREEN_FIELDS, ScreenSettings, ScreenSettingsEnvelope
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
+def settings_owner(current_user: str) -> str:
+    # The local edition's screen belongs to the computer, so every profile shares the same one.
+    return LOCAL_USER_ID if settings.is_local else current_user
+
+
 async def owned_settings(db: AsyncSession, owner_id: str) -> UserSettings | None:
-    statement = select(UserSettings).where(UserSettings.owner_id == UUID(owner_id))
+    statement = select(UserSettings).where(UserSettings.owner_id == UUID(settings_owner(owner_id)))
     return (await db.execute(statement.execution_options(populate_existing=True))).scalar_one_or_none()
 
 
@@ -44,7 +51,7 @@ async def update_screen_settings(
     """Save the screen and mark it as reviewed, even when the defaults were kept unchanged."""
     row = await owned_settings(db, current_user)
     if row is None:
-        row = UserSettings(owner_id=UUID(current_user))
+        row = UserSettings(owner_id=UUID(settings_owner(current_user)))
         db.add(row)
     row.screen = request.model_dump(mode="json")
     row.screen_confirmed_at = datetime.now(timezone.utc)

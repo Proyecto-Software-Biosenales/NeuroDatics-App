@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.routing import APIRoute
+from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.testclient import TestClient
 
 from neurodatics.api import middlewares, router as api_router
@@ -95,9 +96,29 @@ def test_video_previews_are_cached_where_local_mode_puts_them_and_the_janitor_pr
 
 
 # -- identity ------------------------------------------------------------------------------
-@pytest.mark.usefixtures("local_mode")
-def test_local_mode_needs_no_token():
-    assert asyncio.run(security.get_current_user_id(None)) == security.LOCAL_USER_ID
+@pytest.fixture
+def known_profiles(monkeypatch):
+    from neurodatics.modules.auth.application import profile_registry
+
+    monkeypatch.setattr(profile_registry, "_known_ids", {security.LOCAL_USER_ID})
+
+
+def bearer(value):
+    return HTTPAuthorizationCredentials(scheme="Bearer", credentials=value)
+
+
+@pytest.mark.usefixtures("local_mode", "known_profiles")
+def test_local_mode_identifies_the_profile_by_its_id():
+    assert asyncio.run(security.get_current_user_id(bearer(security.LOCAL_USER_ID))) == security.LOCAL_USER_ID
+
+
+@pytest.mark.usefixtures("local_mode", "known_profiles")
+@pytest.mark.parametrize("credentials", [None, bearer("00000000-0000-4000-8000-00000000dead"), bearer("not-an-id")])
+def test_local_mode_refuses_requests_without_an_existing_profile(credentials):
+    with pytest.raises(HTTPException) as refused:
+        asyncio.run(security.get_current_user_id(credentials))
+
+    assert refused.value.status_code == 401
 
 
 def test_server_mode_still_rejects_a_missing_token():
@@ -118,28 +139,18 @@ def mounted_paths(app):
 
 
 @pytest.mark.usefixtures("local_mode")
-def test_local_mode_replaces_sign_in_and_drive_routes_with_one_session_route():
+def test_local_mode_replaces_sign_in_and_drive_routes_with_profiles():
     app = FastAPI()
 
     api_router.include_routes(app)
 
     paths = mounted_paths(app)
     assert "POST /api/auth/local-session" in paths
+    assert {"GET /api/auth/profiles", "POST /api/auth/profiles", "DELETE /api/auth/profiles/{profile_id}"} <= set(paths)
     assert not [path for path in paths if "google" in path]
     assert any(path.startswith("GET /api/projects") for path in paths)
 
 
-@pytest.mark.usefixtures("local_mode")
-def test_local_session_returns_the_fixed_user():
-    app = FastAPI()
-    api_router.include_routes(app)
-
-    response = TestClient(app).post("/api/auth/local-session")
-
-    body = response.json()
-    assert response.status_code == 200
-    assert body["mode"] == "local" and body["user"]["id"] == security.LOCAL_USER_ID
-    assert body["access_token"]
 
 
 # -- the guard that replaces a login --------------------------------------------------------

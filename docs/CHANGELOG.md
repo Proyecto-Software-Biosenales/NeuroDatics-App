@@ -5,6 +5,55 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Perfiles
+
+- **La primera vez, NeuroDatics pide crear un perfil**: solo el nombre, que aparece arriba a la derecha en
+  lugar de «Investigador». Al pulsarlo, «Cambiar de perfil» lleva a la lista de perfiles del computador, donde
+  se abre otro, se crea uno nuevo o se elimina uno.
+- **Cada perfil tiene sus propios proyectos.** El primer perfil que se crea se queda con los proyectos que ya
+  había. La configuración de pantalla es del computador y la comparten todos.
+- **Eliminar un perfil borra de este computador todos sus proyectos**, con sus archivos, tras la misma doble
+  confirmación que eliminar un proyecto. Si uno de ellos se está procesando, no se elimina nada más y lo dice.
+- **Pruebas:** `test_local_profiles.py` y `test_local_mode.py` (backend) y `student-offline.spec.ts` (crear el
+  primer perfil, proyectos separados, cambiar de perfil y eliminar uno con su proyecto).
+
+### Paquete NeuroDatics 2.1
+
+`delivery/NeuroDatics-2.1-win64.zip` (252,0 MiB, 4076 archivos), SHA-256
+`6BA89DC5D0BC98406C03592FF108FCD280DE4957093A80F5EFD32CF103A7D610`, compilado el 27 de octubre sobre `4433397`
+más el cambio a una sola edición y los perfiles (sin confirmar aún). Reemplaza al paquete 2.0. `run-frozen.ps1`:
+selftest, las etapas del PostgreSQL embebido, pg-adopt, http-check 11/11 (ahora crea un perfil y lo elimina con su
+proyecto) y la carrera de dos arranques correctos; navegador 8/8 `passed`; 0 conexiones fuera de loopback; 0
+procesos postgres al salir. El zip extraído en una ruta con tildes arranca en 14,8 s, pide un perfil y emite la
+sesión al crearlo. Siguen abiertos los 3 bloqueos de publicación. Antes de compilar, `verify.ps1` en verde (1292
+pruebas del backend, 3 contratos de importación; ESLint: 0 errores, 6 avisos).
+
+### NeuroDatics 2.0: una sola edición, para el investigador
+
+- **«NeuroDatics Estudiantes» pasa a llamarse NeuroDatics**, y el menú de arriba a la derecha dice
+  «Investigador». El programa es `neurodatics.exe`, el zip `NeuroDatics-<versión>-win64.zip` y los proyectos se
+  guardan en `%LOCALAPPDATA%\NeuroDatics`. El programa no busca la carpeta antigua
+  (`%LOCALAPPDATA%\NeuroDatics Estudiantes`): quien ya la tenga debe cambiarle el nombre, con la app cerrada,
+  para seguir viendo sus proyectos. `LEEME.txt` ya no habla de estudiantes ni de docentes.
+- **La edición en red (Docker, Google, Drive) queda sin uso.** No se puede mantener gratis: necesita una base de
+  datos, un servicio de identificación y un almacenamiento en la nube. El código se conserva y cada archivo
+  exclusivo de esa edición lo dice en su primera línea. La nueva guía
+  [tecnica/alojamiento-en-red.md](tecnica/alojamiento-en-red.md) explica qué debe proveer quien quiera alojarla
+  y dónde se conecta cada pieza, y `.env.example` marca esos huecos como «DEBES PROVEER». La entrega de Windows
+  con Docker (`delivery/NeuroDatics-App`) ya no se genera.
+- **Documentación:** README, CONTRIBUTING, `docs/`, `backend/`, `frontend/` y `student/` describen la edición
+  local como la que se entrega. Los manuales en PDF se actualizan aparte.
+
+### Paquete NeuroDatics 2.0
+
+`delivery/NeuroDatics-2.0-win64.zip` (251,9 MiB, 4066 archivos), SHA-256
+`70E391B8F4F5CD5606171AC761B100E9B0C63EF69354126E491348108744BDEF`, compilado el 27 de octubre sobre `4433397`
+más el cambio a una sola edición (sin confirmar aún). Reemplaza al paquete de estudiantes 1.20. `run-frozen.ps1`:
+selftest, las etapas del PostgreSQL embebido, pg-adopt, http-check y la carrera de dos arranques correctos;
+navegador 7/7 `passed` (incluido «Investigador» en la cabecera); 0 conexiones fuera de loopback; 0 procesos
+postgres al salir. El zip extraído en una ruta con tildes arranca en 8,2 s. Siguen abiertos los 3 bloqueos de
+publicación. Antes de compilar, `verify.ps1` en verde (1273 pruebas del backend; ESLint: 0 errores, 6 avisos).
+
 ### «Responder cuestionario» desde cada cuestionario
 
 - **Nuevo botón bajo «Agregar pregunta»**, del mismo tamaño, en «Antes del experimento» y «Después del

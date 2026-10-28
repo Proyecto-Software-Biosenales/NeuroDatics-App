@@ -1,13 +1,13 @@
-"""Start NeuroDatics for one student: database, migrations, then the app on loopback.
+"""Start NeuroDatics for one researcher: database, migrations, then the app on loopback.
 
 Everything the app needs is decided here and handed over through the environment before the
 application is imported, because its settings are read once at import time.
 
-    NeuroDatics Estudiantes/    the extracted folder (read-only is fine); a student sees only
-        neurodatics-estudiantes.exe  LEEME.txt
+    NeuroDatics/                the extracted folder (read-only is fine); the researcher sees only
+        neurodatics.exe  LEEME.txt
         _internal/              hidden: the frozen runtime and the package (sys._MEIPASS)
             pgsql/bin  pg-template  tools/ (ffmpeg)  frontend/  THIRD-PARTY-NOTICES.txt
-    %LOCALAPPDATA%/NeuroDatics Estudiantes/
+    %LOCALAPPDATA%/NeuroDatics/
         pgdata  logs  storage  cache  postgres.password  instance.json
 
 The data lives in the profile rather than beside the program on purpose: a folder extracted
@@ -36,7 +36,7 @@ from typing import Callable, Optional
 from .instance import InstanceLock, app_address, wait_for_running_instance
 from .postgres import EmbeddedPostgres, PostgresError
 
-APP_DIR_NAME = "NeuroDatics Estudiantes"
+APP_DIR_NAME = "NeuroDatics"
 PREFERRED_PORT = 8765
 FRONTEND_DIR = "frontend"
 FAILURE_LOG = "launcher-errors.log"
@@ -270,7 +270,7 @@ def serve(args: argparse.Namespace, pkg: pathlib.Path, data_root: pathlib.Path, 
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="neurodatics-estudiantes")
+    parser = argparse.ArgumentParser(prog="neurodatics")
     parser.add_argument("--pkg", help="package folder (default: the folder of the executable)")
     parser.add_argument("--data-dir", help=f"where projects live (default: %%LOCALAPPDATA%%\\{APP_DIR_NAME})")
     parser.add_argument("--port", type=int, default=PREFERRED_PORT, help="preferred port; 0 picks any")

@@ -1,4 +1,4 @@
-import { IS_LOCAL_MODE } from "@/lib/appMode";
+import { IS_LOCAL_MODE, SIGN_IN_PATH } from "@/lib/appMode";
 import { ensureLocalSession } from "@/lib/auth/localAuth";
 import { clearStoredAuthSession, getAccessToken, isAccessTokenExpired } from "@/lib/auth/sessionStore";
 
@@ -99,17 +99,18 @@ function redirectToLogin(message = SESSION_EXPIRED_MESSAGE): never {
   clearStoredAuthSession();
   if (typeof window !== "undefined") {
     // A full page load on purpose: it drops every in-memory cache of the signed-out user.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.href = "/login";
+    window.location.href = SIGN_IN_PATH;
   }
   throw new Error(message);
 }
 
 async function ensureAccessTokenIsValid() {
   if (!isAccessTokenExpired()) return;
-  // There is no login to go back to in the student edition: ask the local backend for a new session.
+  // There is no login to go back to in the local edition: ask the local backend to reopen the profile.
   if (IS_LOCAL_MODE) {
     await ensureLocalSession();
+    // Without a profile the backend would refuse the request: go and choose one instead.
+    if (!getAccessToken()) redirectToLogin();
     return;
   }
   redirectToLogin();

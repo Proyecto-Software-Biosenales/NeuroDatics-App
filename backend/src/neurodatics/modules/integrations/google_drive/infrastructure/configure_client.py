@@ -1,3 +1,6 @@
+# Network edition only (Google sign-in, Google Drive). NeuroDatics ships only the local edition,
+# which never imports this module; it is kept for self-hosting: docs/tecnica/alojamiento-en-red.md.
+
 """Helper to configure Google Drive client with OAuth credentials from system integrations."""
 
 import hashlib

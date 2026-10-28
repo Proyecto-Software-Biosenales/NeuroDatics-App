@@ -1,6 +1,6 @@
-# NeuroDatics Estudiantes: construcción y comprobaciones
+# NeuroDatics para Windows: construcción y comprobaciones
 
-La edición de estudiantes es el backend en `APP_MODE=local`, congelado con PyInstaller junto a un PostgreSQL 16
+La edición local, la que se entrega, es el backend en `APP_MODE=local`, congelado con PyInstaller junto a un PostgreSQL 16
 embebido, ffmpeg y la aplicación web como exportación estática (`frontend/`) que el propio backend sirve. El
 código de ejecución vive en el backend (`backend/src/neurodatics/local/`); esta carpeta contiene solo lo que
 construye y comprueba el paquete.
@@ -10,11 +10,11 @@ construye y comprueba el paquete.
 | `requirements.txt` | Dependencias directas, fijadas a las versiones con que corren las pruebas del backend. Sin bibliotecas de Google. |
 | `requirements-frozen.txt` | `pip freeze` del entorno de construcción que produjo el paquete probado. |
 | `check-pins.py` | Falla si una versión difiere del entorno probado (`.venv`) o del entorno de construcción. |
-| `build.ps1` | Compila la aplicación web (`NEXT_PUBLIC_APP_MODE=local`, salida en `frontend/.next-local`, copiada a `<Work>/frontend`) y congela `src/student_entry.py` en `<Work>/dist/neurodatics-estudiantes`. |
+| `build.ps1` | Compila la aplicación web (`NEXT_PUBLIC_APP_MODE=local`, salida en `frontend/.next-local`, copiada a `<Work>/frontend`) y congela `src/student_entry.py` en `<Work>/dist/neurodatics`. |
 | `run-frozen.ps1` | Ensambla la carpeta del paquete (PostgreSQL, plantilla, ffmpeg y web dentro de `_internal`, sin baterías de pruebas, cabeceras, bibliotecas de enlace ni los programas gráficos y de prueba de PostgreSQL) y ejecuta sobre ella las comprobaciones de abajo. |
 | `check-pe-imports.py` | Comprueba que cada binario de PostgreSQL encuentre las DLL que importa dentro del paquete. |
 | `package.ps1` | Añade la guía (junto al exe) y los avisos (en `_internal`), oculta `_internal`, comprime el paquete en `<Work>/release/`, escribe `SHA256.txt` y `package-report.json`, arranca la aplicación desde el zip extraído (ruta con acentos, perfil vacío) y prepara `delivery\`. |
-| `LEEME.txt` | La guía del estudiante, que viaja en el paquete. Se edita aquí, nunca en el paquete. |
+| `LEEME.txt` | La guía rápida del investigador, que viaja en el paquete. Se edita aquí, nunca en el paquete. |
 | `make-notices.py` | Escribe `THIRD-PARTY-NOTICES.txt` a partir del entorno de construcción, `frontend/package.json` y el ffmpeg que de verdad está en `tools\`. |
 | `laptop-test.ps1` | Se ejecuta en un portátil de prueba (Windows PowerShell 5.1): datos de la máquina, un experimento real por la aplicación, muestreo de memoria y conexiones, y un zip para devolver. |
 | `src/` | El punto de entrada congelado y las comprobaciones que lleva dentro: `selftest`, `pg-check`, `pg-adopt`, `http-check`. |
@@ -62,7 +62,7 @@ red (abajo).
 
 ```powershell
 student\package.ps1 -Work output\student -Version <versión>
-student\run-frozen.ps1 -Work output\student -Pkg "<release-check\...\NeuroDatics Estudiantes>" -Only serve   # opcional: la comprobación completa sobre el zip extraído
+student\run-frozen.ps1 -Work output\student -Pkg "<release-check\...\NeuroDatics>" -Only serve   # opcional: la comprobación completa sobre el zip extraído
 ```
 
 `<versión>` es la del zip actual en `delivery/` más uno en el último número. Para dar por bueno un paquete no basta
@@ -70,11 +70,11 @@ el código de salida: en el log de `run-frozen.ps1` el navegador debe decir `pas
 conexiones fuera de loopback y no deben quedar procesos de PostgreSQL. La versión, el SHA-256 del zip y las
 comprobaciones que pasaron se anotan en `docs/CHANGELOG.md`. `delivery/` solo lo escribe `package.ps1`.
 
-El paquete que abre el estudiante muestra dos archivos y nada más:
+El paquete que abre el investigador muestra dos archivos y nada más:
 
 ```text
-NeuroDatics Estudiantes\
-    neurodatics-estudiantes.exe
+NeuroDatics\
+    neurodatics.exe
     LEEME.txt
     _internal\          oculto: Python, pgsql\, pg-template\, tools\, frontend\, THIRD-PARTY-NOTICES.txt
 ```
@@ -84,9 +84,8 @@ NeuroDatics Estudiantes\
 `package.ps1` marca `_internal` como oculto en la carpeta y en el zip («Extraer todo» del Explorador lo
 conserva), y el lanzador lo vuelve a ocultar al arrancar si un extractor perdió el atributo.
 
-`package.ps1` crea `delivery\NeuroDatics-Estudiantes\` (ignorado por Git, junto al `delivery\NeuroDatics-App` de
-la edición servidor) con la carpeta del programa, y deja al lado el zip como
-`delivery\NeuroDatics-Estudiantes-<versión>-win64.zip`, retirando los anteriores (`-NoDelivery` omite este paso).
+`package.ps1` crea `delivery\NeuroDatics\` (ignorado por Git) con la carpeta del programa, y deja al lado el zip
+como `delivery\NeuroDatics-<versión>-win64.zip`, retirando los anteriores (`-NoDelivery` omite este paso).
 Los archivos del mantenedor quedan en `<Work>\release`: el zip, `SHA256.txt`, `laptop-test.ps1` y
 `package-report.json`, cuyo `release_blockers` enumera lo que ningún script puede resolver. Un arranque con doble
 clic (sin argumentos) que falla muestra el error, escribe `logs\launcher-errors.log` en el directorio de datos y
@@ -94,11 +93,11 @@ espera a que se pulse Enter; los arranques con argumentos (todas las comprobacio
 
 ### Prueba en un portátil
 
-Lo único que ninguna comprobación de esta máquina puede cubrir es un portátil de estudiante real: SmartScreen,
+Lo único que ninguna comprobación de esta máquina puede cubrir es un portátil real de un investigador: SmartScreen,
 Smart App Control, el antivirus, un equipo sin herramientas de desarrollo y poca memoria. El procedimiento:
 subir el zip a Drive y descargarlo **desde Drive en el portátil**; comparar `Get-FileHash` con `SHA256.txt`;
 extraer con el Explorador; seguir `LEEME.txt` anotando cada paso que no sea cierto en esa máquina; activar el modo
-avión; abrir `neurodatics-estudiantes.exe` anotando el aviso de SmartScreen exacto; subir un experimento crudo,
+avión; abrir `neurodatics.exe` anotando el aviso de SmartScreen exacto; subir un experimento crudo,
 abrir el tablero, un informe, una imagen y un vídeo; y ejecutar `laptop-test.ps1`, que reúne los datos de la
 máquina y devuelve un zip con el resultado.
 
@@ -142,12 +141,12 @@ una opción más simple se probó o se descartó.
 portable: el bloqueo de mutación de proyectos es un bloqueo consultivo de PostgreSQL, los tokens de
 transformación de la analítica se fusionan con el operador JSONB `||` y un tercio de las migraciones nombran
 tipos de PostgreSQL. Otro motor obligaría a reescribir todo eso y volver a demostrarlo contra los goldens, así que
-la edición de estudiantes lleva la compilación de EDB del mismo servidor como segundo proceso y el código de la
+la edición local lleva la compilación de EDB del mismo servidor como segundo proceso y el código de la
 aplicación no cambia. Las migraciones se ejecutan en cada arranque, por eso una migración no puede usar una
 extensión que el zip de EDB no traiga.
 
-**El clúster se copia de una plantilla; nunca se crea en la máquina del estudiante.** `initdb` falla desde una
-ruta con caracteres no ASCII, y la carpeta de usuario de un estudiante bien puede tenerlos. `pg-template` se
+**El clúster se copia de una plantilla; nunca se crea en la máquina del investigador.** `initdb` falla desde una
+ruta con caracteres no ASCII, y la carpeta de usuario de un investigador bien puede tenerlos. `pg-template` se
 construye aparte desde una ruta ASCII y se copia en el primer arranque. La copia se arma con un nombre
 `.building` y se renombra al final, así que un primer arranque interrumpido no deja nada que parezca un clúster;
 el renombrado espera y reintenta, porque un antivirus o el indexador de búsqueda pueden seguir sujetando los
@@ -164,8 +163,8 @@ bloqueo de instancia hace que abra la aplicación que ya corre y salga.
 
 **Todo vive en el perfil del usuario, no junto al programa.** Una carpeta extraída en Descargas o en el
 Escritorio suele sincronizarla OneDrive, y sincronizar un directorio de base de datos vivo lo corrompe, así que la
-raíz de datos es `%LOCALAPPDATA%\NeuroDatics Estudiantes` (`--data-dir` la cambia). El coste es deliberado y está
-en la guía: borrar la carpeta extraída del programa no borra los proyectos del estudiante.
+raíz de datos es `%LOCALAPPDATA%\NeuroDatics` (`--data-dir` la cambia). El coste es deliberado y está
+en la guía: borrar la carpeta extraída del programa no borra los proyectos del investigador.
 
 **La web es una exportación estática que sirve el propio backend.** Un solo origen significa sin CORS, sin
 segundo puerto y sin proxy: las páginas llaman a `/api/...` en la dirección desde la que se cargaron. El sitio se
@@ -173,7 +172,8 @@ monta el último para que cada ruta de la API gane a su comodín, y delante se r
 exportación en Windows: la ruta de colección que la aplicación pide sin barra final, y la precarga de datos de
 página de Next, que una exportación en Windows escribe en una carpeta anidada.
 
-**Todo escucha en 127.0.0.1, y no hay inicio de sesión.** El puerto de la aplicación se reserva en loopback antes
+**Todo escucha en 127.0.0.1, y no hay inicio de sesión.** Los perfiles separan los proyectos de quienes comparten
+el computador, pero no son una frontera de seguridad: no tienen contraseña. El puerto de la aplicación se reserva en loopback antes
 de arrancar el servidor, para que ningún otro programa lo tome entretanto, y PostgreSQL arranca con
 `listen_addresses=127.0.0.1`. Sin cuentas, lo único que impide que otra página web maneje la API es que un
 navegador no puede nombrar un `Host` de loopback que no es suyo ni enviar un `Origin` distinto de aquel desde el
@@ -185,12 +185,12 @@ procesos, así que las comprobaciones también muestrean la tabla de conexiones 
 las rutas de Google ni siquiera se importan, la caché es en proceso (no hay Redis que pueda caerse) y los archivos
 pasan por el cliente de almacenamiento local, así que no queda nada que quiera la red.
 
-**Congelado con PyInstaller en un directorio, y todo viaja dentro de `_internal`.** El estudiante ve
-`neurodatics-estudiantes.exe` y `LEEME.txt`; PostgreSQL, su plantilla, ffmpeg, la web y los avisos están en la
+**Congelado con PyInstaller en un directorio, y todo viaja dentro de `_internal`.** El investigador ve
+`neurodatics.exe` y `LEEME.txt`; PostgreSQL, su plantilla, ffmpeg, la web y los avisos están en la
 carpeta del propio ejecutable, que el lanzador encuentra con `sys._MEIPASS` y vuelve a ocultar al arrancar.
 ffmpeg viaja porque el sondeo de estímulos busca `ffprobe` en el `PATH`, que el lanzador apunta a la carpeta
 `tools` incluida; el runtime de Visual C++ viaja junto a `pgsql\bin` porque los binarios de PostgreSQL lo
-necesitan y la máquina de un estudiante puede no tenerlo. `-Assemble` copia un juego coherente (`msvcp140*.dll`,
+necesitan y la máquina de un investigador puede no tenerlo. `-Assemble` copia un juego coherente (`msvcp140*.dll`,
 `vcruntime140*.dll`) de la carpeta de redistribuibles de Visual Studio y pasa `check-pe-imports.py` sobre cada
 binario de PostgreSQL: la máquina de construcción tiene el runtime en System32, así que una DLL que falte solo se
 nota en un Windows limpio. La aplicación también se niega a ejecutarse con privilegios de administrador, con un
