@@ -5,6 +5,23 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Manual de uso al día
+
+- **«Superposición» y «Promedio»:** nueva sección 5.13 «Ver a varios participantes en una gráfica» (pasos, qué
+  vistas admite cada opción, de dónde salen las cifras y qué hacer si algo falla), con la figura 5.13, y su
+  explicación en el capítulo 9 (curva media, líneas enteras, mapa de calor del grupo, cifras). También en Tareas
+  frecuentes, Referencia, Solución de problemas y Glosario.
+- **Perfiles:** «Crea tu perfil» con el botón «Crear» y sin tarjeta (figura 1.2 nueva); la barra superior sin
+  enlaces mientras no hay perfil. Figuras 1.1, 1.3 y 8.1 tomadas de nuevo.
+- **Cuestionarios:** «Responder cuestionario» desde cada cuestionario, que solo pide el participante, y en
+  «Respuestas» al final de la lista junto al icono de descarga (figura 6.6 nueva), con sus avisos.
+- **Detalles:** las tarjetas de punto de mirada siguen el «Eje Y»; las vistas espaciales de un vídeo se dibujan
+  sobre un fotograma; tarjetas con «—» en un tramo sin datos; el mapa de recorridos no une fijaciones separadas
+  por un corte; enlace a la Guía de procesamiento.
+- [manuales/NeuroDatics-Manual-de-uso.pdf](../manuales/NeuroDatics-Manual-de-uso.pdf): 125 páginas (antes 120),
+  SHA-256 `71290B97B7D7313408543DB01F9D90862C30BAB5EC35A1A3065F8EB6C74752AF`. Paquete de Windows no reconstruido:
+  el cambio solo toca `manuales/`, que no viaja en él.
+
 ### Fijaciones con el tamaño de pantalla y un parpadeo
 
 - **Un parpadeo ya no hace fallar la subida.** Con el tamaño de pantalla en centímetros (sin distancia
