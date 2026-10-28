@@ -5,6 +5,25 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Fijaciones con el tamaño de pantalla y un parpadeo
+
+- **Un parpadeo ya no hace fallar la subida.** Con el tamaño de pantalla en centímetros (sin distancia
+  escrita) y una exportación cuya rejilla es más rápida que la mirada, cualquier tramo sin mirada dejaba sin
+  distancia la casilla remuestreada y la detección angular abortaba el CSV entero. Ahora solo se exige
+  distancia donde hay mirada válida; las casillas perdidas siguen sin clasificarse.
+- **Pruebas:** `test_angular_resampling_survives_a_blink_without_typed_distance` en
+  `test_fixation_v2_pipeline.py` (falla sin el cambio).
+
+### Paquete NeuroDatics 2.2
+
+`delivery/NeuroDatics-2.2-win64.zip` (252,0 MiB, 4076 archivos), SHA-256
+`C999D7A8187FD16921F6C2033C6DA81D96F5203AE47D736BD27A3C2FCE31AAE6`, compilado el 28 de octubre sobre `6a1c06d`
+más el arreglo del parpadeo en modo angular (sin confirmar aún). Reemplaza al paquete 2.1. `run-frozen.ps1`:
+selftest, las etapas del PostgreSQL embebido, pg-adopt, http-check y la carrera de dos arranques correctos;
+navegador 8/8 `passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído en una ruta
+con tildes arranca en 10,7 s. Siguen abiertos los 3 bloqueos de publicación. Antes de compilar, `verify.ps1` en
+verde (1293 pruebas del backend, 3 contratos de importación; ESLint: 0 errores, 6 avisos).
+
 ### Perfiles
 
 - **La primera vez, NeuroDatics pide crear un perfil**: solo el nombre, que aparece arriba a la derecha en

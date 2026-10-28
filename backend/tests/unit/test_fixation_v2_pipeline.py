@@ -269,6 +269,32 @@ def _resampled_gaze_block(
     )
 
 
+def test_angular_resampling_survives_a_blink_without_typed_distance() -> None:
+    # The interface sends the screen in cm but no distance; the CSV's distance
+    # column is the measured one. A blink leaves resampled bins without gaze.
+    block = _resampled_gaze_block()
+    block["distance"] = 650.0
+    blink = (block["time"] >= 0.40) & (block["time"] < 0.50)
+    block.loc[blink, ["gx", "gy"]] = 0.0
+
+    detection = FixationDetectionService.detect(
+        block,
+        FixationDetectionMetadata(
+            eye_sampling_rate_hz=60.0,
+            grid_sampling_rate_hz=300.0,
+            distance_unit="mm",
+            screen_geometry=ScreenGeometry(
+                width_px=1920, height_px=1080, width_mm=531.0, height_mm=299.0
+            ),
+        ),
+    )
+
+    assert detection.metadata["method"] == "adaptive-ivt-angular"
+    assert detection.metadata["resampled"] is True
+    assert len(detection.events) >= 1
+    assert not detection.samples.loc[blink, "fixation_id"].notna().any()
+
+
 def test_detector_event_duration_survives_the_canonical_analytics_contract() -> None:
     block = _resampled_gaze_block()
 

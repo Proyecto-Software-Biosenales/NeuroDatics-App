@@ -2030,7 +2030,9 @@ class FixationDetectionService:
         invalid_distance = ~np.isfinite(distance) | (distance <= 0.0)
         if geometry.viewing_distance_mm is not None:
             distance[invalid_distance] = float(geometry.viewing_distance_mm)
-        elif invalid_distance.any():  # _distance_mm fills every row with the median
+        elif (invalid_distance & analysis.original_valid).any():
+            # _distance_mm fills every row with the median, but a resampled bin that
+            # holds only lost gaze (a blink) keeps NaN; it is never classified.
             raise ValueError("angular mode requires a viewing distance or sample distances")
         x_mm = (analysis.x_screen_norm - 0.5) * float(geometry.width_mm)
         y_mm = (analysis.y_screen_norm - 0.5) * float(geometry.height_mm)
