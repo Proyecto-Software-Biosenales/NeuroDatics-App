@@ -29,7 +29,7 @@ puertas y arranque desde el código sin congelar: [student/README.md](../student
 - API HTTP y documentación OpenAPI (`/docs`, `/openapi.json` y `/redoc` siguen activos en las dos ediciones).
 - Migraciones de PostgreSQL con Alembic: el contenedor ejecuta `alembic upgrade head` antes de Uvicorn y, en
   local, el launcher las aplica al iniciar sobre el PostgreSQL embebido.
-- Sesión: Google OAuth en la edición servidor; en local, perfiles sin contraseña (`/api/auth/profiles`).
+- Sesión: Google OAuth en la edición en red; en local, perfiles sin contraseña (`/api/auth/profiles`).
   `POST /api/auth/local-session` abre un perfil con la misma forma de respuesta que el inicio de sesión, y el
   token es el id del perfil, que es el `owner_id` de sus proyectos. El primer perfil hereda los proyectos
   creados antes de que existieran los perfiles; la pantalla de Configuración es del computador y la comparten.
@@ -60,7 +60,7 @@ necesita un valor por defecto que funcione en local, o establecerse en `apply_en
 - `integrations/google-drive`: solo `GET /callback`, el retorno de OAuth de Google. Acepta únicamente el enlace
   firmado que emite el comando de administración (`python -m neurodatics.modules.integrations.google_drive.admin
   estado|conectar`, que se ejecuta en el servidor): la aplicación no ofrece ruta para ver ni cambiar la cuenta.
-  **Solo en la edición servidor.**
+  **Solo en la edición en red.**
 - `projects`: alta, consulta, modificación y borrado del proyecto; carga, progreso y cancelación del ZIP
   (para reemplazarlo se sube de nuevo); finalización; sensores, AOIs, participantes, escenarios y pre-experimento (con su exportación y sus
   respuestas); imágenes y vistas previas de los archivos.
@@ -83,7 +83,7 @@ Las rutas de colección se montan **con** barra final: `POST /api/projects/` y `
 edición local el sitio estático atiende todo lo que no sea una ruta exacta, así que una llamada sin la
 barra respondería 404 antes de que FastAPI pudiera redirigir. Las excepciones se declaran en
 `API_PATH_ALIASES` (`src/neurodatics/local/static_frontend.py`), que es donde se reescribe `"/api/projects"`
-a `"/api/projects/"`; en la edición servidor hace lo mismo un rewrite de `frontend/next.config.mjs`.
+a `"/api/projects/"`; en la edición en red hace lo mismo un rewrite de `frontend/next.config.mjs`.
 
 ## Estructura
 
@@ -106,7 +106,7 @@ tests/               unit, characterization (con __snapshots__) y fixtures (gold
 benchmarks/          mediciones de rendimiento (bench_*.py); ver benchmarks/README.md
 ```
 
-Los archivos van siempre a través de `modules/integrations/storage_provider.py`, que en la edición servidor
+Los archivos van siempre a través de `modules/integrations/storage_provider.py`, que en la edición en red
 resuelve a Google Drive y en local al almacenamiento en disco. Ninguna función debe importar el cliente de
 Drive directamente.
 

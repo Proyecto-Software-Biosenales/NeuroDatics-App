@@ -5,12 +5,10 @@ import Image from 'next/image'
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDeletionDialog } from '@/components/ConfirmDeletionDialog'
-import { FieldHint } from '@/components/FieldHint'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { LocalSessionUnavailable } from '@/features/auth/components/LocalSessionUnavailable'
 import {
   createLocalProfile,
@@ -49,32 +47,50 @@ function NewProfileForm({ submitLabel, welcome = false }: { submitLabel: string;
     }
   }
 
-  return (
-    <form onSubmit={(event) => void submit(event)} className="space-y-3">
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-1.5">
-          <Label htmlFor="profile-name">Nombre</Label>
-          <FieldHint label="Qué es un perfil">
-            Cada perfil tiene sus propios proyectos. Si varias personas usan este computador, crea uno para cada una.
-          </FieldHint>
-        </div>
-        <Input
-          id="profile-name"
-          value={name}
-          maxLength={60}
-          autoComplete="off"
-          autoFocus={welcome}
-          disabled={saving}
-          onChange={(event) => {
-            setName(event.target.value)
-            setError(null)
-          }}
-        />
+  // The placeholder names the field; aria-label keeps that name once the placeholder is gone.
+  const field = (
+    <Input
+      id="profile-name"
+      aria-label="Nombre"
+      placeholder="Nombre"
+      value={name}
+      maxLength={60}
+      autoComplete="off"
+      spellCheck={false}
+      autoFocus={welcome}
+      disabled={saving}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? 'profile-name-error' : undefined}
+      className="h-11 px-3.5 md:text-base"
+      onChange={(event) => {
+        setName(event.target.value)
+        setError(null)
+      }}
+    />
+  )
+  const errorMessage = error && <p id="profile-name-error" role="alert" className="text-sm text-destructive">{error}</p>
+  const submitButton = (
+    <Button type="submit" className={welcome ? 'h-11 w-full text-base' : 'h-11 w-full px-5 sm:w-auto'} disabled={saving}>
+      {saving ? 'Creando…' : submitLabel}
+    </Button>
+  )
+
+  // Welcome stacks field, message and button; the list puts the button beside the field.
+  return welcome ? (
+    <form onSubmit={(event) => void submit(event)} noValidate className="space-y-3">
+      <div className="space-y-2">
+        {field}
+        {errorMessage}
       </div>
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" className={welcome ? 'w-full' : 'w-full sm:w-auto'} disabled={saving}>
-        {saving ? 'Creando…' : submitLabel}
-      </Button>
+      {submitButton}
+    </form>
+  ) : (
+    <form onSubmit={(event) => void submit(event)} noValidate className="space-y-2">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        {field}
+        {submitButton}
+      </div>
+      {errorMessage}
     </form>
   )
 }
@@ -174,22 +190,18 @@ export function LocalProfiles() {
           {unavailable ? (
             <LocalSessionUnavailable />
           ) : (
-            <Card className="w-full max-w-[26.5rem]">
-              <CardHeader className="space-y-4 text-center">
-                <div className="mx-auto rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
-                  <Image src="/assets/NeuroDatics-logo.svg" alt="NeuroDatics" width={160} height={48} className="h-12 w-auto" priority />
-                </div>
-                <div className="space-y-2">
-                  <CardTitle>Crea tu perfil</CardTitle>
-                  <CardDescription className="text-balance text-muted-foreground">
-                    Escribe tu nombre para empezar. Tus proyectos se guardarán en tu perfil.
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <NewProfileForm submitLabel="Crear perfil" welcome />
-              </CardContent>
-            </Card>
+            // No card: a single centred column, set a little above the middle like most sign-up pages.
+            <div className="w-full max-w-sm -translate-y-[6vh] text-center">
+              <Image src="/assets/NeuroDatics-logo.png" alt="Logotipo de NeuroDatics" width={52} height={56} className="mx-auto h-12 w-auto" priority />
+              <h1 className="mt-6 text-2xl font-semibold tracking-tight text-foreground">Crea tu perfil</h1>
+              <p className="mt-2 text-sm text-muted-foreground">Escribe tu nombre para empezar.</p>
+              <div className="mt-8 text-left">
+                <NewProfileForm submitLabel="Crear" welcome />
+              </div>
+              <p className="mt-6 text-balance text-xs leading-relaxed text-muted-foreground">
+                Cada perfil guarda sus propios proyectos, solo en este computador.
+              </p>
+            </div>
           )}
         </div>
       </section>

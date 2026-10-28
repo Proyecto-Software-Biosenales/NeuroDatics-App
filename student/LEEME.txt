@@ -40,7 +40,7 @@ no cambies configuraciones de seguridad: avisa a quien te entregó NeuroDatics.
 Se abre una ventana negra (no la cierres) y, unos segundos después, tu navegador con NeuroDatics.
 La primera vez tarda más (hasta un minuto) porque prepara la base de datos.
 
-   - La primera vez te pide crear tu perfil: escribe tu nombre y pulsa "Crear perfil". Tu nombre
+   - La primera vez te pide crear tu perfil: escribe tu nombre y pulsa "Crear". Tu nombre
      aparece arriba a la derecha. Cada perfil tiene sus propios proyectos; si varias personas usan
      este computador, crea uno para cada una. Para cambiar de perfil, crear otro o eliminar uno,
      pulsa tu nombre > "Cambiar de perfil". Eliminar un perfil borra de este computador todos sus

@@ -4,7 +4,6 @@ import {
   ArrowUp,
   CheckSquare,
   ClipboardList,
-  MessageSquareText,
   Plus,
   ToggleLeft,
   Trash2,
@@ -16,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { AnswerQuestionnaireButton } from "./AnswerQuestionnaireButton"
 import { PlanningSelect } from "./PlanningControls"
 import { withDerivedQuestionnaires, type Phase, type PlanningQuestion, type PreExperimentConfig, type Questionnaire } from "./types"
 
@@ -268,16 +268,10 @@ export function PlanningQuestionnaire({
       </Button>
       {answer && (
         <div className="space-y-1.5">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
+          <AnswerQuestionnaireButton
             disabled={disabled || !!answer.blocked}
             onClick={answer.onAnswer}
-          >
-            <MessageSquareText aria-hidden />
-            Responder cuestionario
-          </Button>
+          />
           {answer.blocked && (
             <p className="text-center text-sm text-muted-foreground">{answer.blocked}</p>
           )}

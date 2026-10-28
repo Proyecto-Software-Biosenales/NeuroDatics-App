@@ -46,8 +46,9 @@ test("the first visit asks for a profile, then to review the screen, and Configu
   await page.goto("/proyectos/")
   await expect(page).toHaveURL(/\/perfiles\/?$/)
   await expect(page.getByText("Crea tu perfil", { exact: true })).toBeVisible()
+  await expect(page.getByRole("navigation", { name: "Navegación principal" })).toBeHidden()
   await page.getByRole("textbox", { name: "Nombre", exact: true }).fill(PROFILE)
-  await page.getByRole("button", { name: "Crear perfil", exact: true }).click()
+  await page.getByRole("button", { name: "Crear", exact: true }).click()
   await expect(page).toHaveURL(/\/proyectos\/?$/)
   await expect(page.locator("header").getByText(PROFILE)).toBeVisible()
 

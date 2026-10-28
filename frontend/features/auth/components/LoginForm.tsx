@@ -49,9 +49,7 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-[26.5rem]">
       <CardHeader className="space-y-4 text-center">
-        <div className="mx-auto rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
-          <Image src="/assets/NeuroDatics-logo.svg" alt="NeuroDatics" width={160} height={48} className="h-12 w-auto" priority />
-        </div>
+        <Image src="/assets/NeuroDatics-logo.png" alt="Logotipo de NeuroDatics" width={52} height={56} className="mx-auto h-14 w-auto" priority />
         <div className="space-y-2">
           <CardTitle>Acceder a NeuroDatics</CardTitle>
           <CardDescription className="text-balance text-muted-foreground">

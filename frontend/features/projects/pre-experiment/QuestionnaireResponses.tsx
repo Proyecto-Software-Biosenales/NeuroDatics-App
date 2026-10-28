@@ -1,6 +1,8 @@
 "use client"
 import { Download, MessageSquareText } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { AnswerQuestionnaireButton } from "./AnswerQuestionnaireButton"
 import { PlanningSection } from "./PlanningControls"
 import {
   participantLabel,
@@ -74,17 +76,6 @@ export function QuestionnaireResponses({
       : null
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" disabled={busy || dirty || !canAnswer} onClick={onAnswer}>
-          <MessageSquareText aria-hidden />
-          Responder cuestionario
-        </Button>
-        <Button type="button" variant="outline" disabled={busy || dirty} onClick={onDownload}>
-          <Download aria-hidden />
-          Descargar respuestas
-        </Button>
-        {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
-      </div>
       {saved.responses.length ? (
         <ResponseHistory responses={saved.responses} />
       ) : (
@@ -95,6 +86,36 @@ export function QuestionnaireResponses({
           <p className="font-medium">Todavía no hay respuestas guardadas</p>
         </div>
       )}
+      <div className="space-y-1.5">
+        <div className="flex gap-2">
+          <AnswerQuestionnaireButton
+            className="w-auto flex-1"
+            disabled={busy || dirty || !canAnswer}
+            onClick={onAnswer}
+          />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* The span keeps the tooltip working while the button is disabled. */}
+                <span className="inline-flex">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Descargar respuestas"
+                    disabled={busy || dirty}
+                    onClick={onDownload}
+                  >
+                    <Download aria-hidden />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Descargar respuestas</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        {hint && <p className="text-center text-sm text-muted-foreground">{hint}</p>}
+      </div>
     </div>
   )
 }

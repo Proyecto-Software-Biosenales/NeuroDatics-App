@@ -193,9 +193,9 @@ npx playwright test -c playwright.local.config.ts
 
 ## Convenciones de documentación
 
-- `docs/` guarda documentación que sigue siendo cierta, ordenada por público: `usuario/` (cómo se usa),
-  `tecnica/` (cómo funciona) y `desarrollo/` (cómo se trabaja en el código). Su índice es
-  [docs/README.md](docs/README.md).
+- `docs/` guarda documentación que sigue siendo cierta: `tecnica/` (cómo funciona) y `desarrollo/` (cómo se
+  trabaja en el código). Cómo se usa la aplicación lo cuentan solo los manuales de `manuales/`; no se duplica en
+  Markdown. Su índice es [docs/README.md](docs/README.md).
 - `docs/CHANGELOG.md` describe cambios observables por quien usa la aplicación, agrupados por versión.
 - Los manuales para quien instala y usa la aplicación están en PDF en `manuales/`: el manual de uso, la guía
   de instalación y la de procesamiento. Se editan en Word fuera del repositorio y se sustituye el PDF con el mismo

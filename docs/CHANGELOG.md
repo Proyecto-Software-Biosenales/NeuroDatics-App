@@ -5,6 +5,20 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### README y documentación al día con la edición local
+
+- **README:** dice que desde la 2.0 solo se entrega el programa de Windows, con perfiles; las dos capturas del
+  tablero son nuevas (la pupila se dilata con cada estímulo y la topografía de EEG junto al estímulo que se
+  miraba, en lugar del espectrograma). La edición en red pasa a una nota y a un anexo al final, sin pasos de
+  instalación.
+- **Fuera lo que ya cuentan los manuales:** `docs/usuario/` (pre-experimento, comparar participantes y
+  superposición y promedio) se retira; esos temas están en el Manual de uso (capítulos 5 y 6) y en la Guía de
+  procesamiento, y los enlaces apuntan allí.
+- **Edición en red:** [docs/tecnica/alojamiento-en-red.md](tecnica/alojamiento-en-red.md) ya no explica cómo
+  instalarla: resume qué ya está, qué tendría que aportar quien la aloje y qué falta o no se ha comprobado.
+  Absorbe las salidas de red de `docs/tecnica/despliegue-en-red.md`, que se retira.
+- Paquete de Windows no reconstruido: el cambio solo toca documentación e imágenes del README, que no viajan en él.
+
 ### Manual de uso al día
 
 - **«Superposición» y «Promedio»:** nueva sección 5.13 «Ver a varios participantes en una gráfica» (pasos, qué
@@ -21,6 +35,60 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 - [manuales/NeuroDatics-Manual-de-uso.pdf](../manuales/NeuroDatics-Manual-de-uso.pdf): 125 páginas (antes 120),
   SHA-256 `71290B97B7D7313408543DB01F9D90862C30BAB5EC35A1A3065F8EB6C74752AF`. Paquete de Windows no reconstruido:
   el cambio solo toca `manuales/`, que no viaja en él.
+
+### «Responder cuestionario» igual en las tres pestañas de Cuestionarios
+
+- **El botón «Responder cuestionario» es el mismo en «Antes del experimento», «Después del experimento» y
+  «Respuestas»:** ocupa todo el ancho, va al final y tiene un fondo gris un poco más oscuro que «Agregar
+  pregunta» para que destaque sin romper la simetría.
+- **En «Respuestas» ya no hay botones encima de la lista.** Bajo las respuestas, en una sola línea, va
+  «Responder cuestionario» alargado y, al final, un botón pequeño con solo el icono de descarga («Descargar
+  respuestas» al pasar el ratón). El aviso para guardar antes de responder va centrado debajo.
+- **Pruebas:** `questionnaire-answer.spec.ts` mide a 1536×730 y 390 px que los dos botones de «Respuestas»
+  compartan línea y altura bajo la lista, que la descarga sea cuadrada y quede alineada con el borde derecho de
+  la lista y que no haya scroll horizontal.
+
+### Paquete NeuroDatics 2.4
+
+`delivery/NeuroDatics-2.4-win64.zip` (252 MiB, 4074 archivos), SHA-256
+`D59B3D20896D9DE4101740F59A63DDE452BF9013DB425EAF44F14ABCA465072E`, compilado el 28 de octubre a las 11:12 sobre
+`75aab7a` más los cambios de perfil (con la pantalla «Crea tu perfil» sin tarjeta) y de cuestionarios (sin
+confirmar aún). Reemplaza al paquete 2.3 y a una primera compilación 2.4 (SHA-256 `7CF54DAA…BC60A`) que aún
+tenía la pantalla de perfil anterior. `run-frozen.ps1`: selftest, las etapas del PostgreSQL embebido, pg-adopt,
+http-check y la carrera de dos arranques correctos; navegador 8/8 `passed`; 0 conexiones fuera de loopback;
+0 procesos postgres al salir. El zip extraído en una ruta con tildes arranca en 9,5 s. Siguen abiertos los 3
+bloqueos de publicación. Antes de compilar, `verify.ps1` en verde (1293 pruebas del backend, 155 y 77 de
+componentes; ESLint: 0 errores, 6 avisos).
+
+### Pantalla «Crea tu perfil» y menú del perfil
+
+- **«Crea tu perfil» con el patrón de las páginas de registro habituales (Linear, Vercel):** sin tarjeta, una
+  sola columna un poco por encima del centro con el logotipo, un título grande, «Escribe tu nombre para
+  empezar.», el campo, el botón y una nota pequeña al pie («Cada perfil guarda sus propios proyectos, solo en
+  este computador.»). Mientras no hay perfil, la barra superior muestra solo el logotipo y el tema: los enlaces
+  y el icono de perfil solo devolvían a esta misma pantalla.
+- **El campo y el botón.** El logotipo va sin el recuadro blanco, igual que en la barra superior; el campo ya no
+  lleva la etiqueta «Nombre» encima, sino ese texto dentro, que desaparece al escribir; campo y botón son más
+  altos, y el botón dice «Crear». Si falta el nombre, el aviso sale bajo el campo y lo marca en rojo.
+  En la lista de perfiles, «Nuevo perfil» pone el botón «Crear y abrir» al lado del campo.
+- **El menú del perfil ya no se encoge con un nombre corto.** Mide al menos 12 rem, o lo que mida el botón si
+  el nombre es largo, y «Cambiar de perfil» cabe en una línea. En el teléfono, donde el botón no muestra el
+  nombre, el menú lo dice arriba.
+- La pantalla «NeuroDatics no está disponible» también pierde el recuadro del logotipo.
+- **Pruebas:** `student-offline.spec.ts` pulsa ahora «Crear» y comprueba que la navegación no aparece mientras se
+  crea el primer perfil. Comprobado en pantalla con la API simulada a
+  1536×730 y 390 px: campo y botón de 44 px, sin scroll horizontal; menú de 192 px con «Pedrin» y «Ana» y del
+  ancho del botón con un nombre largo, opciones de una sola línea.
+
+### Paquete NeuroDatics 2.3
+
+`delivery/NeuroDatics-2.3-win64.zip` (251,9 MiB, 4074 archivos), SHA-256
+`B3A7D57B09CAB65C6E691081D927659DF501102EB0183202A340C6A81287E362`, compilado el 28 de octubre sobre `75aab7a`
+más los cambios de perfil de arriba (sin confirmar aún). Reemplaza al paquete 2.2. `run-frozen.ps1`: selftest,
+las etapas del PostgreSQL embebido, pg-adopt, http-check y la carrera de dos arranques correctos; navegador 8/8
+`passed`; 0 conexiones fuera de loopback; 0 procesos postgres al salir. El zip extraído en una ruta con tildes
+arranca en 10,1 s. `LEEME.txt` dice ahora «Crear». Siguen abiertos los 3 bloqueos de publicación. Antes de
+compilar, `verify.ps1` en verde (1293 pruebas del backend, 77 de componentes; ESLint: 0 errores, 6 avisos).
 
 ### Fijaciones con el tamaño de pantalla y un parpadeo
 
@@ -144,7 +212,7 @@ publicación. Antes de compilar, `verify.ps1` en verde (1273 pruebas del backend
 - **Dos opciones nuevas en el selector de participante**, bajo «Varios participantes». «Superposición» dibuja a
   los participantes elegidos uno encima de otro, cada uno con su color; «Promedio» dibuja su media y muestra
   como cifras el promedio de las cifras de cada uno. El desplegable «Participantes (n de N)» elige a quién
-  incluir. Cómo funciona y cómo se calcula: [usuario/superposicion-y-promedio.md](usuario/superposicion-y-promedio.md).
+  incluir. Cómo funciona y cómo se calcula: `usuario/superposicion-y-promedio.md` (hoy, en el Manual de uso).
 - **Vistas:** pupila, punto de mirada, distancia, sensor galvánico y EEG por canal (las dos opciones, curva media
   con banda de ±1 desviación estándar); densidad espectral (las dos, media en potencia lineal); espectrograma y
   topografía (promedio); mapa de calor (fijaciones de cada participante, o el mapa del grupo); mapa de
@@ -610,7 +678,7 @@ Primera entrega. Reúne todo el trabajo anterior a esta fecha; lo más relevante
 
 - Un proyecto puede registrarse **antes de tener datos** (pre-experimento): participantes, pantalla,
   cuestionarios de antes y después, y notas. La carpeta del experimento se agrega después. Ver
-  [pre-experimento.md](usuario/pre-experimento.md).
+  `usuario/pre-experimento.md` (hoy, en el Manual de uso).
 - **Un solo «Editar» por proyecto**, tenga carpeta o no, en una página con pestañas: Proyecto, Participantes,
   Cuestionarios, Pantalla y Notas; con datos, además Dispositivos, Áreas de interés y Carpeta. «Guardar cambios»
   envía solo lo que cambió.
@@ -646,7 +714,7 @@ Primera entrega. Reúne todo el trabajo anterior a esta fecha; lo más relevante
 - La pestaña de **áreas de interés** trae hallazgos clave, la secuencia de atención, métricas por AOI y las
   transiciones principales. El tiempo hasta la primera fijación se mide desde el inicio del escenario.
 - **Comparar participantes** marca el mismo instante en todas las tarjetas. Ver
-  [comparar-participantes.md](usuario/comparar-participantes.md).
+  `usuario/comparar-participantes.md` (hoy, en el Manual de uso).
 - Las gráficas cargan mucho más rápido: las series vienen acotadas, los resultados se reutilizan mientras sigan
   siendo válidos y volver a un proyecto ya visto es casi instantáneo.
 - Los modos y las vistas se explican al pasar el ratón, y las salvedades de cada gráfica son chips con su

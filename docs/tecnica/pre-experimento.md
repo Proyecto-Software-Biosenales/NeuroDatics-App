@@ -1,7 +1,7 @@
 # Pre-experimentos y cuestionarios: persistencia y API
 
 Cómo se guarda y se expone la preparación de un proyecto (participantes, pantalla, cuestionarios y notas). Cómo
-se usa desde la interfaz está en [usuario/pre-experimento.md](../usuario/pre-experimento.md).
+se usa desde la interfaz está en el capítulo 6 del [Manual de uso](../../manuales/NeuroDatics-Manual-de-uso.pdf).
 
 ## Persistencia y exportación
 

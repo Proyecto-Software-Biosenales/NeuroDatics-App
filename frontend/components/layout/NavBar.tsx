@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 import Link from 'next/link'
 import Image from 'next/image'
@@ -32,6 +32,8 @@ export const NavBar = () => {
   const router = useRouter()
   const { currentUser, loading, signOut } = useAuth()
   const isLoginPage = pathname.replace(/\/$/, '') === SIGN_IN_PATH
+  // Creating the first profile is a gate: links that only lead back to it would be noise.
+  const bareHeader = IS_LOCAL_MODE && isLoginPage && !loading && !currentUser
 
   const handleProtectedNavigation = (event: React.MouseEvent<HTMLAnchorElement>, item: NavItem) => {
     if (item.protected && !currentUser) {
@@ -77,7 +79,7 @@ export const NavBar = () => {
               </span>
             </Link>
 
-            <nav aria-label="Navegación principal" className="hidden min-w-0 items-center gap-0.5 md:flex 2xl:gap-1">
+            <nav aria-label="Navegación principal" className={cn('hidden min-w-0 items-center gap-0.5 2xl:gap-1', !bareHeader && 'md:flex')}>
               {navItems.map((item) => (
                 <Link
                   key={item.path}
@@ -98,7 +100,7 @@ export const NavBar = () => {
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" className="md:hidden" aria-label="Abrir navegación"><Menu /></Button>
+                <Button variant="ghost" size="icon-sm" className={cn('md:hidden', bareHeader && 'hidden')} aria-label="Abrir navegación"><Menu /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {navItems.map((item) => (
@@ -130,7 +132,12 @@ export const NavBar = () => {
                     <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                {/* Sized to its items with a floor, not to the trigger: a short profile name would squeeze them. */}
+                <DropdownMenuContent align="end" className="w-auto min-w-[max(12rem,var(--radix-dropdown-menu-trigger-width))]">
+                  {/* The trigger hides the name on phones. */}
+                  <DropdownMenuLabel className="max-w-56 truncate sm:hidden">
+                    {currentUser.name ?? currentUser.email ?? 'Usuario'}
+                  </DropdownMenuLabel>
                   {IS_LOCAL_MODE ? (
                     <DropdownMenuItem asChild>
                       <Link href="/perfiles" aria-current={pathname === '/perfiles' ? 'page' : undefined}>
@@ -164,7 +171,7 @@ export const NavBar = () => {
                   Salir
                 </Button>
               )
-            ) : (
+            ) : bareHeader ? null : (
               <Link
                 href={SIGN_IN_PATH}
                 aria-label={IS_LOCAL_MODE ? 'Perfiles' : undefined}

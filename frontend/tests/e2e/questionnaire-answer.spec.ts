@@ -28,7 +28,12 @@ async function mockApi(page: Page) {
       return
     }
     if (path.endsWith("/plan-1/pre-experiment")) {
-      await route.fulfill({ json: { revision: 1, config: planning, responses: [] } })
+      const responses = [{
+        id: "r-1", revision: 1, participant_id: "p-1", phase: "after",
+        participant_snapshot: planning.participants[0], questionnaire_snapshot: planning.questionnaires.after,
+        answers: { "q-1": "Sí" }, submitted_at: "2026-10-28T15:43:35Z",
+      }]
+      await route.fulfill({ json: { revision: 1, config: planning, responses } })
       return
     }
     if (path.endsWith("/plan-1")) {
@@ -65,5 +70,29 @@ for (const viewport of [{ width: 1536, height: 730 }, { width: 390, height: 844 
     await expect(dialog.getByRole("combobox", { name: "Cuestionario", exact: true })).toHaveCount(0)
     await expect(dialog.getByRole("combobox", { name: "Participante", exact: true })).toBeVisible()
     await page.screenshot({ path: `../output/qa-answer/dialog-${viewport.width}.png` })
+  })
+
+  test(`En «Respuestas», responder y descargar comparten la línea bajo la lista a ${viewport.width} px`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await signIn(page)
+    await mockApi(page)
+    await page.goto("/proyectos/editar?proyecto=plan-1")
+    await page.getByRole("tab", { name: /^Cuestionarios/ }).click()
+    await page.getByRole("tab", { name: /^Respuestas/ }).click()
+    const answer = page.getByRole("button", { name: "Responder cuestionario", exact: true })
+    const download = page.getByRole("button", { name: "Descargar respuestas", exact: true })
+    await expect(answer).toBeEnabled()
+    const list = (await page.getByRole("button", { name: /Ana/ }).locator("..").boundingBox())!
+    const a = (await answer.boundingBox())!
+    const d = (await download.boundingBox())!
+    expect(a.y).toBeGreaterThan(list.y + list.height)
+    expect(d.y).toBe(a.y)
+    expect(d.height).toBe(a.height)
+    expect(d.width).toBe(d.height)
+    expect(a.width).toBeGreaterThan(d.width * 4)
+    expect(Math.abs(a.x - list.x)).toBeLessThan(1)
+    expect(Math.abs(d.x + d.width - (list.x + list.width))).toBeLessThan(1)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: `../output/qa-answer/responses-${viewport.width}.png`, fullPage: true })
   })
 }

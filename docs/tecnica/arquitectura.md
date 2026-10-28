@@ -17,8 +17,8 @@ europeo (punto y coma, coma decimal), los encabezados llevan acentos y la codifi
 UTF-16, UTF-8 o Latin-1. La aplicación interpreta ese archivo, detecta las fijaciones desde la mirada
 cruda y deja los resultados en un formato columnar que las consultas analíticas pueden leer barato.
 
-La aplicación es multiusuario en la edición de servidor: cada proyecto tiene un dueño, y toda lectura
-y escritura pasa por `(project_id, owner_id)`. Un proyecto ajeno devuelve 404 y no 403, de modo que
+Cada proyecto tiene un dueño (un perfil en la edición local, una cuenta de Google en la edición en red), y
+toda lectura y escritura pasa por `(project_id, owner_id)`. Un proyecto ajeno devuelve 404 y no 403, de modo que
 los identificadores no se pueden sondear.
 
 ## Dos ediciones, un solo código
@@ -183,8 +183,8 @@ La superficie HTTP, toda bajo `/api`:
 | `integrations/google-drive` | Solo el retorno (callback) de OAuth, que acepta el enlace firmado que emite el comando de administración `python -m neurodatics.modules.integrations.google_drive.admin`. Solo en servidor. |
 
 Los pre-experimentos y los cuestionarios, que permiten registrar un proyecto antes de tener datos,
-se describen en [usuario/pre-experimento.md](../usuario/pre-experimento.md) (cómo se usan) y en
-[pre-experimento.md](pre-experimento.md) (cómo se guardan y su API).
+se usan como explica el capítulo 6 del [Manual de uso](../../manuales/NeuroDatics-Manual-de-uso.pdf); cómo se
+guardan y su API están en [pre-experimento.md](pre-experimento.md).
 
 ### Informes
 
@@ -251,8 +251,8 @@ cálculo es dueño de sus recursos hasta que termina.
 navegador: guarda hasta 48 resultados durante cinco minutos, con un peso acotado, y lanza como máximo
 cuatro consultas a la vez. Su clave incluye la generación de ingesta, así que reprocesar el proyecto la
 vacía. Cerrar el diálogo no deja consultas en curso ni tarjetas montadas. Una consulta que el navegador
-aborta puede seguir calculándose en el servidor. La vista que ve quien usa la aplicación está en
-[comparar-participantes.md](../usuario/comparar-participantes.md).
+aborta puede seguir calculándose en el servidor. La vista que ve quien usa la aplicación está en la sección 5.12 del
+[Manual de uso](../../manuales/NeuroDatics-Manual-de-uso.pdf).
 
 ### Decisiones de rendimiento
 
@@ -308,9 +308,7 @@ Hay una regla más que vale en las dos ediciones: **nada remoto**. Ni fuentes, n
 telemetría. Poppins se sirve desde `frontend/public/fonts`, y la compilación del paquete de
 Windows falla si la exportación contiene una fuente o un script remotos.
 
-Las convenciones de interfaz están en [interfaz.md](../desarrollo/interfaz.md), y la comparación de
-participantes, que es la pieza de interfaz más particular, en
-[comparar-participantes.md](../usuario/comparar-participantes.md).
+Las convenciones de interfaz están en [interfaz.md](../desarrollo/interfaz.md).
 
 ## Seguridad y operación, en resumen
 
@@ -325,8 +323,8 @@ participantes, que es la pieza de interfaz más particular, en
   `DEBUG=true`, con un `AUTH_JWT_SECRET` débil o corto, o con una base de datos externa sin `sslmode`.
 - **Red en Compose.** Dos redes: `app`, que conecta frontend y backend, y `data`, marcada como interna,
   de modo que PostgreSQL y Redis no tienen ruta hacia fuera. TLS queda fuera del repositorio: se
-  asume un proxy HTTPS delante. El despliegue en una red universitaria está en
-  [despliegue-en-red.md](despliegue-en-red.md).
+  asume un proxy HTTPS delante. Lo que necesita en una red con cortafuegos está en
+  [alojamiento-en-red.md](alojamiento-en-red.md).
 - **Verificación.** La puerta única es `./verify.ps1` desde la raíz: pruebas del backend con sus
   snapshots protegidos, Ruff, Vulture, deptry, arranque de la aplicación, los contratos de
   importación, TypeScript, pruebas unitarias del frontend, regresiones de hooks en Chromium real y
@@ -341,10 +339,11 @@ participantes, que es la pieza de interfaz más particular, en
 | Detector de fijaciones | [deteccion-de-fijaciones.md](deteccion-de-fijaciones.md) |
 | Coordenadas pantalla → estímulo | [coordenadas-pantalla-estimulo.md](coordenadas-pantalla-estimulo.md) |
 | Informes en PDF | [informes.md](informes.md) |
-| Comparar participantes | [comparar-participantes.md](../usuario/comparar-participantes.md) |
 | Convenciones de interfaz | [interfaz.md](../desarrollo/interfaz.md) |
-| Pre-experimentos y cuestionarios | [pre-experimento.md](pre-experimento.md) · [uso](../usuario/pre-experimento.md) |
+| Pre-experimentos y cuestionarios | [pre-experimento.md](pre-experimento.md) |
 | Métodos de EEG y reproducibilidad | [eeg/metodos.md](eeg/metodos.md) |
 | Edición local | [student/README.md](../../student/README.md) |
-| Alojar la edición en red | [alojamiento-en-red.md](alojamiento-en-red.md) · [despliegue-en-red.md](despliegue-en-red.md) |
+| Edición en red: qué hay y qué haría falta | [alojamiento-en-red.md](alojamiento-en-red.md) |
+| Usar la aplicación | [Manual de uso](../../manuales/NeuroDatics-Manual-de-uso.pdf) |
+| Cómo se calcula cada señal | [Guía de procesamiento](../../manuales/NeuroDatics-Guia-de-procesamiento.pdf) |
 | Cambios de producto | [CHANGELOG.md](../CHANGELOG.md) |

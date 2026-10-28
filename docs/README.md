@@ -1,24 +1,23 @@
 # Documentación de NeuroDatics
 
-Ordenada por quien la lee. Si llegas por primera vez, empieza por el [README del repositorio](../README.md) y
-después por [arquitectura.md](tecnica/arquitectura.md).
+NeuroDatics se entrega como programa local para Windows. Quien la usa encuentra todo en los manuales en PDF;
+esta carpeta explica cómo funciona por dentro. Si llegas por primera vez, empieza por el
+[README del repositorio](../README.md) y después por [arquitectura.md](tecnica/arquitectura.md).
 
 ## Para quien usa la aplicación
 
-| Documento | Qué responde |
+| Manual | Qué responde |
 | --- | --- |
-| [Manual de uso (PDF)](../manuales/NeuroDatics-Manual-de-uso.pdf) | El manual de uso: de crear un proyecto a descargar los informes. |
+| [Guía de instalación (PDF)](../manuales/NeuroDatics-Guia-de-instalacion.pdf) | Descomprimir y abrir NeuroDatics en Windows. |
+| [Manual de uso (PDF)](../manuales/NeuroDatics-Manual-de-uso.pdf) | De crear un perfil y un proyecto a descargar los informes: datos, Dashboard, comparar participantes, pre-experimentos, cuestionarios y solución de problemas. |
 | [Guía de procesamiento (PDF)](../manuales/NeuroDatics-Guia-de-procesamiento.pdf) | Cómo limpia, calcula y resume NeuroDatics cada señal, para justificar los resultados o recalcularlos. |
-| [usuario/pre-experimento.md](usuario/pre-experimento.md) | Registrar un proyecto antes de tener datos: participantes, pantalla, cuestionarios y notas. |
-| [usuario/comparar-participantes.md](usuario/comparar-participantes.md) | La vista de comparación entre participantes y qué significan sus estadísticas. |
-| [usuario/superposicion-y-promedio.md](usuario/superposicion-y-promedio.md) | Ver a varios participantes en una sola gráfica, superpuestos o promediados, y cómo se calculan sus cifras. |
 | [CHANGELOG.md](CHANGELOG.md) | Qué cambió en cada versión. |
 
 ## Cómo funciona por dentro
 
 | Documento | Qué responde |
 | --- | --- |
-| [tecnica/arquitectura.md](tecnica/arquitectura.md) | Cómo encajan backend, frontend y las ediciones local y en red; por dónde pasan los datos. |
+| [tecnica/arquitectura.md](tecnica/arquitectura.md) | Cómo encajan backend, frontend y las dos ediciones; por dónde pasan los datos. |
 | [tecnica/subida-de-experimentos.md](tecnica/subida-de-experimentos.md) | Qué hace una subida de experimento, en qué orden, qué garantiza y qué no. |
 | [tecnica/pre-experimento.md](tecnica/pre-experimento.md) | Cómo se guarda la preparación de un proyecto y qué expone la API de pre-experimentos. |
 | [tecnica/deteccion-de-fijaciones.md](tecnica/deteccion-de-fijaciones.md) | Cómo se detectan las fijaciones desde la mirada cruda y cómo se mide su duración. |
@@ -27,8 +26,6 @@ después por [arquitectura.md](tecnica/arquitectura.md).
 | [tecnica/eeg/metodos.md](tecnica/eeg/metodos.md) | Cómo se calcula cada resultado de EEG y con qué límites. |
 | [tecnica/eeg/validacion.md](tecnica/eeg/validacion.md) | La validación contra grabaciones reales: qué se encontró y qué se corrigió. |
 | [tecnica/eeg/escalas-por-grabacion.md](tecnica/eeg/escalas-por-grabacion.md) | Las escalas declaradas por grabación y canal, y cómo se tratan. |
-| [tecnica/alojamiento-en-red.md](tecnica/alojamiento-en-red.md) | Alojar la edición en red (sin uso actual): qué base de datos, identificación y almacenamiento proveer. |
-| [tecnica/despliegue-en-red.md](tecnica/despliegue-en-red.md) | Salidas de red y proxy que necesita la edición en red en una universidad o empresa. |
 
 La carpeta `tecnica/eeg/evidencia/` guarda la evidencia de la validación de EEG; los archivos de origen aparecen
 anonimizados (`csv-01`…`csv-08`) e identificados solo por su SHA-256.
@@ -42,12 +39,11 @@ anonimizados (`csv-01`…`csv-08`) e identificados solo por su SHA-256.
 | [../backend/README.md](../backend/README.md) | El backend: rutas, configuración y estructura. |
 | [../frontend/README.md](../frontend/README.md) | El frontend: estructura y comandos. |
 | [../backend/benchmarks/README.md](../backend/benchmarks/README.md) | Cómo medir el rendimiento de las piezas del backend. |
+| [../student/README.md](../student/README.md) | Cómo se construye y se comprueba el paquete de Windows; [LEEME.txt](../student/LEEME.txt) es la guía rápida que viaja en él. |
 
-## Entregas
+## Anexo: edición en red
 
-- NeuroDatics (Windows): la [guía de instalación](../manuales/NeuroDatics-Guia-de-instalacion.pdf),
-  [student/README.md](../student/README.md) (construcción y comprobaciones) y
-  [student/LEEME.txt](../student/LEEME.txt) (la guía rápida que viaja en el paquete).
-- Edición en red, sin uso actual: [tecnica/alojamiento-en-red.md](tecnica/alojamiento-en-red.md) (qué debe
-  proveer quien la aloje), [deployment/README.md](../deployment/README.md) (el instalador de Windows con Docker,
-  que ya no se genera) y [deployment/MANTENIMIENTO.md](../deployment/MANTENIMIENTO.md).
+El repositorio conserva una edición en red (Docker, inicio de sesión con Google y archivos en Google Drive) que
+no se usa ni se mantiene. [tecnica/alojamiento-en-red.md](tecnica/alojamiento-en-red.md) resume qué ya está, qué
+tendría que aportar quien quiera alojarla y qué falta. El instalador con Docker para Windows y su documentación
+siguen en [deployment/](../deployment/README.md), sin generarse.
