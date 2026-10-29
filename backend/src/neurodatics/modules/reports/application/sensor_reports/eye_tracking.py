@@ -581,7 +581,7 @@ def _fixation_blocks(
                 doc.figure(
                     report.add_asset(f"{scenario.position}-histogram", chart, "svg"),
                     "Distribución de duraciones",
-                    "Número de fijaciones por intervalo de duración (regla de Sturges).",
+                    "Número de fijaciones por intervalo de duración. Los intervalos miden 50 ms, empiezan en el umbral y el último reúne las fijaciones de 1000 ms o más.",
                 )
             ],
             [table],

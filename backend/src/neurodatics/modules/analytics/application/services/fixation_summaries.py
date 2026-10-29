@@ -63,6 +63,13 @@ class FixationDataService:
 class FixationHistogramService:
     """Builds fixation-duration histogram bins from grouped scanpath objectives."""
 
+    # Fixed 50 ms bins on multiples of 50, with one open bin from 1000 ms. The
+    # limits never depend on the data, so they match across thresholds even when
+    # the normalized detector (I-DT) re-detects the fixations at each threshold.
+    BIN_WIDTH_MS = 50
+    OPEN_FROM_MS = 1000
+    OPEN_LABEL = "1000 o más"
+
     @classmethod
     def compute_histogram(
         cls,
@@ -70,7 +77,7 @@ class FixationHistogramService:
         scenario: Optional[str] = None,
         min_fixation_duration_ms: Optional[int] = None,
     ) -> dict:
-        """Compute a Sturges-binned histogram of fixation durations in milliseconds."""
+        """Compute a fixed-width histogram of fixation durations in milliseconds."""
         result = FixationEventService.build_result(
             df,
             scenario=scenario,
@@ -95,19 +102,32 @@ class FixationHistogramService:
             return _empty
 
         n = int(durations_ms.size)
-        k = max(1, int(np.ceil(np.log2(n) + 1)))
-        edges = np.linspace(0.0, float(durations_ms.max()) + 1e-9, k + 1)
+        width = cls.BIN_WIDTH_MS
+        open_from = cls.OPEN_FROM_MS
+        max_ms = float(durations_ms.max())
+        # The first bin is the multiple of the width at or below the threshold;
+        # an unknown (historical) threshold starts at the shortest fixation.
+        threshold = metadata.get("min_fixation_duration_ms")
+        floor_ms = float(threshold) if threshold is not None else float(durations_ms.min())
+        first_edge = min(int(np.floor(floor_ms / width)) * width, open_from)
+        has_open = max_ms >= open_from
+        if has_open:
+            edges = list(range(first_edge, open_from, width))
+        else:
+            last_edge = max(first_edge, int(np.floor(max_ms / width)) * width)
+            edges = list(range(first_edge, last_edge + width, width))
+        # Clipping keeps a duration a rounding error under the threshold in the first bin.
+        bin_index = np.clip(np.floor((durations_ms - first_edge) / width), 0, max(len(edges) - 1, 0))
+        if has_open:
+            bin_index = np.where(durations_ms >= open_from, len(edges), bin_index)
+
+        bin_limits = [(edge, edge + width - 1, f"{edge}-{edge + width - 1}") for edge in edges]
+        if has_open:
+            bin_limits.append((open_from, int(np.ceil(max_ms)), cls.OPEN_LABEL))
 
         bins = []
-        for i in range(k):
-            lo = int(np.ceil(edges[i]))
-            hi = int(np.floor(edges[i + 1])) - (1 if i < k - 1 else 0)
-            label = f"{lo}-{hi}"
-
-            if i < k - 1:
-                mask = (durations_ms >= edges[i]) & (durations_ms < edges[i + 1])
-            else:
-                mask = (durations_ms >= edges[i]) & (durations_ms <= edges[i + 1])
+        for i, (lo, hi, label) in enumerate(bin_limits):
+            mask = bin_index == i
 
             conteo = int(mask.sum())
             porcentaje = float(round((conteo / n) * 100.0, 2))

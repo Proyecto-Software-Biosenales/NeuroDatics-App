@@ -65,7 +65,7 @@ function HistogramTooltip({ active, payload, label }: HistogramTooltipProps) {
 
   return (
     <div className="rounded-lg bg-gray-800 px-3 py-2 text-xs text-white shadow-lg">
-      <p className="mb-2 font-medium text-gray-300">Rango: {label} ms</p>
+      <p className="mb-2 font-medium text-gray-300">Rango (ms): {label}</p>
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
