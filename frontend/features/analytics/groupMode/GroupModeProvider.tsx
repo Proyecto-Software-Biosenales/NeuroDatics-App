@@ -18,6 +18,8 @@ export interface GroupModeValue {
   /** True while «Superposición» or «Promedio» is chosen. */
   active: boolean
   mode: GroupMode | null
+  /** The modes the open sensor offers in the participant select. */
+  modes: readonly GroupMode[]
   projectId: string | null
   generation: number | null
   /** Every participant of the project, in natural order. */
@@ -37,6 +39,7 @@ export interface GroupModeValue {
 const EMPTY: GroupModeValue = {
   active: false,
   mode: null,
+  modes: [],
   projectId: null,
   generation: null,
   participants: [],
@@ -69,6 +72,7 @@ export function GroupModeProvider({
   participantCodes,
   labels,
   mode,
+  modes,
   selection,
   onModeChange,
   onSelectionChange,
@@ -79,6 +83,7 @@ export function GroupModeProvider({
   participantCodes: readonly string[]
   labels: ParticipantLabels
   mode: GroupMode | null
+  modes: readonly GroupMode[]
   selection: readonly string[] | null
   onModeChange: (mode: GroupMode | null) => void
   onSelectionChange: (codes: string[] | null) => void
@@ -118,6 +123,7 @@ export function GroupModeProvider({
     () => ({
       active: mode != null && projectId != null,
       mode,
+      modes,
       projectId,
       generation,
       participants,
@@ -129,7 +135,7 @@ export function GroupModeProvider({
       leave,
       styleOf,
     }),
-    [distinctLabels, generation, leave, mode, onModeChange, participants, projectId, selected, selectedCodes, setSelected, styleOf]
+    [distinctLabels, generation, leave, mode, modes, onModeChange, participants, projectId, selected, selectedCodes, setSelected, styleOf]
   )
 
   return <GroupModeContext.Provider value={value}>{children}</GroupModeContext.Provider>

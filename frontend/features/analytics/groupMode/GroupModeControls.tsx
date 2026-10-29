@@ -26,16 +26,16 @@ const OPTION_HINTS: Record<GroupMode, string> = {
   average: "La gráfica media de los participantes elegidos; sus cifras son el promedio de las de cada uno.",
 }
 
-/** «Varios participantes»: the two group options at the end of the participant select. */
+/** «Varios participantes»: the group modes the open view offers, at the end of the participant select. */
 export function GroupModeSelectItems() {
   const group = useGroupMode()
-  if (group.participants.length < 2) return null
+  if (group.participants.length < 2 || group.modes.length === 0) return null
   return (
     <>
       <SelectSeparator />
       <SelectGroup>
         <SelectLabel>Varios participantes</SelectLabel>
-        {(["overlay", "average"] as const).map((mode) => (
+        {group.modes.map((mode) => (
           <SelectItem key={mode} value={GROUP_SELECT_VALUES[mode]} title={OPTION_HINTS[mode]}>
             {GROUP_MODE_LABELS[mode]}
           </SelectItem>

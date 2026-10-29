@@ -1,4 +1,3 @@
-import type { EegArtifactSpan } from "../../types"
 
 export const EEG_CHANNELS = ["le", "f4", "c4", "p4", "p3", "c3", "f3"]
 
@@ -14,21 +13,8 @@ export const CHANNEL_COLORS: Record<string, string> = {
   f3: "#BE123C",
 }
 
-/** One colour per detector, shared by the chart shading and the span chips, so
- *  a chip can be matched to its band. */
-export const ARTIFACT_DETECTORS: { detector: EegArtifactSpan["detector"]; label: string; color: string }[] = [
-  { detector: "amplitude", label: "amplitud", color: "#DC2626" },
-  { detector: "step", label: "escalón", color: "#D97706" },
-  { detector: "peak_to_peak", label: "pico a pico", color: "#7C3AED" },
-]
-
-export const ARTIFACT_DETECTOR_COLORS = Object.fromEntries(
-  ARTIFACT_DETECTORS.map(({ detector, color }) => [detector, color])
-) as Record<EegArtifactSpan["detector"], string>
-
 /** Chips jump between these sections; each target carries tabIndex={-1}. */
 export const EEG_TIMESERIES_CHART_ID = "eeg-timeseries-chart"
-export const EEG_ARTIFACT_SPANS_ID = "eeg-artifact-spans"
 export const EEG_QUALITY_NOTES_ID = "eeg-quality-notes"
 
 /** Scrolls to a section and moves focus with it, so the next Tab continues

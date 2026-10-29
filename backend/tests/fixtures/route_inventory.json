@@ -23,6 +23,7 @@
   "GET /api/projects/{project_id}/analytics/statistics/gaze",
   "GET /api/projects/{project_id}/analytics/statistics/gsr",
   "GET /api/projects/{project_id}/analytics/statistics/pupil",
+  "GET /api/projects/{project_id}/analytics/stimulus-sequence",
   "GET /api/projects/{project_id}/analytics/timeseries/distance",
   "GET /api/projects/{project_id}/analytics/timeseries/eeg",
   "GET /api/projects/{project_id}/analytics/timeseries/gaze",

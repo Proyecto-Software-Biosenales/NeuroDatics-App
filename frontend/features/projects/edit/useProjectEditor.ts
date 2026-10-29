@@ -16,6 +16,7 @@ import {
   validateQuestionnaire,
   validateScreen,
   withDerivedQuestionnaires,
+  withLegacyNotes,
   withoutEmptyNotes,
   withScreenDefaults,
   type PreExperimentConfig,
@@ -52,7 +53,8 @@ type ProjectData = {
 const emptyData: ProjectData = { name: "", description: "", participants: [], scenaries: [] }
 
 // Older saves could keep questions in a questionnaire switched off; the editor treats questions as switched on.
-const savedDraft = (envelope: PreExperimentEnvelope) => withDerivedQuestionnaires(structuredClone(envelope.config))
+const savedDraft = (envelope: PreExperimentEnvelope) =>
+  withLegacyNotes(withDerivedQuestionnaires(structuredClone(envelope.config)))
 
 const sameParticipants = (a: ParticipantData[], b: ParticipantData[]) =>
   a.length === b.length &&

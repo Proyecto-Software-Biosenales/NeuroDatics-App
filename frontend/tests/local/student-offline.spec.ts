@@ -225,8 +225,9 @@ test("a pre-experiment is prepared tab by tab without a folder, then deleted", a
   await dialog.getByRole("tab", { name: /^Pantalla/ }).click()
   await expect(dialog.getByRole("spinbutton", { name: "Alto (px)", exact: true })).toHaveValue("1024")
   await expect(dialog.getByRole("spinbutton", { name: "Ancho (cm)", exact: true })).toHaveValue("53")
-  // The planned seating distance only backs up the eye tracker's own record, and starts empty.
-  await expect(dialog.getByRole("spinbutton", { name: "Distancia (cm)", exact: true })).toHaveValue("")
+  // Only the four measures, as in «Pantalla distinta a la configuración»: no distance or notes.
+  await expect(dialog.getByRole("spinbutton")).toHaveCount(4)
+  await expect(dialog.getByRole("textbox")).toHaveCount(0)
   await dialog.getByRole("spinbutton", { name: "Ancho (px)", exact: true }).fill("1920")
 
   await dialog.getByRole("tab", { name: /^Cuestionarios/ }).click()
@@ -278,6 +279,12 @@ test("a pre-experiment is prepared tab by tab without a folder, then deleted", a
   await page.getByRole("tab", { name: /^Notas/ }).click()
   await expect(page.getByRole("textbox", { name: "Título de la nota 1", exact: true })).toHaveValue("Sala")
   await expect(page.getByRole("textbox", { name: "Nota 1", exact: true })).toHaveValue("Reservar la sala")
+
+  // Without data it has nothing to chart, so the Dashboard does not list it.
+  const listed = page.waitForResponse((response) => new URL(response.url()).pathname.replace(/\/$/, "") === "/api/projects")
+  await page.goto("/dashboard")
+  await listed
+  await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0)
 
   await page.goto("/proyectos/")
   await card.getByRole("button", { name: "Opciones del proyecto" }).click()
@@ -471,10 +478,11 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
   await expect(fitAxis).toHaveAttribute("aria-pressed", "true")
   await fitAxis.click()
   await expect(page.getByTestId("compare-participants-button")).toHaveCount(1)
-  // With «Todos los escenarios» the time views line the recordings up by their own start.
+  // With «Todos los escenarios» the time views line the recordings up by stimulus.
   await participantFilter.click()
   await page.getByRole("option", { name: "Promedio", exact: true }).click()
-  await expect(page.getByText("Tiempo desde el inicio de la grabación (s)")).toBeVisible({ timeout: 90_000 })
+  await expect(page.getByText("Tiempo desde el inicio del primer estímulo (s)")).toBeVisible({ timeout: 90_000 })
+  await expect(page.getByRole("button", { name: "Alineado por estímulo" })).toBeVisible()
   // Overlay and average draw every participant of one scenario in a single chart, including the
   // group heatmap the local backend renders.
   const scenarioFilter = page.getByRole("combobox").first()
@@ -505,6 +513,14 @@ test("the whole flow works with the network off: upload, analyze, view, delete",
   await page.getByRole("button", { name: "Suavizada", exact: true }).hover()
   await expect(page.getByRole("tooltip")).toHaveText(/promediada/)
   await page.mouse.move(0, 0)
+  // EEG is only averaged: every selected channel, the mean over participants, in its own colour.
+  await participantFilter.click()
+  await expect(page.getByRole("option", { name: "Superposición", exact: true })).toHaveCount(0)
+  await page.getByRole("option", { name: "Promedio", exact: true }).click()
+  await expect(page.getByText(/^Promedio de \d+ participantes? en cada canal/)).toBeVisible({ timeout: 90_000 })
+  await expect(page.locator("#eeg-timeseries-chart .recharts-line-curve").first()).toBeVisible()
+  await participantFilter.click()
+  await page.getByRole("option", { name: participantName, exact: true }).click()
   await sidebar.getByRole("button", { name: "Sensor galvánico" }).click()
   await expect(page.locator("main .recharts-surface").first()).toBeVisible({ timeout: 90_000 })
   // The other signals offer the same "Ajustar".

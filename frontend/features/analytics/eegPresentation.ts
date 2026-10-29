@@ -799,6 +799,10 @@ export interface ChannelQualityRow {
   sourceUnit: string | null
   /** Coarser than its peers by more than an order of magnitude. */
   coarselyQuantized: boolean
+  /** Exported in kilo, mV or V and converted to uV at ingestion. */
+  rescaled: boolean
+  /** The channel never varies: contact, saturation or export. */
+  constant: boolean
 }
 
 /** Everything the backend already measured per channel, ready to be shown.
@@ -815,6 +819,7 @@ export function channelQualityRows(
     .map((channel) => quality[channel]?.quantization_step_uV)
     .filter((step): step is number => Number.isFinite(step) && (step as number) > 0)
   const finest = steps.length > 0 ? Math.min(...steps) : null
+  const rescaled = new Set(reingestionNotice(metadata).rescaledChannels)
   return channels.flatMap((channel) => {
     const record: EegChannelQuality | undefined = quality[channel]
     if (!record) return []
@@ -838,17 +843,17 @@ export function channelQualityRows(
         sourceUnit: metadata?.source_units?.[channel] ?? null,
         coarselyQuantized:
           finest != null && step != null && step >= finest * 10,
+        rescaled: rescaled.has(channel),
+        constant: record.constant,
       },
     ]
   })
 }
 
-/** Whether this participant predates the unit correction and needs re-ingesting.
+/** Channels converted to uV, or excluded, because of their exported unit.
  *
- *  `source_units` and `excluded_channels` already say so; nothing in the UI
- *  did. Comparing a corrected participant against an uncorrected one is exactly
- *  the mistake this notice exists to prevent. An undeclared unit is not one of
- *  them: uV is the fixed assumption for every export.
+ *  Read from `source_units` and `excluded_channels`. An undeclared unit is not
+ *  one of them: uV is the fixed assumption for every export.
  */
 export function reingestionNotice(metadata: EegMetadata | undefined): {
   needed: boolean
@@ -877,11 +882,15 @@ export function reingestionNotice(metadata: EegMetadata | undefined): {
 const SHOWN_ELSEWHERE: { prefix: string; shown: (metadata: EegMetadata) => boolean }[] = [
   // uV is the fixed assumption now; analyses computed earlier still carry this sentence.
   { prefix: "Unidad EEG no declarada", shown: () => true },
-  { prefix: "Canales con unidad ambigua excluidos", shown: (m) => reingestionNotice(m).excludedChannels.length > 0 },
+  // «Calidad por canal» marks the converted channel; the conversion is documented.
   {
     prefix: "Escala kilo corregida",
     shown: (m) => Object.values(m.source_units ?? {}).some((unit) => (unit ?? "").toLowerCase() === "kilo"),
   },
+  // «Calidad por canal» lists the reported spans, each one a click from the chart.
+  ...["Saltos de amplitud candidatos", "Amplitud fuera del rango fisiológico", "Excursiones de más de"].map(
+    (prefix) => ({ prefix, shown: (m: EegMetadata) => (m.artifact_spans?.length ?? 0) > 0 })
+  ),
   { prefix: "Canales sin un tramo válido suficiente", shown: (m) => (m.incomplete_channels?.length ?? 0) > 0 },
   { prefix: "El gráfico muestra la envolvente", shown: (m) => m.display_reduction === ENVELOPE_REDUCTION },
 ]

@@ -36,7 +36,7 @@ export interface GroupTrace {
    */
   value: ArrayLike<number>
 }
-const AVERAGE_COLOR = "var(--group-average)"
+const DEFAULT_AVERAGE_COLOR = "var(--group-average)"
 /** Past this many participants the legend gives way to the table's colours. */
 const MAX_LEGEND_ITEMS = 8
 const MAX_TOOLTIP_ROWS = 10
@@ -114,6 +114,7 @@ export function GroupTemporalChart({
   emptyMessage = "Ninguno de los participantes elegidos tiene datos para esta vista.",
   selectedTime = null,
   onSelectTime,
+  averageColor = DEFAULT_AVERAGE_COLOR,
 }: {
   mode: GroupMode
   traces: GroupTrace[]
@@ -132,6 +133,8 @@ export function GroupTemporalChart({
   /** The chosen instant, on `timeAxis`. */
   selectedTime?: number | null
   onSelectTime?: (time: number) => void
+  /** The mean line and its band: the colour of the view's own line. */
+  averageColor?: string
 }) {
   const aggregate = useMemo(() => aggregateTraces(traces.map((trace) => ({ x: trace.time, y: trace.value }))), [traces])
   const rows = useMemo<Row[]>(() => {
@@ -177,8 +180,8 @@ export function GroupTemporalChart({
   const legend =
     mode === "average"
       ? [
-          { label: `Promedio (${maxN === 1 ? "1 participante" : `${maxN} participantes`})`, color: AVERAGE_COLOR, thick: true },
-          { label: "±1 desviación estándar", color: AVERAGE_COLOR, opacity: 0.3, thick: true },
+          { label: `Promedio (${maxN === 1 ? "1 participante" : `${maxN} participantes`})`, color: averageColor, thick: true },
+          { label: "±1 desviación estándar", color: averageColor, opacity: 0.3, thick: true },
         ]
       : traces.length <= MAX_LEGEND_ITEMS
         ? traces.map((trace) => ({ label: trace.participant.label, color: trace.participant.color }))
@@ -204,8 +207,8 @@ export function GroupTemporalChart({
               </>
             ),
           },
-          // Without a common onset the same second is not the same moment: say so beside the chart.
-          ...(timeAxis.aligned ? [] : [timeNote]),
+          // Say beside the chart when the axis is not simply the scenario's own time.
+          ...(timeAxis.noted ? [timeNote] : []),
         ]
       : [
           {
@@ -314,7 +317,7 @@ export function GroupTemporalChart({
                   dataKey="band"
                   name="±1 desviación estándar"
                   stroke="none"
-                  fill={AVERAGE_COLOR}
+                  fill={averageColor}
                   fillOpacity={0.18}
                   connectNulls={false}
                   isAnimationActive={false}
@@ -324,7 +327,7 @@ export function GroupTemporalChart({
                   type="linear"
                   dataKey="mean"
                   name="Promedio"
-                  stroke={AVERAGE_COLOR}
+                  stroke={averageColor}
                   strokeWidth={2}
                   dot={false}
                   connectNulls={false}

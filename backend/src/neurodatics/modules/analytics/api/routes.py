@@ -37,10 +37,10 @@ from ..application.services.analytics_service import (
 from ..application.services.comparison_chart_config import ChartConfigBuilder
 from ..application.services.correlation_service import CorrelationAnalyticsService
 from ..application.services.parquet_reader_service import ParquetReaderService
-from ..application.services.scenario_timing_service import ScenarioTimingService
+from ..application.services.scenario_timing_service import ScenarioTimingService, StimulusSequenceService
 from ..domain.parquet_projection import (
     ParquetProjection, GSR_PROJECTION, PUPIL_PROJECTION, DISTANCE_PROJECTION,
-    TIMING_PROJECTION, EEG_PROJECTION,
+    TIMING_PROJECTION, SEQUENCE_PROJECTION, EEG_PROJECTION,
 )
 from neurodatics.shared.cache_generation import project_cache_generation
 from ..domain.coordinate_transform import (
@@ -77,6 +77,7 @@ from .schemas import (
     ScanpathResponse,
     ScenarioItem,
     ScenarioTimingResponse,
+    StimulusSequenceResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -475,6 +476,29 @@ async def scenario_timing(
         endpoint="scenario_timing:v1",
         compute=lambda df: ScenarioTimingService.compute(df, scenario),
         response_model=ScenarioTimingResponse,
+    )
+
+
+@router.get("/stimulus-sequence", response_model=StimulusSequenceResponse)
+async def stimulus_sequence(
+    project_id: UUID,
+    participant_code: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+    reader: AnalyticsFrameReader = Depends(get_frame_reader),
+):
+    """The scenarios of one recording in the order shown, to line participants up on them."""
+
+    project = await _verify_ownership(db, project_id, current_user)
+    return await cached_frame_endpoint(
+        reader=reader,
+        projection=SEQUENCE_PROJECTION,
+        project=project,
+        participant_code=participant_code,
+        scenario="all",
+        endpoint="stimulus_sequence:v1",
+        compute=StimulusSequenceService.compute,
+        response_model=StimulusSequenceResponse,
     )
 
 

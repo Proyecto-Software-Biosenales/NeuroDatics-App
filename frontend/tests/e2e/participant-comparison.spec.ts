@@ -75,7 +75,11 @@ async function installSession(page: Page) {
 }
 
 /** `pupilSpike` gives that participant's card trace one 12 mm artefact sample. */
-async function mockApi(page: Page, options: { delayMs?: number; pupilSpike?: string } = {}): Promise<MockState> {
+/**
+ * `sequences`: each recording labels the scenario from 2 s after its onset, for
+ * 10 s; without it no recording labels any (each card keeps its own time).
+ */
+async function mockApi(page: Page, options: { delayMs?: number; pupilSpike?: string; sequences?: boolean } = {}): Promise<MockState> {
   const state: MockState = { unhandled: [], cardRequests: [], inFlight: 0, maxInFlight: 0, gazeAt: [], delayMs: options.delayMs ?? 120, aborted: 0 }
   let errorServed = false
   page.on("requestfailed", (request) => {
@@ -99,6 +103,10 @@ async function mockApi(page: Page, options: { delayMs?: number; pupilSpike?: str
     if (path === `/api/projects/${project.id}`) return fulfill({ json: project })
     if (path.endsWith("/analytics/participants")) return fulfill({ json: participants })
     if (path.endsWith("/analytics/scenarios")) return fulfill({ json: [{ name: SCENARIO, type: "image", file_id: "scenario-image" }] })
+    if (path.endsWith("/analytics/stimulus-sequence")) {
+      const onset = onsetOf(participant)
+      return fulfill({ json: { segments: options.sequences ? [{ scenario: SCENARIO, onset_s: onset + 2, end_s: onset + 12 }] : [] } })
+    }
 
     const isCardWork =
       path.endsWith("/analytics/scenario-timing") ||
@@ -455,6 +463,42 @@ test("with every scenario the pinned recording second is marked on the other car
   expect(state.unhandled).toEqual([])
 })
 
+test("with every scenario and labelled stimuli, every card lines up by stimulus", async ({ page }) => {
+  const state = await mockApi(page, { delayMs: 20, sequences: true })
+  await page.goto("/dashboard")
+  await openComparison(page)
+  const dialog = dialogOf(page)
+  await expect(dialog).toContainText("cada estímulo empieza en el mismo segundo en todas las tarjetas")
+  // Only the 10 s of the stimulus are drawn (41 samples every 0.25 s), counted from its start.
+  for (const code of ["P01", "P02"]) {
+    await expect(cardChart(cardOf(page, code))).toHaveAttribute("aria-label", /41 observaciones; eje horizontal en segundos desde el inicio del primer estímulo/)
+  }
+  const ticks = (code: string) => cardOf(page, code).locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value")
+  await expect(ticks("P01").first()).toHaveText(/^0(\.0+)?$/)
+  // The common scale shares the stimulus axis.
+  expect(await ticks("P01").last().textContent()).toBe(await ticks("P02").last().textContent())
+
+  const second = cardOf(page, "P02")
+  const chart = cardChart(second)
+  await chart.scrollIntoViewIfNeeded()
+  const box = (await chart.boundingBox())!
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.4)
+  // Both pupils' dots sit at that instant; the one drawn last is on top.
+  await second.locator(".recharts-active-dot").last().click()
+  const aside = dialog.getByRole("complementary", { name: "Punto sobre estímulo" })
+  await expect(aside).toContainText("desde el inicio del primer estímulo")
+  await expect(aside).toContainText("mismo instante del estímulo en todas las tarjetas")
+  // The gaze is looked up at P02's own recording second of that stimulus.
+  await expect.poll(() => state.gazeAt.length).toBeGreaterThan(0)
+  const gaze = state.gazeAt.at(-1)!
+  expect(gaze.get("participant_code")).toBe("P02")
+  expect(Number(gaze.get("t_s"))).toBeGreaterThanOrEqual(onsetOf("P02") + 2)
+  expect(Number(gaze.get("t_s"))).toBeLessThanOrEqual(onsetOf("P02") + 12)
+  await expect(cardOf(page, "P01").locator(".recharts-reference-line")).not.toHaveCount(0)
+  await page.screenshot({ path: test.info().outputPath("participant-comparison-by-stimulus.png") })
+  expect(state.unhandled).toEqual([])
+})
+
 test("renders on a narrow screen without horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockApi(page, { delayMs: 20 })
@@ -482,7 +526,7 @@ test("desktop screenshot of the participant grid", async ({ page }) => {
   await page.screenshot({ path: test.info().outputPath("participant-comparison-desktop-notes.png") })
 })
 
-test("the common scale covers P1-P99 of every card, so one artefact flattens no one", async ({ page }) => {
+test("the common scale runs from the lowest to the highest value of every card, so no line is cut", async ({ page }) => {
   await page.setViewportSize({ width: 1536, height: 730 })
   await mockApi(page, { delayMs: 20, pupilSpike: "P02" })
   await openPupilView(page)
@@ -494,12 +538,12 @@ test("the common scale covers P1-P99 of every card, so one artefact flattens no 
   }
   await expect(cardChart(cardOf(page, "P01"))).toBeVisible()
   await expect(cardChart(cardOf(page, "P02"))).toBeVisible()
-  // Pupils span about 2.8-4 mm; the 12 mm sample sits outside the shared range.
-  await expect.poll(() => topTick("P01")).toBeLessThan(5)
-  await expect.poll(() => topTick("P02")).toBeLessThan(5)
+  // Pupils span about 2.8-4 mm; P02's 12 mm sample sets the top of every card.
+  await expect.poll(() => topTick("P01")).toBeGreaterThanOrEqual(12)
+  await expect.poll(() => topTick("P02")).toBeGreaterThanOrEqual(12)
   expect(await topTick("P01")).toBe(await topTick("P02"))
   const notes = dialog.getByRole("region", { name: "Información de la comparación" })
-  await expect(notes.getByTestId("participant-comparison-scale-note")).toContainText("del 1 % al 99 %")
+  await expect(notes.getByTestId("participant-comparison-scale-note")).toContainText("del valor más bajo al más alto, así ninguna línea se corta")
   await page.mouse.move(0, 0)
   await page.screenshot({ path: test.info().outputPath("participant-comparison-common-scale.png") })
 
@@ -507,7 +551,7 @@ test("the common scale covers P1-P99 of every card, so one artefact flattens no 
   await dialog.getByRole("button", { name: "Escalas propias", exact: true }).click()
   await expect.poll(() => topTick("P02")).toBeGreaterThanOrEqual(12)
   await expect.poll(() => topTick("P01")).toBeLessThan(5)
-  await expect(notes.getByTestId("participant-comparison-scale-note")).not.toContainText("99 %")
+  await expect(notes.getByTestId("participant-comparison-scale-note")).not.toContainText("del valor más bajo al más alto, así ninguna línea se corta")
 })
 
 test("EEG keeps the source signal mode and channels; Comparativas panels open the grid; spatial maps explain their scenario restriction", async ({ page }) => {

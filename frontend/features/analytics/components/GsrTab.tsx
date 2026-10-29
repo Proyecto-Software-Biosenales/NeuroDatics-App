@@ -237,6 +237,7 @@ export function GsrTab({ projectId, participantCode, scenario }: GsrTabProps) {
             unit="µS"
             yLabel="Respuesta galvánica (µS)"
             yAxis={groupYAxis}
+            averageColor={groupSignal === "raw" ? "#6366F1" : "#10B981"}
             decimals={4}
             averageDetail={groupView.timeAxis.aligned ? GROUP_TIME_DETAIL : undefined}
           />

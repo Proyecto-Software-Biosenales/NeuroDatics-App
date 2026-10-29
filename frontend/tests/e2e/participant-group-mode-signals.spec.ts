@@ -101,7 +101,11 @@ const STIMULUS_PNG = Buffer.from(
 /** Where each participant looks at any instant: a distinct point per participant. */
 const gazePointOf = (code: string) => ({ gx: 20 + indexOf(code) * 20, gy: 30 + indexOf(code) * 10 })
 
-async function mockApi(page: Page, errors: string[], sensor: Sensor): Promise<MockState> {
+/** The scenario each recording labels: from 1 s after the onset, for 10 s. */
+const stimulusSegments = (code: string) => [{ scenario: SCENARIO, onset_s: onsetOf(code) + 1, end_s: onsetOf(code) + 11 }]
+
+/** With `sequences`, the recordings label their scenarios; without them each keeps its own time. */
+async function mockApi(page: Page, errors: string[], sensor: Sensor, { sequences = false } = {}): Promise<MockState> {
   const project = projectFor(sensor)
   const state: MockState = { unhandled: [], groupTraces: [], statistics: [], gazeAt: [] }
   page.on("pageerror", (error) => errors.push(error.message))
@@ -135,6 +139,9 @@ async function mockApi(page: Page, errors: string[], sensor: Sensor): Promise<Mo
       return fulfill({
         json: { scenario: SCENARIO, time_basis: "scenario_onset", onset_s: onset, end_s: onset + 40, gsr_origin_s: onset - GSR_LEAD_S },
       })
+    }
+    if (path.endsWith("/analytics/stimulus-sequence")) {
+      return fulfill({ json: { segments: sequences ? stimulusSegments(participant) : [] } })
     }
     const timeseries = path.match(/\/analytics\/timeseries\/(pupil|gaze|distance|gsr)$/)?.[1]
     if (timeseries) {
@@ -368,6 +375,7 @@ test("GSR aligns each participant on the scenario onset in overlay and average",
   await chooseGroupMode(page, "Promedio")
   await expect(chart).toHaveAttribute("data-mode", "average")
   await expect(chart.locator(".recharts-area-area")).toHaveCount(1)
+  await expect(chart.locator(".recharts-area-area")).toHaveAttribute("fill", "#6366F1")
   const kpis = page.getByTestId("group-kpis")
   await expect(kpis).toContainText(averageText(WITH_DATA.map((code) => 2 + indexOf(code) * 0.5), 4))
   await expect(table.getByRole("row").nth(1)).toContainText(`Promedio (${WITH_DATA.length} participantes)`)
@@ -428,7 +436,47 @@ test("a click on the group chart shows every participant's gaze over the stimulu
   expect(errors).toEqual([])
 })
 
-test("GSR with «Todos los escenarios» keeps each participant on its own GSR time", async ({ page }) => {
+test("GSR with «Todos los escenarios» lines participants up by stimulus", async ({ page }) => {
+  const errors: string[] = []
+  await page.setViewportSize({ width: 1536, height: 730 })
+  const state = await mockApi(page, errors, "GSR", { sequences: true })
+  await page.goto("/dashboard")
+  await expect(page.getByRole("heading", { name: "Respuesta galvánica", exact: true })).toBeVisible()
+  await expect(page.locator('[data-slot="select-trigger"]').first()).toContainText("Todos los escenarios")
+
+  for (const mode of ["Superposición", "Promedio"] as const) {
+    await chooseGroupMode(page, mode)
+    const chart = groupChart(page)
+    await expect(chart).toHaveAttribute("data-series", String(WITH_DATA.length))
+    await expect(page.getByText("Tiempo desde el inicio del primer estímulo (s)")).toBeVisible()
+    await expect(page.getByRole("button", { name: "Alineado por estímulo" })).toBeVisible()
+    await expect(chart.locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value").first()).toHaveText(/^0(\.0+)?$/)
+
+    // A click asks each participant at the same second of the stimulus, in its own recording.
+    const asked = state.gazeAt.length
+    const plot = chart.locator(".recharts-wrapper")
+    const box = (await plot.boundingBox())!
+    await plot.hover({ position: { x: box.width * 0.5, y: box.height * 0.4 } })
+    await plot.click({ position: { x: box.width * 0.5, y: box.height * 0.4 } })
+    await expect(chart).toHaveAttribute("data-selected-time", /\d/)
+    const selected = Number(await chart.getAttribute("data-selected-time"))
+    await expect.poll(() => state.gazeAt.length - asked).toBe(WITH_DATA.length)
+    for (const params of state.gazeAt.slice(asked)) {
+      const code = params.get("participant_code")!
+      expect(params.get("scenario")).toBe(SCENARIO)
+      expect(Number(params.get("t_s"))).toBeCloseTo(onsetOf(code) + 1 + selected, 6)
+    }
+    await expect(page.getByTestId("group-stimulus").getByTestId("group-gaze-points").locator("[data-participant]")).toHaveCount(WITH_DATA.length)
+    await page.screenshot({ path: `${FIX_SHOTS}/gsr-${mode === "Promedio" ? "average" : "overlay"}-by-stimulus-1536.png` })
+    await page.getByTestId("group-stimulus").getByRole("button", { name: "Limpiar selección", exact: true }).click()
+  }
+
+  await noHorizontalScroll(page)
+  expect(state.unhandled).toEqual([])
+  expect(errors).toEqual([])
+})
+
+test("GSR with «Todos los escenarios» on recordings without scenarios keeps each participant on its own GSR time", async ({ page }) => {
   const errors: string[] = []
   await page.setViewportSize({ width: 1536, height: 730 })
   const state = await mockApi(page, errors, "GSR")

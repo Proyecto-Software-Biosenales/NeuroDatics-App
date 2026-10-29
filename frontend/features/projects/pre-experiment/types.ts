@@ -134,6 +134,31 @@ export const withoutEmptyNotes = (config: PreExperimentConfig): PreExperimentCon
   ...config,
   project_notes: config.project_notes.filter((note) => !noteIsEmpty(note)),
 })
+/** The screen tab no longer asks for «Notas de pantalla» or «Datos relevantes del experimento»;
+ *  text saved there becomes notes of the Notas section. The ids are fixed so a reloaded draft
+ *  compares equal, and the text is split at the note's 10 000-character limit. */
+const NOTE_LIMIT = 10000
+const legacyNotes = (prefix: string, title: string, text: string): ProjectNote[] =>
+  Array.from({ length: Math.ceil(text.length / NOTE_LIMIT) }, (_, index) => ({
+    id: `${prefix}-${String(index).padStart(12, "0")}`,
+    title,
+    text: text.slice(index * NOTE_LIMIT, (index + 1) * NOTE_LIMIT),
+  }))
+export function withLegacyNotes(config: PreExperimentConfig): PreExperimentConfig {
+  const screenNotes = config.screen.notes.trim()
+  const experimentNotes = config.notes.trim()
+  if (!screenNotes && !experimentNotes) return config
+  return {
+    ...config,
+    screen: { ...config.screen, notes: "" },
+    notes: "",
+    project_notes: [
+      ...legacyNotes("5c6e8a10-0d1b-4c4e-8f00", "Notas de pantalla", screenNotes),
+      ...legacyNotes("5c6e8a10-0d1b-4c4e-8f01", "Datos relevantes del experimento", experimentNotes),
+      ...config.project_notes,
+    ],
+  }
+}
 /** A questionnaire exists when it has questions; there is no separate switch to turn it on. */
 export function withDerivedQuestionnaires(
   config: PreExperimentConfig

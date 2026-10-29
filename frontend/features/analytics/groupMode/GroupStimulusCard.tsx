@@ -18,6 +18,7 @@ import { useAnalyticsRevision } from "../hooks/useAnalyticsContext"
 import { useBlobUrl } from "../participantComparison/cardHooks"
 import type { GazeAtData } from "../types"
 import { useGroupMode, type GroupParticipant } from "./GroupModeProvider"
+import { timelineToRecording } from "./stimulusTimeline"
 import type { GroupView } from "./useGroupData"
 
 /**
@@ -41,36 +42,48 @@ interface GazeTarget {
   participant: GroupParticipant
   /** Seconds of that participant's own recording. */
   recordingTime: number
+  /** The scenario to look in; null for the whole recording. */
+  scenario: string | null
 }
 
-/** Each drawn participant's recording second for `time` on the group axis. */
-function gazeTargets(view: GroupView, time: number | null): GazeTarget[] {
+/** Each drawn participant's recording second (and scenario) for `time` on the group axis. */
+function gazeTargets(view: GroupView, time: number | null, scenario: string): GazeTarget[] {
   if (time == null) return []
+  const timeline = view.data.timeline
   return view.data.entries.flatMap((entry) => {
     const result = entry.result
     if (entry.status !== "success" || result?.type !== "temporal") return []
+    if (timeline) {
+      // Lined up by stimulus: the instant is a second of one stimulus, in each participant's own recording of it.
+      const placed = timelineToRecording(timeline, entry.participant.code, time)
+      return placed ? [{ participant: entry.participant, ...placed }] : []
+    }
     if ((view.timeAxis.aligned && !result.aligned) || result.recordingOffset == null) return []
     // Drawn time = data time + displayOffset; recording time = data time + recordingOffset.
-    return [{ participant: entry.participant, recordingTime: time - result.displayOffset + result.recordingOffset }]
+    return [{
+      participant: entry.participant,
+      recordingTime: time - result.displayOffset + result.recordingOffset,
+      scenario: view.timeAxis.aligned ? scenario : null,
+    }]
   })
 }
 
 /** The gaze of every target at its own second; a lookup by code, null while pending. */
-function useGroupGazeAt(targets: GazeTarget[], scenario: string | null): (code: string) => GazeState | null {
+function useGroupGazeAt(targets: GazeTarget[]): (code: string) => GazeState | null {
   const { projectId } = useGroupMode()
   const revision = useAnalyticsRevision()
   const [states, setStates] = useState<Record<string, GazeState>>({})
   const keyOf = useCallback(
-    (code: string, time: number) => JSON.stringify([revision, code, time, scenario]),
-    [revision, scenario]
+    (code: string, time: number, scenario: string | null) => JSON.stringify([revision, code, time, scenario]),
+    [revision]
   )
-  const targetsKey = JSON.stringify(targets.map((target) => [target.participant.code, target.recordingTime]))
+  const targetsKey = JSON.stringify(targets.map((target) => [target.participant.code, target.recordingTime, target.scenario]))
 
   useEffect(() => {
     if (!projectId) return
     const controller = new AbortController()
-    for (const [code, time] of JSON.parse(targetsKey) as Array<[string, number]>) {
-      const key = keyOf(code, time)
+    for (const [code, time, scenario] of JSON.parse(targetsKey) as Array<[string, number, string | null]>) {
+      const key = keyOf(code, time, scenario)
       requestAnalytics(projectId, "gaze-at", [code, time, scenario],
         (signal) => AnalyticsApi.getGazeAt(projectId, code, time, scenario, signal), controller.signal, revision).then(
         (data) => {
@@ -83,18 +96,15 @@ function useGroupGazeAt(targets: GazeTarget[], scenario: string | null): (code: 
       )
     }
     return () => controller.abort()
-  }, [keyOf, projectId, revision, scenario, targetsKey])
+  }, [keyOf, projectId, revision, targetsKey])
 
-  const times = useMemo(
-    () => new Map(targets.map((target) => [target.participant.code, target.recordingTime])),
-    [targets]
-  )
+  const byCode = useMemo(() => new Map(targets.map((target) => [target.participant.code, target])), [targets])
   return useCallback(
     (code: string) => {
-      const time = times.get(code)
-      return time == null ? null : states[keyOf(code, time)] ?? null
+      const target = byCode.get(code)
+      return target == null ? null : states[keyOf(code, target.recordingTime, target.scenario)] ?? null
     },
-    [keyOf, states, times]
+    [byCode, keyOf, states]
   )
 }
 
@@ -163,9 +173,8 @@ const FRAME_CLASS = "flex h-48 items-center justify-center rounded-xl border bor
 
 export function GroupStimulusCard({ view, scenario }: { view: GroupView; scenario: string }) {
   const time = view.selectedTime
-  const targets = useMemo(() => gazeTargets(view, time), [time, view])
-  const concreteScenario = view.timeAxis.aligned ? scenario : null
-  const gazeOf = useGroupGazeAt(targets, concreteScenario)
+  const targets = useMemo(() => gazeTargets(view, time, scenario), [scenario, time, view])
+  const gazeOf = useGroupGazeAt(targets)
 
   const resolved = targets.map((target) => ({ ...target, state: gazeOf(target.participant.code) }))
   const pending = resolved.some((entry) => entry.state == null)

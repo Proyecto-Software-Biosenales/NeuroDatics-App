@@ -45,6 +45,20 @@ function pupilFor(code: string, blinks = false) {
   }
 }
 
+/**
+ * The scenarios each recording labels: an instruction from 2 s after the
+ * onset and, after a pause that grows with the participant, a video. Lined
+ * up by stimulus, both start at the same second for everybody.
+ */
+function stimulusSegments(code: string) {
+  const onset = onsetOf(code)
+  const video = onset + 6.5 + indexOf(code) * 0.5
+  return [
+    { scenario: "Instrucción", onset_s: onset + 2, end_s: onset + 6 },
+    { scenario: "Video", onset_s: video, end_s: video + 8 },
+  ]
+}
+
 /** The view's «Media» for one participant with both eyes: mean of the per-sample eye mean. */
 function participantMean(code: string) {
   const { left, right } = pupilFor(code)
@@ -64,11 +78,13 @@ interface MockOptions {
   names?: Record<string, string>
   /** P04 without data and P05 failing once (the default). */
   failures?: boolean
+  /** The recordings label their scenarios (the default); without them each keeps its own time. */
+  sequences?: boolean
 }
 
 async function mockApi(page: Page, errors: string[], options: MockOptions = {}): Promise<MockState> {
   const state: MockState = { unhandled: [], groupTraces: [] }
-  const { blinks = false, names = {}, failures = true } = options
+  const { blinks = false, names = {}, failures = true, sequences = true } = options
   let errorServed = !failures
   page.on("pageerror", (error) => errors.push(error.message))
   await page.addInitScript(() => {
@@ -103,6 +119,9 @@ async function mockApi(page: Page, errors: string[], options: MockOptions = {}):
         json: { scenario: SCENARIO, time_basis: "scenario_onset", onset_s: onsetOf(participant), end_s: onsetOf(participant) + 40, gsr_origin_s: null },
       })
     }
+    if (path.endsWith("/analytics/stimulus-sequence")) {
+      return fulfill({ json: { segments: sequences ? stimulusSegments(participant) : [] } })
+    }
     if (path.endsWith("/analytics/timeseries/pupil")) {
       if (params.get("decimation") === "minmax_envelope") {
         state.groupTraces.push(params)
@@ -125,7 +144,7 @@ async function mockApi(page: Page, errors: string[], options: MockOptions = {}):
     if (path.endsWith("/analytics/fixations/histogram")) {
       return fulfill({
         json: {
-          bins: [{ rango_min: 100, rango_max: 200, label: "100-200", conteo: 3, porcentaje: 100, promedio_ms: 150 }],
+          bins: [{ rango_min: 100, rango_max: 199, label: "100-199", conteo: 3, porcentaje: 100, promedio_ms: 150 }],
           n_fixations: 3, total_duration_ms: 450, mean_duration_ms: 150, min_duration_ms: 120, max_duration_ms: 190,
         },
       })
@@ -234,13 +253,13 @@ test("average shows the mean curve, averaged figures and leaves group mode on de
   await page.goto("/dashboard")
   await chooseScenario(page, SCENARIO)
 
-  // «Todos los escenarios» has no common onset: each recording counts from its own start.
+  // «Todos los escenarios» lines the recordings up by stimulus.
   await chooseGroupMode(page, "Promedio")
   await chooseScenario(page, "Todos los escenarios")
   await expect(groupChart(page)).toHaveAttribute("data-mode", "average")
   await expect(page.getByTestId("group-unsupported")).toHaveCount(0)
-  await expect(page.getByText("Tiempo desde el inicio de la grabación (s)")).toBeVisible()
-  await expect(page.getByRole("button", { name: "Tiempo de grabación" })).toBeVisible()
+  await expect(page.getByText("Tiempo desde el inicio del primer estímulo (s)")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Alineado por estímulo" })).toBeVisible()
   await chooseScenario(page, SCENARIO)
 
   const chart = groupChart(page)
@@ -248,6 +267,8 @@ test("average shows the mean curve, averaged figures and leaves group mode on de
   // The failure served under the first scenario is asked again on return.
   await expect(chart).toHaveAttribute("data-series", "4")
   await expect(chart.locator(".recharts-area-area")).toHaveCount(1)
+  // The mean takes the colour of the view's own line (both eyes: indigo), not a neutral grey.
+  await expect(chart.locator(".recharts-area-area")).toHaveAttribute("fill", "#818CF8")
 
   // «Media» is the mean of each participant's own mean (P04 has no data).
   const withData = ["P01", "P02", "P03", "P05"]
@@ -264,20 +285,20 @@ test("average shows the mean curve, averaged figures and leaves group mode on de
   await table.scrollIntoViewIfNeeded()
   await page.screenshot({ path: `${SHOTS}/average-1536-table.png` })
 
-  // Changing the eye keeps the mode; the selection survives a tab change.
+  // Changing the eye keeps the mode.
   await page.getByRole("button", { name: "Izquierda" }).click()
   await expect(chart).toHaveAttribute("data-mode", "average")
-  await page.getByRole("tab", { name: "Histograma de fijaciones" }).click()
-  await expect(page.getByTestId("group-unsupported")).toContainText("un participante a la vez")
-  await page.getByRole("tab", { name: "Dilatación pupilar" }).click()
-  await expect(groupChart(page)).toHaveAttribute("data-mode", "average")
 
-  // «Ver un participante» returns to the individual view.
+  // The histogram offers no group mode: opening it returns to the individual view.
   await page.getByRole("tab", { name: "Histograma de fijaciones" }).click()
-  await page.getByRole("button", { name: "Ver un participante" }).click()
-  await expect(page.getByTestId("group-unsupported")).toHaveCount(0)
   await expect(page.getByRole("button", { name: /Participantes: \d+ de 5/ })).toHaveCount(0)
   await expect(participantSelect(page)).toContainText("P01")
+  await participantSelect(page).click()
+  await expect(page.getByRole("option", { name: "Participante P03", exact: true })).toBeVisible()
+  await expect(page.getByRole("listbox").getByText("Varios participantes")).toHaveCount(0)
+  await page.keyboard.press("Escape")
+  await page.getByRole("tab", { name: "Dilatación pupilar" }).click()
+  await expect(groupChart(page)).toHaveCount(0)
 
   // Choosing a participant in the select also leaves the group mode.
   await page.getByRole("tab", { name: "Dilatación pupilar" }).click()
@@ -366,24 +387,27 @@ test("isolated lost samples keep each line whole, repeated names are told apart,
   await expect(page.getByRole("dialog", { name: "Seleccionar participantes" }).getByRole("checkbox", { name: "232 (P05)" })).toBeVisible()
   await page.keyboard.press("Escape")
 
-  // «Todos los escenarios»: each participant on its own recording time.
+  // «Todos los escenarios»: lined up by stimulus, without the lead-in or the pauses.
   await chooseScenario(page, "Todos los escenarios")
   await expect(chart).toHaveAttribute("data-mode", "overlay")
-  await expect(page.getByText("Tiempo desde el inicio de la grabación (s)")).toBeVisible()
+  await expect(page.getByText("Tiempo desde el inicio del primer estímulo (s)")).toBeVisible()
   await expect(chart).toHaveAttribute("data-series", "5")
-  const firstTick = Number(await chart.locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value").first().textContent())
-  expect(firstTick).toBeGreaterThanOrEqual(50)
+  await expect(chart.locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value").first()).toHaveText(/^0(\.0+)?$/)
+  // The axis is as long as both stimuli (4 s + 8 s), whatever each recording's pause.
+  const lastTick = Number(await chart.locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value").last().textContent())
+  expect(lastTick).toBeLessThanOrEqual(13)
+  // Without the pause, each participant's line runs on from one stimulus to the next.
   for (const d of await curves(page)) expect(d.match(/M/g)).toHaveLength(1)
   expect(state.groupTraces.filter((params) => params.get("scenario") === "all")).toHaveLength(5)
-  await page.getByRole("button", { name: "Tiempo de grabación" }).hover()
-  await expect(page.getByRole("tooltip").first()).toContainText("estímulos distintos")
+  await page.getByRole("button", { name: "Alineado por estímulo" }).hover()
+  await expect(page.getByRole("tooltip").first()).toContainText("pausas entre estímulos")
   await page.screenshot({ path: `${SHOTS}/fix/overlay-all-1536.png` })
   await page.mouse.move(0, 0)
 
   await chooseGroupMode(page, "Promedio")
   await expect(chart).toHaveAttribute("data-mode", "average")
   await expect(chart.locator(".recharts-area-area")).toHaveCount(1)
-  await expect(page.getByRole("button", { name: "Tiempo de grabación" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Alineado por estímulo" })).toBeVisible()
   const mean = await curves(page)
   expect(mean).toHaveLength(1)
   expect(mean[0].match(/M/g)).toHaveLength(1)
@@ -395,10 +419,11 @@ test("isolated lost samples keep each line whole, repeated names are told apart,
   expect(errors).toEqual([])
 })
 
-test("phone width: pupil overlay and average with «Todos los escenarios»", async ({ page }) => {
+test("phone width: pupil overlay and average with «Todos los escenarios» on recordings without scenarios", async ({ page }) => {
   const errors: string[] = []
   await page.setViewportSize({ width: 390, height: 844 })
-  const state = await mockApi(page, errors, { blinks: true, names: { P01: "232", P03: "232" }, failures: false })
+  // Recordings that label no scenario keep each participant on its own recording time.
+  const state = await mockApi(page, errors, { blinks: true, names: { P01: "232", P03: "232" }, failures: false, sequences: false })
   await page.goto("/dashboard")
   await chooseGroupMode(page, "Superposición")
   await expect(groupChart(page)).toHaveAttribute("data-series", "5")

@@ -19,6 +19,8 @@ ROUTES = [
 ]
 # Routes that take several participants; they have their own contract test below.
 GROUP_ROUTES = ["/heatmap/group"]
+# Routes added after the v1 shape baseline, each pinned by its own test below.
+LATER_ROUTES = ["/stimulus-sequence"]
 
 
 def response_shape(value):
@@ -36,7 +38,7 @@ def response_shape(value):
 def test_contract_inventory_covers_every_analytics_route():
     mounted = {route.path.split("/analytics", 1)[1] for route in app.routes
                if "/analytics/" in getattr(route, "path", "")}
-    assert mounted == set(ROUTES) | set(GROUP_ROUTES)
+    assert mounted == set(ROUTES) | set(GROUP_ROUTES) | set(LATER_ROUTES)
     assert len(ROUTES) == 24
 
 
@@ -167,3 +169,17 @@ def test_group_heatmap_without_any_data_is_404(http_client):
     })
     assert response.status_code == 404
     assert "participantes" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("participant", ["SYN-01", "SYN-02"])
+def test_stimulus_sequence_contract(http_client, participant):
+    response = http_client.get(PREFIX + "/stimulus-sequence", params={"participant_code": participant})
+    assert response.status_code == 200, response.text
+    segments = response.json()["segments"]
+    assert segments
+    assert {"stimulus-a", "stimulus-b"} <= {segment["scenario"] for segment in segments}
+    for segment in segments:
+        assert sorted(segment) == ["end_s", "onset_s", "scenario"]
+        assert segment["onset_s"] <= segment["end_s"]
+    onsets = [segment["onset_s"] for segment in segments]
+    assert onsets == sorted(onsets)

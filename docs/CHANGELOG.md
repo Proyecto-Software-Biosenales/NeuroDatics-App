@@ -5,6 +5,157 @@ bajo **Sin publicar**, y pasan a una versión al entregarla.
 
 ## Sin publicar
 
+### Histograma de fijaciones con rangos fijos de 50 ms
+
+- **Los rangos ya no dependen de la fijación más larga:** el ancho es siempre de 50 ms y los límites son múltiplos
+  de 50; el primero es el múltiplo de 50 que contiene la duración mínima (con umbral desconocido, el de la fijación
+  más corta) y el último, «1000 o más» (`rango_min` 1000, `rango_max` la fijación más larga redondeada hacia arriba),
+  reúne las de un segundo o más. Antes el ancho (10, 20, 25, 50, 100…) cambiaba con la fijación más larga, y con el
+  detector normalizado (I-DT) esta cambia con cada duración mínima porque I-DT vuelve a detectar las fijaciones
+  (ejemplo real: 1164 ms con 100 ms, 1364 ms con 150 ms), así que los rangos dejaban de coincidir entre umbrales.
+  Con el detector angular (I-VT) la clasificación se hace una vez y el umbral solo filtra. Se conserva el recorte
+  por redondeo (una duración un pelo bajo el umbral cuenta en el primer rango). Etiqueta del tooltip: «Rango (ms)».
+- **Comprobado con datos reales:** 154 combinaciones de archivo y escenario de los Parquet procesados del
+  investigador, con todas las duraciones mínimas disponibles: 0 diferencias en los límites de los rangos entre
+  umbrales. Los conteos sí cambian con I-DT, y es lo esperado.
+- **Cifras de referencia:** `test_spatial_and_duration_outputs_*.csv` (4 archivos) se regeneraron tras copiar las
+  anteriores y comprobar con pandas que solo cambian columnas `histogram.bins.*` (más columnas, por los rangos
+  de 50 ms); `test_fixation_histogram_bins.py` se reescribió (mismos límites entre umbrales, rango abierto, umbral
+  desconocido).
+- **Documentación:** aviso en la guía de procesamiento (7.6, y 7.7 reescrita; 59 páginas) y en el manual de uso
+  (5.6 y 9.3; 125 páginas): con I-DT, cambiar la duración mínima vuelve a detectar las fijaciones y pueden cambiar
+  también las largas; la recomendación es escribir el tamaño de la pantalla en cm y volver a procesar la carpeta
+  para usar el detector angular. PDF regenerados con Word en `manuales/`. El pie de figura del informe de Eye tracker
+  describe los nuevos rangos.
+- `verify.ps1` en verde (backend, Ruff, contratos, 77 pruebas unitarias del frontend, ESLint sin errores). Paquete de
+  Windows **2.9** (sustituye al 2.8): `delivery/NeuroDatics-2.9-win64.zip` (251,9 MiB), SHA-256
+  `35632B38BE4326D1834FAA9EF86D7283B0F12921637276FE4EA909F3F5EC8F1C`. Pasan las pruebas del ejecutable congelado
+  (8 pruebas de navegador `passed`, 0 conexiones fuera de loopback, 0 procesos postgres al salir) y el zip extraído
+  arranca desde una ruta con tildes. `package.ps1` informa de 3 bloqueos de publicación abiertos (ver
+  `output/student-m1/release/package-report.json`), no vinculados a este cambio. Por petición del dueño no se hizo
+  revisión adicional; las pruebas e2e de Playwright con API simulada no se ejecutaron aparte.
+
+### «Escala común» de «Comparar participantes» del mínimo al máximo de todos
+
+- **Ninguna línea se corta:** la escala vertical común va del valor más bajo al más alto de todos los
+  participantes seleccionados. Antes cubría el percentil 1 al 99 de todos sus valores juntos y cortaba en el borde
+  los picos de quien más se salía (en la dulcería, la pupila de un participante pasaba de 6,1 mm y quedaba
+  recortada). Un artefacto grande ahora estira la escala de todas las tarjetas; «Escalas propias» sigue ajustando
+  cada una a sus datos. El EEG por canal conserva su rango robusto por tarjeta, como en su vista.
+- `verify.ps1` en verde (1303 pruebas del backend, Ruff, contratos y unitarias del frontend); pasan las 80 pruebas
+  e2e con API simulada. Paquete de Windows **2.8** (sustituye al 2.7): `delivery/NeuroDatics-2.8-win64.zip`
+  (252 MiB), SHA-256 `B1C7707432D53851E4AE0278D80B31F3EB828464FDC20B7109D48C257B8F4A9E`. Pasan las pruebas del
+  ejecutable congelado (8 pruebas de navegador `passed`, 0 conexiones fuera de loopback, 0 procesos postgres al
+  salir) y el zip extraído arranca desde una ruta con tildes. Se construyó a las 9:30 del 29 de octubre: los
+  cambios que otras sesiones hicieron después en `groupSupport.ts`, `aggregate.test.mjs`, `eegGroupSlots.tsx` y
+  `participant-group-mode.spec.ts` no van en él ni pasaron por esta verificación.
+
+### Cada vista ofrece solo los modos de grupo que puede dibujar
+
+- **El selector de participante ya no ofrece lo que la vista no puede mostrar:** antes las opciones de «Varios
+  participantes» dependían del sensor y, en las vistas que no las admitían, la gráfica se cambiaba por un aviso.
+  Ahora el mapa de recorridos solo ofrece «Superposición»; la topografía EEG, el histograma de fijaciones y
+  «Comparativas» no ofrecen ninguna. Sale el «Promedio» de la topografía EEG.
+- Al pasar a una vista que no admite el modo elegido se usa el que sí admite (por ejemplo, «Promedio» del mapa de
+  calor pasa a «Superposición» en el mapa de recorridos) o se vuelve a un participante.
+- Sigue el aviso «Selecciona un escenario concreto» en las vistas que se dibujan sobre la imagen de un estímulo.
+- `verify.ps1` en verde (1306 pruebas del backend, 165 unitarias y 77 de navegador del frontend); pasan las e2e de
+  los modos de grupo y de «Comparativas». Paquete de Windows no reconstruido: no se pidió en este cambio.
+
+### Histograma de fijaciones con rangos que no se mueven al cambiar el umbral
+
+- **Los rangos tienen ancho fijo:** el menor de 10, 20, 25, 50, 100, 200, 250, 500 ms… que deja menos de 20
+  rangos hasta la fijación más larga, en múltiplos de ese ancho y desde el umbral. Antes se repartían en
+  ⌈log₂ n + 1⌉ rangos (regla de Sturges) de 0 al máximo: al subir el umbral bajaba n, todos los rangos se
+  ensanchaban y se desplazaban, y uno como «400-500» parecía perder fijaciones que en realidad caían en el rango
+  vecino. Ahora, al subir el umbral solo desaparecen los rangos que quedan por debajo; los demás conservan sus
+  límites y sus conteos. El primer rango empieza en el umbral (en datos históricos, en la fijación más corta).
+- El informe de Eye tracker usa el mismo histograma y su pie de figura lo dice.
+- Las cifras de referencia de `test_spatial_and_duration_outputs` cambian solo en `histogram.bins.*` (ahora 9
+  rangos de 100 ms desde 200 ms, en lugar de 5 de Sturges desde 0); el número de fijaciones, el total y la media no cambian.
+- `verify.ps1` en verde (1306 pruebas del backend, Ruff, contratos, 165 pruebas unitarias y 77 de navegador del
+  frontend). Paquete de Windows **2.8**: `delivery/NeuroDatics-2.8-win64.zip` (251,9 MiB), SHA-256
+  `A683F02D6B69717600A058060A894328B43A8297CDD78C4DEB0635194E3D6FFA`. Pasan las pruebas del ejecutable congelado
+  (PostgreSQL embebido, adopción y parada; 8 pruebas de navegador `passed`, 0 conexiones fuera de loopback, 0
+  procesos postgres al salir) y el zip extraído arranca desde una ruta con tildes. Un primer intento falló porque
+  otra sesión ejecutaba Playwright sobre `frontend/.next`; se repitió con el árbol en reposo, así que incluye
+  también el trabajo sin confirmar del modo de grupo (`groupMode/aggregate.ts` y su e2e), que pasó la misma
+  verificación.
+
+### «EEG por canal» sin sombreado de artefactos y con una sola tabla de calidad
+
+- **El gráfico ya no sombrea los posibles artefactos:** con varios canales, los tramos se solapaban hasta teñir
+  toda la señal de varios rojos, ámbar y violeta sin decir nada útil. Se van las bandas, sus colores, su leyenda y
+  la ficha «eventos marcados». El eje sigue recortándose solo cuando una excursión aplastaría los demás canales, y
+  su ficha «Eje recortado» pasa a rojo: es el único rojo del gráfico y significa «hay datos fuera de la vista».
+- **«Calidad por canal» reúne lo que antes eran dos tarjetas:** una fila por canal con las muestras ausentes, los
+  posibles artefactos (un clic marca su inicio en el gráfico y el tooltip lo explica en palabras llanas) y, como mucho, un
+  aviso: «Unidad convertida», «Resolución baja» o «Señal plana», explicados en su tooltip. Salen el paso mínimo,
+  las muestras repetidas, el desplazamiento, el z máximo, el recuento de marcadas y la tabla de detalle de tramos.
+- **Sin «Punto seleccionado»:** el tooltip del gráfico ya da los valores de cada canal en ese instante.
+- **El aviso final se queda con lo importante:** ya no repite la conversión de unidades ni los artefactos que la
+  tabla muestra, y ya no ofrece «Volver a procesar» (la pestaña no puede volver a procesar un registro).
+- Paquete de Windows no reconstruido: `verify.ps1` falla en el backend porque la ruta nueva
+  `/stimulus-sequence` (entrada siguiente, aún sin terminar) no está en el inventario de
+  `test_analytics_http_contracts.py`. Pasan el resto del backend (1300 pruebas), el tipado, ESLint, las 161
+  pruebas unitarias, las 77 de navegador y las e2e de EEG; capturas a 1536×730 y 390 px sin scroll horizontal.
+
+### «Todos los escenarios» alinea a los participantes por estímulo
+
+- **Superposición y Promedio comparan el mismo momento:** con «Todos los escenarios», cada estímulo empieza en el
+  mismo segundo para todos los participantes, aunque los vieran en otro orden. Antes cada uno se contaba desde el
+  inicio de su grabación, así que lo grabado antes del primer estímulo o una pausa entre estímulos desplazaba su
+  línea y el promedio mezclaba estímulos distintos (en el experimento de la dulcería, un participante empezó 23 s
+  antes que los demás y tuvo una pausa de 8 s antes del video).
+- No se dibuja lo grabado antes del primer estímulo ni las pausas entre estímulos. El eje dice «Tiempo desde el
+  inicio del primer estímulo» y la ficha «Alineado por estímulo» lo explica. Al hacer clic en la gráfica, cada
+  participante se busca en el mismo segundo de ese estímulo dentro de su propia grabación.
+- **«Comparar participantes» también:** con «Todos los escenarios» cada tarjeta se dibuja sobre el mismo eje por
+  estímulo (con «Escala común», el mismo rango para todas). Al fijar un punto, la línea marca el mismo instante
+  del estímulo en las demás tarjetas y la mirada se busca en el segundo de la grabación de ese participante. La
+  vista de un solo participante no cambia: sigue mostrando su grabación completa.
+- Aplica a pupila, punto de mirada, distancia, GSR, EEG por canal y espectrograma. Una grabación que no marca
+  ningún escenario sigue con su propio tiempo, como antes.
+- Nueva consulta `GET /analytics/stimulus-sequence`: los escenarios de cada grabación en el orden en que se
+  mostraron.
+- `verify.ps1` en verde (1303 pruebas del backend, Ruff, contratos y 163 pruebas unitarias del frontend); pasan las
+  80 pruebas e2e con API simulada. Paquete de Windows **2.7**: `delivery/NeuroDatics-2.7-win64.zip` (252 MiB),
+  SHA-256 `7F41DA773C40B542EEF4B409C30E0D1AEA14C4D25A2C1A24989FDBCA4FBE02F6`. Pasan las pruebas del ejecutable
+  congelado (8 pruebas de navegador `passed`, 0 conexiones fuera de loopback, 0 procesos postgres al salir) y el
+  zip extraído arranca desde una ruta con tildes. Incluye además el trabajo sin confirmar que había en el árbol:
+  EEG en «Promedio», pantalla del pre-experimento y «EEG por canal» sin sombreado de artefactos (con este
+  cambio, `verify.ps1` ya pasa también para esa entrada).
+
+### EEG solo en «Promedio», con todos los canales, y promedios en color
+
+- **El EEG ya no ofrece «Superposición»:** con varios canales por participante la gráfica quedaba saturada. En
+  el Electroencefalógrafo el selector solo muestra «Promedio»; si venía elegida «Superposición» desde otro sensor,
+  pasa a «Promedio».
+- **«EEG por canal» en «Promedio» es la vista de un participante:** dibuja todos los canales elegidos, cada uno
+  con su color, y cada línea es la media de ese canal entre los participantes (rejilla de tiempo común, sin
+  rellenar pérdidas largas). Vuelven «Ambas» y «Montaje»; arrastrar amplía el tramo. Las tarjetas y la tabla
+  siguen dando las cifras de cada participante en el canal de «Estadísticas de».
+- **El promedio deja el gris:** la línea media y su banda toman el color de la línea de la vista individual
+  (pupila índigo o roja según el ojo, mirada X índigo y Y verde, distancia azul, GSR verde suavizada o índigo
+  cruda, densidad espectral violeta).
+- Paquete de Windows no reconstruido: `verify.ps1` falla en `tests/components/pre-experiment.test.mjs`, que aún
+  espera la distancia que el cambio de la pantalla del pre-experimento quitó. Pasan el backend, Ruff, los
+  contratos, las 155 pruebas unitarias y las 22 pruebas e2e de los modos de grupo.
+
+### Pantalla del pre-experimento igual que «Pantalla distinta a la configuración»
+
+- La pestaña «Pantalla» del pre-experimento (al crearlo y en Editar) muestra solo las cuatro medidas en una fila,
+  Ancho y Alto en px y en cm, con el mismo componente que «Pantalla distinta a la configuración» en «Con datos».
+  Ya no pide la distancia, las notas de pantalla ni los datos relevantes del experimento.
+- El Dashboard ya no lista los pre-experimentos que aún no tienen datos; aparecen en cuanto se sube su carpeta.
+- Lo que ya estuviera escrito en esas dos notas pasa a la pestaña «Notas» con su título, para no perderlo. La
+  distancia guardada en proyectos anteriores se sigue usando como respaldo de la del eye tracker.
+- `verify.ps1` en verde. Paquete de Windows **2.5**: `delivery/NeuroDatics-2.5-win64.zip` (251,9 MiB), SHA-256
+  `853AD5E1EB002F31310B69CD1BE676C011CB1939028385540A61AC688938E712`. Pasan las pruebas del ejecutable congelado
+  (PostgreSQL embebido, adopción y parada; 8 pruebas de navegador `passed`, 0 conexiones fuera de loopback, 0
+  procesos postgres al salir) y el zip extraído arranca desde una ruta con tildes. Incluye además el trabajo en
+  curso de Superposición y Promedio del tablero, aún sin confirmar.
+
 ### README y documentación al día con la edición local
 
 - **README:** dice que desde la 2.0 solo se entrega el programa de Windows, con perfiles; las dos capturas del

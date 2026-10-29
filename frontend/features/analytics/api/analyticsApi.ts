@@ -24,6 +24,7 @@ import type {
   PupilTimeseriesData,
   ScanpathData,
   ScenarioTimingData,
+  StimulusSequenceData,
 } from "../types"
 
 interface DisplayTimeseriesData {
@@ -422,6 +423,15 @@ export const AnalyticsApi = {
     })
     return apiFetch<ScenarioTimingData>(
       `/api/projects/${projectId}/analytics/scenario-timing?${params}`,
+      { signal }
+    )
+  },
+
+  /** The scenarios of one recording in the order shown (seconds of that recording). */
+  getStimulusSequence: (projectId: string, participantCode: string, signal?: AbortSignal) => {
+    const params = new URLSearchParams({ participant_code: participantCode })
+    return apiFetch<StimulusSequenceData>(
+      `/api/projects/${projectId}/analytics/stimulus-sequence?${params}`,
       { signal }
     )
   },

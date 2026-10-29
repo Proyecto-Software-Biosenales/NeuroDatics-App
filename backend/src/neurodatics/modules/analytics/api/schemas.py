@@ -29,6 +29,20 @@ class ScenarioTimingResponse(BaseModel):
     gsr_origin_s: Optional[float] = None
 
 
+class StimulusSegment(BaseModel):
+    """One scenario shown in a recording, in recording seconds."""
+
+    scenario: str
+    onset_s: float
+    end_s: float
+
+
+class StimulusSequenceResponse(BaseModel):
+    """The scenarios of one participant's recording, in the order shown."""
+
+    segments: List[StimulusSegment]
+
+
 class PupilTimeseriesResponse(BaseModel):
     time: List[float]
     left: List[float]

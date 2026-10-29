@@ -1,6 +1,7 @@
 /**
- * Which views admit «Superposición» and «Promedio», and why not when they do
- * not. Pure data (type-only imports) so `node --test` runs it directly.
+ * Which views offer «Superposición» and «Promedio», and why a view that does
+ * cannot show them in a scenario. Pure data (type-only imports) so
+ * `node --test` runs it directly.
  */
 
 import type { ComparisonKind } from "../participantComparison/spec"
@@ -12,34 +13,46 @@ export const GROUP_MODE_LABELS: Record<GroupMode, string> = {
   average: "Promedio",
 }
 
-export interface GroupSupport {
-  overlay: boolean
-  average: boolean
-  /**
-   * The mode needs one concrete scenario: a stimulus image, or one common
-   * instant (topography). Time views also take «Todos los escenarios», on
-   * each recording's own time (`groupTimeAxis`).
-   */
-  requiresConcreteScenario: boolean
+const BOTH: readonly GroupMode[] = ["overlay", "average"]
+const AVERAGE: readonly GroupMode[] = ["average"]
+const NONE: readonly GroupMode[] = []
+
+/**
+ * The group modes each view offers in the participant select; a view lists
+ * only what it can draw. EEG overlaid would carry several channels per
+ * participant, so it is only averaged; scanpaths cannot be averaged;
+ * topographies and the fixation histogram are seen one participant at a time.
+ */
+const GROUP_MODES: Record<ComparisonKind, readonly GroupMode[]> = {
+  pupil: BOTH,
+  gaze: BOTH,
+  distance: BOTH,
+  gsr: BOTH,
+  eeg_timeseries: AVERAGE,
+  eeg_psd: AVERAGE,
+  eeg_spectrogram: AVERAGE,
+  eeg_topography: NONE,
+  heatmap: BOTH,
+  scanpath: ["overlay"],
+  aoi: BOTH,
+  fixation_histogram: NONE,
 }
 
-const TEMPORAL: GroupSupport = { overlay: true, average: true, requiresConcreteScenario: false }
-
-export const GROUP_SUPPORT: Record<ComparisonKind, GroupSupport> = {
-  pupil: TEMPORAL,
-  gaze: TEMPORAL,
-  distance: TEMPORAL,
-  gsr: TEMPORAL,
-  eeg_timeseries: TEMPORAL,
-  eeg_psd: { overlay: true, average: true, requiresConcreteScenario: false },
-  eeg_spectrogram: { overlay: false, average: true, requiresConcreteScenario: false },
-  eeg_topography: { overlay: false, average: true, requiresConcreteScenario: true },
-  heatmap: { overlay: true, average: true, requiresConcreteScenario: true },
-  scanpath: { overlay: true, average: false, requiresConcreteScenario: true },
-  aoi: { overlay: true, average: true, requiresConcreteScenario: true },
-  fixation_histogram: { overlay: false, average: false, requiresConcreteScenario: false },
+/** The group modes a view offers; `null` is «Comparativas», which offers none. */
+export function groupModesOf(kind: ComparisonKind | null): readonly GroupMode[] {
+  return kind ? GROUP_MODES[kind] : NONE
 }
 
+/**
+ * The group mode kept on moving to a view that offers `modes`: the same one,
+ * else the one it offers, else none (back to one participant).
+ */
+export function carriedGroupMode(mode: GroupMode | null, modes: readonly GroupMode[]): GroupMode | null {
+  if (mode == null || modes.includes(mode)) return mode
+  return modes[0] ?? null
+}
+
+/** Views drawn over one stimulus image: they need a concrete scenario. */
 const SPATIAL = new Set<ComparisonKind>(["heatmap", "scanpath", "aoi"])
 
 function isConcreteScenario(scenario: string | null | undefined): boolean {
@@ -47,40 +60,20 @@ function isConcreteScenario(scenario: string | null | undefined): boolean {
   return value.length > 0 && value.toLowerCase() !== "all"
 }
 
-const NOT_AVAILABLE: Partial<Record<ComparisonKind, Partial<Record<GroupMode, string>>>> = {
-  fixation_histogram: {
-    overlay: "El histograma de fijaciones se ve de un participante a la vez.",
-    average: "El histograma de fijaciones se ve de un participante a la vez.",
-  },
-  eeg_spectrogram: {
-    overlay: "Los espectrogramas no se pueden dibujar uno encima de otro. Elige «Promedio» para ver el espectrograma medio.",
-  },
-  eeg_topography: {
-    overlay: "Las topografías no se pueden dibujar una encima de otra. Elige «Promedio» para ver la topografía media.",
-  },
-  scanpath: {
-    average: "Los recorridos no se pueden promediar. Elige «Superposición» para ver el recorrido de cada participante.",
-  },
-}
-
-/** Why `kind` cannot be shown in `mode` for `scenario`, in Spanish; null when it can. */
-export function groupUnsupportedReason(kind: ComparisonKind, mode: GroupMode, scenario: string): string | null {
-  const support = GROUP_SUPPORT[kind]
-  if (!support[mode]) {
-    return NOT_AVAILABLE[kind]?.[mode] ?? `Esta vista no admite «${GROUP_MODE_LABELS[mode]}».`
-  }
-  if (support.requiresConcreteScenario && !isConcreteScenario(scenario)) {
-    return SPATIAL.has(kind)
-      ? "Selecciona un escenario concreto: esta vista se dibuja sobre la imagen de un estímulo."
-      : "Selecciona un escenario concreto: la topografía compara el mismo instante del estímulo en cada participante."
+/** Why `kind` cannot show its group modes for `scenario`, in Spanish; null when it can. */
+export function groupUnsupportedReason(kind: ComparisonKind, scenario: string): string | null {
+  if (SPATIAL.has(kind) && !isConcreteScenario(scenario)) {
+    return "Selecciona un escenario concreto: esta vista se dibuja sobre la imagen de un estímulo."
   }
   return null
 }
 
 /** How the group modes line up participants in time, in Spanish for the chart. */
 export interface GroupTimeAxis {
-  /** True with a concrete scenario: every participant counts from that scenario's onset. */
+  /** The same second is the same moment of the same stimulus for every participant. */
   aligned: boolean
+  /** The time chip goes beside the chart: the axis is not simply the scenario's own time. */
+  noted: boolean
   /** The horizontal axis label. */
   label: string
   /** Where each participant's time 0 is, after «desde»: for sentences and the chart's description. */
@@ -96,14 +89,16 @@ export interface GroupTimeAxis {
 /**
  * The time axis of the group modes. With a concrete scenario every
  * participant is counted from that scenario's onset in their own recording.
- * With «Todos los escenarios» there is no common onset: each participant
- * keeps the axis of their individual view, so time 0 is the start of their
- * own recording (GSR: their first GSR sample).
+ * With «Todos los escenarios» and `byStimulus` (`stimulusTimeline.ts`), every
+ * stimulus starts at the same second for everybody. Without it there is no
+ * common onset: each participant keeps the axis of their individual view, so
+ * time 0 is the start of their own recording (GSR: their first GSR sample).
  */
-export function groupTimeAxis(kind: ComparisonKind, scenario: string): GroupTimeAxis {
+export function groupTimeAxis(kind: ComparisonKind, scenario: string, byStimulus = false): GroupTimeAxis {
   if (isConcreteScenario(scenario)) {
     return {
       aligned: true,
+      noted: false,
       label: "Tiempo desde el inicio del escenario (s)",
       origin: "el inicio del escenario",
       chip: "Tiempo alineado",
@@ -111,10 +106,23 @@ export function groupTimeAxis(kind: ComparisonKind, scenario: string): GroupTime
       scope: "todo el escenario",
     }
   }
+  if (byStimulus) {
+    return {
+      aligned: true,
+      noted: true,
+      label: "Tiempo desde el inicio del primer estímulo (s)",
+      origin: "el inicio del primer estímulo",
+      chip: "Alineado por estímulo",
+      detail:
+        "Cada estímulo empieza en el mismo segundo para todos los participantes, aunque lo vieran en otro orden. No se dibuja lo grabado antes del primer estímulo ni las pausas entre estímulos.",
+      scope: "toda la grabación",
+    }
+  }
   const gsr = kind === "gsr"
   const origin = gsr ? "la primera muestra de GSR de su grabación" : "el inicio de su grabación"
   return {
     aligned: false,
+    noted: true,
     label: gsr ? "Tiempo desde la primera muestra de GSR (s)" : "Tiempo desde el inicio de la grabación (s)",
     origin,
     chip: "Tiempo de grabación",
@@ -122,10 +130,6 @@ export function groupTimeAxis(kind: ComparisonKind, scenario: string): GroupTime
     scope: "toda la grabación",
   }
 }
-
-/** Views that are not one chart kind, such as the multi-sensor «Comparativas». */
-export const COMPARATIVAS_UNSUPPORTED =
-  "«Comparativas» reúne varios sensores de un participante y no admite superposición ni promedio."
 
 /** A palette slot count; see `groupSeriesStyle`. */
 export const GROUP_PALETTE_SIZE = 8

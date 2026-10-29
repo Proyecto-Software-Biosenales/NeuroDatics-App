@@ -8,7 +8,6 @@ import { useAnalyticsRevision } from "../hooks/useAnalyticsContext"
 import { useGroupMode } from "./GroupModeProvider"
 import { GroupKpiGrid, GroupStatsCard, type GroupKpi, type GroupStatEntry } from "./GroupStats"
 import { GroupTemporalChart, type GroupTrace } from "./GroupTemporalChart"
-import { GroupUnsupported } from "./GroupUnsupported"
 import type { GroupView } from "./useGroupData"
 
 /**
@@ -150,9 +149,8 @@ export const signalStatsBasis = (scope: string) =>
   `Cada fila se calcula sobre la señal completa de ese participante en ${scope}, igual que en su vista individual; «Número» cuenta las muestras dibujadas.`
 
 /**
- * The chart area in a group mode: the unsupported message, or the averaged
- * KPI cards and the group chart, where a click picks the instant
- * `GroupStimulusCard` shows.
+ * The chart area in a group mode: the averaged KPI cards and the group
+ * chart, where a click picks the instant `GroupStimulusCard` shows.
  */
 export function GroupSignalChart({
   view,
@@ -163,6 +161,7 @@ export function GroupSignalChart({
   yAxis,
   decimals,
   averageDetail,
+  averageColor,
 }: {
   view: GroupView
   results: GroupSignalResults
@@ -172,8 +171,9 @@ export function GroupSignalChart({
   yAxis: (values: number[]) => FittedAxis | null
   decimals?: number
   averageDetail?: ReactNode
+  /** The mean line in «Promedio»: the colour of the view's own line. */
+  averageColor?: string
 }) {
-  if (view.unsupportedReason) return <GroupUnsupported reason={view.unsupportedReason} className="analytics-state-frame" />
   if (!view.mode) return null
   return (
     <>
@@ -192,6 +192,7 @@ export function GroupSignalChart({
         yAxis={yAxis}
         decimals={decimals}
         averageDetail={averageDetail}
+        averageColor={averageColor}
         selectedTime={view.selectedTime}
         onSelectTime={view.selectTime}
       />
@@ -199,7 +200,7 @@ export function GroupSignalChart({
   )
 }
 
-/** The statistics card in a group mode; nothing while the mode is unsupported. */
+/** The statistics card in a group mode. */
 export function GroupSignalStats({
   view,
   results,
@@ -211,7 +212,7 @@ export function GroupSignalStats({
   unit: string
   detail?: ReactNode
 }) {
-  if (!view.mode || view.unsupportedReason) return null
+  if (!view.mode) return null
   return (
     <GroupStatsCard
       entries={results.stats}

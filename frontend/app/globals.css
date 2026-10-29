@@ -419,12 +419,6 @@
     gap: 0.375rem;
   }
 
-  /* Recharts writes fill-opacity as an attribute, which CSS overrides: the
-     light-theme 0.12 is invisible on a dark card. */
-  .dark .eeg-artifact-band .recharts-reference-area-rect {
-    fill-opacity: 0.26;
-  }
-
   /* The selected instant and the grid are drawn in fixed light-theme greys. */
   .dark .analytics-selected-time line {
     stroke: #e5e7eb;

@@ -23,6 +23,18 @@ export interface ScenarioTimingData {
   gsr_origin_s: number | null
 }
 
+/** One scenario shown in a recording, in that recording's seconds. */
+export interface StimulusSegment {
+  scenario: string
+  onset_s: number
+  end_s: number
+}
+
+/** GET /analytics/stimulus-sequence: the scenarios of one recording in the order shown. */
+export interface StimulusSequenceData {
+  segments: StimulusSegment[]
+}
+
 export interface PupilTimeseriesData {
   time: number[]
   left: number[]

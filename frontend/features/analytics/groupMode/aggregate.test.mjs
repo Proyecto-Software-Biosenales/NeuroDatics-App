@@ -12,7 +12,7 @@ import {
   summarize,
   typicalStep,
 } from "./aggregate.ts"
-import { GROUP_SUPPORT, groupSeriesStyle, groupTimeAxis, groupUnsupportedReason } from "./groupSupport.ts"
+import { carriedGroupMode, groupModesOf, groupSeriesStyle, groupTimeAxis, groupUnsupportedReason } from "./groupSupport.ts"
 
 const close = (actual, expected, tolerance = 1e-9) =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`)
@@ -199,27 +199,35 @@ test("grids average cell by cell, skipping missing cells", () => {
   close(db.mean[0][0], 10 * Math.log10(5.5))
 })
 
-test("group support follows the plan's table", () => {
-  for (const kind of ["pupil", "gaze", "distance", "gsr", "eeg_timeseries"]) {
-    assert.deepEqual(GROUP_SUPPORT[kind], { overlay: true, average: true, requiresConcreteScenario: false }, kind)
-    // Time views take «Todos los escenarios» in both modes, on each recording's own time.
-    assert.equal(groupUnsupportedReason(kind, "overlay", "all"), null, kind)
-    assert.equal(groupUnsupportedReason(kind, "average", "all"), null, kind)
+test("each view offers only the group modes it can draw", () => {
+  for (const kind of ["pupil", "gaze", "distance", "gsr", "heatmap", "aoi"]) {
+    assert.deepEqual(groupModesOf(kind), ["overlay", "average"], kind)
   }
-  assert.equal(groupUnsupportedReason("eeg_psd", "overlay", "all"), null)
-  assert.equal(groupUnsupportedReason("pupil", "average", "Escena 1"), null)
-  assert.equal(groupUnsupportedReason("eeg_spectrogram", "average", "all"), null)
-  assert.match(groupUnsupportedReason("heatmap", "average", "all"), /imagen/)
-  assert.match(groupUnsupportedReason("scanpath", "overlay", "all"), /imagen/)
-  assert.match(groupUnsupportedReason("aoi", "overlay", "all"), /imagen/)
-  assert.match(groupUnsupportedReason("eeg_topography", "average", "all"), /escenario concreto/)
-  assert.match(groupUnsupportedReason("eeg_spectrogram", "overlay", "Escena 1"), /Promedio/)
-  assert.equal(groupUnsupportedReason("eeg_topography", "average", "Escena 1"), null)
-  assert.match(groupUnsupportedReason("scanpath", "average", "Escena 1"), /Superposición/)
-  assert.equal(groupUnsupportedReason("scanpath", "overlay", "Escena 1"), null)
-  assert.equal(groupUnsupportedReason("aoi", "average", "Escena 1"), null)
-  assert.match(groupUnsupportedReason("fixation_histogram", "overlay", "Escena 1"), /un participante a la vez/)
-  assert.match(groupUnsupportedReason("fixation_histogram", "average", "all"), /un participante a la vez/)
+  // EEG is only averaged: several channels per participant would saturate an overlay.
+  for (const kind of ["eeg_timeseries", "eeg_psd", "eeg_spectrogram"]) assert.deepEqual(groupModesOf(kind), ["average"], kind)
+  // Scanpaths cannot be averaged.
+  assert.deepEqual(groupModesOf("scanpath"), ["overlay"])
+  // Seen one participant at a time, like «Comparativas» (null).
+  for (const kind of ["eeg_topography", "fixation_histogram", null]) assert.deepEqual(groupModesOf(kind), [], String(kind))
+})
+
+test("moving to another view keeps the group mode, takes the one it offers, or leaves", () => {
+  assert.equal(carriedGroupMode("average", ["overlay", "average"]), "average")
+  assert.equal(carriedGroupMode("average", ["overlay"]), "overlay")
+  assert.equal(carriedGroupMode("overlay", ["average"]), "average")
+  assert.equal(carriedGroupMode("average", []), null)
+  assert.equal(carriedGroupMode(null, ["overlay", "average"]), null)
+})
+
+test("only the views drawn on a stimulus image need a concrete scenario", () => {
+  // Time views take «Todos los escenarios», on each recording's own time.
+  for (const kind of ["pupil", "gaze", "distance", "gsr", "eeg_timeseries", "eeg_psd", "eeg_spectrogram"]) {
+    assert.equal(groupUnsupportedReason(kind, "all"), null, kind)
+  }
+  for (const kind of ["heatmap", "scanpath", "aoi"]) {
+    assert.match(groupUnsupportedReason(kind, "all"), /imagen/, kind)
+    assert.equal(groupUnsupportedReason(kind, "Escena 1"), null, kind)
+  }
 })
 
 test("the time axis says where each participant's time 0 is", () => {
@@ -233,6 +241,17 @@ test("the time axis says where each participant's time 0 is", () => {
   assert.equal(all.chip, "Tiempo de grabación")
   assert.match(all.detail, /estímulos distintos/)
   assert.equal(all.scope, "toda la grabación")
+  assert.equal(scenario.noted, false)
+  assert.equal(all.noted, true)
+  // «Todos los escenarios» lined up by stimulus: aligned, and the chip says how.
+  const byStimulus = groupTimeAxis("gsr", "all", true)
+  assert.equal(byStimulus.aligned, true)
+  assert.equal(byStimulus.noted, true)
+  assert.equal(byStimulus.label, "Tiempo desde el inicio del primer estímulo (s)")
+  assert.equal(byStimulus.chip, "Alineado por estímulo")
+  assert.match(byStimulus.detail, /pausas entre estímulos/)
+  // A concrete scenario keeps its own onset.
+  assert.equal(groupTimeAxis("pupil", "Escena 1", true).label, scenario.label)
   // GSR keeps its own view's basis: the first GSR sample.
   assert.equal(groupTimeAxis("gsr", "all").label, "Tiempo desde la primera muestra de GSR (s)")
   assert.equal(groupTimeAxis("gsr", "Escena 1").label, scenario.label)

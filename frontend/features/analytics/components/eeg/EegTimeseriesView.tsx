@@ -4,9 +4,9 @@ import { EegChannelSelector } from "./EegChannelSelector"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
-import { useMemo, type Dispatch, type SetStateAction } from "react"
-import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts"
-import { Activity, Brain, ChartSpline, Clock, Crosshair, Gauge, Rows3, Scissors, TrendingDown, TrendingUp, Waves } from "lucide-react"
+import { type Dispatch, type SetStateAction } from "react"
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts"
+import { Activity, Brain, ChartSpline, Gauge, Rows3, Scissors, TrendingDown, TrendingUp, Waves } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { KpiCard } from "@/features/analytics/components/KpiCard"
@@ -16,12 +16,11 @@ import { TimeWindowControls, hasTimeWindow, type TimeWindow, type TimeWindowDraf
 import { AnalyticsChartShell, type AnalyticsChartNote, LINE_CHART_MARGIN } from "../AnalyticsChartShell"
 import { useChartDragZoom } from "../ChartDragZoom"
 import { axisTickDecimals, formatAxisTick } from "../../chartZoom"
-import { type EegArtifactSpan, type EegTimeseriesData } from "../../types"
-import { clusterArtifactSpans, envelopeWarning, formatChannel, formatNumber, type ChannelStats, type MontageLane } from "../../eegPresentation"
-import { ARTIFACT_DETECTOR_COLORS, EEG_ARTIFACT_SPANS_ID, EEG_CHANNELS, EEG_TIMESERIES_CHART_ID, CHANNEL_COLORS, JUMP_TARGET_CLASS, scrollToSection, type SignalMode, type EegView, type EegChartPoint, type ChartLayout } from "./eegViewShared"
+import { type EegTimeseriesData } from "../../types"
+import { envelopeWarning, formatChannel, formatNumber, type ChannelStats, type MontageLane } from "../../eegPresentation"
+import { EEG_CHANNELS, EEG_TIMESERIES_CHART_ID, CHANNEL_COLORS, JUMP_TARGET_CLASS, type SignalMode, type EegView, type EegChartPoint, type ChartLayout } from "./eegViewShared"
 import { EegStatsTable } from "./EegStatsTables"
 import { EegTooltip } from "./EegTooltips"
-import { ArtifactDetectorLegend } from "./EegQualityPanel"
 import { groupChart, type EegGroupSlots } from "./EegGroupPieces"
 
 interface EegTimeseriesViewProps {
@@ -41,7 +40,6 @@ interface EegTimeseriesViewProps {
   scenario: string
   selectedChannels: string[]
   selectedEegValue: number | null
-  selectedPoint: EegChartPoint | null
   selectedTime: number | null
   setSelectedTime: Dispatch<SetStateAction<number | null>>
   setSignalMode: Dispatch<SetStateAction<SignalMode>>
@@ -58,15 +56,16 @@ interface EegTimeseriesViewProps {
   timeseriesWindowError: string | null
   view: EegView
   visibleChannels: string[]
-  artifactSpans: EegArtifactSpan[]
   chartLayout: ChartLayout
   setChartLayout: Dispatch<SetStateAction<ChartLayout>>
   focusChannel: string | null
   setFocusChannel: Dispatch<SetStateAction<string | null>>
   montage: { lanes: MontageLane[]; spacing: number; domain: [number, number] }
   yDomain: { min: number; max: number; clippedLow: number; clippedHigh: number } | null
-  /** «Superposición» / «Promedio»: one channel per participant; recording-bound controls are hidden. */
+  /** «Promedio»: `timeseriesData` is the group's mean per channel; recording-bound controls are hidden. */
   group?: EegGroupSlots | null
+  /** Whether the chart is zoomed, when that is not the time window (the group's drag zoom). */
+  timeseriesZoomed?: boolean
 }
 
 export function EegTimeseriesView({
@@ -86,7 +85,6 @@ export function EegTimeseriesView({
   scenario,
   selectedChannels,
   selectedEegValue,
-  selectedPoint,
   selectedTime,
   setSelectedTime,
   setSignalMode,
@@ -103,7 +101,6 @@ export function EegTimeseriesView({
   timeseriesWindowError,
   view,
   visibleChannels,
-  artifactSpans,
   chartLayout,
   setChartLayout,
   focusChannel,
@@ -111,6 +108,7 @@ export function EegTimeseriesView({
   montage,
   yDomain,
   group = null,
+  timeseriesZoomed,
 }: EegTimeseriesViewProps) {
   const dragZoom = useChartDragZoom(handleZoomTimeseriesWindow)
   const stacked = chartLayout === "stacked"
@@ -119,15 +117,9 @@ export function EegTimeseriesView({
   const focusLabel = focusChannel ? formatChannel(focusChannel) : "—"
   const laneSpan = montage.spacing / 1.2
   const laneScale = formatNumber(laneSpan, laneSpan >= 100 ? 0 : 1, " uV")
-  // The chips count events; the chart shades the same events, not every
-  // detector run, so a cluster of runs 10 ms apart reads as one band.
-  const artifactEvents = useMemo(() => clusterArtifactSpans(artifactSpans), [artifactSpans])
-  const laneOffset = new Map(montage.lanes.map((lane) => [lane.channel, lane.offset]))
-  // A one-sample event has zero width and Recharts draws nothing for it; give
-  // every band a few pixels so each counted event can be found on the chart.
-  const minBandS = chartDomain[0] === "dataMin" ? 0 : (chartDomain[1] - chartDomain[0]) * 0.004
   const envelope = envelopeWarning(timeseriesData?.metadata)
   const chartNotes: AnalyticsChartNote[] = [
+    ...(group?.chartNotes ?? []),
     ...(signalMode !== "raw"
       ? [{
           id: "smoothing",
@@ -154,58 +146,37 @@ export function EegTimeseriesView({
       : clipped > 0 && yDomain
         ? [{
             id: "clipped-axis",
-            tone: "warning" as const,
+            tone: "danger" as const,
             Icon: Scissors,
-            label: `Eje recortado · ${clipped.toLocaleString()} puntos fuera`,
-            detail: `Eje recortado a ${formatNumber(yDomain.min, 0, "")}…${formatNumber(yDomain.max, 0, " uV")} para que una excursión no aplaste los demás canales: ${clipped.toLocaleString()} puntos quedan fuera de la vista. El valor real sigue en el tooltip y en las estadísticas.`,
+            label: `Eje recortado · ${clipped.toLocaleString()} ${clipped === 1 ? "punto" : "puntos"} fuera`,
+            detail: `Eje recortado a ${formatNumber(yDomain.min, 0, "")}…${formatNumber(yDomain.max, 0, " uV")} para que una excursión no aplaste los demás canales: ${clipped === 1 ? "1 punto queda" : `${clipped.toLocaleString()} puntos quedan`} fuera de la vista. El valor real sigue en el tooltip y en las estadísticas.`,
           }]
         : []),
-    ...(artifactEvents.length > 0
-      ? [{
-          id: "artifact-spans",
-          Icon: Crosshair,
-          label: `${artifactEvents.length} ${artifactEvents.length === 1 ? "evento marcado" : "eventos marcados"}`,
-          detail: (
-            <>
-              <p>
-                {artifactEvents.length} {artifactEvents.length === 1 ? "evento" : "eventos"} ({artifactSpans.length}{" "}
-                {artifactSpans.length === 1 ? "tramo" : "tramos"} del detector) sombreados como artefacto candidato; la
-                señal no se ha modificado. Clic para ver la lista.
-              </p>
-              <ArtifactDetectorLegend />
-            </>
-          ),
-          onClick: () => scrollToSection(EEG_ARTIFACT_SPANS_ID),
-        }]
-      : []),
   ]
   return <>
 {view === "timeseries" ? (
       <Card id={EEG_TIMESERIES_CHART_ID} tabIndex={-1} className={JUMP_TARGET_CLASS}>
-        <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
             <CardTitle className="flex items-center gap-2 text-xl">
               <Brain className="h-5 w-5" />
               EEG por canal
             </CardTitle>
             <CardDescription>
-              {group
-                ? `Canal ${focusLabel} de varios participantes, sin corrección de artefactos.`
-                : "Trazas EEG sin corrección de artefactos."}
+              {group?.description ?? "Trazas EEG sin corrección de artefactos."}
             </CardDescription>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 xl:shrink-0">
-            {/* Several participants draw one signal each: «Ambas» would double every line. */}
-            <AnalyticsModeSelector value={group && signalMode === "both" ? "raw" : signalMode} onValueChange={setSignalMode} options={[
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            <AnalyticsModeSelector value={signalMode} onValueChange={setSignalMode} options={[
                 { key: "smooth", label: "Suavizada", hint: "Señal promediada cada 0.2 s: quita las oscilaciones rápidas y deja ver la tendencia." },
                 { key: "raw", label: "Cruda", hint: "Valores originales de cada electrodo, sin suavizar." },
-                ...(group ? [] : [{ key: "both" as const, label: "Ambas", hint: "La señal suavizada y la cruda juntas, para compararlas." }]),
+                { key: "both", label: "Ambas", hint: "La señal suavizada y la cruda juntas, para compararlas." },
               ]} />
-            {group ? null : <AnalyticsModeSelector value={chartLayout} onValueChange={setChartLayout} options={[
+            <AnalyticsModeSelector value={chartLayout} onValueChange={setChartLayout} options={[
                 { key: "overlay", label: "Superpuesta", hint: "Todos los canales sobre el mismo eje, para comparar su amplitud." },
                 { key: "stacked", label: "Montaje", hint: "Cada canal en su propio carril, uno debajo de otro, como en un registro clínico de EEG." },
-              ]} />}
+              ]} />
             {/* Recording seconds belong to one recording: no window in a group mode. */}
             {group ? null : <TimeWindowControls
               draftStart={timeseriesWindowDraft.start}
@@ -234,7 +205,7 @@ export function EegTimeseriesView({
               number over all of them describes nothing. Pick whose it is. */}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm roomy:mb-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground">{group ? "Canal:" : "Estadísticas de:"}</span>
+              <span className="text-muted-foreground">Estadísticas de:</span>
               {visibleChannels.map((channel) => (
                 <Button
                   key={channel}
@@ -325,7 +296,7 @@ export function EegTimeseriesView({
             />
           </div>}
 
-          {group ? groupChart(group) : timeseriesLoading ? (
+          {group?.chart ? groupChart(group) : timeseriesLoading ? (
             <Skeleton className="analytics-state-frame-eeg w-full animate-pulse rounded-lg bg-muted" />
           ) : timeseriesError ? (
             <div className="analytics-state-frame-eeg flex items-center justify-center text-sm text-muted-foreground">
@@ -341,7 +312,8 @@ export function EegTimeseriesView({
               notes={chartNotes}
               variant="eeg"
               dragZoom={dragZoom}
-              onZoomReset={hasTimeWindow(timeseriesWindow) ? handleResetTimeseriesWindow : undefined}
+              xAxisLabel={group?.xAxisLabel}
+              onZoomReset={(timeseriesZoomed ?? hasTimeWindow(timeseriesWindow)) ? handleResetTimeseriesWindow : undefined}
               onZoomBack={handleBackTimeseriesWindow}
             >
             <ResponsiveContainer className="analytics-chart-plot-frame" width="100%" height="100%">
@@ -373,26 +345,6 @@ export function EegTimeseriesView({
                   label={{ value: stacked ? "Canal" : "EEG (uV)", angle: -90, position: "insideLeft", offset: 4, style: { textAnchor: "middle" } }}
                 />
                 <RechartsTooltip content={<EegTooltip />} />
-
-                {artifactEvents.map((event) => {
-                  // In the montage a band covers only its own channel's lane.
-                  const offset = stacked ? laneOffset.get(event.channel) : undefined
-                  const pad = Math.max(0, (minBandS - (event.end_s - event.start_s)) / 2)
-                  return (
-                    <ReferenceArea
-                      key={`${event.channel}-${event.start_s}`}
-                      className="eeg-artifact-band"
-                      x1={event.start_s - pad}
-                      x2={event.end_s + pad}
-                      y1={offset != null ? offset - montage.spacing / 2 : undefined}
-                      y2={offset != null ? offset + montage.spacing / 2 : undefined}
-                      fill={ARTIFACT_DETECTOR_COLORS[event.detectors[0]] ?? "#DC2626"}
-                      fillOpacity={0.12}
-                      stroke="none"
-                      ifOverflow="hidden"
-                    />
-                  )
-                })}
 
                 {selectedTime != null ? (
                   <ReferenceLine
@@ -486,55 +438,5 @@ export function EegTimeseriesView({
         </Card>
       ) : null}
 
-{view === "timeseries" && !group && selectedPoint ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="h-4 w-4" />
-              Punto seleccionado
-            </CardTitle>
-            <CardDescription>
-              Lectura puntual de los canales visibles en el segundo seleccionado.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 text-sm text-muted-foreground">
-              Tiempo: <span className="font-medium text-foreground">{selectedPoint.time.toFixed(2)}s</span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {visibleChannels.map((channel) => {
-                const raw = selectedPoint[`${channel}_raw`]
-                const smooth = selectedPoint[`${channel}_smooth`]
-                return (
-                  <div
-                    key={channel}
-                    className="rounded-lg border border-border bg-card px-4 py-3"
-                  >
-                    <div className="mb-2 flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: CHANNEL_COLORS[channel] ?? "#4B5563" }}
-                      />
-                      <span className="text-sm font-semibold text-foreground">
-                        {formatChannel(channel)}
-                      </span>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-muted-foreground">Suavizada</span>
-                        <span className="font-medium">{formatNumber(smooth, 4, " uV")}</span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-muted-foreground">Cruda</span>
-                        <span className="font-medium">{formatNumber(raw, 4, " uV")}</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
   </>
 }

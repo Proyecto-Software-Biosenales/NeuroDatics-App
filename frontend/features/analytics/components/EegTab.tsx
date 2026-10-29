@@ -13,12 +13,12 @@ import { useTimeWindow, useZoomHistory } from "../hooks/useZoomHistory"
 import { normalizeZoomRange, sameZoomRange, zoomSpan, sliceEegPsd, sliceEegSpectrogram, type ZoomRange } from "../chartZoom"
 import { readClickedTime } from "../comparison/chartInteraction"
 import { EEG_CHANNELS, EEG_TIMESERIES_CHART_ID, TOPOGRAPHY_CHANNELS, CHANNEL_COLORS, scrollToSection, type SignalMode, type ChartLayout, type EegTabProps, type EegChartPoint, type EegPsdChartPoint, type PsdStats, type SpectrogramStats } from "./eeg/eegViewShared"
-import { finiteValues, fullResolutionStats, montageLanes, nearestTimeIndex, formatChannel, mean, psdSeriesStats, psdSummary, robustDomain, spectrogramGaps, spectrogramStatsOf, spectrogramSummary, topographyFrameStats, topographyRowsOf, visibleArtifactSpans, type ChannelStats, type TopographyFrameRow } from "../eegPresentation"
-import { EegArtifactSpanList, EegChannelQualityTable, EegQualityNotes } from "./eeg/EegQualityPanel"
+import { finiteValues, fullResolutionStats, montageLanes, nearestTimeIndex, formatChannel, mean, psdSeriesStats, psdSummary, robustDomain, spectrogramGaps, spectrogramStatsOf, spectrogramSummary, topographyFrameStats, topographyRowsOf, type ChannelStats, type TopographyFrameRow } from "../eegPresentation"
+import { EegChannelQualityTable, EegQualityNotes } from "./eeg/EegQualityPanel"
 import { useGroupMode } from "../groupMode/GroupModeProvider"
 import { useGroupView } from "../groupMode/useGroupData"
-import { groupTopographyFigures, useEegGroupPsd, useEegGroupSpectrogram, useEegGroupTimeseries, useEegGroupTopography } from "./eeg/useEegGroupData"
-import { psdGroupSlots, spectrogramGroupSlots, timeseriesGroupSlots, topographyGroupSlots } from "./eeg/eegGroupSlots"
+import { useEegGroupPsd, useEegGroupSpectrogram, useEegGroupTimeseries, useEegGroupTimeseriesAverage } from "./eeg/useEegGroupData"
+import { psdGroupSlots, spectrogramGroupSlots, timeseriesGroupSlots } from "./eeg/eegGroupSlots"
 const EMPTY_CHANNELS: string[] = []
 
 export function EegTab({ projectId, participantCode, scenario, view }: EegTabProps) {
@@ -40,6 +40,8 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   const topographyWindowState = useTimeWindow(() => setSelectedTopographyFrame(0))
   const topographyWindow = topographyWindowState.window
   const psdFrequencyZoom = useZoomHistory<ZoomRange>(sameZoomRange)
+  // «Promedio» zooms the averaged channels on the client: the group reads whole recordings.
+  const groupTimeZoom = useZoomHistory<ZoomRange>(sameZoomRange)
   const spectrogramTimeZoom = useZoomHistory<ZoomRange>(sameZoomRange)
   // In «Superposición» / «Promedio» the single recording is not loaded at all.
   const groupActive = useGroupMode().active
@@ -51,9 +53,9 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   if (zoomScope !== groupActive) {
     setZoomScope(groupActive)
     psdFrequencyZoom.reset()
+    groupTimeZoom.reset()
     spectrogramTimeZoom.reset()
     setSelectedTime(null)
-    setSelectedTopographyFrame(0)
   }
 
   const {
@@ -126,7 +128,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
 
   // Keep selection/window state here while only the active view requests data.
   // Explicitly gate derived inputs too: a future loader may retain cached responses.
-  const timeseriesData = view === "timeseries" ? timeseriesResponse : null
   const fullPsdData = view === "psd" ? psdResponse : null
   const individualSpectrogram = view === "spectrogram" ? spectrogramResponse : null
   const individualTopography = view === "topography" ? topographyResponse : null
@@ -205,21 +206,22 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   useCompareParticipantsSpec(() => comparisonSpec)
   const groupView = useGroupView(comparisonSpec)
 
-  // Group modes: one channel per participant in «EEG por canal» (the one
-  // «Canal» names), the full set elsewhere.
+  // «EEG por canal» averages every selected channel; its cards and table give
+  // each participant's figures for the channel «Estadísticas de» names.
   const groupChannel = useMemo(() => {
     const ordered = EEG_CHANNELS.filter((channel) => selectedChannels.includes(channel))
     return focusChannel && ordered.includes(focusChannel) ? focusChannel : ordered[0] ?? null
   }, [focusChannel, selectedChannels])
   const groupSignal = signalMode === "smooth" ? "smooth" : "raw"
   const groupTimeseries = useEegGroupTimeseries(groupView.data, groupChannel, groupSignal)
+  const groupTimeseriesAverage = useEegGroupTimeseriesAverage(groupView.data, groupTimeZoom.range)
   const groupPsd = useEegGroupPsd(groupView.data, psdFrequencyZoom.range)
   const groupSpectrogram = useEegGroupSpectrogram(groupView.data, perChannelSpectrogramColor, spectrogramTimeZoom.range)
-  const groupTopography = useEegGroupTopography(groupView.data)
 
-  // The spectrogram and topography views draw the group's mean as their own data.
+  // «EEG por canal» and the spectrogram draw the group's mean as their own data.
+  const timeseriesData = view === "timeseries" ? (groupView.active ? groupTimeseriesAverage : timeseriesResponse) : null
   const fullSpectrogramData = groupView.active ? (view === "spectrogram" ? groupSpectrogram.averaged : null) : individualSpectrogram
-  const topographyData = groupView.active ? (view === "topography" ? groupTopography.averaged : null) : individualTopography
+  const topographyData = individualTopography
 
   // Drag zoom narrows what PSD and spectrogram show; every derived statistic follows it.
   const psdData = useMemo(
@@ -346,17 +348,8 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     () => topographyFrameStats(topographyRows, topographyData?.time[topographyFrameIndex] ?? null),
     [topographyData, topographyFrameIndex, topographyRows]
   )
-  const groupTopographyStats = useMemo(
-    () => groupTopographyFigures(groupTopography, groupView.data, topographyFrameIndex),
-    [groupTopography, groupView.data, topographyFrameIndex]
-  )
 
   const timeseriesChannels = timeseriesData?.channels ?? EMPTY_CHANNELS
-
-  const artifactSpans = useMemo(
-    () => visibleArtifactSpans(timeseriesData?.metadata, timeseriesChannels),
-    [timeseriesData, timeseriesChannels]
-  )
 
   /** Per-channel robust span: sets both the shared y range and the lane pitch. */
   const channelDomains = useMemo(() => {
@@ -515,10 +508,17 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     })
   }
 
+  // In «Promedio» the instant belongs to the group: it picks what the stimulus card shows.
   const handleChartClick = (state: unknown) => {
     const time = readClickedTime(state)
     if (time == null) return
-    setSelectedTime(time)
+    if (groupView.active) groupView.selectTime(time)
+    else setSelectedTime(time)
+  }
+
+  const handleZoomGroupTime = (start: number, end: number) => {
+    const range = normalizeZoomRange(start, end)
+    if (range && groupTimeseriesAverage && zoomSpan(groupTimeseriesAverage.time, range)) groupTimeZoom.zoomTo(range)
   }
 
   const handleZoomPsdFrequency = (start: number, end: number) => {
@@ -545,7 +545,7 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
   // What each view draws in place of its own cards, chart and table in a group mode.
   const timeseriesGroup = timeseriesGroupSlots({
     view: groupView,
-    traces: groupTimeseries.traces,
+    hasData: Boolean(groupTimeseriesAverage?.channels.length),
     figures: groupTimeseries,
     channel: groupChannel,
     signal: groupSignal,
@@ -564,13 +564,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
     figures: groupSpectrogram,
     unit: groupSpectrogram.averaged?.unit ?? "dB",
   })
-  const topographyGroup = topographyGroupSlots({
-    view: groupView,
-    hasData: topographyRows.length >= 3,
-    figures: groupTopographyStats,
-    unit: topographyData?.unit ?? "uV^2",
-    frameTime: topographyStats.frameTime,
-  })
 
   // Warnings and unit caveats appear only in the card that closes the tab.
   // A span chip marks the instant and brings the chart back into view.
@@ -583,7 +576,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
       {view === "timeseries" ? (
         <EegTimeseriesView
           availableChannels={availableChannels}
-          artifactSpans={artifactSpans}
           chartLayout={chartLayout}
           setChartLayout={setChartLayout}
           focusChannel={groupView.active ? groupChannel : activeFocusChannel}
@@ -596,18 +588,22 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           chartDomain={chartDomain}
           eegChartLegend={eegChartLegend}
           handleApplyTimeseriesWindow={timeseriesWindowState.apply}
-          handleBackTimeseriesWindow={timeseriesWindowState.canGoBack ? timeseriesWindowState.back : undefined}
+          handleBackTimeseriesWindow={
+            groupView.active
+              ? groupTimeZoom.canGoBack ? groupTimeZoom.back : undefined
+              : timeseriesWindowState.canGoBack ? timeseriesWindowState.back : undefined
+          }
           handleChannelToggle={handleChannelToggle}
           handleChartClick={handleChartClick}
-          handleResetTimeseriesWindow={timeseriesWindowState.reset}
-          handleZoomTimeseriesWindow={timeseriesWindowState.zoomTo}
+          handleResetTimeseriesWindow={groupView.active ? groupTimeZoom.reset : timeseriesWindowState.reset}
+          handleZoomTimeseriesWindow={groupView.active ? handleZoomGroupTime : timeseriesWindowState.zoomTo}
+          timeseriesZoomed={groupView.active ? groupTimeZoom.range != null : undefined}
           participantCode={participantCode}
           projectId={projectId}
           scenario={scenario}
           selectedChannels={selectedChannels}
           selectedEegValue={selectedEegValue}
-          selectedPoint={selectedPoint}
-          selectedTime={selectedTime}
+          selectedTime={groupView.active ? groupView.selectedTime : selectedTime}
           setSelectedTime={setSelectedTime}
           setSignalMode={setSignalMode}
           setTimeseriesWindowDraft={timeseriesWindowState.setDraft}
@@ -622,21 +618,17 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           timeseriesWindowDraft={timeseriesWindowState.draft}
           timeseriesWindowError={timeseriesWindowState.error}
           view={view}
-          visibleChannels={groupView.active ? EEG_CHANNELS.filter((channel) => selectedChannels.includes(channel)) : visibleChannels}
+          visibleChannels={visibleChannels}
         />
       ) : null}
 
       {view === "timeseries" && !groupView.active ? (
-        <EegArtifactSpanList
+        <EegChannelQualityTable
           metadata={timeseriesData?.metadata}
           channels={timeseriesChannels}
           selectedTime={selectedTime}
           onSelectTime={showArtifactOnChart}
         />
-      ) : null}
-
-      {view === "timeseries" && !groupView.active ? (
-        <EegChannelQualityTable metadata={timeseriesData?.metadata} channels={timeseriesChannels} />
       ) : null}
 
 
@@ -724,9 +716,9 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           projectId={projectId}
           selectedChannels={selectedChannels}
           topographyData={topographyData}
-          topographyError={groupView.active ? null : topographyError}
+          topographyError={topographyError}
           topographyFrameIndex={topographyFrameIndex}
-          topographyLoading={groupView.active ? false : topographyLoading}
+          topographyLoading={topographyLoading}
           topographyRows={topographyRows}
           topographyStats={topographyStats}
           topographyWindow={topographyWindow}
@@ -737,7 +729,6 @@ export function EegTab({ projectId, participantCode, scenario, view }: EegTabPro
           handleApplyTopographyWindow={topographyWindowState.apply}
           handleResetTopographyWindow={topographyWindowState.reset}
           view={view}
-          group={topographyGroup}
         />
       ) : null}
 

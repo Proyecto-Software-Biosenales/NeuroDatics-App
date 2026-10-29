@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-export type InfoChipTone = "neutral" | "warning"
+/** `danger` is kept for data drawn off the chart, the one red the charts use. */
+export type InfoChipTone = "neutral" | "warning" | "danger"
 
 export interface InfoChipProps {
   /** A few words; the explanation goes in `detail`. */
@@ -28,6 +29,8 @@ const TONE_CLASSES: Record<InfoChipTone, string> = {
   neutral: "text-muted-foreground",
   warning:
     "border-amber-500/60 bg-amber-50/70 text-amber-800 hover:bg-amber-100/80 hover:text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50 dark:hover:text-amber-200",
+  danger:
+    "border-red-500/60 bg-red-50/70 text-red-800 hover:bg-red-100/80 hover:text-red-900 dark:border-red-500/40 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50 dark:hover:text-red-200",
 }
 
 /** A caveat or a jump target that costs one short line: the explanation lives

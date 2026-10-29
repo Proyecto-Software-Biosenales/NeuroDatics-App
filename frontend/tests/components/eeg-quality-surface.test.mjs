@@ -13,7 +13,7 @@ import { browserBundle } from "../browserBundle.mjs"
 const bundle = browserBundle(`
   import React, { useState } from 'react';
   import { createRoot } from 'react-dom/client';
-  import { EegArtifactSpanList, EegChannelQualityTable, EegQualityNotes }
+  import { EegChannelQualityTable, EegQualityNotes }
     from '@/features/analytics/components/eeg/EegQualityPanel';
   import { InfoChip } from '@/features/analytics/components/InfoChip';
 
@@ -32,6 +32,8 @@ const bundle = browserBundle(`
     warnings: [
       'Escala kilo corregida por 1000; confirmar unidad física.',
       'Muestras EEG ausentes: se muestran como huecos.',
+      'Canales con unidad ambigua excluidos: LE',
+      'Amplitud fuera del rango fisiológico (z robusto > 10): los tramos se señalan en el gráfico; la señal no se ha modificado.',
     ],
     source_units: { f3: 'kilo', c4: 'uv' },
     assumed_uV_channels: [],
@@ -55,9 +57,8 @@ const bundle = browserBundle(`
     const [selectedTime, setSelectedTime] = useState(null);
     return <>
       <EegQualityNotes metadata={metadata} />
-      <EegArtifactSpanList metadata={metadata} channels={CHANNELS}
+      <EegChannelQualityTable metadata={metadata} channels={CHANNELS}
         selectedTime={selectedTime} onSelectTime={setSelectedTime} />
-      <EegChannelQualityTable metadata={metadata} channels={CHANNELS} />
       {metadata.channels?.f3 ? <InfoChip label="Eje recortado" detail="Detalle del eje recortado" /> : null}
       <output id="state">{JSON.stringify({ selectedTime })}</output>
     </>;
@@ -91,35 +92,30 @@ async function fixture(t, clean = false) {
 
 const state = async (page) => JSON.parse(await page.locator("#state").textContent())
 
-test("warnings and unit caveats share one card that offers re-ingestion", async (t) => {
+test("the closing card keeps only what no other element states and offers no re-processing", async (t) => {
   const page = await fixture(t)
   // <output id="state"> also carries the implicit status role, so name the panel.
-  const notice = page.getByRole("status").filter({ hasText: "Unidades EEG" })
-  await expect(notice).toContainText("Calidad y alcance de EEG")
+  const notice = page.getByRole("status").filter({ hasText: "Calidad y alcance de EEG" })
   await expect(notice).toContainText("Muestras EEG ausentes")
-  // The kilo caveat below says it with the channel name; the prose copy goes.
+  await expect(notice).toContainText("Canales con unidad ambigua excluidos: LE")
+  // «Calidad por canal» marks the kilo channel and lists the shaded spans.
   await expect(notice).not.toContainText("Escala kilo corregida")
-  await expect(notice).toContainText("Reescalados al procesar: F3 (kilo)")
-  await expect(notice).toContainText("no recupera la precisión perdida")
-  await expect(notice).toContainText("Excluidos por unidad ambigua: LE")
-  await expect(notice).toContainText("sin volver a procesar ambos")
-  await expect(page.getByRole("link", { name: "Volver a procesar" })).toHaveAttribute(
-    "href",
-    "/proyectos"
-  )
+  await expect(notice).not.toContainText("Amplitud fuera del rango")
+  // The tab cannot process a recording again: nothing may offer to.
+  await expect(page.getByText(/volver a procesar/i)).toHaveCount(0)
+  await expect(page.getByRole("link")).toHaveCount(0)
 })
 
 test("a clean export shows no notice, no spans and no quality table", async (t) => {
   const page = await fixture(t, true)
-  await expect(page.getByRole("status").filter({ hasText: "Unidades EEG" })).toHaveCount(0)
+  await expect(page.getByRole("status").filter({ hasText: "Calidad y alcance de EEG" })).toHaveCount(0)
   await expect(page.getByRole("button")).toHaveCount(0)
   await expect(page.getByText(/Calidad por canal/)).toHaveCount(0)
 })
 
-test("each event says which detector found it and jumps to its start", async (t) => {
+test("each event sits in its channel's row and jumps to its start", async (t) => {
   const page = await fixture(t)
-  // One row per channel in the chart's order, one chip per event: runs that
-  // touch share a chip.
+  // One chip per event, in the chart's channel order: runs that touch share a chip.
   // Each name starts with the chip's visible text, so voice control can say it.
   const labels = await page.getByRole("button", { name: /: ir a / }).evaluateAll((nodes) =>
     nodes.map((node) => node.getAttribute("aria-label"))
@@ -128,36 +124,32 @@ test("each event says which detector found it and jumps to its start", async (t)
     "120.4–125.4 s ×2: ir a F3 120.40–125.40 s · 2 tramos · pico 9640.0 uV, z máx. 94.9 · amplitud (z robusto)",
     "30.0–31.0 s: ir a C4 30.00–31.00 s · pico -1576.9 uV, z 3.1 · pico a pico en ventana",
   ])
-  await expect(page.getByText(/2 eventos · 3 tramos del detector/)).toBeVisible()
-  await expect(page.getByText(/los 3 más severos de 5/)).toBeVisible()
-  await expect(page.getByText(/Señalados, no eliminados/)).toBeVisible()
+  const rows = page.getByRole("row")
+  await expect(rows.filter({ hasText: "F3" }).getByRole("button", { name: /: ir a / })).toHaveCount(1)
+  await expect(rows.filter({ hasText: "C4" }).getByRole("button", { name: /: ir a / })).toHaveCount(1)
 
   assert.equal((await state(page)).selectedTime, null)
   await page.getByRole("button", { name: /ir a F3/ }).click()
   assert.equal((await state(page)).selectedTime, 120.4)
-  await expect(page.getByRole("button", { name: /ir a F3/ })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  )
-  await expect(page.getByRole("button", { name: /ir a C4/ })).toHaveAttribute(
-    "aria-pressed",
-    "false"
-  )
+  await expect(page.getByRole("button", { name: /ir a F3/ })).toHaveAttribute("aria-pressed", "true")
+  await expect(page.getByRole("button", { name: /ir a C4/ })).toHaveAttribute("aria-pressed", "false")
 })
 
-test("the chip explains itself on focus and every run stays in the detail table", async (t) => {
+test("the event chip explains itself in plain words, with no colour code", async (t) => {
   const page = await fixture(t)
   await page.getByRole("button", { name: /ir a F3/ }).focus()
-  await expect(page.getByRole("tooltip")).toContainText("2 tramos")
+  const tooltip = page.getByRole("tooltip")
+  await expect(tooltip).toContainText("Amplitud muy por encima de lo habitual")
+  await expect(tooltip).toContainText("Pico 9640.0 uV · 2 tramos seguidos")
+  await expect(tooltip).toContainText("Clic para verlo en el gráfico")
+  // Only the two channel dots carry a colour: no detector swatches, no shading code.
+  assert.equal(await page.locator("[style*='background-color']").count(), 2)
 
-  // Collapsed by default: the individual runs cost one line until asked for.
-  await expect(page.getByRole("button", { name: /^Ir a / })).toHaveCount(0)
-  await page.getByRole("button", { name: "Detalle de los 3 tramos" }).click()
-  await expect(page.getByRole("button", { name: /^Ir a / })).toHaveCount(3)
-  await page.getByRole("button", { name: /^Ir a F3 125\.31/ }).click()
-  assert.equal((await state(page)).selectedTime, 125.31)
-  // The event chip lights up for any instant inside it, not only its start.
-  await expect(page.getByRole("button", { name: /ir a F3/ })).toHaveAttribute("aria-pressed", "true")
+  // The cap on reported spans is said once, in the column's hint.
+  await page.keyboard.press("Escape")
+  await expect(tooltip).toHaveCount(0)
+  await page.getByRole("button", { name: "Qué son los posibles artefactos" }).click()
+  await expect(page.getByRole("tooltip")).toContainText("Se muestran los 3 más severos de 5")
 })
 
 test("a chip without an action opens its explanation on click, not only on hover", async (t) => {
@@ -169,23 +161,22 @@ test("a chip without an action opens its explanation on click, not only on hover
   await expect(page.getByRole("tooltip")).toHaveCount(0)
 })
 
-test("per-channel quality that was already measured is finally rendered", async (t) => {
+test("each channel shows its gaps and only the notices worth reading", async (t) => {
   const page = await fixture(t)
+  const headers = await page.getByRole("columnheader").allTextContents()
+  assert.deepEqual(headers, ["Canal", "Muestras ausentes", "Posibles artefactos", "Avisos"])
+
   const rows = page.getByRole("row")
   const f3 = rows.filter({ hasText: "F3" }).first()
-  await expect(f3).toContainText("10.00 uV")
-  await expect(f3).toContainText("12.40 %")
   await expect(f3).toContainText("1,216")
-  await expect(f3).toContainText("-1256.2 uV")
-  await expect(f3).toContainText("94.9")
-  await expect(f3).toContainText("cuantización gruesa")
-  await expect(f3).toContainText("origen kilo")
-  await expect(f3).toContainText("pico a pico 9800 uV")
-  // 1554 amplitude samples + 0 steps + 3 peak-to-peak windows.
-  await expect(f3).toContainText("1,557")
+  // The coarse grid comes from the kilo conversion: one notice says both.
+  await expect(f3.getByRole("button", { name: "Unidad convertida" })).toBeVisible()
+  await expect(f3.getByRole("button", { name: "Resolución baja" })).toHaveCount(0)
+  await f3.getByRole("button", { name: "Unidad convertida" }).click()
+  await expect(page.getByRole("tooltip")).toContainText("en kilo y se convirtió a uV")
+  await expect(page.getByRole("tooltip")).toContainText("pasos de 10.00 uV")
 
   const c4 = rows.filter({ hasText: "C4" }).first()
-  await expect(c4).toContainText("0.01 uV")
-  await expect(c4).not.toContainText("cuantización gruesa")
-  await expect(c4).not.toContainText("origen")
+  await expect(c4).toContainText("—")
+  await expect(c4.getByRole("button", { name: "Unidad convertida" })).toHaveCount(0)
 })

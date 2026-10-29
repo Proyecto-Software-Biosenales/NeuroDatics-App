@@ -15,6 +15,8 @@ import {
 import type { WindowTransfer } from "../participantComparison/timeAlignment"
 import { useGroupMode, type GroupParticipant } from "./GroupModeProvider"
 import { groupTimeAxis, groupUnsupportedReason, type GroupTimeAxis } from "./groupSupport"
+import { alignsByStimulus, placeCardResult, type StimulusTimeline } from "./stimulusTimeline"
+import { useStimulusTimeline } from "./useStimulusTimeline"
 
 export type GroupEntryStatus = "loading" | "empty" | "error" | "success"
 
@@ -44,6 +46,11 @@ export interface GroupData {
   loading: boolean
   retry: (entry: GroupEntry) => void
   retryFailed: () => void
+  /**
+   * With «Todos los escenarios», the stimulus axis every participant was laid
+   * on; null when the recordings label no scenario (each keeps its own time).
+   */
+  timeline: StimulusTimeline | null
 }
 
 const NO_TRANSFER: WindowTransfer = { kind: "none" }
@@ -133,16 +140,23 @@ export function useGroupData(spec: ParticipantComparisonSpec | null, options: { 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobsKey])
 
+  const byStimulus = requestSpec != null && alignsByStimulus(requestSpec.kind, requestSpec.scenario)
+  const codes = useMemo(() => selected.map((participant) => participant.code), [selected])
+  const timeline = useStimulusTimeline(byStimulus ? projectId : null, generation, codes)
+
   const entries = useMemo<GroupEntry[]>(
     () =>
       jobs.map(({ participant, key }) => {
         const state = states[key] ?? LOADING
         if (state.status === "error") return { participant, key, status: "error", result: null, message: state.error }
-        if (state.status !== "success" || !state.data) return { participant, key, status: "loading", result: null, message: null }
+        // Nothing is drawn on the recording's own time while the stimulus axis is pending.
+        if (state.status !== "success" || !state.data || timeline === undefined) return { participant, key, status: "loading", result: null, message: null }
         if (state.data.type === "empty") return { participant, key, status: "empty", result: null, message: state.data.message }
-        return { participant, key, status: "success", result: state.data, message: null }
+        const result = timeline ? placeCardResult(state.data, timeline, participant.code) : state.data
+        if (result.type === "empty") return { participant, key, status: "empty", result: null, message: result.message }
+        return { participant, key, status: "success", result, message: null }
       }),
-    [jobs, states]
+    [jobs, states, timeline]
   )
 
   const retry = useCallback((entry: GroupEntry) => participantComparisonLoader.retry(entry.key), [])
@@ -158,8 +172,9 @@ export function useGroupData(spec: ParticipantComparisonSpec | null, options: { 
       loading: entries.some((entry) => entry.status === "loading"),
       retry,
       retryFailed: () => failures.forEach((entry) => participantComparisonLoader.retry(entry.key)),
+      timeline: timeline ?? null,
     }
-  }, [entries, retry])
+  }, [entries, retry, timeline])
 }
 
 export interface GroupView {
@@ -184,13 +199,14 @@ export interface GroupView {
 export function useGroupView(spec: ParticipantComparisonSpec | null, options?: { frameStimulusTime?: number | null }): GroupView {
   const group = useGroupMode()
   const active = group.active && spec != null
-  const unsupportedReason = active && group.mode ? groupUnsupportedReason(spec.kind, group.mode, spec.scenario) : null
+  const unsupportedReason = active && group.mode ? groupUnsupportedReason(spec.kind, spec.scenario) : null
   const data = useGroupData(active && !unsupportedReason ? spec : null, options)
   const kind = spec?.kind ?? "pupil"
   const scenario = spec?.scenario ?? ""
-  const timeAxis = useMemo(() => groupTimeAxis(kind, scenario), [kind, scenario])
+  const byStimulus = data.timeline != null
+  const timeAxis = useMemo(() => groupTimeAxis(kind, scenario, byStimulus), [byStimulus, kind, scenario])
   // An instant belongs to one time axis and mode: another scenario or mode starts without one.
-  const selectionKey = JSON.stringify([kind, scenario, active ? group.mode : null])
+  const selectionKey = JSON.stringify([kind, scenario, active ? group.mode : null, byStimulus])
   const [selection, setSelection] = useState<{ key: string; time: number } | null>(null)
   const selectedTime = selection?.key === selectionKey ? selection.time : null
   const selectTime = useCallback(

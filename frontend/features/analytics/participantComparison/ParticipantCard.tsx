@@ -29,10 +29,11 @@ import {
   rotateTopographyPositionClockwise,
   type TopographyFrameRow,
 } from "../eegPresentation"
+import { placeCardResult, timelineToRecording, type StimulusTimeline } from "../groupMode/stimulusTimeline"
 import type { AoiMetricsData } from "../types"
 import { loadCardData, type CardResult } from "./cardData"
 import { participantComparisonLoader, useBlobUrl, useCardVisibility, useLoaderEntry, useStimulusImage, type ViewportTracker } from "./cardHooks"
-import { finiteDomain, paddedDomain, withQuantiles, type Domain, type ScaleMode } from "./scales"
+import { finiteDomain, paddedDomain, type Domain, type ScaleMode } from "./scales"
 import { cardCacheKey, CARD_POINT_BUDGET, EEG_CARD_POINT_BUDGET, KIND_INFO, type ParticipantComparisonSpec, type ZoomRange } from "./spec"
 import type { WindowTransfer } from "./timeAlignment"
 import { analyticsKey } from "../analyticsCache"
@@ -66,6 +67,8 @@ export interface ParticipantCardProps {
   /** Shared ranges by domain key, or empty in independent mode. */
   commonDomains: Record<string, Domain>
   commonX: [number, number] | null
+  /** With «Todos los escenarios»: the stimulus axis every card is laid on; null keeps each recording's time. */
+  timeline: StimulusTimeline | null
   pinTime: number | null
   onPin: (pin: PinnedPoint) => void
   onReport: (participant: string, report: DomainReport | null) => void
@@ -127,7 +130,7 @@ export const ParticipantCard = memo(function ParticipantCard(props: ParticipantC
 
 function CardBody(props: ParticipantCardProps & { visible: boolean }) {
   useAnalyticsRevision()
-  const { participant, index, projectId, generation, spec, transfer, frameStimulusTime, visible, onReport } = props
+  const { participant, index, projectId, generation, spec, transfer, frameStimulusTime, visible, onReport, timeline } = props
   const budget = spec.kind === "eeg_timeseries" ? EEG_CARD_POINT_BUDGET : CARD_POINT_BUDGET
   const key = analyticsKey(projectId, "participant-card", [cardCacheKey({ projectId, generation }, participant, spec, budget), transfer, frameStimulusTime])
   const fetcher = useCallback(
@@ -137,6 +140,11 @@ function CardBody(props: ParticipantCardProps & { visible: boolean }) {
   // Visible cards first, then the margin; within each, grid order.
   const priority = (visible ? 0 : 1) * 100_000 + index
   const entry = useLoaderEntry<CardResult>(key, fetcher, priority, participant, projectId)
+  const loaded = entry.status === "success" ? (entry.data as CardResult) : null
+  const placed = useMemo(
+    () => (loaded && timeline ? placeCardResult(loaded, timeline, participant) : loaded),
+    [loaded, participant, timeline]
+  )
 
   if (entry.status === "queued" || entry.status === "loading") {
     return (
@@ -158,7 +166,7 @@ function CardBody(props: ParticipantCardProps & { visible: boolean }) {
       </div>
     )
   }
-  const result = entry.data as CardResult
+  const result = placed ?? (entry.data as CardResult)
   return <CardResultView {...props} result={result} onReport={onReport} />
 }
 
@@ -263,7 +271,7 @@ function resolveDomain(scaleMode: ScaleMode, common: Domain | undefined, own: Do
 }
 
 function TemporalCard(props: ParticipantCardProps & { result: Temporal }) {
-  const { spec, result, participant, scaleMode, commonDomains, commonX, pinTime, onPin, onReport, zoomMemory, initialZoom } = props
+  const { spec, result, participant, scaleMode, commonDomains, commonX, timeline, pinTime, onPin, onReport, zoomMemory, initialZoom } = props
   const series = useMemo(() => temporalSeries(spec, result), [result, spec])
   const { ownY, reportY } = useMemo(() => {
     const values: number[] = []
@@ -274,16 +282,17 @@ function TemporalCard(props: ParticipantCardProps & { result: Temporal }) {
       const robust = robustDomain(values)
       own = robust ? { min: robust.min, max: robust.max } : null
     }
-    // The common range pools every card's drawn values into one P1-P99.
-    return { ownY: own, reportY: own ? withQuantiles(own, values) : null }
+    // The common range runs from the lowest to the highest of every card's range.
+    return { ownY: own, reportY: own }
   }, [result.points, series, spec.kind])
   const ownX = useMemo(() => finiteDomain([result.points[0]?.time, result.points.at(-1)?.time]), [result.points])
   useReport(onReport, participant, reportY && ownX ? { y: reportY, x: ownX } : {})
   const zoom = useCardZoom(zoomMemory, participant, initialZoom)
   const yDomain = resolveDomain(scaleMode, commonDomains.y, ownY)
   const xDomain = result.aligned && scaleMode === "common" && commonX ? commonX : null
+  const origin = timeline ? "el inicio del primer estímulo" : "el inicio del estímulo"
   const xLabel = result.aligned
-    ? "Tiempo desde el inicio del estímulo (s)"
+    ? `Tiempo desde ${origin} (s)`
     : spec.kind === "gsr"
       ? "Tiempo desde la primera muestra GSR (s)"
       : "Tiempo de la grabación (s)"
@@ -311,7 +320,7 @@ function TemporalCard(props: ParticipantCardProps & { result: Temporal }) {
       yDomain={yDomain}
       animate={false}
       zoom={zoom}
-      timeAxisDescription={result.aligned ? "eje horizontal en segundos desde el inicio del estímulo" : "eje horizontal en segundos de la grabación"}
+      timeAxisDescription={result.aligned ? `eje horizontal en segundos desde ${origin}` : "eje horizontal en segundos de la grabación"}
       shellClassName="h-(--card-chart-height)! min-h-0!"
     />
   )
@@ -352,7 +361,7 @@ function PsdCard(props: ParticipantCardProps & { result: Extract<CardResult, { t
 }
 
 function SpectrogramCard(props: ParticipantCardProps & { result: Extract<CardResult, { type: "spectrogram" }> }) {
-  const { result, participant, onReport, scaleMode, commonDomains, zoomMemory, initialZoom, onPin, pinTime, spec } = props
+  const { result, participant, onReport, scaleMode, commonDomains, zoomMemory, initialZoom, onPin, pinTime, spec, timeline } = props
   const data = result.data
   const perChannel = spec.kind === "eeg_spectrogram" && spec.params.perChannelColorDomain
   const report = useMemo(() => {
@@ -389,14 +398,13 @@ function SpectrogramCard(props: ParticipantCardProps & { result: Extract<CardRes
             hopS={Number.isFinite(hopS) ? hopS : undefined}
             interpolate={interpolate}
             selectedTime={pinTime}
-            onTimeSelect={(time) =>
-              onPin({
-                participant,
-                sourceTime: time - result.displayOffset + (result.recordingOffset ?? 0),
-                displayTime: time,
-                aligned: result.aligned,
-              })
-            }
+            onTimeSelect={(time) => {
+              // On the stimulus axis the recording second comes from that participant's own stimulus.
+              const sourceTime = timeline
+                ? timelineToRecording(timeline, participant, time)?.recordingTime
+                : time - result.displayOffset + (result.recordingOffset ?? 0)
+              if (sourceTime != null) onPin({ participant, sourceTime, displayTime: time, aligned: result.aligned })
+            }}
             onTimeZoom={(start, end) => zoom.zoomTo({ start, end })}
             onZoomReset={zoomed ? zoom.reset : undefined}
             onZoomBack={zoomed && zoom.canGoBack ? zoom.back : undefined}

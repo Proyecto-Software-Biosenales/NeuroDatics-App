@@ -157,8 +157,8 @@ export function EegPsdView({
   return <>
 {view === "psd" ? (
       <Card>
-        <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 basis-72">
             <CardTitle className="flex items-center gap-2 text-xl">
               <Radio className="h-5 w-5" />
               Densidad espectral de potencia
@@ -169,7 +169,7 @@ export function EegPsdView({
                 : "Potencia por frecuencia de los canales EEG seleccionados."}
             </CardDescription>
           </div>
-          <div className="flex flex-wrap items-center gap-6 text-sm">
+          <div className="flex max-w-full flex-wrap items-center gap-x-6 gap-y-3 text-sm">
             <div>
               <span className="block text-xs uppercase tracking-widest text-muted-foreground">Unidad</span>
               <span className="font-semibold text-foreground">{psdData?.unit ?? "dB"}</span>
@@ -179,6 +179,19 @@ export function EegPsdView({
               <span className="font-semibold text-foreground">{psdChartData.length.toLocaleString()}</span>
             </div>}
             <FitAxisToggle pressed={fitAxis} onPressedChange={setFitAxis} />
+            {/* Welch overlaps its windows by 50 %, so one artifact sample lands
+                in two of them. The contaminated number is the default. */}
+            <Label
+              htmlFor="psd-exclude-artifact-windows"
+              className="flex items-center gap-2 whitespace-nowrap text-xs font-normal text-muted-foreground"
+            >
+              <Checkbox
+                id="psd-exclude-artifact-windows"
+                checked={excludeArtifactWindows}
+                onCheckedChange={(value) => setExcludeArtifactWindows(value === true)}
+              />
+              Excluir ventanas con artefacto
+            </Label>
             {/* Recording seconds belong to one recording: no window in a group mode. */}
             {group ? null : <TimeWindowControls
               draftStart={psdWindowDraft.start}
@@ -198,19 +211,6 @@ export function EegPsdView({
               onReset={handleResetPsdWindow}
               zoomHint="Arrastra sobre la gráfica para ampliar un rango de frecuencias."
             />}
-            {/* Welch overlaps its windows by 50 %, so one artifact sample lands
-                in two of them. The contaminated number is the default. */}
-            <Label
-              htmlFor="psd-exclude-artifact-windows"
-              className="flex items-center gap-2 whitespace-nowrap text-xs font-normal text-muted-foreground"
-            >
-              <Checkbox
-                id="psd-exclude-artifact-windows"
-                checked={excludeArtifactWindows}
-                onCheckedChange={(value) => setExcludeArtifactWindows(value === true)}
-              />
-              Excluir ventanas con artefacto
-            </Label>
           </div>
         </CardHeader>
         <CardContent>

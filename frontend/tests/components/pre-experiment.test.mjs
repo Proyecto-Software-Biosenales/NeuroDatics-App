@@ -150,11 +150,12 @@ test('optional creation editor allows participants, partial screen geometry and 
   // A tab is only its name: what the section holds is not counted beside it.
   await expect(page.getByRole('tab', { name: /^Cuestionarios/ })).toHaveText('Cuestionarios')
   await screenshot(page, 'create-questionnaire-mobile.png')
-  // The typed distance only backs up the eye tracker's own record, and says so.
+  // The screen is only its four measures, as in «Pantalla distinta a la configuración».
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click()
   await expect(page.getByRole('tab', { name: /^Pantalla/ })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('spinbutton', { name: 'Ancho (px)', exact: true })).toHaveValue('1920')
-  await expect(page.locator('[id$="-viewing_distance_cm-ayuda"]')).toContainText('Solo se usa si falla el registro de distancia del eye tracker')
+  await expect(page.getByRole('tabpanel').getByRole('spinbutton')).toHaveCount(4)
+  await expect(page.getByRole('tabpanel').getByRole('textbox')).toHaveCount(0)
   // Notes close the tabs, each a title over its text; an empty one is not kept.
   await page.getByRole('button', { name: 'Siguiente', exact: true }).click()
   await expect(page.getByRole('tab', { name: /^Notas/ })).toHaveAttribute('aria-selected', 'true')

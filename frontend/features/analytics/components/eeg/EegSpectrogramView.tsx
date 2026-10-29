@@ -100,8 +100,8 @@ export function EegSpectrogramView({
   return <>
 {view === "spectrogram" ? (
         <Card>
-          <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div>
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1 basis-72">
               <CardTitle className="flex items-center gap-2 text-xl">
                 <Waves className="h-5 w-5" />
                 Espectrograma de frecuencias
@@ -112,7 +112,7 @@ export function EegSpectrogramView({
                   : "Densidad espectral por ventana. dB referidos a 1 uV²/Hz; los huecos indican ventanas no disponibles."}
               </CardDescription>
             </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+            <div className="flex max-w-full flex-wrap items-center gap-x-6 gap-y-3 text-sm">
               <div>
                 <span className="block text-xs uppercase tracking-widest text-muted-foreground">Unidad</span>
                 <span className="font-semibold text-foreground">{spectrogramData?.unit ?? "dB"}</span>

@@ -62,6 +62,22 @@ test("opens the first project and selects the first visible sensor on entry and 
   expect(errors).toEqual([])
 })
 
+test("leaves pre-experiments without data out of the project list", async ({ page }) => {
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname.replace(/\/$/, "")
+    await route.fulfill({ json: path === "/api/projects" ? [
+      { id: "plan", name: "Plan sin datos", is_pre_experiment: true, sensors: [] },
+      { id: "first", name: "Primer proyecto", sensors: [{ sensor_type: "GSR" }] },
+    ] : [] })
+  })
+
+  // Even asked for by its link, the pre-experiment is skipped for the first project with data.
+  await page.goto("/dashboard?proyecto=plan")
+  const first = page.getByRole("button", { name: "Primer proyecto", exact: true }).locator("xpath=../..")
+  await expect(first.getByRole("button", { name: "Contraer proyecto" })).toHaveAttribute("aria-expanded", "true")
+  await expect(page.getByRole("button", { name: "Plan sin datos", exact: true })).toHaveCount(0)
+})
+
 test("keeps the empty dashboard usable when there are no projects", async ({ page }) => {
   await page.route("**/api/**", (route) => route.fulfill({ json: [] }))
   await page.goto("/dashboard")

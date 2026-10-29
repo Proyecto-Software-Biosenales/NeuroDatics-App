@@ -457,6 +457,7 @@ export function GazePointTab({
               unit="%"
               yLabel="Posición (%)"
               yAxis={groupYAxis}
+              averageColor={groupAxis === "x" ? "#818CF8" : "#22C55E"}
             />
           ) : <>
           <div className="analytics-kpi-grid">

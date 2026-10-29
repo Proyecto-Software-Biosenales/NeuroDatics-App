@@ -422,7 +422,7 @@ export function meanSpectrograms(
   return { time, frequency, mean, n }
 }
 
-/** Series per key over time, e.g. a topography's power per electrode and window. */
+/** Series per key over time, e.g. each EEG channel's samples. */
 export interface KeyedSeriesInput {
   time: ArrayLike<number>
   values: Readonly<Record<string, ArrayLike<number | null> | undefined>>

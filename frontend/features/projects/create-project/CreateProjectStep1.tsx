@@ -12,6 +12,7 @@ import type { UploadedProjectZip } from "@/features/projects/types"
 import { LAB_SCREEN, useScreenSettings } from "@/features/settings/screenSettings"
 import type { FixationScreenGeometryInput } from "./types"
 import { StimulusPlacementEditor } from "./components/StimulusPlacementEditor"
+import { ScreenMeasureFields } from "../components/ScreenMeasureFields"
 import {
   selectedStimulusPaths,
   type StimulusPlacementDraft,
@@ -282,38 +283,6 @@ export const CreateProjectStep1 = ({
     })
   }
 
-  // Same short labels and unit suffix as Configuración, so the four fields line up.
-  const measure = (
-    id: string,
-    field: "widthPx" | "heightPx" | "widthCm" | "heightCm",
-    label: string,
-    unit: "px" | "cm",
-    placeholder: string,
-  ) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="relative">
-        <Input
-          id={id}
-          type="number"
-          min={unit === "px" ? "1" : "0.1"}
-          step={unit === "px" ? "1" : "0.1"}
-          className="pr-10"
-          placeholder={placeholder}
-          value={geometry[field]}
-          onChange={(event) => updateGeometry(field, event.target.value)}
-          disabled={geometryDisabled}
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground"
-        >
-          {unit}
-        </span>
-      </div>
-    </div>
-  )
-
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -345,11 +314,19 @@ export const CreateProjectStep1 = ({
           </div>
 
           {geometry.enabled && (
-            <div className="grid items-end gap-3 pt-1 sm:grid-cols-2 lg:grid-cols-4">
-              {measure("screen-width-px", "widthPx", "Ancho (px)", "px", String(globalScreen?.width_px ?? LAB_SCREEN.width_px))}
-              {measure("screen-height-px", "heightPx", "Alto (px)", "px", String(globalScreen?.height_px ?? LAB_SCREEN.height_px))}
-              {measure("screen-width-cm", "widthCm", "Ancho (cm)", "cm", "53.1")}
-              {measure("screen-height-cm", "heightCm", "Alto (cm)", "cm", "29.9")}
+            <div className="pt-1">
+              <ScreenMeasureFields
+                idPrefix="screen"
+                values={geometry}
+                onChange={updateGeometry}
+                placeholders={{
+                  widthPx: String(globalScreen?.width_px ?? LAB_SCREEN.width_px),
+                  heightPx: String(globalScreen?.height_px ?? LAB_SCREEN.height_px),
+                  widthCm: "53.1",
+                  heightCm: "29.9",
+                }}
+                disabled={geometryDisabled}
+              />
             </div>
           )}
         </div>

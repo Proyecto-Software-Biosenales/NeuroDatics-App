@@ -1,13 +1,9 @@
 "use client"
 
-import { Activity, Clock, Radio, TrendingDown, TrendingUp, Waves } from "lucide-react"
-import { KpiCard } from "../KpiCard"
+import { Activity, Radio, TrendingDown, TrendingUp, Waves } from "lucide-react"
 import type { AnalyticsChartNote } from "../AnalyticsChartShell"
-import { fittedAxis } from "../../fittedAxis"
-import { formatChannel, robustDomain } from "../../eegPresentation"
+import { formatChannel } from "../../eegPresentation"
 import { GroupStimulusCard } from "../../groupMode/GroupStimulusCard"
-import { GroupTemporalChart, type GroupTrace } from "../../groupMode/GroupTemporalChart"
-import { GroupUnsupported } from "../../groupMode/GroupUnsupported"
 import { groupLoadNotes } from "../../groupMode/groupNotes"
 import type { GroupView } from "../../groupMode/useGroupData"
 import {
@@ -26,14 +22,16 @@ import type {
   PsdField,
   SpectrogramField,
   TimeseriesField,
-  TopographyField,
 } from "./useEegGroupData"
+import { CHANNEL_COLORS } from "./eegViewShared"
 
 /** The view's own cards that sit in a three-column row. */
 const CARD_ROW = "mb-5 grid grid-cols-1 gap-3 md:grid-cols-3"
 const MIN_CLASS = "font-medium text-emerald-500 dark:text-emerald-400"
 const MAX_CLASS = "font-medium text-rose-500 dark:text-rose-400"
 const MAIN_CLASS = "font-semibold text-foreground"
+/** The averaged spectrum: violet, like the view's «Frecuencia pico» card. */
+const PSD_AVERAGE_COLOR = "#8B5CF6"
 
 const EMERALD = {
   iconBgClass: "bg-emerald-100 dark:bg-emerald-900/40",
@@ -51,20 +49,9 @@ const VIOLET = {
   labelColorClass: "text-violet-700 dark:text-violet-400",
 }
 
-/** The view cannot show this mode here: the reason in the chart's place, no cards or table. */
-function unsupported(reason: string, frameClassName: string): EegGroupSlots {
-  return { kpis: null, chart: <GroupUnsupported reason={reason} className={frameClassName} />, stats: null }
-}
-
 // ---------------------------------------------------------------------------
 // EEG por canal
 // ---------------------------------------------------------------------------
-
-/** The EEG axis: the robust range of what is drawn, so one excursion cannot flatten everyone else. */
-function eegAxis(values: number[]) {
-  const domain = robustDomain(values)
-  return domain ? fittedAxis([domain.min, domain.max]) : null
-}
 
 const TIMESERIES_COLUMNS: EegGroupColumn<TimeseriesField>[] = [
   { field: "count", label: "N válidas", decimals: 0, className: "text-muted-foreground" },
@@ -76,51 +63,62 @@ const TIMESERIES_COLUMNS: EegGroupColumn<TimeseriesField>[] = [
   { field: "max", label: "Max", decimals: 4, unit: " uV", className: MAX_CLASS },
 ]
 
+/**
+ * «Promedio» of «EEG por canal»: the view draws the averaged channels itself
+ * (`useEegGroupTimeseriesAverage`); the cards and the table give each
+ * participant's figures for the channel chosen in «Estadísticas de».
+ */
 export function timeseriesGroupSlots({
   view,
-  traces,
+  hasData,
   figures,
   channel,
   signal,
   scenario,
 }: {
   view: GroupView
-  traces: GroupTrace[]
+  /** The averaged channels have something to draw. */
+  hasData: boolean
   figures: EegGroupFigures<TimeseriesField>
   channel: string | null
   signal: "smooth" | "raw"
   scenario: string
 }): EegGroupSlots | null {
   if (!view.active) return null
-  if (view.unsupportedReason) return unsupported(view.unsupportedReason, "analytics-state-frame-eeg")
   if (!view.mode) return null
   const label = channel ? formatChannel(channel) : "—"
-  const loading = traces.length === 0 && view.data.loading
+  const loading = !hasData && view.data.loading
   const kpis: EegGroupKpi<TimeseriesField>[] = [
     { label: `Media · ${label}`, field: "mean", unit: "uV", decimals: 4, Icon: Activity, ...EMERALD },
     { label: `Mínimo · ${label}`, field: "min", unit: "uV", decimals: 4, Icon: TrendingDown, ...EMERALD },
     { label: `Máximo · ${label}`, field: "max", unit: "uV", decimals: 4, Icon: TrendingUp, ...ROSE },
   ]
-  const detail = `Se dibuja el canal ${label} de cada participante, el que eliges en «Canal»: la media de varios canales no describe ningún electrodo.${
-    signal === "smooth" ? " La señal está suavizada con una media móvil de 0.2 s." : ""
-  } El eje recorta las excursiones extremas; la ayuda emergente da el valor real.`
+  const chartNotes: AnalyticsChartNote[] = [
+    {
+      id: "group-how",
+      label: "Cómo se calcula",
+      detail: (
+        <>
+          <span>
+            Cada participante se cuenta desde {view.timeAxis.origin} y se lleva a una rejilla común de tiempo. Cada línea
+            es la media, en ese canal, de los participantes que lo tienen; una pérdida larga de señal queda como hueco.
+          </span>
+          <span>Cada canal se promedia por separado: la media de varios canales no describe ningún electrodo.</span>
+        </>
+      ),
+    },
+    // Say beside the chart when the axis is not simply the scenario's own time.
+    ...(view.timeAxis.noted ? [{ id: "group-time", label: view.timeAxis.chip, detail: view.timeAxis.detail }] : []),
+    ...groupLoadNotes(view.data),
+  ]
   return {
     kpis: <EegGroupKpis kpis={kpis} average={figures.average} loading={loading} />,
-    chart: (
-      <GroupTemporalChart
-        mode={view.mode}
-        traces={traces}
-        data={view.data}
-        timeAxis={view.timeAxis}
-        unit="uV"
-        yLabel="EEG (uV)"
-        yAxis={eegAxis}
-        averageDetail={detail}
-        emptyMessage={`Ninguno de los participantes elegidos tiene el canal ${label}.`}
-        selectedTime={view.selectedTime}
-        onSelectTime={view.selectTime}
-      />
+    description: `Promedio de ${view.data.successes.length === 1 ? "1 participante" : `${view.data.successes.length} participantes`} en cada canal, sin corrección de artefactos.`,
+    chart: hasData ? undefined : (
+      <EegGroupState data={view.data} frameClassName="analytics-state-frame-eeg" emptyMessage="Ninguno de los participantes elegidos tiene EEG en estos canales." notes={groupLoadNotes(view.data)} />
     ),
+    chartNotes,
+    xAxisLabel: view.timeAxis.label,
     stimulus: <GroupStimulusCard view={view} scenario={scenario} />,
     stats: (
       <EegGroupStatsCard
@@ -129,6 +127,7 @@ export function timeseriesGroupSlots({
         average={figures.average}
         loading={loading}
         scope={view.timeAxis.scope}
+        averageColor={channel ? CHANNEL_COLORS[channel] : undefined}
         detail={`Cifras del canal ${label} sobre la señal ${signal === "smooth" ? "suavizada" : "cruda"} completa, antes de reducir los puntos de la gráfica.`}
       />
     ),
@@ -153,7 +152,6 @@ export function psdGroupSlots({
   onZoomBack?: () => void
 }): EegGroupSlots | null {
   if (!view.active) return null
-  if (view.unsupportedReason) return unsupported(view.unsupportedReason, "analytics-state-frame-mid")
   const mode = view.mode
   if (!mode) return null
   const unit = ` ${psd.unit}`
@@ -176,7 +174,7 @@ export function psdGroupSlots({
   return {
     kpis: <EegGroupKpis kpis={kpis} average={psd.average} loading={loading} />,
     chart: ({ fit }) => (
-      <EegGroupPsdChart mode={mode} psd={psd} data={view.data} fit={fit} onZoom={onZoom} onZoomReset={onZoomReset} onZoomBack={onZoomBack} />
+      <EegGroupPsdChart mode={mode} psd={psd} data={view.data} fit={fit} onZoom={onZoom} onZoomReset={onZoomReset} onZoomBack={onZoomBack} averageColor={PSD_AVERAGE_COLOR} />
     ),
     stats: (
       <EegGroupStatsCard
@@ -185,6 +183,7 @@ export function psdGroupSlots({
         average={psd.average}
         loading={loading}
         db={psd.db}
+        averageColor={PSD_AVERAGE_COLOR}
         scope={view.timeAxis.scope}
         detail="Cada fila describe la línea del participante: la media de sus canales elegidos, en el rango de frecuencias visible."
       />
@@ -209,7 +208,6 @@ export function spectrogramGroupSlots({
   unit: string
 }): EegGroupSlots | null {
   if (!view.active) return null
-  if (view.unsupportedReason) return unsupported(view.unsupportedReason, "h-[420px]")
   const mode = view.mode
   if (!mode) return null
   const levels = ` ${unit}`
@@ -244,15 +242,13 @@ export function spectrogramGroupSlots({
         </>
       ),
     },
-    // Without a common onset the same second is not the same moment: say so beside the chart.
-    ...(view.timeAxis.aligned ? [] : [{ id: "group-time", label: view.timeAxis.chip, detail: view.timeAxis.detail }]),
+    // Say beside the chart when the axis is not simply the scenario's own time.
+    ...(view.timeAxis.noted ? [{ id: "group-time", label: view.timeAxis.chip, detail: view.timeAxis.detail }] : []),
     ...groupLoadNotes(view.data),
   ]
   return {
     kpis: <EegGroupKpis className={CARD_ROW} kpis={kpis} average={figures.average} loading={loading} />,
-    description: `Media de varios participantes en cada ventana y frecuencia, ${
-      view.timeAxis.aligned ? "desde el inicio del escenario" : "con cada grabación contada desde su inicio"
-    }. dB referidos a 1 uV²/Hz.`,
+    description: `Media de varios participantes en cada ventana y frecuencia, desde ${view.timeAxis.origin}. dB referidos a 1 uV²/Hz.`,
     chart: hasData ? undefined : (
       <EegGroupState data={view.data} frameClassName="h-[420px]" emptyMessage="Ninguno de los participantes elegidos tiene espectrograma." notes={notes} />
     ),
@@ -266,91 +262,6 @@ export function spectrogramGroupSlots({
         db
         scope={view.timeAxis.scope}
         detail={`Cada fila reúne las celdas de todos los canales visibles del participante, en el tramo visible; el tiempo del pico se cuenta desde ${view.timeAxis.origin}.`}
-      />
-    ),
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Topografía (solo promedio)
-// ---------------------------------------------------------------------------
-
-export function topographyGroupSlots({
-  view,
-  hasData,
-  figures,
-  unit,
-  frameTime,
-}: {
-  view: GroupView
-  hasData: boolean
-  figures: EegGroupFigures<TopographyField>
-  unit: string
-  /** The chosen instant, seconds since the scenario's onset. */
-  frameTime: number | null
-}): EegGroupSlots | null {
-  if (!view.active) return null
-  if (view.unsupportedReason) return unsupported(view.unsupportedReason, "h-[420px]")
-  const mode = view.mode
-  if (!mode) return null
-  const levels = ` ${unit}`
-  const loading = !hasData && view.data.loading
-  const kpis: EegGroupKpi<TopographyField>[] = [
-    { label: "Mayor potencia", field: "strongest", unit, decimals: 4, Icon: TrendingUp, ...ROSE },
-    { label: "Potencia media", field: "meanPower", unit, decimals: 4, Icon: Activity, ...EMERALD },
-  ]
-  const columns: EegGroupColumn<TopographyField>[] = [
-    { field: "strongest", label: "Mayor potencia", decimals: 4, unit: levels, className: MAX_CLASS },
-    { field: "meanPower", label: "Potencia media", decimals: 4, unit: levels, className: MAIN_CLASS },
-    { field: "minPower", label: "Mínima", decimals: 4, unit: levels, className: MIN_CLASS },
-    { field: "maxPower", label: "Máxima", decimals: 4, unit: levels, className: MAX_CLASS },
-  ]
-  const notes: AnalyticsChartNote[] = [
-    {
-      id: "group-how",
-      label: "Cómo se calcula",
-      detail: (
-        <>
-          <span>{view.timeAxis.detail}</span>
-          <span>
-            La potencia de cada electrodo se lleva a una rejilla común de ventanas, sin rellenar huecos, y se promedia
-            entre los participantes con dato en ese instante.
-          </span>
-          <span>La escala de color va del percentil 2 al 98 de todas las ventanas medias y no cambia al mover el deslizador.</span>
-        </>
-      ),
-    },
-    ...groupLoadNotes(view.data),
-  ]
-  return {
-    kpis: (
-      <EegGroupKpis className={CARD_ROW} kpis={kpis} average={figures.average} loading={loading}>
-        <KpiCard
-          label="Tiempo"
-          value={frameTime}
-          unit="s"
-          decimals={2}
-          description="Desde el inicio del escenario"
-          Icon={Clock}
-          loading={loading}
-          iconBgClass="bg-blue-100 dark:bg-blue-900/40"
-          iconColorClass="text-blue-600 dark:text-blue-400"
-          labelColorClass="text-blue-700 dark:text-blue-400"
-        />
-      </EegGroupKpis>
-    ),
-    chart: hasData ? undefined : (
-      <EegGroupState data={view.data} frameClassName="h-[420px]" emptyMessage="Ninguno de los participantes elegidos tiene topografía en este escenario." notes={notes} />
-    ),
-    notes: <EegGroupChips notes={notes} />,
-    stats: (
-      <EegGroupStatsCard
-        columns={columns}
-        entries={figures.entries}
-        average={figures.average}
-        loading={loading}
-        scope={view.timeAxis.scope}
-        detail="Cada fila son los electrodos del participante en el instante elegido; un participante sin ventana en ese instante queda sin cifras."
       />
     ),
   }

@@ -29,13 +29,7 @@ import { ParticipantComparisonProvider } from "@/features/analytics/participantC
 import { FiltersBarCompareButton } from "@/features/analytics/participantComparison/CompareParticipantsButton"
 import type { ComparisonKind } from "@/features/analytics/participantComparison/spec"
 import { GroupModeProvider } from "@/features/analytics/groupMode/GroupModeProvider"
-import { GroupUnsupported } from "@/features/analytics/groupMode/GroupUnsupported"
-import {
-  COMPARATIVAS_UNSUPPORTED,
-  GROUP_MODE_LABELS,
-  groupUnsupportedReason,
-  type GroupMode,
-} from "@/features/analytics/groupMode/groupSupport"
+import { carriedGroupMode, groupModesOf, type GroupMode } from "@/features/analytics/groupMode/groupSupport"
 import {
   useAnalyticsParticipants,
   useAnalyticsScenarios,
@@ -98,25 +92,12 @@ const EEG_TAB_KINDS: Record<EegTabKey, ComparisonKind> = {
   topography: "eeg_topography",
 }
 
-/**
- * Views that draw «Superposición» and «Promedio» themselves (useGroupView).
- * Every other view shows why it cannot, in place of its chart.
- */
-const GROUP_READY_TABS = new Set<AnalyticsTabKey>(["pupil_dilation", "gaze_point", "device_distance", "heatmap", "scanpath", "aoi_comparison"])
-const GROUP_READY_EEG_TABS = new Set<EegTabKey>(["timeseries", "psd", "spectrogram", "topography"])
-const GROUP_READY_GSR = true
-
-function groupBlockedReason(mode: GroupMode, kind: ComparisonKind | "comparativas", scenario: string): string {
-  if (kind === "comparativas") return COMPARATIVAS_UNSUPPORTED
-  return groupUnsupportedReason(kind, mode, scenario) ?? `Esta vista todavía no admite «${GROUP_MODE_LABELS[mode]}».`
-}
-
-function GroupBlockedView({ reason }: { reason: string }) {
-  return (
-    <div className="analytics-stack">
-      <GroupUnsupported reason={reason} className="analytics-state-frame" />
-    </div>
-  )
+/** The chart kind of the open view; null for «Comparativas», which joins several sensors. */
+function viewKind(sensor: SensorSelection, tab: AnalyticsTabKey, eegTab: EegTabKey): ComparisonKind | null {
+  if (sensor === "Comparativas") return null
+  if (sensor === "GSR") return "gsr"
+  if (sensor === "EEG") return EEG_TAB_KINDS[eegTab]
+  return TAB_KINDS[tab]
 }
 
 const compactSidebarQuery = "(max-width: 767px)"
@@ -180,8 +161,10 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false
     ProjectsApi.list()
-      .then((items) => {
+      .then((all) => {
         if (cancelled) return
+        // A pre-experiment has no data to chart yet; it shows up once its folder is uploaded.
+        const items = all.filter((item) => !item.is_pre_experiment)
         setProjects(items)
         // A project card opens its own dashboard: `/dashboard?proyecto=<id>`.
         const requested = new URLSearchParams(window.location.search).get("proyecto")
@@ -273,7 +256,22 @@ export default function DashboardPage() {
     [selectedProject]
   )
 
-  const groupTabBlocked = groupMode != null && !GROUP_READY_TABS.has(activeTab)
+  const groupModes = useMemo(
+    () => groupModesOf(viewKind(selectedSensor, activeTab, activeEegTab)),
+    [activeEegTab, activeTab, selectedSensor]
+  )
+  // A view lists only the group modes it can draw: moving to one that lacks
+  // the chosen mode takes the one it offers, or goes back to one participant.
+  const carryGroupMode = (sensor: SensorSelection, tab: AnalyticsTabKey, eegTab: EegTabKey) =>
+    setGroupMode((current) => carriedGroupMode(current, groupModesOf(viewKind(sensor, tab, eegTab))))
+  const handleTabChange = (tab: AnalyticsTabKey) => {
+    setActiveTab(tab)
+    carryGroupMode(selectedSensor, tab, activeEegTab)
+  }
+  const handleEegTabChange = (eegTab: EegTabKey) => {
+    setActiveEegTab(eegTab)
+    carryGroupMode(selectedSensor, activeTab, eegTab)
+  }
 
   const handleSelectProject = (projectId: string, sensor?: SensorSelection) => {
     const project = projects.find((item) => item.id === projectId)
@@ -288,8 +286,10 @@ export default function DashboardPage() {
       setSelectedScenario("all")
       setMinFixationDurationMs(DEFAULT_FIXATION_DURATION_MS)
     }
+    const nextSensor = sensor ?? getProjectSensors(project)[0] ?? "Comparativas"
+    if (projectId === selectedProjectId) carryGroupMode(nextSensor, activeTab, activeEegTab)
     setSelectedProjectId(projectId)
-    setSelectedSensor(sensor ?? getProjectSensors(project)[0] ?? "Comparativas")
+    setSelectedSensor(nextSensor)
     setExpandedProjects((prev) => ({ ...prev, [projectId]: true }))
   }
 
@@ -328,6 +328,7 @@ export default function DashboardPage() {
             participantCodes={comparisonParticipantCodes}
             labels={comparisonParticipantLabels}
             mode={groupMode}
+            modes={groupModes}
             selection={groupSelection}
             onModeChange={setGroupMode}
             onSelectionChange={setGroupSelection}
@@ -349,10 +350,6 @@ export default function DashboardPage() {
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 Selecciona un proyecto del panel lateral
               </div>
-            ) : groupMode && selectedSensor === "Comparativas" ? (
-              <GroupBlockedView reason={groupBlockedReason(groupMode, "comparativas", selectedScenario)} />
-            ) : groupMode && selectedSensor === "GSR" && !GROUP_READY_GSR ? (
-              <GroupBlockedView reason={groupBlockedReason(groupMode, "gsr", selectedScenario)} />
             ) : selectedSensor === "Comparativas" ? (
               <ComparisonTab
                 key={selectedProjectId}
@@ -369,11 +366,7 @@ export default function DashboardPage() {
                 scenario={selectedScenario}
               />
             ) : selectedSensor === "EEG" ? (
-              <AnalyticsTabs value={activeEegTab} onValueChange={setActiveEegTab} options={EEG_TABS} label="Vistas EEG">
-                {groupMode && !GROUP_READY_EEG_TABS.has(activeEegTab) ? (
-                  <GroupBlockedView reason={groupBlockedReason(groupMode, EEG_TAB_KINDS[activeEegTab], selectedScenario)} />
-                ) : (
-
+              <AnalyticsTabs value={activeEegTab} onValueChange={handleEegTabChange} options={EEG_TABS} label="Vistas EEG">
                 <EegTab
                   key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
                   projectId={selectedProjectId}
@@ -381,14 +374,12 @@ export default function DashboardPage() {
                   scenario={selectedScenario}
                   view={activeEegTab}
                 />
-                )}
               </AnalyticsTabs>
             ) : (
-              <AnalyticsTabs value={activeTab} onValueChange={setActiveTab} options={ANALYTICS_TABS} label="Vistas del eye tracker">
+              <AnalyticsTabs value={activeTab} onValueChange={handleTabChange} options={ANALYTICS_TABS} label="Vistas del eye tracker">
 
                 {FIXATION_DERIVED_TABS.has(activeTab) &&
-                  selectedParticipant &&
-                  !groupTabBlocked && (
+                  selectedParticipant && (
                     <div className="flex min-w-0 items-center justify-end border-b border-border bg-muted/10 px-4 py-2 xl:px-6">
                       <FixationDurationControl
                         value={effectiveMinFixationDurationMs}
@@ -400,9 +391,7 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                {groupMode && groupTabBlocked ? (
-                  <GroupBlockedView reason={groupBlockedReason(groupMode, TAB_KINDS[activeTab], selectedScenario)} />
-                ) : activeTab === "pupil_dilation" ? (
+                {activeTab === "pupil_dilation" ? (
                   <PupilDilationTab
                     key={`${selectedProjectId}-${selectedParticipant ?? "none"}-${selectedScenario}`}
                     projectId={selectedProjectId}

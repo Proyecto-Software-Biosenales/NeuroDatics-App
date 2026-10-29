@@ -34,6 +34,7 @@ GSR_PROJECTION = ParquetProjection("gsr", optional=(*_CONTEXT, "gsr"))
 PUPIL_PROJECTION = ParquetProjection("pupil", optional=(*_CONTEXT, "lx_pupil", "rx_pupil"))
 DISTANCE_PROJECTION = ParquetProjection("distance", optional=(*_CONTEXT, "distance"))
 TIMING_PROJECTION = ParquetProjection("timing", optional=(*_CONTEXT, "gsr"))
+SEQUENCE_PROJECTION = ParquetProjection("sequence", optional=_CONTEXT)
 # All channels are needed for available_channels and for reference/quality
 # selection. Acquisition/units/exclusions live in attrs and must survive reads.
 EEG_PROJECTION = ParquetProjection(

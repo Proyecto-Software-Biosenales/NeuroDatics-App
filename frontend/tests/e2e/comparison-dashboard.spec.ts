@@ -697,6 +697,10 @@ test("uses comparable absolute fixation sizes across participants", async ({
     .locator('[data-slot="select-trigger"]')
     .nth(1)
   await participantTrigger.click()
+  // «Comparativas» joins several sensors of one participant: no group modes.
+  await expect(page.getByRole("listbox").getByText("Varios participantes")).toHaveCount(0)
+  await expect(page.getByRole("option", { name: "Superposición", exact: true })).toHaveCount(0)
+  await expect(page.getByRole("option", { name: "Promedio", exact: true })).toHaveCount(0)
   await page.getByRole("option", { name: "Participante P02", exact: true }).click()
 
   await expect(panel).toContainText("2.50 s")

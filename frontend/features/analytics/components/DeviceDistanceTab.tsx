@@ -294,6 +294,7 @@ export function DeviceDistanceTab({
             unit="cm"
             yLabel="Distancia (cm)"
             yAxis={groupYAxis}
+            averageColor="#3B82F6"
           />
         ),
         stimulus: <GroupStimulusCard view={groupView} scenario={scenario} />,

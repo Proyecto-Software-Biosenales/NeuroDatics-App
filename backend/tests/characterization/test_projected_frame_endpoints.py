@@ -9,7 +9,7 @@ from neurodatics.modules.analytics.infrastructure.parquet_cache import ParquetCa
 
 PREFIX = "/api/projects/00000000-0000-0000-0000-000000000101/analytics"
 ENDPOINTS = [
-    "/scenario-timing", "/timeseries/pupil", "/statistics/pupil",
+    "/scenario-timing", "/stimulus-sequence", "/timeseries/pupil", "/statistics/pupil",
     "/timeseries/distance", "/statistics/distance", "/timeseries/gsr",
     "/statistics/gsr", "/timeseries/eeg", "/psd/eeg", "/spectrogram/eeg", "/topography/eeg",
 ]

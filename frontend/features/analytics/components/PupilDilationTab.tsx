@@ -80,7 +80,6 @@ import { useGroupView } from "../groupMode/useGroupData"
 import { GroupTemporalChart, type GroupTrace } from "../groupMode/GroupTemporalChart"
 import { GroupKpiGrid, GroupStatsCard, type GroupKpi, type GroupStatEntry } from "../groupMode/GroupStats"
 import { GroupStimulusCard } from "../groupMode/GroupStimulusCard"
-import { GroupUnsupported } from "../groupMode/GroupUnsupported"
 
 type ViewMode = PupilEyes
 
@@ -475,9 +474,7 @@ export function PupilDilationTab({
   useCompareParticipantsSpec(() => comparisonSpec)
 
   const groupDetail = viewMode === "both" ? BOTH_EYES_DETAIL : undefined
-  const groupContent = groupView.unsupportedReason ? (
-    <GroupUnsupported reason={groupView.unsupportedReason} className="analytics-state-frame" />
-  ) : groupView.mode ? (
+  const groupContent = groupView.mode ? (
     <>
       <GroupKpiGrid kpis={GROUP_KPIS} entries={groupResults.stats} loading={groupResults.traces.length === 0 && groupView.data.loading} />
       <GroupTemporalChart
@@ -488,6 +485,7 @@ export function PupilDilationTab({
         unit="mm"
         yLabel="Amplitud pupilar (mm)"
         yAxis={groupYAxis}
+        averageColor={viewMode === "right" ? "#F87171" : "#818CF8"}
         averageDetail={groupDetail}
         selectedTime={groupView.selectedTime}
         onSelectTime={groupView.selectTime}
@@ -663,7 +661,7 @@ export function PupilDilationTab({
         </CardContent>
         </Card>
       {groupView.active ? (
-        groupView.mode && !groupView.unsupportedReason ? (
+        groupView.mode ? (
           <>
             <GroupStimulusCard view={groupView} scenario={scenario} />
             <GroupStatsCard

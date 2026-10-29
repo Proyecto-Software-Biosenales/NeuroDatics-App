@@ -20,7 +20,7 @@ import type { GroupMode } from "../../groupMode/groupSupport"
 import type { GroupData } from "../../groupMode/useGroupData"
 import type { EegGroupEntry, GroupPsd } from "./useEegGroupData"
 
-const AVERAGE_COLOR = "var(--group-average)"
+const DEFAULT_AVERAGE_COLOR = "var(--group-average)"
 const MAX_LEGEND_ITEMS = 8
 const MAX_TOOLTIP_ROWS = 10
 
@@ -41,6 +41,10 @@ export interface EegGroupSlots {
   stats: ReactNode
   /** Chips for the view's own colour bar (load state, how it is computed). */
   notes?: ReactNode
+  /** The same, for a view that draws the group's data in its own chart shell. */
+  chartNotes?: AnalyticsChartNote[]
+  /** The time axis label of such a chart: `GroupTimeAxis.label`. */
+  xAxisLabel?: string
   /** No group data yet: the view shows its loading placeholder. */
   loading?: boolean
   /** Replaces the card's description, when the group view says something else. */
@@ -113,6 +117,7 @@ export function EegGroupStatsCard<K extends string>({
   db,
   detail,
   scope,
+  averageColor = DEFAULT_AVERAGE_COLOR,
 }: {
   columns: EegGroupColumn<K>[]
   entries: EegGroupEntry<K>[]
@@ -123,13 +128,15 @@ export function EegGroupStatsCard<K extends string>({
   detail?: ReactNode
   /** What each row covers: `GroupTimeAxis.scope` («todo el escenario» or «toda la grabación»). */
   scope: string
+  /** The «Promedio» row's dot: the colour of the averaged line. */
+  averageColor?: string
 }) {
   const rows = useMemo(
     () => [
-      { key: "group-average", label: `Promedio (${participantsText(average.participants)})`, color: AVERAGE_COLOR, values: average.values, average: true },
+      { key: "group-average", label: `Promedio (${participantsText(average.participants)})`, color: averageColor, values: average.values, average: true },
       ...entries.map(({ participant, values }) => ({ key: participant.code, label: participant.label, color: participant.color, values, average: false })),
     ],
-    [average, entries]
+    [average, averageColor, entries]
   )
   return (
     <Card>
@@ -300,6 +307,7 @@ export function EegGroupPsdChart({
   onZoom,
   onZoomReset,
   onZoomBack,
+  averageColor = DEFAULT_AVERAGE_COLOR,
 }: {
   mode: GroupMode
   psd: GroupPsd
@@ -309,6 +317,7 @@ export function EegGroupPsdChart({
   onZoom: (start: number, end: number) => void
   onZoomReset?: () => void
   onZoomBack?: () => void
+  averageColor?: string
 }) {
   const dragZoom = useChartDragZoom(onZoom)
   const { frequency, mean, lower, upper, n } = psd.mean
@@ -358,8 +367,8 @@ export function EegGroupPsdChart({
   const legend =
     mode === "average"
       ? [
-          { label: `Promedio (${participantsText(maxN)})`, color: AVERAGE_COLOR, thick: true },
-          { label: "±1 desviación estándar", color: AVERAGE_COLOR, opacity: 0.3, thick: true },
+          { label: `Promedio (${participantsText(maxN)})`, color: averageColor, thick: true },
+          { label: "±1 desviación estándar", color: averageColor, opacity: 0.3, thick: true },
         ]
       : psd.series.length <= MAX_LEGEND_ITEMS
         ? psd.series.map((series) => ({ label: series.participant.label, color: series.participant.color }))
@@ -442,13 +451,13 @@ export function EegGroupPsdChart({
                   dataKey="band"
                   name="±1 desviación estándar"
                   stroke="none"
-                  fill={AVERAGE_COLOR}
+                  fill={averageColor}
                   fillOpacity={0.18}
                   connectNulls={false}
                   isAnimationActive={false}
                   activeDot={false}
                 />
-                <Line type="linear" dataKey="mean" name="Promedio" stroke={AVERAGE_COLOR} strokeWidth={2} dot={false} connectNulls={false} isAnimationActive={false} />
+                <Line type="linear" dataKey="mean" name="Promedio" stroke={averageColor} strokeWidth={2} dot={false} connectNulls={false} isAnimationActive={false} />
               </>
             ) : (
               psd.series.map((series, index) => (

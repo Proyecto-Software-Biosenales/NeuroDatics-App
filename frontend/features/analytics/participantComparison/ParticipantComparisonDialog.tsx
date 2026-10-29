@@ -15,6 +15,8 @@ import { FixationDurationControl } from "../components/FixationDurationControl"
 import { useAoiMetrics, useFixationSensitivity } from "../hooks/useAnalyticsData"
 import type { ZoomHistory } from "../chartZoom"
 import { DEFAULT_FIXATION_DURATION_MS, type FixationDurationMs } from "../types"
+import { alignsByStimulus } from "../groupMode/stimulusTimeline"
+import { useStimulusTimeline } from "../groupMode/useStimulusTimeline"
 import { getScenarioTiming } from "./cardData"
 import { participantComparisonLoader, useViewportTracker } from "./cardHooks"
 import { NestedComparisonBoundary } from "./ParticipantComparisonProvider"
@@ -167,7 +169,13 @@ export default function ParticipantComparisonDialog({
     }
     return null
   }, [concrete, sourceTiming.timing, spec, spectrogramZoom])
-  const ready = Boolean(liveGeneration && liveGeneration.revision === revision) && (!needsSourceTiming || sourceTiming.status === "ready" || sourceTiming.status === "error")
+  // With «Todos los escenarios» the time views line every card up by stimulus (all compared participants).
+  const byStimulus = alignsByStimulus(spec.kind, spec.scenario)
+  const timeline = useStimulusTimeline(byStimulus && liveGeneration ? projectId : null, liveGeneration?.value ?? null, participants)
+  const ready =
+    Boolean(liveGeneration && liveGeneration.revision === revision) &&
+    (!needsSourceTiming || sourceTiming.status === "ready" || sourceTiming.status === "error") &&
+    (!byStimulus || timeline !== undefined)
 
   // Shared AOI geometry for the map overlays: one request, not one per card.
   const aoiOverlaySource = spec.sourceParticipant ?? participants[0] ?? null
@@ -206,11 +214,11 @@ export default function ParticipantComparisonDialog({
     return merged
   }, [reports, scaleMode, selectedList])
   const commonX = useMemo<[number, number] | null>(() => {
-    if (!info.temporal || !concrete || scaleMode !== "common") return null
+    if (!info.temporal || !(concrete || timeline) || scaleMode !== "common") return null
     if (transfer.kind === "relative" && transfer.start != null && transfer.end != null) return [transfer.start, transfer.end]
     const domain = commonDomains.x
     return domain ? [domain.min, domain.max] : null
-  }, [commonDomains.x, concrete, info.temporal, scaleMode, transfer])
+  }, [commonDomains.x, concrete, info.temporal, scaleMode, timeline, transfer])
 
   const onPin = useCallback((next: PinnedPoint) => setPin(next), [])
   const activePin = pin && selected.has(pin.participant) ? pin : null
@@ -244,7 +252,9 @@ export default function ParticipantComparisonDialog({
     notices.push(
       concrete
         ? `Tiempo en segundos desde el inicio de «${spec.scenario}» en cada grabación (primer registro del escenario). El tiempo original de la grabación se conserva en la información emergente y al ubicar la mirada.`
-        : "Con «Todos los escenarios» cada tarjeta usa el eje temporal de su propia grabación: los tiempos no se comparan ni se sincronizan entre participantes."
+        : timeline
+          ? "Con «Todos los escenarios» cada estímulo empieza en el mismo segundo en todas las tarjetas, aunque los participantes lo vieran en otro orden. No se dibuja lo grabado antes del primer estímulo ni las pausas entre estímulos; el tiempo original de la grabación se conserva en la información emergente y al ubicar la mirada."
+          : "Con «Todos los escenarios» cada tarjeta usa el eje temporal de su propia grabación: los tiempos no se comparan ni se sincronizan entre participantes."
     )
   }
   if (info.temporal) {
@@ -272,7 +282,7 @@ export default function ParticipantComparisonDialog({
   const scaleNote =
     info.temporal || spec.kind === "fixation_histogram" || spec.kind === "eeg_psd" || spec.kind === "eeg_spectrogram" || spec.kind === "eeg_topography"
       ? scaleMode === "common"
-        ? describeCommonScale(covered, selectedList.length, info.temporal)
+        ? describeCommonScale(covered, selectedList.length)
         : "Escalas propias: cada tarjeta ajusta sus ejes o colores a sus datos; no compares alturas entre tarjetas."
       : null
 
@@ -365,6 +375,7 @@ export default function ParticipantComparisonDialog({
                         scaleMode={scaleMode}
                         commonDomains={commonDomains}
                         commonX={commonX}
+                        timeline={timeline ?? null}
                         pinTime={activePin ? activePin.displayTime : null}
                         onPin={onPin}
                         onReport={onReport}
@@ -420,7 +431,7 @@ export default function ParticipantComparisonDialog({
                   <span>
                     Participante <strong className="text-foreground">{activePin.participant}</strong> ·{" "}
                     {activePin.aligned
-                      ? `${formatSeconds(activePin.displayTime)} desde el inicio del estímulo`
+                      ? `${formatSeconds(activePin.displayTime)} desde el inicio del ${timeline ? "primer " : ""}estímulo`
                       : formatSeconds(activePin.displayTime)}{" "}
                     (grabación {formatSeconds(activePin.sourceTime)})
                     {activePin.aligned

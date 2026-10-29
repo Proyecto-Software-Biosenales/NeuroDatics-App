@@ -476,12 +476,19 @@ test("scanpath overlay draws one path per participant; average is not offered", 
   await page.getByTestId("group-scanpath-P05-2").hover()
   await page.screenshot({ path: `${SHOTS}/scanpath-overlay-1536-hover.png` })
 
-  await chooseGroupMode(page, "Promedio")
-  await expect(page.getByTestId("group-unsupported")).toContainText("Los recorridos no se pueden promediar")
-  await expect(figuresTable(page)).toHaveCount(0)
-  await page.screenshot({ path: `${SHOTS}/scanpath-average-1536.png` })
+  // Scanpaths cannot be averaged: the select does not offer «Promedio».
+  await participantSelect(page).click()
+  await expect(page.getByRole("option", { name: "Superposición", exact: true })).toBeVisible()
+  await expect(page.getByRole("option", { name: "Promedio", exact: true })).toHaveCount(0)
+  await page.keyboard.press("Escape")
 
-  await chooseGroupMode(page, "Superposición")
+  // A «Promedio» chosen in the heatmap becomes «Superposición» here.
+  await openView(page, "Mapa de calor")
+  await chooseGroupMode(page, "Promedio")
+  await openView(page, "Mapa de recorridos")
+  await expect(participantSelect(page)).toContainText("Superposición")
+  await expect(page.getByTestId("group-scanpath")).toHaveCount(WITH_DATA.length)
+
   await chooseScenario(page, "Todos los escenarios")
   await expect(page.getByTestId("group-unsupported")).toContainText("Selecciona un escenario concreto")
 

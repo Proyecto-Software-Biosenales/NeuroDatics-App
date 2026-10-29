@@ -8,15 +8,12 @@ import {
   finiteValues,
   psdSeriesStats,
   spectrogramStatsOf,
-  topographyFrameStats,
-  topographyRowsOf,
   type AveragedFigures,
 } from "../../eegPresentation"
-import { meanKeyedSeries, meanSpectra, meanSpectrograms, resampleTrace, type KeyedSeriesMean, type SpectrumMean } from "../../groupMode/aggregate"
+import { meanKeyedSeries, meanSpectra, meanSpectrograms, resampleTrace, typicalStep, type SpectrumMean } from "../../groupMode/aggregate"
 import type { GroupParticipant } from "../../groupMode/GroupModeProvider"
-import type { GroupTrace } from "../../groupMode/GroupTemporalChart"
 import type { GroupData } from "../../groupMode/useGroupData"
-import type { ColorDomain, EegSpectrogramData, EegTopographyData } from "../../types"
+import type { ColorDomain, EegSpectrogramData, EegTimeseriesData } from "../../types"
 import { EEG_CHANNELS } from "./eegViewShared"
 
 /** One participant's figures in a group table; null when it has none. */
@@ -57,14 +54,64 @@ export const TIMESERIES_FIELDS = ["count", "rms", "mean", "std", "median", "min"
 export type TimeseriesField = (typeof TIMESERIES_FIELDS)[number]
 
 /**
- * One channel per participant: a mean over channels describes no electrode
- * (channel medians differ by hundreds of µV), so the group modes draw the
- * channel chosen in «Canal», like the view's own cards. Figures are the
- * server's full-resolution ones for that channel and signal.
+ * «Promedio» as the view's own data: per channel and signal, the mean over
+ * participants on one common time grid (a participant without the channel
+ * does not count), so the view draws every selected channel in its colour.
+ * A drag zoom keeps the grid points inside it.
+ */
+export function useEegGroupTimeseriesAverage(data: GroupData, zoom: ZoomRange | null): EegTimeseriesData | null {
+  const averaged = useMemo<EegTimeseriesData | null>(() => {
+    const results = data.successes.flatMap(({ result }) => (result.type === "temporal" ? [result] : []))
+    if (results.length === 0) return null
+    const channels = byMontage(results.flatMap((result) => result.channels))
+    const keys = channels.flatMap((channel) => [`${channel}_raw`, `${channel}_smooth`])
+    const series = meanKeyedSeries(
+      results.map((result) => {
+        const present = new Set(result.keys)
+        return {
+          time: result.points.map((point) => point.time),
+          values: Object.fromEntries(
+            keys.filter((key) => present.has(key)).map((key) => [key, result.points.map((point) => (Number.isFinite(point[key]) ? point[key] : Number.NaN))])
+          ),
+        }
+      }),
+      keys
+    )
+    const column = (key: string) => Array.from(series.mean[key], finiteOrNull)
+    const drawn = channels.filter((channel) => [`${channel}_raw`, `${channel}_smooth`].some((key) => series.n[key].some((count) => count > 0)))
+    const step = typicalStep(series.grid)
+    return {
+      time: Array.from(series.grid),
+      channels: drawn,
+      // Every electrode stays selectable: a chip toggled off is simply not requested.
+      available_channels: EEG_CHANNELS,
+      sampling_rate_hz: Number.isFinite(step) && step > 0 ? 1 / step : 0,
+      raw: Object.fromEntries(drawn.map((channel) => [channel, column(`${channel}_raw`)])),
+      smooth: Object.fromEntries(drawn.map((channel) => [channel, column(`${channel}_smooth`)])),
+    }
+  }, [data.successes])
+  return useMemo(() => {
+    if (!averaged || !zoom) return averaged
+    const inside = averaged.time.flatMap((time, index) => (time >= zoom.start && time <= zoom.end ? [index] : []))
+    if (inside.length < 2) return averaged
+    const pick = (values: Array<number | null>) => inside.map((index) => values[index])
+    return {
+      ...averaged,
+      time: pick(averaged.time) as number[],
+      raw: Object.fromEntries(Object.entries(averaged.raw).map(([channel, values]) => [channel, pick(values)])),
+      smooth: Object.fromEntries(Object.entries(averaged.smooth).map(([channel, values]) => [channel, pick(values)])),
+    }
+  }, [averaged, zoom])
+}
+
+/**
+ * Each participant's figures for the channel chosen in «Estadísticas de»: a
+ * mean over channels describes no electrode (channel medians differ by
+ * hundreds of µV). Figures are the server's full-resolution ones for that
+ * channel and signal.
  */
 export function useEegGroupTimeseries(data: GroupData, channel: string | null, signal: "smooth" | "raw") {
   return useMemo(() => {
-    const traces: GroupTrace[] = []
     const entries: EegGroupEntry<TimeseriesField>[] = []
     for (const entry of data.entries) {
       const { participant } = entry
@@ -76,15 +123,13 @@ export function useEegGroupTimeseries(data: GroupData, channel: string | null, s
         continue
       }
       const key = `${channel}_${signal}`
-      const time = result.points.map((point) => point.time)
       const value = result.points.map((point) => (Number.isFinite(point[key]) ? point[key] : Number.NaN))
-      traces.push({ participant, time, value })
       const server = result.statistics?.[signal]?.[channel]
       // Results cached before the statistics were kept fall back to the drawn samples.
       const stats = server && server.count > 0 ? server : buildStats(channel, finiteValues(value))
       entries.push({ participant, values: stats ? { count: stats.count, rms: stats.rms, mean: stats.mean, std: stats.std, median: stats.median, min: stats.min, max: stats.max } : null })
     }
-    return { traces, ...figures(entries, TIMESERIES_FIELDS, { round: ["count"] }) }
+    return figures(entries, TIMESERIES_FIELDS, { round: ["count"] })
   }, [channel, data.entries, signal])
 }
 
@@ -232,80 +277,4 @@ export function useEegGroupSpectrogram(data: GroupData, perChannelColorDomain: b
   }, [data.entries, zoom])
 
   return { averaged, ...stats }
-}
-
-// ---------------------------------------------------------------------------
-// Topografía
-// ---------------------------------------------------------------------------
-
-export const TOPOGRAPHY_FIELDS = ["strongest", "meanPower", "minPower", "maxPower"] as const
-export type TopographyField = (typeof TOPOGRAPHY_FIELDS)[number]
-
-export interface GroupTopography {
-  /** The averaged topography as the view's own data; its frames are the common grid. */
-  averaged: EegTopographyData | null
-  series: KeyedSeriesMean | null
-  /** Participants in `series` input order. */
-  participants: GroupParticipant[]
-}
-
-/**
- * Per electrode, the mean over participants on a common stimulus-time grid of
- * windows (linear interpolation between a participant's own windows, never
- * across a gap). The slider then moves over that grid.
- */
-export function useEegGroupTopography(data: GroupData): GroupTopography {
-  return useMemo(() => {
-    const successes = data.successes.flatMap(({ participant, result }) => (result.type === "topography" ? [{ participant, data: result.data }] : []))
-    if (successes.length === 0) return { averaged: null, series: null, participants: [] }
-    const first = successes[0].data
-    const channels = byMontage(successes.flatMap(({ data: topography }) => topography.channels))
-    const series = meanKeyedSeries(
-      successes.map(({ data: topography }) => ({ time: topography.time, values: topography.power })),
-      channels,
-      MAX_TIME_BINS
-    )
-    const positions: Record<string, number[]> = {}
-    for (const { data: topography } of successes) {
-      for (const [channel, position] of Object.entries(topography.positions)) positions[channel] ??= position
-    }
-    const power = Object.fromEntries(channels.map((channel) => [channel, Array.from(series.mean[channel], finiteOrNull)]))
-    return {
-      series,
-      participants: successes.map(({ participant }) => participant),
-      averaged: {
-        time: Array.from(series.grid),
-        channels,
-        available_channels: byMontage(successes.flatMap(({ data: topography }) => topography.available_channels)),
-        sampling_rate_hz: first.sampling_rate_hz,
-        unit: first.unit,
-        positions,
-        power,
-        color_domain: colorDomainOf(Object.values(power).flat()),
-        window_s: first.window_s,
-        overlap_ratio: first.overlap_ratio,
-        remove_dc: first.remove_dc,
-      },
-    }
-  }, [data.successes])
-}
-
-/** Each participant's topography figures at one frame of the common grid, as the view computes them. */
-export function groupTopographyFigures(group: GroupTopography, data: GroupData, frameIndex: number): EegGroupFigures<TopographyField> {
-  const { series, averaged } = group
-  const entries: EegGroupEntry<TopographyField>[] = []
-  for (const entry of data.entries) {
-    const { participant } = entry
-    if (entry.status === "empty") entries.push({ participant, values: null })
-    if (entry.status !== "success" || !series || !averaged) continue
-    const position = group.participants.findIndex((item) => item.code === participant.code)
-    if (position < 0) continue
-    const rows = topographyRowsOf(averaged.channels, averaged.positions, (channel) => series.resampled[channel]?.[position]?.[frameIndex])
-    const stats = topographyFrameStats(rows, series.grid[frameIndex] ?? null)
-    entries.push({
-      participant,
-      values: rows.length > 0 ? { strongest: stats.strongest?.value ?? null, meanPower: stats.meanPower, minPower: stats.minPower, maxPower: stats.maxPower } : null,
-    })
-  }
-  return figures(entries, TOPOGRAPHY_FIELDS)
 }
